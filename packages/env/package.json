@@ -1,0 +1,15 @@
+{
+	"name": "@hashira/env",
+	"module": "index.ts",
+	"type": "module",
+	"peerDependencies": {
+		"@types/bun": "latest",
+		"typescript": "^5.0.0"
+	},
+	"devDependencies": {
+		"@hashira/tsconfig": "workspace:../../tooling/tsconfig"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.32.13"
+	}
+}

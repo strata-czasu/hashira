@@ -1,0 +1,17 @@
+{
+	"name": "@hashira/bot",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"start": "bun run src/index.ts"
+	},
+	"dependencies": {
+		"@hashira/core": "workspace:../../packages/core",
+		"@hashira/db": "workspace:../../packages/db",
+		"@hashira/env": "workspace:../../packages/env"
+	},
+	"devDependencies": {
+		"typescript": "^5.0.0",
+		"@types/bun": "latest"
+	}
+}

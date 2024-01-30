@@ -1,0 +1,15 @@
+{
+  "name": "@hashira/core",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@hashira/env": "workspace:../env"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  }
+}
