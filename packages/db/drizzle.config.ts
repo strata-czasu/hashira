@@ -7,9 +7,9 @@ export default {
 	driver: "pg",
 	dbCredentials: {
 		database: env.POSTGRES_DB,
-        host: env.POSTGRES_HOST,
-        password: env.POSTGRES_PASSWORD,
-        user: env.POSTGRES_USER,
+		host: env.POSTGRES_HOST,
+		password: env.POSTGRES_PASSWORD,
+		user: env.POSTGRES_USER,
 	},
 	strict: true,
 	verbose: true,
