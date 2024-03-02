@@ -1,7 +1,8 @@
 {
   "name": "@hashira/core",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./intents": "./src/intents/index.ts"
   },
   "type": "module",
   "devDependencies": {

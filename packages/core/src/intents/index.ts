@@ -85,6 +85,7 @@ const guildPresencesEvents = ["presenceUpdate"] as const;
 const guildVoiceStatesEvents = ["voiceStateUpdate"] as const;
 const guildWebhooksEvents = ["webhooksUpdate"] as const;
 const guildInvitesEvents = ["inviteCreate", "inviteDelete"] as const;
+const readyEvents = ["ready", "shardReady"] as const;
 
 export const allEvents = [
 	...autoModerationConfigurationEvents,
@@ -101,6 +102,7 @@ export const allEvents = [
 	...guildScheduledEventsEvents,
 	...guildVoiceStatesEvents,
 	...guildWebhooksEvents,
+	...readyEvents,
 ] as const;
 
 export type AutoModerationConfigurationHandling = EventsToHandling<
@@ -145,6 +147,8 @@ export type GuildWebhooksHandling = EventsToHandling<typeof guildWebhooksEvents>
 
 export type GuildMessagesHandling = EventsToHandling<typeof guildMessagesEvents>;
 
+export type ReadyHandling = EventsToHandling<typeof readyEvents>;
+
 export type AllEventsHandling = AutoModerationConfigurationHandling &
 	AutoModerationActionExecutionHandling &
 	GuildEmojisAndStickersHandling &
@@ -158,7 +162,8 @@ export type AllEventsHandling = AutoModerationConfigurationHandling &
 	GuildPresencesHandling &
 	GuildScheduledEventsHandling &
 	GuildVoiceStatesHandling &
-	GuildWebhooksHandling;
+	GuildWebhooksHandling &
+	ReadyHandling;
 
 export const autoModerationConfigurationDefaultHandling = createEventsToDefaultHandling(
 	autoModerationConfigurationEvents,
@@ -210,6 +215,8 @@ export const guildVoiceStatesDefaultHandling =
 export const guildWebhooksDefaultHandling =
 	createEventsToDefaultHandling(guildWebhooksEvents);
 
+export const readyDefaultHandling = createEventsToDefaultHandling(readyEvents);
+
 export const allEventsToDefaultHandling = {
 	...autoModerationConfigurationDefaultHandling,
 	...autoModerationActionExecutionDefaultHandling,
@@ -225,6 +232,7 @@ export const allEventsToDefaultHandling = {
 	...guildScheduledEventsDefaultHandling,
 	...guildVoiceStatesDefaultHandling,
 	...guildWebhooksDefaultHandling,
+	...readyDefaultHandling,
 } as const;
 
 export const guildEmojisAndStickersEventsToIntent = createEventsToIntent(
@@ -302,6 +310,8 @@ export const guildWebhooksEventsToIntent = createEventsToIntent(guildWebhooksEve
 	GatewayIntentBits.GuildWebhooks,
 ]);
 
+export const readyEventsToIntent = createEventsToIntent(readyEvents, []);
+
 export const allEventsToIntent = {
 	...autoModerationConfigurationEventsToIntent,
 	...autoModerationActionExecutionEventsToIntent,
@@ -317,6 +327,7 @@ export const allEventsToIntent = {
 	...guildScheduledEventsEventsToIntent,
 	...guildVoiceStatesEventsToIntent,
 	...guildWebhooksEventsToIntent,
+	...readyEventsToIntent,
 } as const;
 
 export type EventMethodName = keyof typeof allEventsToIntent;
