@@ -11,7 +11,7 @@
 		"@hashira/env": "workspace:../../packages/env"
 	},
 	"devDependencies": {
-		"typescript": "^5.0.0",
+		"typescript": "^5.3.3",
 		"@types/bun": "latest"
 	}
 }
