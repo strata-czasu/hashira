@@ -10,6 +10,6 @@
 		"@hashira/tsconfig": "workspace:../../tooling/tsconfig"
 	},
 	"dependencies": {
-		"@sinclair/typebox": "^0.32.13"
+		"@sinclair/typebox": "^0.32.15"
 	}
 }

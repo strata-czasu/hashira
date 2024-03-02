@@ -1,12 +1,14 @@
-import { Type, type Static } from "@sinclair/typebox";
+import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
 export const Env = Type.Object({
-	POSTGRES_PASSWORD: Type.String(),
-	POSTGRES_USER: Type.String(),
+	BOT_CLIENT_ID: Type.String(),
+	BOT_DEVELOPER_GUILD_ID: Type.String(),
+	BOT_TOKEN: Type.String(),
 	POSTGRES_DB: Type.String(),
 	POSTGRES_HOST: Type.String(),
-	BOT_TOKEN: Type.String(),
+	POSTGRES_PASSWORD: Type.String(),
+	POSTGRES_USER: Type.String(),
 });
 
 export type Env = Static<typeof Env>;
