@@ -3,7 +3,8 @@ import {
 	Client,
 	REST,
 	Routes,
-	SlashCommandBuilder,
+	type SlashCommandBuilder,
+	type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import {
 	type AllEventsHandling,
@@ -45,6 +46,11 @@ type HashiraOptions = {
 	name: string;
 };
 
+type HashiraSlashCommandOptions =
+	| SlashCommandBuilder
+	| Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">
+	| SlashCommandSubcommandsOnlyBuilder;
+
 class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	#state: BaseDecorator;
 	#derive: UnknownDerive[];
@@ -53,8 +59,11 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	#commands: Map<
 		string,
 		[
-			SlashCommandBuilder,
-			(interaction: ChatInputCommandInteraction) => MaybePromise<void>,
+			HashiraSlashCommandOptions,
+			(
+				context: UnknownContext,
+				interaction: ChatInputCommandInteraction,
+			) => MaybePromise<void>,
 		]
 	>;
 	#dependencies: string[];
@@ -164,14 +173,20 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		return this;
 	}
 
-	command<T extends SlashCommandBuilder>(
+	command<T extends HashiraSlashCommandOptions>(
 		commandBuilder: T,
-		handler: (interaction: ChatInputCommandInteraction) => MaybePromise<void>,
+		handler: (
+			context: HashiraContext<Decorators>,
+			interaction: ChatInputCommandInteraction,
+		) => MaybePromise<void>,
 	): Hashira<Decorators> {
-		new SlashCommandBuilder();
-		// NOTE: I don't know why this is necessary.
-
-		this.#commands.set(commandBuilder.name, [commandBuilder, handler]);
+		this.#commands.set(commandBuilder.name, [
+			commandBuilder,
+			handler as (
+				context: UnknownContext,
+				interaction: ChatInputCommandInteraction,
+			) => MaybePromise<void>,
+		]);
 
 		return this;
 	}
@@ -202,7 +217,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			const [_, handler] = command;
 
 			try {
-				await handler(interaction);
+				await handler(this.context(), interaction);
 			} catch (error) {
 				if (interaction.replied || interaction.deferred) {
 					await interaction.followUp({
