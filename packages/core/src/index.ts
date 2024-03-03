@@ -198,7 +198,10 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			),
 		];
 
-		const discordClient = new Client({ intents });
+		const discordClient = new Client({
+			intents,
+			allowedMentions: { repliedUser: true },
+		});
 
 		for (const [event, handlers] of this.#methods) {
 			for (let i = 0; i < handlers.length; i++) {
