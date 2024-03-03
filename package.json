@@ -16,7 +16,8 @@
     "lint": "bunx biome lint . --apply",
     "organize": "bunx biome check . --apply",
     "fix": "bun format && bun lint && bun organize",
-    "test:core": "bun test packages/core/"
+    "test:core": "bun test packages/core/",
+    "reload-commands": "bun run --cwd apps/bot reload-commands",
   },
   "type": "module",
   "workspaces": [
