@@ -10,7 +10,7 @@ export const emojiUsage = pgTable("emoji_usage", {
 		.notNull(),
 	emojiId: bigint("emojiId", { mode: "bigint" }).notNull(),
 	// we don't really want to reference users, we just want to store the id
-	userId: bigint("usedBy", { mode: "bigint" }).notNull(),
+	userId: bigint("userId", { mode: "bigint" }).notNull(),
 	timestamp: date("timestamp").defaultNow().notNull(),
 });
 
