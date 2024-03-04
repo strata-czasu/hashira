@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "bun run --cwd apps/bot start",
-    "generate": "bun --cwd packages/db run generate",
+    "generate": "bun run --cwd packages/db generate",
     "migrate": "bun run --cwd packages/db migrate",
     "drizzle-studio": "bun run --cwd packages/db drizzle-studio",
     "push": "bun run --cwd packages/db push",
