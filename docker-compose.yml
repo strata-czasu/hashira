@@ -10,6 +10,8 @@ services:
       - db
     env_file:
       - .env
+    ports:
+      - 4983:4983  # drizzle kit studio
 
   db:
     image: postgres:latest
