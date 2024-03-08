@@ -1,11 +1,11 @@
+import { test } from "bun:test";
+import { faker } from "@faker-js/faker";
 import env from "@hashira/env";
-import { drizzle, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
+import { type ExtractTablesWithRelations, TransactionRollbackError } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import { type PostgresJsQueryResultHKT, drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { schema } from "../src";
-import { faker } from "@faker-js/faker";
-import { test } from "bun:test";
-import { TransactionRollbackError, type ExtractTablesWithRelations } from "drizzle-orm";
-import type { PgTransaction } from "drizzle-orm/pg-core";
 
 const connection = postgres({
 	host: env.POSTGRES_TEST_HOST,

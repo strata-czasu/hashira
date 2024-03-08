@@ -6,7 +6,8 @@ import { pgTable } from "../pgtable";
 export const emojiUsage = pgTable("emoji_usage", {
 	id: serial("id").primaryKey(),
 	guildId: text("guildId")
-		.notNull().references(() => guild.id),
+		.notNull()
+		.references(() => guild.id),
 	emojiId: text("emojiId").notNull(),
 	// we don't really want to reference users, we just want to store the id
 	userId: text("userId").notNull(),

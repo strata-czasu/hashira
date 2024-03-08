@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import {  integer, serial, text } from "drizzle-orm/pg-core";
+import { integer, serial, text } from "drizzle-orm/pg-core";
 import { pgTable } from "../../pgtable";
 import { user } from "../user";
 import { currency } from "./currency";

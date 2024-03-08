@@ -1,8 +1,8 @@
 import { afterEach, expect } from "bun:test";
 import { faker } from "@faker-js/faker";
+import { schema } from "../src";
 import { Paginate } from "../src/paginate";
 import { createUser, dbTest } from "./";
-import { schema } from "../src";
 
 afterEach(async () => {
 	faker.seed();
