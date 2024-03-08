@@ -1,16 +1,25 @@
 {
 	"name": "@hashira/db",
 	"module": "index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./schema": "./src/schema/index.ts",
+		"./migrate": "./src/migrate.ts"
+	},
 	"type": "module",
 	"scripts": {
 		"generate": "drizzle-kit generate:pg",
-		"migrate": "bun run migrate.ts",
-		"drizzle-studio": "drizzle-kit studio",
-		"push": "drizzle-kit push:pg"
+		"migrate": "bun run src/migrate.ts",
+		"drizzle-studio": "drizzle-kit studio --port 4982",
+		"drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
+		"push": "drizzle-kit push:pg",
+		"drop": "drizzle-kit drop",
+		"test": "bun test --preload ./test/preload.ts test/"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
-		"typescript": "^5.3.3"
+		"typescript": "^5.3.3",
+		"@faker-js/faker": "^8.4.1"
 	},
 	"dependencies": {
 		"drizzle-orm": "^0.29.4",
