@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { bigint, integer, serial, text } from "drizzle-orm/pg-core";
+import {  integer, serial, text } from "drizzle-orm/pg-core";
 import { pgTable } from "../../pgtable";
 import { user } from "../user";
 import { currency } from "./currency";
@@ -7,7 +7,7 @@ import { currency } from "./currency";
 export const wallet = pgTable("wallet", {
 	id: serial("id").primaryKey(),
 	name: text("name"),
-	userId: bigint("userId", { mode: "bigint" }).references(() => user.id),
+	userId: text("userId").references(() => user.id),
 	currencyId: integer("currency").references(() => currency.id),
 });
 

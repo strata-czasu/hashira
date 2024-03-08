@@ -1,16 +1,15 @@
 import { guild, user } from "@hashira/db/schema";
 import { relations } from "drizzle-orm";
-import { bigint, serial, timestamp } from "drizzle-orm/pg-core";
+import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 
 export const emojiUsage = pgTable("emoji_usage", {
 	id: serial("id").primaryKey(),
-	guildId: bigint("guildId", { mode: "bigint" })
-		.references(() => guild.id)
-		.notNull(),
-	emojiId: bigint("emojiId", { mode: "bigint" }).notNull(),
+	guildId: text("guildId")
+		.notNull().references(() => guild.id),
+	emojiId: text("emojiId").notNull(),
 	// we don't really want to reference users, we just want to store the id
-	userId: bigint("userId", { mode: "bigint" }).notNull(),
+	userId: text("userId").notNull(),
 	timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 

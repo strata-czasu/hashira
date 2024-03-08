@@ -1,0 +1,1 @@
+ALTER TABLE "core_emoji_usage" ALTER COLUMN "emojiId" SET DATA TYPE text;
