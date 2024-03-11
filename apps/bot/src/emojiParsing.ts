@@ -9,7 +9,7 @@ import {
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { match } from "ts-pattern";
 import { base } from "./base";
-import { parseDate } from "./dateParsing";
+import { parseDate } from "./util/dateParsing";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
