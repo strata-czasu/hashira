@@ -223,6 +223,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 				await handler(this.context(), interaction);
 			} catch (error) {
 				// TODO: #1 Add proper error logging
+				console.error(error);
 				if (interaction.replied || interaction.deferred) {
 					await interaction.followUp({
 						content: "There was an error while executing this command!",
