@@ -18,14 +18,14 @@ export const createEventsToDefaultHandling = <
 	) as EventsToDefaultHandling<Events>;
 
 export type EventsToIntents<
-	Events extends readonly (keyof ClientEvents)[],
+	Events extends readonly (keyof ClientEvents)[] | readonly string[],
 	Intents extends GatewayIntentBits[],
 > = {
 	[K in Events[number]]: Intents;
 };
 
 export const createEventsToIntent = <
-	const Events extends readonly (keyof ClientEvents)[],
+	const Events extends readonly (keyof ClientEvents)[] | readonly string[],
 	const Intents extends GatewayIntentBits[],
 >(
 	events: Events,
