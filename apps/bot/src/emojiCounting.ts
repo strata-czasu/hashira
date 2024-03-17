@@ -196,8 +196,8 @@ const handleGuild = async (
 
 export const emojiCounting = new Hashira({ name: "emoji-parsing" })
 	.use(base)
-	.handle("messageCreate", async ({ db }, message) => {
-		if (!message.inGuild()) return;
+	.handle("guildMessageCreate", async ({ db }, message) => {
+		// TODO: Consider adding a helper? an util? for easier checking of bots
 		if (message.author.bot) return;
 
 		const matches = message.content.matchAll(EMOJI_REGEX);
