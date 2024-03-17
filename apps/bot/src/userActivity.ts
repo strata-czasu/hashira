@@ -16,9 +16,10 @@ export const userActivity = new Hashira({ name: "user-activity" })
 			.values({ id: message.author.id })
 			.onConflictDoNothing();
 
-		await db.insert(schema.userActivity).values({
+		await db.insert(schema.userTextActivity).values({
 			userId: message.author.id,
 			guildId: message.guild.id,
+			messageId: message.id,
 			channelId: message.channel.id,
 			timestamp: message.createdAt,
 		});
