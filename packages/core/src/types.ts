@@ -10,7 +10,7 @@ export type EventsWithContext<Context extends HashiraContext<HashiraDecorators>>
 	[K in keyof AllEventsHandling]: (
 		ctx: Context,
 		...args: Parameters<AllEventsHandling[K]>
-	) => MaybePromise<void>;
+	) => Promise<void>;
 };
 
 export type UnknownEventWithContext = (
