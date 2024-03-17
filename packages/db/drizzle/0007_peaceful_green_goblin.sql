@@ -1,0 +1,1 @@
+ALTER TABLE "core_user_activity" ALTER COLUMN "timestamp" DROP DEFAULT;
