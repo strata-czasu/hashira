@@ -13,3 +13,6 @@ export const connection = postgres({
 export const db = drizzle(connection, { schema });
 
 export { schema };
+
+export { Paginate } from "./paginate";
+export type { CountSelect } from "./paginate";

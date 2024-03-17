@@ -19,7 +19,7 @@ dbTest("paginate unknown size", async (tx) => {
 	expect(await paginator.current()).toHaveLength(10);
 	expect(paginator.displayPages).toBe("?");
 	expect(paginator.displayCurrentPage).toBe("1");
-	expect(await paginator.prev()).toHaveLength(0);
+	expect(await paginator.previous()).toHaveLength(0);
 	expect(await paginator.next()).toHaveLength(10);
 	expect(paginator.displayPages).toBe("?");
 	expect(paginator.displayCurrentPage).toBe("2");
@@ -57,7 +57,6 @@ dbTest("paginate unknown size", async (tx) => {
 	expect(paginator.displayCurrentPage).toBe("10");
 });
 
-
 dbTest("paginate known size", async (tx) => {
 	const users = faker.helpers.multiple(createUser, { count: 100 });
 	await tx.insert(schema.user).values(users);
@@ -69,7 +68,7 @@ dbTest("paginate known size", async (tx) => {
 	expect(await paginator.current()).toHaveLength(10);
 	expect(paginator.displayPages).toBe("10");
 	expect(paginator.displayCurrentPage).toBe("1");
-	expect(await paginator.prev()).toHaveLength(0);
+	expect(await paginator.previous()).toHaveLength(0);
 	expect(await paginator.next()).toHaveLength(10);
 	expect(paginator.displayPages).toBe("10");
 	expect(paginator.displayCurrentPage).toBe("2");
