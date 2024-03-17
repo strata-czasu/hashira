@@ -1,8 +1,8 @@
 import { relations } from "drizzle-orm";
 import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
-import { user } from "./user";
 import { guild } from "./guild";
+import { user } from "./user";
 
 export const userActivity = pgTable("user_activity", {
 	id: serial("id").primaryKey(),

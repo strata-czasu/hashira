@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import type { db } from "@hashira/db";
 import { emojiUsage } from "@hashira/db/schema";
 import {
 	ChatInputCommandInteraction,
@@ -11,7 +12,6 @@ import { and, count, desc, eq, sql } from "drizzle-orm";
 import { match } from "ts-pattern";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
-import type { db } from "@hashira/db";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
@@ -206,15 +206,13 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
 		const guildEmojis = parseEmojis(message.guild.emojis, message.content);
 		if (guildEmojis.length === 0) return;
 
-		await db
-			.insert(emojiUsage)
-			.values(
-				guildEmojis.map((emoji) => ({
-					userId: message.author.id,
-					emojiId: emoji.id,
-					guildId: message.guild.id,
-				})),
-			);
+		await db.insert(emojiUsage).values(
+			guildEmojis.map((emoji) => ({
+				userId: message.author.id,
+				emojiId: emoji.id,
+				guildId: message.guild.id,
+			})),
+		);
 	})
 	.command(emojiStatsGroup, async ({ db }, interaction) => {
 		if (!interaction.inCachedGuild()) {
