@@ -1,4 +1,5 @@
 import {
+	AutocompleteInteraction,
 	ChatInputCommandInteraction,
 	Client,
 	REST,
@@ -13,12 +14,12 @@ import type {
 	EventsWithContext,
 	HashiraContext,
 	HashiraDecorators,
-	MaybePromise,
 	Prettify,
 	UnknownContext,
 	UnknownDerive,
 	UnknownEventWithContext,
 } from "./types";
+import { mergeMap } from "./utils";
 
 const decoratorInitBase = {
 	const: {},
@@ -35,6 +36,25 @@ type HashiraSlashCommandOptions =
 	| Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">
 	| SlashCommandSubcommandsOnlyBuilder;
 
+const handleCommandConflict = (
+	[a]: [HashiraSlashCommandOptions, unknown],
+	[b]: [HashiraSlashCommandOptions, unknown],
+) => {
+	throw new Error(
+		`Command ${a.name} with descriptiopn: ${a.description} conflicts with ${b.name} with description ${b.description}`,
+	);
+};
+
+const handleAutoCompleteConflict = (
+	_a: unknown,
+	_b: unknown,
+	autoCompleteName: string,
+) => {
+	throw new Error(
+		`There was a conflict with the autocomplete command ${autoCompleteName}`,
+	);
+};
+
 class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	#state: BaseDecorator;
 	#derive: UnknownDerive[];
@@ -47,8 +67,12 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			(
 				context: UnknownContext,
 				interaction: ChatInputCommandInteraction,
-			) => MaybePromise<void>,
+			) => Promise<void>,
 		]
+	>;
+	#autocomplete: Map<
+		string,
+		(context: UnknownContext, interaction: AutocompleteInteraction) => Promise<void>
 	>;
 	#dependencies: string[];
 	#name: string;
@@ -59,6 +83,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		this.#const = {};
 		this.#methods = new Map();
 		this.#commands = new Map();
+		this.#autocomplete = new Map();
 		this.#dependencies = [options.name];
 		this.#name = options.name;
 	}
@@ -106,7 +131,6 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		tapper: (value: Decorators["state"][T]) => void,
 	): this {
 		tapper((this.#state as Decorators["state"])[name]);
-		console.log(this.#state);
 		return this;
 	}
 
@@ -126,8 +150,17 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		this.#const = { ...this.#const, ...instance.#const };
 		this.#derive = [...this.#derive, ...instance.#derive];
 		this.#state = { ...this.#state, ...instance.#state };
-		this.#methods = new Map([...this.#methods, ...instance.#methods]);
-		this.#commands = new Map([...this.#commands, ...instance.#commands]);
+		this.#methods = mergeMap((a, b) => [...a, ...b], this.#methods, instance.#methods);
+		this.#commands = mergeMap(
+			handleCommandConflict,
+			this.#commands,
+			instance.#commands,
+		);
+		this.#autocomplete = mergeMap(
+			handleAutoCompleteConflict,
+			this.#autocomplete,
+			instance.#autocomplete,
+		);
 		this.#dependencies.push(instance.#name);
 
 		return this as unknown as ReturnType<typeof this.use<NewHashira>>;
@@ -162,25 +195,79 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		handler: (
 			context: HashiraContext<Decorators>,
 			interaction: ChatInputCommandInteraction,
-		) => MaybePromise<void>,
+		) => Promise<void>,
 	): Hashira<Decorators> {
 		this.#commands.set(commandBuilder.name, [
 			commandBuilder,
 			handler as (
 				context: UnknownContext,
 				interaction: ChatInputCommandInteraction,
-			) => MaybePromise<void>,
+			) => Promise<void>,
 		]);
 
 		return this;
 	}
 
+	autocomplete<T extends HashiraSlashCommandOptions>(
+		commandBuilder: T,
+		handler: (
+			context: HashiraContext<Decorators>,
+			interaction: AutocompleteInteraction,
+		) => Promise<void>,
+	): Hashira<Decorators> {
+		this.#autocomplete.set(
+			commandBuilder.name,
+			handler as (
+				context: UnknownContext,
+				interaction: AutocompleteInteraction,
+			) => Promise<void>,
+		);
+
+		return this;
+	}
+
+	private async handleCommand(interaction: ChatInputCommandInteraction) {
+		const command = this.#commands.get(interaction.commandName);
+
+		if (!command) return;
+		const [_, handler] = command;
+
+		try {
+			await handler(this.context(), interaction);
+		} catch (error) {
+			// TODO: #1 Add proper error logging
+			console.error(error);
+			if (interaction.replied || interaction.deferred) {
+				await interaction.followUp({
+					content: "There was an error while executing this command!",
+					ephemeral: true,
+				});
+			} else {
+				await interaction.reply({
+					content: "There was an error while executing this command!",
+					ephemeral: true,
+				});
+			}
+		}
+	}
+
+	private async handleAutocomplete(interaction: AutocompleteInteraction) {
+		const handler = this.#autocomplete.get(interaction.commandName);
+
+		if (!handler) return;
+
+		try {
+			await handler(this.context(), interaction);
+		} catch (error) {
+			// TODO: #1 Add proper error logging
+			console.error(error);
+			await interaction.respond([]);
+		}
+	}
+
 	async loadHandlers(discordClient: Client) {
 		for (const [event, handlers] of this.#methods) {
-			for (let i = 0; i < handlers.length; i++) {
-				// This prevents type being too large for the compiler to handle
-				const rawHandler = handlers[i] as (...args: unknown[]) => Promise<void>;
-
+			for (const rawHandler of handlers) {
 				if (isCustomEvent(event)) {
 					const [discordEvent, handler] = handleCustomEvent(event, rawHandler);
 					discordClient.on(discordEvent, (...args) => handler(this.context(), ...args));
@@ -191,30 +278,8 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		}
 
 		discordClient.on("interactionCreate", async (interaction) => {
-			if (!interaction.isChatInputCommand()) return;
-
-			const command = this.#commands.get(interaction.commandName);
-
-			if (!command) return;
-			const [_, handler] = command;
-
-			try {
-				await handler(this.context(), interaction);
-			} catch (error) {
-				// TODO: #1 Add proper error logging
-				console.error(error);
-				if (interaction.replied || interaction.deferred) {
-					await interaction.followUp({
-						content: "There was an error while executing this command!",
-						ephemeral: true,
-					});
-				} else {
-					await interaction.reply({
-						content: "There was an error while executing this command!",
-						ephemeral: true,
-					});
-				}
-			}
+			if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
+			if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
 		});
 
 		// TODO: #1 Add proper error logging

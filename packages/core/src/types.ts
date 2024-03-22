@@ -16,7 +16,7 @@ export type EventsWithContext<Context extends HashiraContext<HashiraDecorators>>
 export type UnknownEventWithContext = (
 	ctx: unknown,
 	...args: unknown[]
-) => MaybePromise<void>;
+) => Promise<void>;
 
 export type BaseDecorator = { [key: string]: unknown };
 
