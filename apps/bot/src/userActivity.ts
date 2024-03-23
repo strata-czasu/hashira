@@ -1,6 +1,11 @@
 import { Hashira } from "@hashira/core";
 import { schema } from "@hashira/db";
-import { ChannelType, PermissionsBitField, SlashCommandBuilder } from "discord.js";
+import {
+	ChannelType,
+	PermissionsBitField,
+	SlashCommandBuilder,
+	SnowflakeUtil,
+} from "discord.js";
 import { base } from "./base";
 import { fetchMessages } from "./util/fetchMessages";
 import { isOwner } from "./util/isOwner";
@@ -21,7 +26,7 @@ const userActivityCommand = new SlashCommandBuilder()
 					.addChannelTypes(ChannelType.GuildText),
 			)
 			.addStringOption((option) =>
-				option.setName("before").setDescription("The date to start from"),
+				option.setName("before").setDescription("The id of message to start from"),
 			)
 			.addIntegerOption((option) =>
 				option
@@ -57,6 +62,10 @@ export const userActivity = new Hashira({ name: "user-activity" })
 			return;
 		}
 
+		const before =
+			interaction.options.getString("before") ??
+			SnowflakeUtil.generate({ timestamp: Date.now() }).toString();
+
 		const limit = interaction.options.getInteger("limit") ?? 1000;
 
 		await interaction.reply({
@@ -65,7 +74,7 @@ export const userActivity = new Hashira({ name: "user-activity" })
 		});
 
 		let i = 0;
-		for await (const messages of fetchMessages(channel, limit)) {
+		for await (const messages of fetchMessages(channel, limit, before)) {
 			const messageData = messages.map((message) => ({
 				userId: message.author.id,
 				guildId: message.guild.id,
@@ -79,7 +88,9 @@ export const userActivity = new Hashira({ name: "user-activity" })
 
 			await interaction.followUp({
 				ephemeral: true,
-				content: `Preloaded ${i}/${limit} messages. It's ${(i / limit) * 100}% done`,
+				content: `Preloaded ${i}/${limit} messages. It's ${
+					(i / limit) * 100
+				}% done. Last message: ${messages.last()}`,
 			});
 
 			await db.insert(schema.user).values(userData).onConflictDoNothing();
