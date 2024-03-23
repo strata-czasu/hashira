@@ -38,7 +38,7 @@ const userActivityCommand = new SlashCommandBuilder()
 export const userActivity = new Hashira({ name: "user-activity" })
 	.use(base)
 	.command(userActivityCommand, async ({ db }, interaction) => {
-		if (!isOwner(interaction.user, interaction.client.application.owner)) return;
+		if (!(await isOwner(interaction))) return;
 		if (!interaction.inGuild()) return;
 
 		const channel =
