@@ -209,6 +209,9 @@ class Hashira<
 		return this;
 	}
 
+	/**
+	 *  @deprecated
+	 */
 	command<T extends HashiraSlashCommandOptions>(
 		commandBuilder: T,
 		handler: (
