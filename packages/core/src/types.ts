@@ -1,3 +1,4 @@
+import type { ToAPIApplicationCommandOptions } from "discord.js";
 import type { AllEventsHandling } from "./intents";
 
 export type Prettify<T> = {
@@ -20,6 +21,11 @@ export type UnknownEventWithContext = (
 
 export type BaseDecorator = { [key: string]: unknown };
 
+export interface OptionBuilder {
+	toSlashCommandOption(): ToAPIApplicationCommandOptions;
+}
+export type BaseOptions = { [key: string]: OptionBuilder };
+
 export type HashiraContext<Decorators extends HashiraDecorators> = Prettify<
 	Decorators["const"] & Decorators["derive"] & { state: Decorators["state"] }
 >;
@@ -35,4 +41,8 @@ export type HashiraDecorators = {
 	const: BaseDecorator;
 	derive: BaseDecorator;
 	state: BaseDecorator;
+};
+
+export type HashiraCommands = {
+	[K in string]: { name: K; options: BaseDecorator };
 };
