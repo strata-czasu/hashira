@@ -2,7 +2,7 @@ ARG NODE_VERSION=20
 
 FROM node:${NODE_VERSION} as base
 
-ARG BUN_VERSION=bun-v1.0.32
+ARG BUN_VERSION=bun-v1.1.0
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update \
