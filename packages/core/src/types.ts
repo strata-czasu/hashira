@@ -21,10 +21,13 @@ export type UnknownEventWithContext = (
 
 export type BaseDecorator = { [key: string]: unknown };
 
-export interface OptionBuilder {
+export interface OptionBuilder<Required extends boolean, T> {
+	_: { type: Required extends true ? T : T | null };
 	toSlashCommandOption(): ToAPIApplicationCommandOptions;
 }
-export type BaseOptions = { [key: string]: OptionBuilder };
+
+export type OptionDataType<Option extends OptionBuilder<boolean, unknown>> =
+	Option["_"]["type"];
 
 export type HashiraContext<Decorators extends HashiraDecorators> = Prettify<
 	Decorators["const"] & Decorators["derive"] & { state: Decorators["state"] }
@@ -46,3 +49,5 @@ export type HashiraDecorators = {
 export type HashiraCommands = {
 	[K in string]: { name: K; options: BaseDecorator };
 };
+
+export type If<Cond extends boolean, Then, Else> = Cond extends true ? Then : Else;
