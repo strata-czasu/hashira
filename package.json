@@ -1,33 +1,29 @@
 {
-  "name": "hashira",
-  "devDependencies": {
-    "@biomejs/biome": "^1.5.3",
-    "@types/bun": "latest",
-    "expect-type": "^0.18.0",
-    "typescript": "^5.3.3"
-  },
-  "scripts": {
-    "start": "bun run --cwd apps/bot start",
-    "start:prod": "bun migrate && bun run --cwd apps/bot start",
-    "generate": "bun run --cwd packages/db generate",
-    "migrate": "bun run --cwd packages/db migrate",
-    "drizzle-studio": "bun run --cwd packages/db drizzle-studio",
-    "drizzle-studio:test": "bun run --cwd packages/db drizzle-studio:test",
-    "push": "bun run --cwd packages/db push",
-    "drop": "bun run --cwd packages/db drop",
-    "format": "bunx biome format . --write",
-    "lint": "bunx biome lint . --apply",
-    "organize": "bunx biome check . --apply",
-    "fix": "bun format && bun lint && bun organize",
-    "test:core": "bun run --cwd packages/core test",
-    "test:bot": "bun run --cwd apps/bot test",
-    "test:db": "bun run --cwd packages/db test",
-    "reload-commands": "bun run --cwd apps/bot reload-commands"
-  },
-  "type": "module",
-  "workspaces": [
-    "tooling/*",
-    "packages/*",
-    "apps/*"
-  ]
+	"name": "hashira",
+	"devDependencies": {
+		"@biomejs/biome": "^1.5.3",
+		"@types/bun": "latest",
+		"expect-type": "^0.18.0",
+		"typescript": "^5.4.4"
+	},
+	"scripts": {
+		"start": "bun run --cwd apps/bot start",
+		"start:prod": "bun migrate && bun run --cwd apps/bot start",
+		"generate": "bun run --cwd packages/db generate",
+		"migrate": "bun run --cwd packages/db migrate",
+		"drizzle-studio": "bun run --cwd packages/db drizzle-studio",
+		"drizzle-studio:test": "bun run --cwd packages/db drizzle-studio:test",
+		"push": "bun run --cwd packages/db push",
+		"drop": "bun run --cwd packages/db drop",
+		"format": "bunx biome format . --write",
+		"lint": "bunx biome lint . --apply",
+		"organize": "bunx biome check . --apply",
+		"fix": "bun format && bun lint && bun organize",
+		"test:core": "bun run --cwd packages/core test",
+		"test:bot": "bun run --cwd apps/bot test",
+		"test:db": "bun run --cwd packages/db test",
+		"reload-commands": "bun run --cwd apps/bot reload-commands"
+	},
+	"type": "module",
+	"workspaces": ["tooling/*", "packages/*", "apps/*"]
 }
