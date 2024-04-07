@@ -4,18 +4,20 @@ import {
 	SlashCommandSubcommandBuilder,
 	SlashCommandSubcommandGroupBuilder,
 } from "discord.js";
+import { P, match } from "ts-pattern";
 import type {
 	BaseDecorator,
 	HashiraContext,
 	HashiraDecorators,
 	If,
+	OptionBuilder,
 	OptionDataType,
 	Prettify,
 	UnknownContext,
 } from "../types";
+import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
-import { RoleOptionBuilder } from "./roleOptionBuilder";
 
 const optionsInitBase = {};
 
@@ -132,6 +134,7 @@ export class SlashCommand<
 	// Enforce nominal typing
 	protected declare readonly nominal: [HasHandler, HasDescription, Options];
 	#builder = new SlashCommandSubcommandBuilder();
+	#options: Record<string, OptionBuilder<boolean, unknown>> = {};
 	#handler?: UnknownCommandHandler;
 
 	setDescription(
@@ -150,8 +153,10 @@ export class SlashCommand<
 		HasDescription,
 		Prettify<Options & { [key in T]: OptionDataType<U> }>
 	> {
-		const option = input(new StringOptionBuilder()).toSlashCommandOption();
-		this.#builder.addStringOption(option.setName(name));
+		const option = input(new StringOptionBuilder());
+		const builder = option.toSlashCommandOption();
+		this.#builder.addStringOption(builder.setName(name));
+		this.#options[name] = option;
 		return this as unknown as ReturnType<typeof this.addString<T, U>>;
 	}
 
@@ -192,9 +197,22 @@ export class SlashCommand<
 	}
 
 	options(interaction: ChatInputCommandInteraction): Options {
+		// TODO: This should use custom logic to handle different types of
+		// options (e.g. user, member, role, etc.) and also custom options
 		const options: Record<string, unknown> = {};
+		const createSetOption = (name: string) => (value: unknown) => {
+			options[name] = value;
+		};
 		for (const option of this.#builder.options) {
-			options[option.name] = interaction.options.get(option.name)?.value ?? null;
+			const opt = interaction.options.get(option.name);
+			const setOption = createSetOption(option.name);
+			match(opt)
+				.with(null, createSetOption(option.name))
+				.with({ user: P.select(P.not(P.nullish)) }, setOption)
+				.with({ member: P.select(P.not(P.nullish)) }, setOption)
+				.when(({ channel }) => channel, setOption)
+				.with({ role: P.select(P.not(P.nullish)) }, setOption)
+				.with({ attachment: P.select(P.not(P.nullish)) }, setOption);
 		}
 		return options as Options;
 	}
