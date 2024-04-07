@@ -6,6 +6,7 @@ import {
 	Routes,
 	type SlashCommandBuilder,
 	SlashCommandSubcommandBuilder,
+	type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { handleCustomEvent } from "./customEvents";
 import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
@@ -37,7 +38,7 @@ type HashiraOptions = {
 
 type HashiraSlashCommandOptions =
 	| SlashCommandBuilder
-	| Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">
+	| SlashCommandSubcommandsOnlyBuilder
 	| SlashCommandSubcommandBuilder;
 
 const handleCommandConflict = (
