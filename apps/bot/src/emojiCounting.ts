@@ -90,7 +90,7 @@ const handleUser = async (
 	const emojiUsages = await database
 		.select({
 			emojiId: emojiUsage.emojiId,
-			count: count(emojiUsage.emojiId),
+			count: count(),
 		})
 		.from(emojiUsage)
 		.where(
@@ -175,7 +175,7 @@ const handleGuild = async (
 	const emojiUsages = await database
 		.select({
 			emojiId: emojiUsage.emojiId,
-			count: count(emojiUsage.emojiId),
+			count: count(),
 		})
 		.from(emojiUsage)
 		.where(sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`)
