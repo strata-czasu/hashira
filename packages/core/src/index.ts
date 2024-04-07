@@ -233,11 +233,19 @@ class Hashira<
 
 	newCommand<
 		T extends string,
-		U extends SlashCommand<HashiraContext<Decorators>, true, true, BaseDecorator>,
+		U extends SlashCommand<
+			HashiraContext<Decorators>,
+			{ HasDescription: true; HasHandler: true },
+			BaseDecorator
+		>,
 	>(
 		name: T,
 		init: (builder: SlashCommand<HashiraContext<Decorators>>) => U,
-	): U extends SlashCommand<HashiraContext<Decorators>, true, true, infer Options>
+	): U extends SlashCommand<
+		HashiraContext<Decorators>,
+		{ HasDescription: true; HasHandler: true },
+		infer Options
+	>
 		? Hashira<Decorators, Prettify<Commands & { [key in T]: { options: Options } }>>
 		: never {
 		const command = init(new SlashCommand());
@@ -249,10 +257,14 @@ class Hashira<
 
 	group<
 		T extends string,
-		U extends Group<HashiraContext<Decorators>, true, true, BaseDecorator>,
+		U extends Group<
+			HashiraContext<Decorators>,
+			{ HasDescription: true; TopLevel: true },
+			BaseDecorator
+		>,
 	>(
 		name: T,
-		init: (builder: Group<HashiraContext<Decorators>, false, true>) => U,
+		init: (builder: Group<HashiraContext<Decorators>>) => U,
 	): Hashira<Decorators, Commands> {
 		const group = init(new Group(true));
 		const builder = group.toSlashCommandBuilder().setName(name);
@@ -266,7 +278,7 @@ class Hashira<
 	>(
 		commandBuilder: T,
 		handler: (context: HashiraContext<Decorators>, interaction: U) => Promise<void>,
-	): Hashira<Decorators> {
+	): Hashira<Decorators, Commands> {
 		this.#autocomplete.set(
 			commandBuilder.name,
 			handler as (

@@ -3,6 +3,7 @@ import {
 	SlashCommandBuilder,
 	SlashCommandSubcommandBuilder,
 	SlashCommandSubcommandGroupBuilder,
+	type Permissions,
 } from "discord.js";
 import { P, match } from "ts-pattern";
 import type {
@@ -28,19 +29,28 @@ type UnknownCommandHandler = (
 
 interface Handlers extends Record<string, Handlers | UnknownCommandHandler> {}
 
+interface GroupSettings {
+	HasDescription: boolean;
+	TopLevel: boolean;
+}
+
+const groupSettingsInitBase: GroupSettings = {
+	HasDescription: false,
+	TopLevel: true,
+};
+
 export class Group<
 	const Context extends HashiraContext<HashiraDecorators>,
-	const HasDescription extends boolean = false,
-	const TopLevel extends boolean = false,
+	const Settings extends GroupSettings = typeof groupSettingsInitBase,
 	const Commands extends BaseDecorator = typeof optionsInitBase,
 > {
 	// Enforce nominal typing
-	protected declare readonly nominal: [HasDescription, TopLevel, Commands];
-	protected readonly _topLevel: TopLevel;
+	protected declare readonly nominal: [Settings, Commands];
+	protected readonly _topLevel: Settings["TopLevel"];
 	#builder: SlashCommandBuilder | SlashCommandSubcommandGroupBuilder;
 	#handlers: Handlers = {};
 
-	constructor(topLevel: TopLevel) {
+	constructor(topLevel: Settings["TopLevel"]) {
 		this._topLevel = topLevel;
 		if (this._topLevel) {
 			this.#builder = new SlashCommandBuilder();
@@ -49,15 +59,32 @@ export class Group<
 		}
 	}
 
-	setDescription(description: string): Group<Context, true, TopLevel, Commands> {
+	setDescription(
+		description: string,
+	): Group<Context, { HasDescription: true; TopLevel: true }, Commands> {
 		this.#builder.setDescription(description);
 		return this as unknown as ReturnType<typeof this.setDescription>;
 	}
 
-	addCommand<const T extends string, const U extends SlashCommand<Context, true, true>>(
+	setDefaultMemberPermissions(
+		permission: Permissions | number,
+	): If<Settings["TopLevel"], Group<Context, Settings, Commands>, never> {
+		if (!(this.#builder instanceof SlashCommandBuilder))
+			throw new Error("Cannot set default permission on a non-top-level group");
+		this.#builder.setDefaultMemberPermissions(permission);
+		return this as unknown as ReturnType<typeof this.setDefaultMemberPermissions>;
+	}
+
+	addCommand<
+		const T extends string,
+		const U extends SlashCommand<
+			Context,
+			{ HasHandler: true; HasDescription: boolean }
+		>,
+	>(
 		name: T,
-		input: (builder: SlashCommand<Context, false>) => U,
-	): Group<Context, HasDescription, TopLevel, Prettify<Commands & { [key in T]: U }>> {
+		input: (builder: SlashCommand<Context>) => U,
+	): Group<Context, Settings, Prettify<Commands & { [key in T]: U }>> {
 		const command = input(new SlashCommand());
 		const commandBuilder = command.toSlashCommandBuilder().setName(name);
 		this.#builder.addSubcommand(commandBuilder);
@@ -67,13 +94,17 @@ export class Group<
 
 	addGroup<
 		const T extends string,
-		const U extends Group<Context, true, false, BaseDecorator>,
+		const U extends Group<
+			Context,
+			{ HasDescription: true; TopLevel: false },
+			BaseDecorator
+		>,
 	>(
 		name: T,
-		input: (builder: Group<Context, false, false>) => U,
+		input: (builder: Group<Context, { HasDescription: false; TopLevel: false }>) => U,
 	): If<
-		TopLevel,
-		Group<Context, HasDescription, TopLevel, Prettify<Commands & { [key in T]: U }>>,
+		Settings["TopLevel"],
+		Group<Context, Settings, Prettify<Commands & { [key in T]: U }>>,
 		never
 	> {
 		if (!this._topLevel) throw new Error("Cannot add a group to a non-top-level group");
@@ -87,7 +118,7 @@ export class Group<
 	}
 
 	toSlashCommandBuilder(): If<
-		TopLevel,
+		Settings["TopLevel"],
 		SlashCommandBuilder,
 		SlashCommandSubcommandGroupBuilder
 	> {
@@ -109,7 +140,7 @@ export class Group<
 		return result;
 	}
 
-	toHandler(): If<TopLevel, UnknownCommandHandler, never> {
+	toHandler(): If<Settings["TopLevel"], UnknownCommandHandler, never> {
 		if (!this._topLevel) throw new Error("Cannot get handler for non-top-level group");
 		const handlers = this.#flattenHandlers(this.#handlers);
 
@@ -124,22 +155,31 @@ export class Group<
 	}
 }
 
+interface CommandSettings {
+	HasHandler: boolean;
+	HasDescription: boolean;
+}
+
+const commandSettingsInitBase: CommandSettings = {
+	HasDescription: false,
+	HasHandler: false,
+};
+
 // TODO: Disable the ability to add required options if non-required options are present
 export class SlashCommand<
 	const Context extends HashiraContext<HashiraDecorators>,
-	const HasHandler extends boolean = false,
-	const HasDescription extends boolean = false,
+	const Settings extends CommandSettings = typeof commandSettingsInitBase,
 	const Options extends BaseDecorator = typeof optionsInitBase,
 > {
 	// Enforce nominal typing
-	protected declare readonly nominal: [HasHandler, HasDescription, Options];
+	protected declare readonly nominal: [Settings, Options];
 	#builder = new SlashCommandSubcommandBuilder();
 	#options: Record<string, OptionBuilder<boolean, unknown>> = {};
 	#handler?: UnknownCommandHandler;
 
 	setDescription(
 		description: string,
-	): SlashCommand<Context, HasHandler, true, Options> {
+	): SlashCommand<Context, Settings & { HasDescription: true }, Options> {
 		this.#builder.setDescription(description);
 		return this as unknown as ReturnType<typeof this.setDescription>;
 	}
@@ -149,8 +189,7 @@ export class SlashCommand<
 		input: (builder: StringOptionBuilder) => U,
 	): SlashCommand<
 		Context,
-		HasHandler,
-		HasDescription,
+		Settings,
 		Prettify<Options & { [key in T]: OptionDataType<U> }>
 	> {
 		const option = input(new StringOptionBuilder());
@@ -165,8 +204,7 @@ export class SlashCommand<
 		input: (builder: UserOptionBuilder) => U,
 	): SlashCommand<
 		Context,
-		HasHandler,
-		HasDescription,
+		Settings,
 		Prettify<Options & { [key in T]: OptionDataType<U> }>
 	> {
 		const option = input(new UserOptionBuilder()).toSlashCommandOption();
@@ -179,8 +217,7 @@ export class SlashCommand<
 		input: (builder: RoleOptionBuilder) => U,
 	): SlashCommand<
 		Context,
-		HasHandler,
-		HasDescription,
+		Settings,
 		Prettify<Options & { [key in T]: OptionDataType<U> }>
 	> {
 		const option = input(new RoleOptionBuilder()).toSlashCommandOption();
@@ -192,7 +229,7 @@ export class SlashCommand<
 		return this.#builder;
 	}
 
-	toHandler(): HasHandler extends true ? UnknownCommandHandler : undefined {
+	toHandler(): If<Settings["HasHandler"], UnknownCommandHandler, undefined> {
 		return this.#handler as ReturnType<typeof this.toHandler>;
 	}
 
@@ -223,7 +260,7 @@ export class SlashCommand<
 			options: Options,
 			interaction: ChatInputCommandInteraction,
 		) => Promise<void>,
-	): SlashCommand<Context, true, HasDescription, Options> {
+	): SlashCommand<Context, Settings & { HasHandler: true }, Options> {
 		const _handler = (ctx: Context, interaction: ChatInputCommandInteraction) =>
 			handler(ctx, this.options(interaction), interaction);
 
