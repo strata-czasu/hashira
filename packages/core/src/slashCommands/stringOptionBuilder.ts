@@ -1,4 +1,8 @@
-import { SlashCommandStringOption } from "discord.js";
+import {
+	type CacheType,
+	ChatInputCommandInteraction,
+	SlashCommandStringOption,
+} from "discord.js";
 import type { OptionBuilder } from "../types";
 
 export class StringOptionBuilder<
@@ -25,5 +29,12 @@ export class StringOptionBuilder<
 
 	toSlashCommandOption() {
 		return this.#builder;
+	}
+
+	async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+		return interaction.options.getString(
+			name,
+			this.#builder.required,
+		) as this["_"]["type"];
 	}
 }

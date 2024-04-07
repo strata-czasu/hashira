@@ -1,12 +1,16 @@
-import { SlashCommandNumberOption } from "discord.js";
-import type { OptionBuilder } from "../types";
+import {
+	type CacheType,
+	ChatInputCommandInteraction,
+	SlashCommandNumberOption,
+} from "discord.js";
+import type { If, OptionBuilder } from "../types";
 
 export class NumberOptionBuilder<
 	HasDescription extends boolean = false,
 	Required extends boolean = true,
 > implements OptionBuilder<Required, number>
 {
-	declare _: { type: Required extends true ? number : number | null };
+	declare _: { type: If<Required, number, number | null> };
 	// Enforce nominal typing
 	protected declare readonly nominal: [HasDescription, Required];
 	#builder = new SlashCommandNumberOption();
@@ -25,5 +29,12 @@ export class NumberOptionBuilder<
 
 	toSlashCommandOption() {
 		return this.#builder;
+	}
+
+	async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+		return interaction.options.getNumber(
+			name,
+			this.#builder.required,
+		) as this["_"]["type"];
 	}
 }
