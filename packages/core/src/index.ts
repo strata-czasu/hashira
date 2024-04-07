@@ -369,11 +369,21 @@ class Hashira<
 
 	async registerCommands(token: string, guildId: string, clientId: string) {
 		const rest = new REST().setToken(token);
-		const commands = Array.from(this.#commands.values()).map(([commandBuilder]) =>
+		const commands = [...this.#commands.values()].map(([commandBuilder]) =>
 			commandBuilder.toJSON(),
 		);
 
 		try {
+			const currentCommands = (await rest.get(
+				Routes.applicationGuildCommands(clientId, guildId),
+			)) as { id: string; name: string }[];
+
+			const commandsToDelete = currentCommands
+				.filter((command) => !(command.name in this.#commands))
+				.map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
+
+			await Promise.all(commandsToDelete.map((route) => rest.delete(route)));
+
 			await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
 				body: commands,
 			});
