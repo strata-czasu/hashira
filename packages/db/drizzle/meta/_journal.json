@@ -71,6 +71,13 @@
       "when": 1710900770289,
       "tag": "0009_next_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1712507236665,
+      "tag": "0010_nice_joystick",
+      "breakpoints": true
     }
   ]
 }
