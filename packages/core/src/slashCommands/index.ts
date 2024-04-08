@@ -75,6 +75,15 @@ export class Group<
 		return this as unknown as ReturnType<typeof this.setDefaultMemberPermissions>;
 	}
 
+	setDMPermission(
+		enabled: boolean,
+	): If<Settings["TopLevel"], Group<Context, Settings, Commands>, never> {
+		if (!(this.#builder instanceof SlashCommandBuilder))
+			throw new Error("Cannot set DM permission on a non-top-level group");
+		this.#builder.setDMPermission(enabled);
+		return this as unknown as ReturnType<typeof this.setDMPermission>;
+	}
+
 	addCommand<
 		const T extends string,
 		const U extends SlashCommand<

@@ -20,6 +20,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
 		group
 			.setDescription("Manage autoroles")
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+			.setDMPermission(false)
 			.addCommand("add", (command) =>
 				command
 					.setDescription("Add an autorole")
