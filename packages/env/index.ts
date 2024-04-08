@@ -9,6 +9,7 @@ export const Env = Type.Object({
 	POSTGRES_HOST: Type.String(),
 	POSTGRES_PASSWORD: Type.String(),
 	POSTGRES_USER: Type.String(),
+	POSTGRES_TEST_HOST: Type.String(),
 });
 
 export type Env = Static<typeof Env>;
