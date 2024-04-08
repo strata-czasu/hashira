@@ -2,15 +2,13 @@ import { Hashira } from "@hashira/core";
 import { AttachmentBuilder } from "discord.js";
 import { base } from "./base";
 
-const mentionRegex = /<@!?\d{15,20}>/;
-const idRegex = /\d{15,20}/;
+const mentionRegex = /^<@!?(\d{15,20})>$/;
+const idRegex = /^\d{15,20}$/;
 
 const getFromIdOrMention = (idOrMention: string) => {
 	const match = idOrMention.match(mentionRegex);
 	if (match) return match[1] ?? null;
-	const idMatch = idOrMention.match(idRegex);
-	if (idMatch) return idMatch[0] ?? null;
-	return null;
+	return idRegex.test(idOrMention) ? idOrMention : null;
 };
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
