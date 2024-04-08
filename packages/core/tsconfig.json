@@ -1,3 +1,6 @@
 {
-    "extends": ["@hashira/tsconfig/base.json"]
+    "extends": ["@hashira/tsconfig/base.json"],
+    "compilerOptions": {
+        "noErrorTruncation": true,
+    }
 }
