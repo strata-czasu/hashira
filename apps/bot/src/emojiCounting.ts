@@ -194,7 +194,7 @@ const handleGuild = async (
 	});
 };
 
-export const emojiParsing = new Hashira({ name: "emoji-parsing" })
+export const emojiCounting = new Hashira({ name: "emoji-parsing" })
 	.use(base)
 	.handle("messageCreate", async ({ db }, message) => {
 		if (!message.inGuild()) return;
