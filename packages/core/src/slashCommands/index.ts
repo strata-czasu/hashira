@@ -15,6 +15,7 @@ import type {
 	Prettify,
 	UnknownContext,
 } from "../types";
+import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
@@ -181,6 +182,24 @@ export class SlashCommand<
 	): SlashCommand<Context, Settings & { HasDescription: true }, Options> {
 		this.#builder.setDescription(description);
 		return this as unknown as ReturnType<typeof this.setDescription>;
+	}
+
+	addAttachment<
+		const T extends string,
+		const U extends AttachmentOptionBuilder<true, boolean>,
+	>(
+		name: T,
+		input: (builder: AttachmentOptionBuilder) => U,
+	): SlashCommand<
+		Context,
+		Settings,
+		Prettify<Options & { [key in T]: OptionDataType<U> }>
+	> {
+		const option = input(new AttachmentOptionBuilder());
+		const builder = option.toSlashCommandOption().setName(name);
+		this.#builder.addAttachmentOption(builder);
+		this.#options[name] = option;
+		return this as unknown as ReturnType<typeof this.addAttachment<T, U>>;
 	}
 
 	addString<const T extends string, const U extends StringOptionBuilder<true, boolean>>(
