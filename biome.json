@@ -15,5 +15,8 @@
 	"formatter": {
 		"lineWidth": 88,
 		"enabled": true
+	},
+	"files": {
+		"ignore": ["packages/db/drizzle/"]
 	}
 }
