@@ -3,15 +3,13 @@ import env from "@hashira/env";
 import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
-import { paginationTests } from "./paginationTests";
 import { userActivity } from "./userActivity";
 
 export const bot = new Hashira({ name: "bot" })
 	.use(base)
 	.use(guildAvailability)
 	.use(emojiCounting)
-	.use(userActivity)
-	.use(paginationTests);
+	.use(userActivity);
 
 if (import.meta.main) {
 	// TODO: For docker, we need to handle SIGTERM
