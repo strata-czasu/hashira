@@ -50,6 +50,13 @@
       "when": 1710116127325,
       "tag": "0006_tan_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1710711402507,
+      "tag": "0007_peaceful_green_goblin",
+      "breakpoints": true
     }
   ]
 }

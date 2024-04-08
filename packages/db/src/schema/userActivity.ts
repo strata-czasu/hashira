@@ -13,7 +13,7 @@ export const userActivity = pgTable("user_activity", {
 		.references(() => guild.id)
 		.notNull(),
 	channelId: text("channelId").notNull(),
-	timestamp: timestamp("timestamp").defaultNow().notNull(),
+	timestamp: timestamp("timestamp").notNull(),
 });
 
 export const userActivityRelations = relations(userActivity, ({ one }) => ({
