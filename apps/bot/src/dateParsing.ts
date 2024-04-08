@@ -24,7 +24,7 @@ const parse = (...args: Parameters<typeof parse_>) => {
 	return date;
 };
 
-const alignmentTable = {
+const alignmentTable: Record<DateAlignment, Record<string, () => Date>> = {
 	start: {
 		month: () => startOfMonth(new Date()),
 		year: () => startOfYear(new Date()),
@@ -51,19 +51,8 @@ const alignmentTable = {
 	},
 };
 
-const isSupportedNaturalDate = (
-	date: string,
-	funcs: (typeof alignmentTable)[keyof typeof alignmentTable],
-): date is keyof typeof funcs => {
-	return date in funcs;
-};
-
-const parseNaturalDate: Parser = (date: string, alignment: DateAlignment) => {
-	const funcs = alignmentTable[alignment];
-	if (!isSupportedNaturalDate(date, funcs)) return null;
-
-	return funcs[date]();
-};
+const parseNaturalDate: Parser = (date: string, alignment: DateAlignment) =>
+	alignmentTable[alignment][date]?.() ?? null;
 
 const orParser: (...args: Parser[]) => Parser =
 	(...parsers) =>
