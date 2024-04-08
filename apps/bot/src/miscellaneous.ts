@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { AttachmentBuilder } from "discord.js";
 import { base } from "./base";
+import { fetchMembers } from "./util/fetchMembers";
 
 const mentionRegex = /^<@!?(\d{15,20})>$/;
 const idRegex = /^\d{15,20}$/;
@@ -60,13 +61,12 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
 							.split(/\s+/)
 							.map(getFromIdOrMention)
 							.filter((id): id is string => !!id);
-						await Promise.all(
-							ids.map(async (id) => {
-								const member = await itx.guild.members.fetch(id);
-								if (!member) return;
-								await member.roles.add(role);
-							}),
-						);
+
+						const members = await fetchMembers(itx.guild, ids);
+
+						await itx.editReply("Fetched members, now adding roles.");
+
+						await Promise.all(members.map((member) => member.roles.add(role.id)));
 
 						await itx.editReply("Added role to users");
 					}),
