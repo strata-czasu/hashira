@@ -1,5 +1,5 @@
 import { beforeAll, expect, setSystemTime, test } from "bun:test";
-import { parseDate } from "../src/dateParsing";
+import { parseDate } from "../src/util/dateParsing";
 
 beforeAll(() => {
 	setSystemTime(new Date("2021-09-01T00:00:00Z"));
