@@ -8,7 +8,9 @@
 	"dependencies": {
 		"@hashira/core": "workspace:../../packages/core",
 		"@hashira/db": "workspace:../../packages/db",
-		"@hashira/env": "workspace:../../packages/env"
+		"@hashira/env": "workspace:../../packages/env",
+		"discord.js": "^14.14.1",
+		"drizzle-orm": "^0.29.4"
 	},
 	"devDependencies": {
 		"typescript": "^5.3.3",
