@@ -13,7 +13,7 @@ export class NumberOptionBuilder<
 	declare _: { type: If<Required, number, number | null> };
 	// Enforce nominal typing
 	protected declare readonly nominal: [HasDescription, Required];
-	#builder = new SlashCommandNumberOption();
+	#builder = new SlashCommandNumberOption().setRequired(true);
 
 	setDescription(description: string): NumberOptionBuilder<true, Required> {
 		this.#builder.setDescription(description);

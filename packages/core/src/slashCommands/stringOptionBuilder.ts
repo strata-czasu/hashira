@@ -13,7 +13,7 @@ export class StringOptionBuilder<
 	declare _: { type: Required extends true ? string : string | null };
 	// Enforce nominal typing
 	protected declare readonly nominal: [HasDescription, Required];
-	#builder = new SlashCommandStringOption();
+	#builder = new SlashCommandStringOption().setRequired(true);
 
 	setDescription(description: string): StringOptionBuilder<true, Required> {
 		this.#builder.setDescription(description);

@@ -13,7 +13,7 @@ export class RoleOptionBuilder<
 {
 	declare _: { type: If<Required, Role, Role | null> };
 	protected declare readonly nominal: [HasDescription, Required];
-	#builder = new SlashCommandRoleOption();
+	#builder = new SlashCommandRoleOption().setRequired(true);
 
 	setDescription(description: string): RoleOptionBuilder<true, Required> {
 		this.#builder.setDescription(description);
