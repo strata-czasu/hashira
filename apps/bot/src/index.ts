@@ -1,11 +1,11 @@
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
+import { autoRole } from "./autoRole";
 import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
 import { userActivity } from "./userActivity";
-import { autoRole } from "./autoRole";
 
 export const bot = new Hashira({ name: "bot" })
 	.use(base)

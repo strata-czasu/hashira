@@ -1,7 +1,7 @@
+import { relations } from "drizzle-orm";
 import { serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild } from "./guild";
-import { relations } from "drizzle-orm";
 
 export const autoRole = pgTable(
 	"auto_role",
