@@ -14,7 +14,7 @@ export class UserOptionBuilder<
 	declare _: { type: If<Required, User, User | null> };
 	// Enforce nominal typing
 	protected declare readonly nominal: [HasDescription, Required];
-	#builder = new SlashCommandUserOption();
+	#builder = new SlashCommandUserOption().setRequired(true);
 
 	setDescription(description: string): UserOptionBuilder<true, Required> {
 		this.#builder.setDescription(description);
