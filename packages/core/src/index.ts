@@ -5,11 +5,11 @@ import {
 	REST,
 	Routes,
 	type SlashCommandBuilder,
-	type SlashCommandSubcommandsOnlyBuilder,
+	SlashCommandSubcommandBuilder,
 } from "discord.js";
 import { handleCustomEvent } from "./customEvents";
 import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
-import { SlashCommand } from "./slashCommands";
+import { Group, SlashCommand } from "./slashCommands";
 import type {
 	BaseDecorator,
 	EventsWithContext,
@@ -38,7 +38,7 @@ type HashiraOptions = {
 type HashiraSlashCommandOptions =
 	| SlashCommandBuilder
 	| Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">
-	| SlashCommandSubcommandsOnlyBuilder;
+	| SlashCommandSubcommandBuilder;
 
 const handleCommandConflict = (
 	[a]: [HashiraSlashCommandOptions, unknown],
@@ -231,36 +231,32 @@ class Hashira<
 	}
 
 	newCommand<
-		T extends SlashCommand<
-			HashiraContext<Decorators>,
-			string,
-			true,
-			true,
-			BaseDecorator
-		>,
+		T extends string,
+		U extends SlashCommand<HashiraContext<Decorators>, true, true, BaseDecorator>,
 	>(
-		init: (builder: SlashCommand<HashiraContext<Decorators>>) => T,
-	): T extends SlashCommand<
-		HashiraContext<Decorators>,
-		infer CommandName,
-		true,
-		true,
-		infer Options
-	>
-		? CommandName extends string
-			? Hashira<
-					Decorators,
-					Prettify<
-						Commands & { [key in CommandName]: { name: CommandName; options: Options } }
-					>
-			  >
-			: never
+		name: T,
+		init: (builder: SlashCommand<HashiraContext<Decorators>>) => U,
+	): U extends SlashCommand<HashiraContext<Decorators>, true, true, infer Options>
+		? Hashira<Decorators, Prettify<Commands & { [key in T]: { options: Options } }>>
 		: never {
 		const command = init(new SlashCommand());
-		const builder = command.toSlashCommandBuilder();
+		const builder = command.toSlashCommandBuilder().setName(name);
 		const handler = command.toHandler();
-		this.#commands.set(builder.name, [builder, handler]);
-		return this as unknown as ReturnType<typeof this.newCommand<T>>;
+		this.#commands.set(name, [builder, handler]);
+		return this as unknown as ReturnType<typeof this.newCommand<T, U>>;
+	}
+
+	group<
+		T extends string,
+		U extends Group<HashiraContext<Decorators>, true, true, BaseDecorator>,
+	>(
+		name: T,
+		init: (builder: Group<HashiraContext<Decorators>, false, true>) => U,
+	): Hashira<Decorators, Commands> {
+		const group = init(new Group(true));
+		const builder = group.toSlashCommandBuilder().setName(name);
+		this.#commands.set(name, [builder, group.toHandler()]);
+		return this;
 	}
 
 	autocomplete<
