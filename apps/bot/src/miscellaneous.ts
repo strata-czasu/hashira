@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { AttachmentBuilder } from "discord.js";
+import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
 
@@ -16,7 +16,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
 	.use(base)
 	.group("misc", (group) =>
 		group
-			.setDefaultMemberPermissions(0)
+			.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 			.setDescription("Miscellaneous commands")
 			.addCommand("parse-statbot", (command) =>
 				command

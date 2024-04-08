@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
+import { autoRole } from "./autoRole";
 import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
@@ -11,7 +12,8 @@ export const bot = new Hashira({ name: "bot" })
 	.use(guildAvailability)
 	.use(emojiCounting)
 	.use(miscellaneous)
-	.use(userActivity);
+	.use(userActivity)
+	.use(autoRole);
 
 if (import.meta.main) {
 	// TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't

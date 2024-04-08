@@ -67,12 +67,21 @@ export class Group<
 	}
 
 	setDefaultMemberPermissions(
-		permission: Permissions | number,
+		permission: Permissions | number | bigint,
 	): If<Settings["TopLevel"], Group<Context, Settings, Commands>, never> {
 		if (!(this.#builder instanceof SlashCommandBuilder))
 			throw new Error("Cannot set default permission on a non-top-level group");
 		this.#builder.setDefaultMemberPermissions(permission);
 		return this as unknown as ReturnType<typeof this.setDefaultMemberPermissions>;
+	}
+
+	setDMPermission(
+		enabled: boolean,
+	): If<Settings["TopLevel"], Group<Context, Settings, Commands>, never> {
+		if (!(this.#builder instanceof SlashCommandBuilder))
+			throw new Error("Cannot set DM permission on a non-top-level group");
+		this.#builder.setDMPermission(enabled);
+		return this as unknown as ReturnType<typeof this.setDMPermission>;
 	}
 
 	addCommand<
