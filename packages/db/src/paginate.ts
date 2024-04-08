@@ -2,7 +2,7 @@ import { type SQL } from "drizzle-orm";
 import { type PgSelect, PgSelectBase } from "drizzle-orm/pg-core";
 import type { JoinNullability } from "drizzle-orm/query-builders/select.types";
 
-type CountSelect = PgSelect<
+export type CountSelect = PgSelect<
 	string,
 	{ count: SQL<number> },
 	"partial",
@@ -36,6 +36,7 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
 	private page = 0;
 	private readonly pageSize: number = 10;
 	private count: number = Number.MAX_SAFE_INTEGER;
+
 	constructor(config: T | PaginateConfig<T, U>) {
 		if (config instanceof PgSelectBase) {
 			this.qb = config;
@@ -48,15 +49,19 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
 	}
 
 	private async fetchCount() {
-		if (this.count === Number.MAX_SAFE_INTEGER && this.countQb) {
+		if (this.isCountUnknown && this.countQb) {
 			const [row] = await this.countQb.execute();
 			if (row) this.count = row.count;
 			else this.count = 0;
 		}
 	}
 
+	public get currentOffset() {
+		return this.page * this.pageSize;
+	}
+
 	public get displayPages() {
-		if (this.count === Number.MAX_SAFE_INTEGER) return "?";
+		if (this.isCountUnknown) return "?";
 		return Math.ceil(this.count / this.pageSize).toString();
 	}
 
@@ -64,30 +69,39 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
 		return (this.page + 1).toString();
 	}
 
+	public get canPrevious() {
+		return this.page > 0;
+	}
+
+	public get canNext() {
+		return (this.page + 1) * this.pageSize < this.count;
+	}
+
 	public async current(): Promise<T["_"]["result"]> {
 		await this.fetchCount();
-		const offset = this.page * this.pageSize;
 		const limit = this.pageSize;
-		const result = await this.qb.offset(offset).limit(limit).execute();
+		const result = await this.qb.offset(this.currentOffset).limit(limit).execute();
 
-		if (this.count === Number.MAX_SAFE_INTEGER && result.length === 0) {
-			this.count = this.page * this.pageSize;
-			// Adjust the page to the previous one
-			this.page--;
+		if (this.isCountUnknown && result.length < this.pageSize) {
+			this.count = this.currentOffset + result.length;
 		}
 
 		return result;
 	}
 
 	public async next(): Promise<T["_"]["result"]> {
-		// If next page is out of bounds, return empty array
-		if ((this.page + 1) * this.pageSize >= this.count) return [];
+		if (!this.canNext) return [];
 		this.page++;
 		return await this.current();
 	}
 
-	public async prev(): Promise<T["_"]["result"]> {
-		if (this.page === 0) return [];
+	public async previous(): Promise<T["_"]["result"]> {
+		if (!this.canPrevious) return [];
+		this.page--;
 		return await this.current();
+	}
+
+	private get isCountUnknown() {
+		return this.count === Number.MAX_SAFE_INTEGER;
 	}
 }
