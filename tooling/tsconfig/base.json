@@ -3,5 +3,6 @@
 	"extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/bun/tsconfig"],
 	"compilerOptions": {
 		"composite": true
-	}
+	},
+	"exclude": ["node_modules"]
 }
