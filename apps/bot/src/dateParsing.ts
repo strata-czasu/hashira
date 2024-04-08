@@ -54,7 +54,7 @@ const alignmentTable: Record<DateAlignment, Record<string, () => Date>> = {
 const parseNaturalDate: Parser = (date: string, alignment: DateAlignment) =>
 	alignmentTable[alignment][date]?.() ?? null;
 
-const orParser: (...args: Parser[]) => Parser =
+const any: (...args: Parser[]) => Parser =
 	(...parsers) =>
 	(date, alignment) => {
 		for (const parser of parsers) {
@@ -91,5 +91,5 @@ export const parseDate = <T = null>(
 	orDefault: T | (() => T),
 ): Date | T => {
 	if (!date) return resolveDefault(orDefault);
-	return orParser(...parsers)(date, alignment) ?? resolveDefault(orDefault);
+	return any(...parsers)(date, alignment) ?? resolveDefault(orDefault);
 };
