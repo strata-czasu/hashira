@@ -222,6 +222,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			try {
 				await handler(this.context(), interaction);
 			} catch (error) {
+				// TODO: #1 Add proper error logging
 				if (interaction.replied || interaction.deferred) {
 					await interaction.followUp({
 						content: "There was an error while executing this command!",
@@ -235,6 +236,9 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 				}
 			}
 		});
+
+		// TODO: #1 Add proper error logging
+		discordClient.on("error", console.error);
 
 		await discordClient.login(token);
 	}
