@@ -35,37 +35,37 @@ const createAuthorFilter: CreateFilter = (interaction) => (action) =>
 export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
   readonly #paginate: T;
   #message?: InteractionResponse<boolean>;
-  readonly #interaction: ChatInputCommandInteraction<CacheType>;
   #items: ItemType<T>[] = [];
   #title?: string = undefined;
+  #orderingEnabled = false;
   readonly #renderItem: RenderItem<T>;
   constructor(
-    interaction: ChatInputCommandInteraction<CacheType>,
     paginate: T,
     title: string,
     renderItem: RenderItem<T>,
+    orderingEnabled?: boolean,
   ) {
     this.#paginate = paginate;
-    this.#interaction = interaction;
     this.#title = title;
     this.#renderItem = renderItem;
+    this.#orderingEnabled = orderingEnabled ?? false;
   }
 
-  private async send() {
+  private async send(interaction: ChatInputCommandInteraction<CacheType>) {
     if (!this.#message) {
-      this.#message = await this.#interaction.reply({ content: "Loading..." });
+      this.#message = await interaction.reply({ content: "Loading..." });
     }
-    await this.render();
+    await this.render(interaction);
   }
 
-  async render() {
-    if (!this.#message) return await this.send();
+  async render(interaction: ChatInputCommandInteraction<CacheType>) {
+    if (!this.#message) return await this.send(interaction);
     this.#items = (await this.#paginate.current()) as ItemType<T>[];
 
     const displayPages = this.#paginate.displayPages;
     const displayCurrentPage = this.#paginate.displayCurrentPage;
 
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const defaultButtons = [
       new ButtonBuilder()
         .setLabel("Previous")
         .setCustomId("previous")
@@ -76,7 +76,21 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
         .setCustomId("next")
         .setDisabled(!this.#paginate.canNext)
         .setStyle(ButtonStyle.Primary),
-    );
+    ];
+
+    const orderingButtons = this.#orderingEnabled
+      ? [
+          new ButtonBuilder()
+            .setLabel("Order by")
+            .setCustomId("orderBy")
+            .setStyle(ButtonStyle.Secondary),
+        ]
+      : [];
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents([
+      ...defaultButtons,
+      ...orderingButtons,
+    ]);
 
     const renderedItems = await Promise.all(
       this.#items.map((item, index) =>
@@ -99,19 +113,20 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
     try {
       const buttonAction = await this.#message.awaitMessageComponent({
         componentType: ComponentType.Button,
-        filter: createAuthorFilter(this.#interaction),
+        filter: createAuthorFilter(interaction),
         time: 60_000,
       });
 
       const newItems = await match(buttonAction)
         .with({ customId: "previous" }, async () => await this.#paginate.previous())
         .with({ customId: "next" }, async () => await this.#paginate.next())
+        .with({ customId: "orderBy" }, async () => await this.#paginate.reorder())
         .run();
 
       this.#items = newItems as ItemType<T>[];
 
       buttonAction.deferUpdate();
-      await this.render();
+      await this.render(interaction);
     } catch (error) {
       // Handle timeout
       await this.#message.edit({ components: [] });
