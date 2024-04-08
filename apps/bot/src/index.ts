@@ -12,9 +12,7 @@ export const bot = new Hashira({ name: "bot" })
 	.use(userActivity);
 
 if (import.meta.main) {
-	// TODO: For docker, we need to handle SIGTERM
-	// This is dirty, but it works for now. We should gracefuly stop the bot
-	// along with its database.
-	process.on("SIGTERM", () => process.exit(1));
+	// TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
+	// get any signals, so we need to figure out how to handle this!
 	await bot.start(env.BOT_TOKEN);
 }
