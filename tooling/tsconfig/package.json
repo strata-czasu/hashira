@@ -1,0 +1,9 @@
+{
+  "name": "@hashira/tsconfig",
+  "private": true,
+  "files": ["base.json", "client.json"],
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.1",
+    "@tsconfig/strictest": "^2.0.2"
+  }
+}
