@@ -9,7 +9,7 @@ import {
 	type AllEventsHandling,
 	type EventMethodName,
 	allEventsToIntent,
-} from "./plugins/intents";
+} from "./intents";
 import type { MaybePromise, Prettify } from "./types";
 
 type EventsWithContext<Context extends HashiraContext<HashiraDecorators>> = {
@@ -41,6 +41,10 @@ const decoratorInitBase = {
 	state: {},
 };
 
+type HashiraOptions = {
+	name: string;
+};
+
 class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	#state: BaseDecorator;
 	#derive: UnknownDerive[];
@@ -53,13 +57,17 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			(interaction: ChatInputCommandInteraction) => MaybePromise<void>,
 		]
 	>;
+	#dependencies: string[];
+	#name: string;
 
-	constructor() {
+	constructor(options: HashiraOptions) {
 		this.#state = {};
 		this.#derive = [];
 		this.#const = {};
 		this.#methods = new Map();
 		this.#commands = new Map();
+		this.#dependencies = [options.name];
+		this.#name = options.name;
 	}
 
 	const<const T extends string, const U>(
@@ -118,11 +126,16 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 				state: Prettify<Decorators["state"] & NewDecorators["state"]>;
 		  }>
 		: never {
+		// TODO: this might break if two instances have the same name
+		if (this.#dependencies.includes(instance.#name)) {
+			return this as unknown as ReturnType<typeof this.use<NewHashira>>;
+		}
 		this.#const = { ...this.#const, ...instance.#const };
 		this.#derive = [...this.#derive, ...instance.#derive];
 		this.#state = { ...this.#state, ...instance.#state };
 		this.#methods = new Map([...this.#methods, ...instance.#methods]);
 		this.#commands = new Map([...this.#commands, ...instance.#commands]);
+		this.#dependencies.push(instance.#name);
 
 		return this as unknown as ReturnType<typeof this.use<NewHashira>>;
 	}
