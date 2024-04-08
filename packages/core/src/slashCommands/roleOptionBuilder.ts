@@ -1,12 +1,17 @@
-import { Role, SlashCommandRoleOption } from "discord.js";
-import type { OptionBuilder } from "../types";
+import {
+	type CacheType,
+	ChatInputCommandInteraction,
+	Role,
+	SlashCommandRoleOption,
+} from "discord.js";
+import type { If, OptionBuilder } from "../types";
 
 export class RoleOptionBuilder<
 	HasDescription extends boolean = false,
 	Required extends boolean = true,
 > implements OptionBuilder<Required, Role>
 {
-	declare _: { type: Required extends true ? Role : Role | null };
+	declare _: { type: If<Required, Role, Role | null> };
 	protected declare readonly nominal: [HasDescription, Required];
 	#builder = new SlashCommandRoleOption();
 
@@ -24,5 +29,12 @@ export class RoleOptionBuilder<
 
 	toSlashCommandOption() {
 		return this.#builder;
+	}
+
+	async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+		return interaction.options.getRole(
+			name,
+			this.#builder.required,
+		) as this["_"]["type"];
 	}
 }

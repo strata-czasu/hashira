@@ -1,4 +1,7 @@
-import type { ToAPIApplicationCommandOptions } from "discord.js";
+import type {
+	ChatInputCommandInteraction,
+	ToAPIApplicationCommandOptions,
+} from "discord.js";
 import type { AllEventsHandling } from "./intents";
 
 export type Prettify<T> = {
@@ -22,12 +25,17 @@ export type UnknownEventWithContext = (
 export type BaseDecorator = { [key: string]: unknown };
 
 export interface OptionBuilder<Required extends boolean, T> {
-	_: { type: Required extends true ? T : T | null };
+	_: { type: If<Required, T, T | null> };
 	setDescription(description: string): OptionBuilder<Required, T>;
 	setRequired<NewRequired extends boolean>(
 		required: NewRequired,
 	): OptionBuilder<NewRequired, T>;
 	toSlashCommandOption(): ToAPIApplicationCommandOptions;
+	// TODO: Should add base type like String, User, etc.
+	transform(
+		interaction: ChatInputCommandInteraction,
+		name: string,
+	): Promise<this["_"]["type"]>;
 }
 
 export type OptionDataType<Option extends OptionBuilder<boolean, unknown>> =
