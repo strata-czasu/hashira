@@ -2,14 +2,11 @@
 	"name": "@hashira/env",
 	"module": "index.ts",
 	"type": "module",
-	"peerDependencies": {
-		"@types/bun": "latest",
-		"typescript": "^5.0.0"
-	},
 	"devDependencies": {
-		"@hashira/tsconfig": "workspace:../../tooling/tsconfig"
+		"@hashira/tsconfig": "workspace:../../tooling/tsconfig",
+		"typescript": "*"
 	},
 	"dependencies": {
-		"@sinclair/typebox": "^0.32.15"
+		"@sinclair/typebox": "^0.32.20"
 	}
 }
