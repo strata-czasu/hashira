@@ -15,6 +15,7 @@ import type {
 } from "../types";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
+import { RoleOptionBuilder } from "./roleOptionBuilder";
 
 const optionsInitBase = {};
 
@@ -166,6 +167,20 @@ export class SlashCommand<
 		const option = input(new UserOptionBuilder()).toSlashCommandOption();
 		this.#builder.addUserOption(option.setName(name));
 		return this as unknown as ReturnType<typeof this.addUser<T, U>>;
+	}
+
+	addRole<const T extends string, const U extends RoleOptionBuilder<true, boolean>>(
+		name: T,
+		input: (builder: RoleOptionBuilder) => U,
+	): SlashCommand<
+		Context,
+		HasHandler,
+		HasDescription,
+		Prettify<Options & { [key in T]: OptionDataType<U> }>
+	> {
+		const option = input(new RoleOptionBuilder()).toSlashCommandOption();
+		this.#builder.addRoleOption(option.setName(name));
+		return this as unknown as ReturnType<typeof this.addRole<T, U>>;
 	}
 
 	toSlashCommandBuilder(): SlashCommandSubcommandBuilder {
