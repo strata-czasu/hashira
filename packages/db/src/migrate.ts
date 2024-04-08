@@ -13,4 +13,5 @@ const db = drizzle(connection);
 
 await migrate(db, { migrationsFolder: "drizzle" });
 
-await connection.end();
+// FIXME: This is a workaround to prevent the script from hanging
+await connection.end({ timeout: 1 });
