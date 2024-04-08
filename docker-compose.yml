@@ -8,6 +8,8 @@ services:
       - db
     networks:
       - db
+    env_file:
+      - .env
 
   db:
     image: postgres:latest
@@ -16,6 +18,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - db
+    env_file:
+      - .env
 
 volumes:
   postgres-data:
