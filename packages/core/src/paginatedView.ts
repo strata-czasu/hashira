@@ -1,7 +1,6 @@
 import type { CountSelect, Paginate } from "@hashira/db";
 import {
 	ActionRowBuilder,
-	type BooleanCache,
 	ButtonBuilder,
 	ButtonInteraction,
 	ButtonStyle,
@@ -9,7 +8,7 @@ import {
 	ChatInputCommandInteraction,
 	type CollectorFilter,
 	ComponentType,
-	Message,
+	InteractionResponse,
 } from "discord.js";
 import type { PgSelect } from "drizzle-orm/pg-core";
 import { match } from "ts-pattern";
@@ -35,24 +34,26 @@ const createAuthorFilter: CreateFilter = (interaction) => (action) =>
 
 export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
 	readonly #paginate: T;
-	#message?: Message<BooleanCache<CacheType>>;
+	#message?: InteractionResponse<boolean>;
 	readonly #interaction: ChatInputCommandInteraction<CacheType>;
 	#items: ItemType<T>[] = [];
+	#title?: string = undefined;
 	readonly #renderItem: RenderItem<T>;
 	constructor(
 		interaction: ChatInputCommandInteraction<CacheType>,
 		paginate: T,
+		title: string,
 		renderItem: RenderItem<T>,
 	) {
 		this.#paginate = paginate;
 		this.#interaction = interaction;
+		this.#title = title;
 		this.#renderItem = renderItem;
 	}
 
 	private async send() {
 		if (!this.#message) {
-			await this.#interaction.deferReply();
-			this.#message = await this.#interaction.followUp({ content: "Loading..." });
+			this.#message = await this.#interaction.reply({ content: "Loading..." });
 		}
 		await this.render();
 	}
@@ -83,11 +84,11 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
 			),
 		);
 
-		this.#message = await this.#message.edit({
+		await this.#message.edit({
 			content: "",
 			embeds: [
 				{
-					title: "List of items",
+					title: this.#title ?? "List of items",
 					description: renderedItems.join("\n"),
 					footer: { text: `Page ${displayCurrentPage}/${displayPages}` },
 				},
