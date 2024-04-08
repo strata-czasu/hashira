@@ -6,7 +6,8 @@ import {
 	type SlashCommandBuilder,
 	type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
-import { type EventMethodName, allEventsToIntent } from "./intents";
+import { handleCustomEvent } from "./customEvents";
+import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
 import type {
 	BaseDecorator,
 	EventsWithContext,
@@ -178,8 +179,15 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		for (const [event, handlers] of this.#methods) {
 			for (let i = 0; i < handlers.length; i++) {
 				// This prevents type being too large for the compiler to handle
-				const handler = handlers[i] as (...args: unknown[]) => Promise<void>;
-				discordClient.on(event, (...args) => handler(this.context(), ...args));
+				const rawHandler = handlers[i] as (...args: unknown[]) => Promise<void>;
+
+				if (isCustomEvent(event)) {
+					const [discordEvent, handler] = handleCustomEvent(event, rawHandler);
+					console.log("custom event", discordEvent, event, handler);
+					discordClient.on(discordEvent, (...args) => handler(this.context(), ...args));
+				} else {
+					discordClient.on(event, (...args) => rawHandler(this.context(), ...args));
+				}
 			}
 		}
 
