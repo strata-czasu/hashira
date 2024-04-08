@@ -94,7 +94,7 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
 
     const renderedItems = await Promise.all(
       this.#items.map((item, index) =>
-        this.#renderItem(item, index + this.#paginate.currentOffset),
+        this.#renderItem(item, index + this.#paginate.currentOffset + 1),
       ),
     );
 
