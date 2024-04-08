@@ -1,0 +1,1 @@
+ALTER TABLE "core_emoji_usage" ALTER COLUMN "timestamp" SET DATA TYPE timestamp;
