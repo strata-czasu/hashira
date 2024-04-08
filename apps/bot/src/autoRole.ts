@@ -2,6 +2,7 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { base } from "./base";
 import { eq, count } from "drizzle-orm";
 import { Paginate, schema } from "@hashira/db";
+import { PermissionFlagsBits } from "discord.js";
 
 export const autoRole = new Hashira({ name: "auto-role" })
 	.use(base)
@@ -18,6 +19,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
 	.group("autorole", (group) =>
 		group
 			.setDescription("Manage autoroles")
+			.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
 			.addCommand("add", (command) =>
 				command
 					.setDescription("Add an autorole")

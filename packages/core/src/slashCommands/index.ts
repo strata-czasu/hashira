@@ -67,7 +67,7 @@ export class Group<
 	}
 
 	setDefaultMemberPermissions(
-		permission: Permissions | number,
+		permission: Permissions | number | bigint,
 	): If<Settings["TopLevel"], Group<Context, Settings, Commands>, never> {
 		if (!(this.#builder instanceof SlashCommandBuilder))
 			throw new Error("Cannot set default permission on a non-top-level group");
