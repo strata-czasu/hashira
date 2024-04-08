@@ -1,7 +1,7 @@
-import { guild, user } from "@hashira/db/schema";
 import { relations } from "drizzle-orm";
 import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
+import { guild, user } from "./";
 
 export const emojiUsage = pgTable("emoji_usage", {
 	id: serial("id").primaryKey(),
