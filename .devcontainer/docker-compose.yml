@@ -5,6 +5,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+    env_file: ../.env
 
     volumes:
       - ../..:/workspaces:cached
@@ -25,8 +26,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     env_file: ../.env
-    # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
-    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
   test-db:
     image: postgres:latest
     restart: unless-stopped
@@ -35,9 +35,6 @@ services:
       - db
     volumes:
       - postgres-test-data:/var/lib/postgresql/data
-    # use a different port to avoid conflicts with another running database
-    ports:
-      - 9432:5432
 
 networks:
   db:
