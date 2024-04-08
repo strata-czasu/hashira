@@ -90,7 +90,7 @@ export const userActivity = new Hashira({ name: "user-activity" })
 				ephemeral: true,
 				content: `Preloaded ${i}/${limit} messages. It's ${
 					(i / limit) * 100
-				}% done. Last message: ${messages.last()}`,
+				}% done. Last message: ${messages.last()?.url}`,
 			});
 
 			await db.insert(schema.user).values(userData).onConflictDoNothing();
