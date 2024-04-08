@@ -6,35 +6,18 @@ import {
 	type SlashCommandBuilder,
 	type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
-import {
-	type AllEventsHandling,
-	type EventMethodName,
-	allEventsToIntent,
-} from "./intents";
-import type { MaybePromise, Prettify } from "./types";
-
-type EventsWithContext<Context extends HashiraContext<HashiraDecorators>> = {
-	[K in keyof AllEventsHandling]: (
-		ctx: Context,
-		...args: Parameters<AllEventsHandling[K]>
-	) => MaybePromise<void>;
-};
-
-type UnknownEventWithContext = (ctx: unknown, ...args: unknown[]) => MaybePromise<void>;
-
-type BaseDecorator = { [key: string]: unknown };
-
-type HashiraContext<Decorators extends HashiraDecorators> = Prettify<
-	Decorators["const"] & Decorators["derive"] & { state: Decorators["state"] }
->;
-type UnknownContext = { [key: string]: unknown; state: { [key: string]: unknown } };
-type UnknownDerive = (ctx: UnknownContext) => BaseDecorator;
-
-type HashiraDecorators = {
-	const: BaseDecorator;
-	derive: BaseDecorator;
-	state: BaseDecorator;
-};
+import { type EventMethodName, allEventsToIntent } from "./intents";
+import type {
+	BaseDecorator,
+	EventsWithContext,
+	HashiraContext,
+	HashiraDecorators,
+	MaybePromise,
+	Prettify,
+	UnknownContext,
+	UnknownDerive,
+	UnknownEventWithContext,
+} from "./types";
 
 const decoratorInitBase = {
 	const: {},
@@ -191,18 +174,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		return this;
 	}
 
-	async start(token: string) {
-		const intents = [
-			...new Set(
-				[...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]),
-			),
-		];
-
-		const discordClient = new Client({
-			intents,
-			allowedMentions: { repliedUser: true },
-		});
-
+	async loadHandlers(discordClient: Client) {
 		for (const [event, handlers] of this.#methods) {
 			for (let i = 0; i < handlers.length; i++) {
 				// This prevents type being too large for the compiler to handle
@@ -240,6 +212,21 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 
 		// TODO: #1 Add proper error logging
 		discordClient.on("error", console.error);
+	}
+
+	async start(token: string) {
+		const intents = [
+			...new Set(
+				[...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]),
+			),
+		];
+
+		const discordClient = new Client({
+			intents,
+			allowedMentions: { repliedUser: true },
+		});
+
+		this.loadHandlers(discordClient);
 
 		await discordClient.login(token);
 	}
@@ -264,3 +251,4 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 
 export { Hashira, decoratorInitBase };
 export type { HashiraContext, HashiraDecorators, BaseDecorator };
+export { PaginatedView } from "./paginatedView";
