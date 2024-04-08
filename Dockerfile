@@ -1,6 +1,6 @@
 ARG NODE_VERSION=20
 
-FROM mcr.microsoft.com/devcontainers/javascript-node:${NODE_VERSION} as base
+FROM node:${NODE_VERSION} as base
 
 ARG BUN_VERSION=bun-v1.0.29
 ENV BUN_INSTALL=/usr/local
