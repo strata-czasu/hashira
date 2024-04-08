@@ -37,15 +37,11 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
   private readonly pageSize: number = 10;
   private count: number = Number.MAX_SAFE_INTEGER;
 
-  constructor(config: T | PaginateConfig<T, U>) {
-    if (config instanceof PgSelectBase) {
-      this.qb = config;
-    } else {
-      this.qb = config.select;
-      this.countQb = config.count;
-      this.pageSize = config.pageSize ?? this.pageSize;
-      this.page = config.page ?? this.page;
-    }
+  constructor(config: PaginateConfig<T, U>) {
+    this.qb = config.select;
+    this.countQb = config.count;
+    this.pageSize = config.pageSize ?? this.pageSize;
+    this.page = config.page ?? this.page;
   }
 
   private async fetchCount() {
