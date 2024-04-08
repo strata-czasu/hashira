@@ -1,22 +1,23 @@
 {
-	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-	"organizeImports": {
-		"enabled": true
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true,
-			"nursery": {
-				"noUnusedImports": "warn"
-			}
-		}
-	},
-	"formatter": {
-		"lineWidth": 88,
-		"enabled": true
-	},
-	"files": {
-		"ignore": ["packages/db/drizzle/"]
-	}
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "nursery": {
+        "noUnusedImports": "warn"
+      }
+    }
+  },
+  "formatter": {
+    "lineWidth": 88,
+    "enabled": true,
+    "indentStyle": "space"
+  },
+  "files": {
+    "ignore": ["packages/db/drizzle/"]
+  }
 }

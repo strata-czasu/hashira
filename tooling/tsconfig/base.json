@@ -1,8 +1,8 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/bun/tsconfig"],
-	"compilerOptions": {
-		"composite": true
-	},
-	"exclude": ["node_modules"]
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/bun/tsconfig"],
+  "compilerOptions": {
+    "composite": true
+  },
+  "exclude": ["node_modules"]
 }

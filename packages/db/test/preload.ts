@@ -4,11 +4,11 @@ import { db } from ".";
 import * as schema from "../src/schema";
 
 beforeAll(async () => {
-	await migrate(db, { migrationsFolder: "drizzle" });
-	console.log("Preload complete");
+  await migrate(db, { migrationsFolder: "drizzle" });
+  console.log("Preload complete");
 });
 
 afterAll(async () => {
-	await db.delete(schema.user);
-	await db.delete(schema.guild);
+  await db.delete(schema.user);
+  await db.delete(schema.guild);
 });

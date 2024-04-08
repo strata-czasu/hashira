@@ -8,15 +8,15 @@ import { miscellaneous } from "./miscellaneous";
 import { userActivity } from "./userActivity";
 
 export const bot = new Hashira({ name: "bot" })
-	.use(base)
-	.use(guildAvailability)
-	.use(emojiCounting)
-	.use(miscellaneous)
-	.use(userActivity)
-	.use(autoRole);
+  .use(base)
+  .use(guildAvailability)
+  .use(emojiCounting)
+  .use(miscellaneous)
+  .use(userActivity)
+  .use(autoRole);
 
 if (import.meta.main) {
-	// TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
-	// get any signals, so we need to figure out how to handle this!
-	await bot.start(env.BOT_TOKEN);
+  // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
+  // get any signals, so we need to figure out how to handle this!
+  await bot.start(env.BOT_TOKEN);
 }

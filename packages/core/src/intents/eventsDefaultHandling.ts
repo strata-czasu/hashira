@@ -2,80 +2,80 @@ import * as events from "./events";
 import { createEventsToDefaultHandling } from "./util";
 // TODO: seems like there are no use cases for this file, consider removing it
 export const autoModerationConfigurationDefaultHandling = createEventsToDefaultHandling(
-	events.autoModerationConfigurationEvents,
+  events.autoModerationConfigurationEvents,
 );
 
 export const guildEventsToDefaultHandling = createEventsToDefaultHandling(
-	events.guildsEvents,
+  events.guildsEvents,
 );
 
 export const autoModerationActionExecutionDefaultHandling =
-	createEventsToDefaultHandling(events.autoModerationActionExecutionEvents);
+  createEventsToDefaultHandling(events.autoModerationActionExecutionEvents);
 
 export const guildIntegrationsDefaultHandling = createEventsToDefaultHandling(
-	events.guildIntegrationsEvents,
+  events.guildIntegrationsEvents,
 );
 
 export const guildMessageReactionsDefaultHandling = createEventsToDefaultHandling(
-	events.guildMessageReactionsEvents,
+  events.guildMessageReactionsEvents,
 );
 
 export const guildInvitesDefaultHandling = createEventsToDefaultHandling(
-	events.guildInvitesEvents,
+  events.guildInvitesEvents,
 );
 
 export const guildmembersDefaultHandling = createEventsToDefaultHandling(
-	events.guildMembersEvents,
+  events.guildMembersEvents,
 );
 
 export const guildMessagesDefaultHandling = createEventsToDefaultHandling(
-	events.guildMessagesEvents,
+  events.guildMessagesEvents,
 );
 
 export const guildEmojisAndStickersDefaultHandling = createEventsToDefaultHandling(
-	events.guildEmojisAndStickersEvents,
+  events.guildEmojisAndStickersEvents,
 );
 
 export const guildMessageTypingDefaultHandling = createEventsToDefaultHandling(
-	events.guildMessageTypingEvents,
+  events.guildMessageTypingEvents,
 );
 
 export const guildModerationDefaultHandling = createEventsToDefaultHandling(
-	events.guildModerationEvents,
+  events.guildModerationEvents,
 );
 
 export const guildPresencesEventsToDefaultHandling = createEventsToDefaultHandling(
-	events.guildPresencesEvents,
+  events.guildPresencesEvents,
 );
 
 export const guildScheduledEventsDefaultHandling = createEventsToDefaultHandling(
-	events.guildScheduledEventsEvents,
+  events.guildScheduledEventsEvents,
 );
 
 export const guildVoiceStatesDefaultHandling = createEventsToDefaultHandling(
-	events.guildVoiceStatesEvents,
+  events.guildVoiceStatesEvents,
 );
 
 export const guildWebhooksDefaultHandling = createEventsToDefaultHandling(
-	events.guildWebhooksEvents,
+  events.guildWebhooksEvents,
 );
 
 export const readyDefaultHandling = createEventsToDefaultHandling(events.readyEvents);
 
 export const allEventsToDefaultHandling = {
-	...autoModerationConfigurationDefaultHandling,
-	...autoModerationActionExecutionDefaultHandling,
-	...guildEmojisAndStickersDefaultHandling,
-	...guildEventsToDefaultHandling,
-	...guildInvitesDefaultHandling,
-	...guildmembersDefaultHandling,
-	...guildMessagesDefaultHandling,
-	...guildMessageReactionsDefaultHandling,
-	...guildMessageTypingDefaultHandling,
-	...guildModerationDefaultHandling,
-	...guildPresencesEventsToDefaultHandling,
-	...guildScheduledEventsDefaultHandling,
-	...guildVoiceStatesDefaultHandling,
-	...guildWebhooksDefaultHandling,
-	...readyDefaultHandling,
+  ...autoModerationConfigurationDefaultHandling,
+  ...autoModerationActionExecutionDefaultHandling,
+  ...guildEmojisAndStickersDefaultHandling,
+  ...guildEventsToDefaultHandling,
+  ...guildInvitesDefaultHandling,
+  ...guildmembersDefaultHandling,
+  ...guildMessagesDefaultHandling,
+  ...guildMessageReactionsDefaultHandling,
+  ...guildMessageTypingDefaultHandling,
+  ...guildModerationDefaultHandling,
+  ...guildPresencesEventsToDefaultHandling,
+  ...guildScheduledEventsDefaultHandling,
+  ...guildVoiceStatesDefaultHandling,
+  ...guildWebhooksDefaultHandling,
+  ...readyDefaultHandling,
 } as const;

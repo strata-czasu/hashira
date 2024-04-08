@@ -3,19 +3,19 @@ import * as events from "./events";
 import { type EventsToHandling } from "./util";
 
 export type AutoModerationConfigurationHandling = EventsToHandling<
-	typeof events.autoModerationConfigurationEvents
+  typeof events.autoModerationConfigurationEvents
 >;
 
 export type AutoModerationActionExecutionHandling = EventsToHandling<
-	typeof events.autoModerationActionExecutionEvents
+  typeof events.autoModerationActionExecutionEvents
 >;
 
 export type GuildEmojisAndStickersHandling = EventsToHandling<
-	typeof events.guildEmojisAndStickersEvents
+  typeof events.guildEmojisAndStickersEvents
 >;
 
 export type GuildIntegrationsHandling = EventsToHandling<
-	typeof events.guildIntegrationsEvents
+  typeof events.guildIntegrationsEvents
 >;
 
 export type GuildInvitesHandling = EventsToHandling<typeof events.guildInvitesEvents>;
@@ -23,27 +23,27 @@ export type GuildMembersHandling = EventsToHandling<typeof events.guildMembersEv
 export type GuildsHandling = EventsToHandling<typeof events.guildsEvents>;
 
 export type GuildMessageReactionsHandling = EventsToHandling<
-	typeof events.guildMessageReactionsEvents
+  typeof events.guildMessageReactionsEvents
 >;
 
 export type GuildMessageTypingHandling = EventsToHandling<
-	typeof events.guildMessageTypingEvents
+  typeof events.guildMessageTypingEvents
 >;
 
 export type GuildModerationHandling = EventsToHandling<
-	typeof events.guildModerationEvents
+  typeof events.guildModerationEvents
 >;
 
 export type GuildPresencesHandling = EventsToHandling<
-	typeof events.guildPresencesEvents
+  typeof events.guildPresencesEvents
 >;
 
 export type GuildScheduledEventsHandling = EventsToHandling<
-	typeof events.guildScheduledEventsEvents
+  typeof events.guildScheduledEventsEvents
 >;
 
 export type GuildVoiceStatesHandling = EventsToHandling<
-	typeof events.guildVoiceStatesEvents
+  typeof events.guildVoiceStatesEvents
 >;
 
 export type GuildWebhooksHandling = EventsToHandling<typeof events.guildWebhooksEvents>;
@@ -53,24 +53,24 @@ export type GuildMessagesHandling = EventsToHandling<typeof events.guildMessages
 export type ReadyHandling = EventsToHandling<typeof events.readyEvents>;
 
 export type GuildMessageCreateHandling = {
-	guildMessageCreate: (message: Message<true>) => Promise<void>;
+  guildMessageCreate: (message: Message<true>) => Promise<void>;
 };
 
 export type CustomEventsHandling = GuildMessageCreateHandling;
 
 export type AllEventsHandling = AutoModerationConfigurationHandling &
-	AutoModerationActionExecutionHandling &
-	GuildEmojisAndStickersHandling &
-	GuildsHandling &
-	GuildInvitesHandling &
-	GuildMembersHandling &
-	GuildMessagesHandling &
-	GuildMessageReactionsHandling &
-	GuildMessageTypingHandling &
-	GuildModerationHandling &
-	GuildPresencesHandling &
-	GuildScheduledEventsHandling &
-	GuildVoiceStatesHandling &
-	GuildWebhooksHandling &
-	ReadyHandling &
-	CustomEventsHandling;
+  AutoModerationActionExecutionHandling &
+  GuildEmojisAndStickersHandling &
+  GuildsHandling &
+  GuildInvitesHandling &
+  GuildMembersHandling &
+  GuildMessagesHandling &
+  GuildMessageReactionsHandling &
+  GuildMessageTypingHandling &
+  GuildModerationHandling &
+  GuildPresencesHandling &
+  GuildScheduledEventsHandling &
+  GuildVoiceStatesHandling &
+  GuildWebhooksHandling &
+  ReadyHandling &
+  CustomEventsHandling;

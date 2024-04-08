@@ -5,10 +5,10 @@ import { wallet } from "./economy/wallet";
 import { userTextActivity } from "./userTextActivity";
 
 export const user = pgTable("users", {
-	id: text("id").primaryKey(),
+  id: text("id").primaryKey(),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
-	textActivities: many(userTextActivity),
-	wallets: many(wallet),
+  textActivities: many(userTextActivity),
+  wallets: many(wallet),
 }));

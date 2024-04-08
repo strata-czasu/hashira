@@ -4,9 +4,9 @@ import { pgTable } from "../pgtable";
 import { autoRole } from "./autorole";
 
 export const guild = pgTable("guild", {
-	id: text("id").primaryKey(),
+  id: text("id").primaryKey(),
 });
 
 export const guildRelations = relations(guild, ({ many }) => ({
-	autoRoles: many(autoRole),
+  autoRoles: many(autoRole),
 }));

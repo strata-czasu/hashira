@@ -5,9 +5,9 @@ import { allEventsToIntent, customEventsToIntent } from "./eventsToIntent";
 export type EventMethodName = keyof typeof allEventsToIntent;
 export type CustomEventMethodName = keyof typeof customEventsToIntent;
 export type InternalEventMethodName = Exclude<EventMethodName, CustomEventMethodName> &
-	keyof ClientEvents;
+  keyof ClientEvents;
 export type { AllEventsHandling, CustomEventsHandling } from "./eventsHandling";
 export { allEventsToIntent };
 
 export const isCustomEvent = (event: EventMethodName): event is CustomEventMethodName =>
-	(allCustomEvents as unknown as string[]).includes(event);
+  (allCustomEvents as unknown as string[]).includes(event);

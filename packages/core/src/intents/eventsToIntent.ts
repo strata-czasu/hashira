@@ -3,113 +3,113 @@ import * as events from "./events";
 import { createEventsToIntent } from "./util";
 
 export const guildEmojisAndStickersEventsToIntent = createEventsToIntent(
-	events.guildEmojisAndStickersEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildEmojisAndStickers],
+  events.guildEmojisAndStickersEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildEmojisAndStickers],
 );
 
 export const autoModerationActionExecutionEventsToIntent = createEventsToIntent(
-	events.autoModerationActionExecutionEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageTyping],
+  events.autoModerationActionExecutionEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageTyping],
 );
 
 export const guildIntegrationsEventsToIntent = createEventsToIntent(
-	events.guildIntegrationsEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildIntegrations],
+  events.guildIntegrationsEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildIntegrations],
 );
 
 export const guildsEventsToIntent = createEventsToIntent(events.guildsEvents, [
-	GatewayIntentBits.Guilds,
+  GatewayIntentBits.Guilds,
 ]);
 
 export const autoModerationConfigurationEventsToIntent = createEventsToIntent(
-	events.autoModerationConfigurationEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.AutoModerationConfiguration],
+  events.autoModerationConfigurationEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.AutoModerationConfiguration],
 );
 
 export const guildInvitesEventsToIntent = createEventsToIntent(
-	events.guildInvitesEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildInvites],
+  events.guildInvitesEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildInvites],
 );
 
 export const guildMembersEventsToIntent = createEventsToIntent(
-	events.guildMembersEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  events.guildMembersEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 );
 
 export const guildMessagesEventsToIntent = createEventsToIntent(
-	events.guildMessagesEvents,
-	[
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-	],
+  events.guildMessagesEvents,
+  [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 );
 
 export const guildMessageReactionsEventsToIntent = createEventsToIntent(
-	events.guildMessageReactionsEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageReactions],
+  events.guildMessageReactionsEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageReactions],
 );
 
 export const guildMessageTypingEventsToIntent = createEventsToIntent(
-	events.guildMessageTypingEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageTyping],
+  events.guildMessageTypingEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageTyping],
 );
 
 export const guildModerationEventsToIntent = createEventsToIntent(
-	events.guildModerationEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration],
+  events.guildModerationEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration],
 );
 
 export const guildPresencesEventsToIntent = createEventsToIntent(
-	events.guildPresencesEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences],
+  events.guildPresencesEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences],
 );
 
 export const guildScheduledEventsEventsToIntent = createEventsToIntent(
-	events.guildScheduledEventsEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildScheduledEvents],
+  events.guildScheduledEventsEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildScheduledEvents],
 );
 
 export const guildVoiceStatesEventsToIntent = createEventsToIntent(
-	events.guildVoiceStatesEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+  events.guildVoiceStatesEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 );
 
 export const guildWebhooksEventsToIntent = createEventsToIntent(
-	events.guildWebhooksEvents,
-	[GatewayIntentBits.Guilds, GatewayIntentBits.GuildWebhooks],
+  events.guildWebhooksEvents,
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildWebhooks],
 );
 
 export const readyEventsToIntent = createEventsToIntent(events.readyEvents, []);
 
 export const guildMessageCreateToIntent = createEventsToIntent(
-	events.guildMessageCreate,
-	[
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-	],
+  events.guildMessageCreate,
+  [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 );
 
 export const customEventsToIntent = {
-	...guildMessageCreateToIntent,
+  ...guildMessageCreateToIntent,
 };
 
 export const allEventsToIntent = {
-	...autoModerationConfigurationEventsToIntent,
-	...autoModerationActionExecutionEventsToIntent,
-	...guildEmojisAndStickersEventsToIntent,
-	...guildsEventsToIntent,
-	...guildInvitesEventsToIntent,
-	...guildMembersEventsToIntent,
-	...guildMessagesEventsToIntent,
-	...guildMessageReactionsEventsToIntent,
-	...guildMessageTypingEventsToIntent,
-	...guildModerationEventsToIntent,
-	...guildPresencesEventsToIntent,
-	...guildScheduledEventsEventsToIntent,
-	...guildVoiceStatesEventsToIntent,
-	...guildWebhooksEventsToIntent,
-	...readyEventsToIntent,
-	...customEventsToIntent,
+  ...autoModerationConfigurationEventsToIntent,
+  ...autoModerationActionExecutionEventsToIntent,
+  ...guildEmojisAndStickersEventsToIntent,
+  ...guildsEventsToIntent,
+  ...guildInvitesEventsToIntent,
+  ...guildMembersEventsToIntent,
+  ...guildMessagesEventsToIntent,
+  ...guildMessageReactionsEventsToIntent,
+  ...guildMessageTypingEventsToIntent,
+  ...guildModerationEventsToIntent,
+  ...guildPresencesEventsToIntent,
+  ...guildScheduledEventsEventsToIntent,
+  ...guildVoiceStatesEventsToIntent,
+  ...guildWebhooksEventsToIntent,
+  ...readyEventsToIntent,
+  ...customEventsToIntent,
 } as const;

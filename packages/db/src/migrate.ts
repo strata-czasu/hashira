@@ -4,10 +4,10 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
 export const connection = postgres({
-	host: env.POSTGRES_HOST,
-	user: env.POSTGRES_USER,
-	password: env.POSTGRES_PASSWORD,
-	database: env.POSTGRES_DB,
+  host: env.POSTGRES_HOST,
+  user: env.POSTGRES_USER,
+  password: env.POSTGRES_PASSWORD,
+  database: env.POSTGRES_DB,
 });
 const db = drizzle(connection);
 
