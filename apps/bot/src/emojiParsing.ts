@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { emojiUsage } from "@hashira/db/schema";
 import {
+	ChatInputCommandInteraction,
 	GuildEmoji,
 	GuildEmojiManager,
 	SlashCommandBuilder,
@@ -10,6 +11,7 @@ import { and, count, desc, eq, sql } from "drizzle-orm";
 import { match } from "ts-pattern";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
+import type { db } from "@hashira/db";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
@@ -70,24 +72,149 @@ const emojiStatsGroup = new SlashCommandBuilder()
 		),
 	);
 
+const handleUser = async (
+	interaction: ChatInputCommandInteraction<"cached">,
+	database: typeof db,
+	before: Date,
+	after: Date,
+) => {
+	const user = interaction.options.getUser("user");
+	if (!user) {
+		await interaction.reply({
+			ephemeral: true,
+			content: "You must provide a user",
+		});
+		return;
+	}
+
+	const emojiUsages = await database
+		.select({
+			emojiId: emojiUsage.emojiId,
+			count: count(emojiUsage.emojiId),
+		})
+		.from(emojiUsage)
+		.where(
+			and(
+				eq(emojiUsage.userId, user.id),
+				sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
+			),
+		)
+		.groupBy(emojiUsage.emojiId)
+		.orderBy(desc(count(emojiUsage.emojiId)))
+		.limit(20);
+
+	await interaction.reply({
+		content: `User ${user.username} used the following emojis:\n${emojiUsages
+			.map((usage) => {
+				const emoji = interaction.guild.emojis.resolve(usage.emojiId.toString());
+				const emojiRepresentation = emoji?.toString() ?? usage.emojiId;
+				return `${emojiRepresentation}: ${usage.count}`;
+			})
+			.join("\n")}`,
+	});
+};
+
+const handleEmoji = async (
+	interaction: ChatInputCommandInteraction<"cached">,
+	database: typeof db,
+	before: Date,
+	after: Date,
+) => {
+	const rawEmoji = interaction.options.getString("emoji");
+	if (!rawEmoji) {
+		await interaction.reply({ ephemeral: true, content: "You must provide an emoji" });
+		return;
+	}
+
+	const emojis = parseEmojis(interaction.guild.emojis, rawEmoji);
+
+	if (emojis.length !== 1) {
+		await interaction.reply({
+			ephemeral: true,
+			content: "Please provide only one emoji",
+		});
+		return;
+	}
+
+	const [emoji] = emojis;
+
+	if (!emoji) {
+		await interaction.reply({ ephemeral: true, content: "Invalid emoji" });
+		return;
+	}
+
+	const emojiUsages = await database
+		.select({
+			userId: emojiUsage.userId,
+			count: count(emojiUsage.userId),
+		})
+		.from(emojiUsage)
+		.where(
+			and(
+				eq(emojiUsage.emojiId, emoji.id),
+				sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
+			),
+		)
+		.groupBy(emojiUsage.userId)
+		.orderBy(desc(count(emojiUsage.userId)))
+		.limit(20);
+
+	await interaction.reply({
+		content: `Emoji ${emoji} was used by the following users:\n${emojiUsages
+			.map((usage) => `<@${usage.userId}>: ${usage.count}`)
+			.join("\n")}`,
+	});
+};
+
+const handleGuild = async (
+	interaction: ChatInputCommandInteraction<"cached">,
+	database: typeof db,
+	before: Date,
+	after: Date,
+) => {
+	const emojiUsages = await database
+		.select({
+			emojiId: emojiUsage.emojiId,
+			count: count(emojiUsage.emojiId),
+		})
+		.from(emojiUsage)
+		.where(sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`)
+		.groupBy(emojiUsage.emojiId)
+		.orderBy(desc(count(emojiUsage.emojiId)))
+		.limit(20);
+
+	await interaction.reply({
+		content: `The following emojis were used:\n${emojiUsages
+			.map((usage) => {
+				const emoji = interaction.guild.emojis.resolve(usage.emojiId.toString());
+				const emojiRepresentation = emoji?.toString() ?? usage.emojiId;
+				return `${emojiRepresentation}: ${usage.count}`;
+			})
+			.join("\n")}`,
+	});
+};
+
 export const emojiParsing = new Hashira({ name: "emoji-parsing" })
 	.use(base)
 	.handle("messageCreate", async ({ db }, message) => {
 		if (!message.inGuild()) return;
 		if (message.author.bot) return;
+
 		const matches = message.content.matchAll(EMOJI_REGEX);
 		if (!matches) return;
 
 		const guildEmojis = parseEmojis(message.guild.emojis, message.content);
 		if (guildEmojis.length === 0) return;
 
-		await db.insert(emojiUsage).values(
-			guildEmojis.map((emoji) => ({
-				userId: message.author.id,
-				emojiId: emoji.id,
-				guildId: message.guild.id,
-			})),
-		);
+		await db
+			.insert(emojiUsage)
+			.values(
+				guildEmojis.map((emoji) => ({
+					userId: message.author.id,
+					emojiId: emoji.id,
+					guildId: message.guild.id,
+				})),
+			);
 	})
 	.command(emojiStatsGroup, async ({ db }, interaction) => {
 		if (!interaction.inCachedGuild()) {
@@ -97,124 +224,24 @@ export const emojiParsing = new Hashira({ name: "emoji-parsing" })
 			});
 			return;
 		}
+
 		const subcommand = interaction.options.getSubcommand();
+
 		const after = parseDate(
 			interaction.options.getString("after"),
 			"start",
-			new Date(0),
+			() => new Date(0),
 		);
+
 		const before = parseDate(
 			interaction.options.getString("before"),
 			"end",
-			new Date(),
+			() => new Date(),
 		);
+
 		await match(subcommand)
-			.returnType<Promise<void>>()
-			.with("user", async () => {
-				const user = interaction.options.getUser("user");
-				if (!user) {
-					await interaction.reply({
-						ephemeral: true,
-						content: "You must provide a user",
-					});
-					return;
-				}
-
-				const emojiUsages = await db
-					.select({
-						emojiId: emojiUsage.emojiId,
-						count: count(emojiUsage.emojiId),
-					})
-					.from(emojiUsage)
-					.where(
-						and(
-							eq(emojiUsage.userId, user.id),
-							sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
-						),
-					)
-					.groupBy(emojiUsage.emojiId)
-					.orderBy(desc(count(emojiUsage.emojiId)))
-					.limit(20);
-
-				await interaction.reply({
-					content: `User ${user.username} used the following emojis:\n${emojiUsages
-						.map((usage) => {
-							const emoji = interaction.guild.emojis.resolve(usage.emojiId.toString());
-							const emojiRepresentation = emoji?.toString() ?? usage.emojiId;
-							return `${emojiRepresentation}: ${usage.count}`;
-						})
-						.join("\n")}`,
-				});
-			})
-			.with("emoji", async () => {
-				const rawEmoji = interaction.options.getString("emoji");
-				if (!rawEmoji) {
-					await interaction.reply({
-						ephemeral: true,
-						content: "You must provide an emoji",
-					});
-					return;
-				}
-				const emojis = parseEmojis(interaction.guild.emojis, rawEmoji);
-				if (emojis.length !== 1) {
-					await interaction.reply({
-						ephemeral: true,
-						content: "Please provide only one emoji",
-					});
-					return;
-				}
-
-				const [emoji] = emojis;
-				if (!emoji) {
-					await interaction.reply({
-						ephemeral: true,
-						content: "Invalid emoji",
-					});
-					return;
-				}
-				const emojiUsages = await db
-					.select({
-						userId: emojiUsage.userId,
-						count: count(emojiUsage.userId),
-					})
-					.from(emojiUsage)
-					.where(
-						and(
-							eq(emojiUsage.emojiId, emoji.id),
-							sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
-						),
-					)
-					.groupBy(emojiUsage.userId)
-					.orderBy(desc(count(emojiUsage.userId)))
-					.limit(20);
-
-				await interaction.reply({
-					content: `Emoji ${emoji} was used by the following users:\n${emojiUsages
-						.map((usage) => `<@${usage.userId}>: ${usage.count}`)
-						.join("\n")}`,
-				});
-			})
-			.with("guild", async () => {
-				const emojiUsages = await db
-					.select({
-						emojiId: emojiUsage.emojiId,
-						count: count(emojiUsage.emojiId),
-					})
-					.from(emojiUsage)
-					.where(sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`)
-					.groupBy(emojiUsage.emojiId)
-					.orderBy(desc(count(emojiUsage.emojiId)))
-					.limit(20);
-
-				await interaction.reply({
-					content: `The following emojis were used:\n${emojiUsages
-						.map((usage) => {
-							const emoji = interaction.guild.emojis.resolve(usage.emojiId.toString());
-							const emojiRepresentation = emoji?.toString() ?? usage.emojiId;
-							return `${emojiRepresentation}: ${usage.count}`;
-						})
-						.join("\n")}`,
-				});
-			})
+			.with("user", () => handleUser(interaction, db, before, after))
+			.with("emoji", () => handleEmoji(interaction, db, before, after))
+			.with("guild", () => handleGuild(interaction, db, before, after))
 			.run();
 	});
