@@ -18,4 +18,4 @@ COPY --link . .
 
 RUN bun install --production
 
-CMD ["bun", "start"]
+CMD ["bun", "start:prod"]
