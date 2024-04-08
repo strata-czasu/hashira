@@ -23,6 +23,10 @@ export type BaseDecorator = { [key: string]: unknown };
 
 export interface OptionBuilder<Required extends boolean, T> {
 	_: { type: Required extends true ? T : T | null };
+	setDescription(description: string): OptionBuilder<Required, T>;
+	setRequired<NewRequired extends boolean>(
+		required: NewRequired,
+	): OptionBuilder<NewRequired, T>;
 	toSlashCommandOption(): ToAPIApplicationCommandOptions;
 }
 
