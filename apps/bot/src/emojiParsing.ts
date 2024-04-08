@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { emojiUsage } from "@hashira/db";
+import { emojiUsage } from "@hashira/db/schema";
 import {
 	GuildEmoji,
 	GuildEmojiManager,
@@ -83,9 +83,9 @@ export const emojiParsing = new Hashira({ name: "emoji-parsing" })
 
 		await db.insert(emojiUsage).values(
 			guildEmojis.map((emoji) => ({
-				userId: BigInt(message.author.id),
-				emojiId: BigInt(emoji.id),
-				guildId: BigInt(message.guild.id),
+				userId: message.author.id,
+				emojiId: emoji.id,
+				guildId: message.guild.id,
 			})),
 		);
 	})
@@ -128,7 +128,7 @@ export const emojiParsing = new Hashira({ name: "emoji-parsing" })
 					.from(emojiUsage)
 					.where(
 						and(
-							eq(emojiUsage.userId, BigInt(user.id)),
+							eq(emojiUsage.userId, user.id),
 							sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
 						),
 					)
@@ -180,7 +180,7 @@ export const emojiParsing = new Hashira({ name: "emoji-parsing" })
 					.from(emojiUsage)
 					.where(
 						and(
-							eq(emojiUsage.emojiId, BigInt(emoji.id)),
+							eq(emojiUsage.emojiId, emoji.id),
 							sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
 						),
 					)
