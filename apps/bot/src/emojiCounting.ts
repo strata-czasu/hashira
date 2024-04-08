@@ -8,7 +8,7 @@ import {
 	SlashCommandBuilder,
 	SlashCommandSubcommandBuilder,
 } from "discord.js";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, between, count, desc, eq } from "drizzle-orm";
 import { match } from "ts-pattern";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
@@ -94,10 +94,7 @@ const handleUser = async (
 		})
 		.from(emojiUsage)
 		.where(
-			and(
-				eq(emojiUsage.userId, user.id),
-				sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
-			),
+			and(eq(emojiUsage.userId, user.id), between(emojiUsage.timestamp, after, before)),
 		)
 		.groupBy(emojiUsage.emojiId)
 		.orderBy(desc(count(emojiUsage.emojiId)))
@@ -152,7 +149,7 @@ const handleEmoji = async (
 		.where(
 			and(
 				eq(emojiUsage.emojiId, emoji.id),
-				sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`,
+				between(emojiUsage.timestamp, after, before),
 			),
 		)
 		.groupBy(emojiUsage.userId)
@@ -175,10 +172,10 @@ const handleGuild = async (
 	const emojiUsages = await database
 		.select({
 			emojiId: emojiUsage.emojiId,
-			count: count(),
+			count: count(emojiUsage.emojiId),
 		})
 		.from(emojiUsage)
-		.where(sql`${emojiUsage.timestamp} BETWEEN ${after} AND ${before}`)
+		.where(between(emojiUsage.timestamp, after, before))
 		.groupBy(emojiUsage.emojiId)
 		.orderBy(desc(count(emojiUsage.emojiId)))
 		.limit(20);
