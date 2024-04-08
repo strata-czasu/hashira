@@ -1,11 +1,11 @@
 import { relations } from "drizzle-orm";
-import { bigint } from "drizzle-orm/pg-core";
+import { text } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { wallet } from "./economy/wallet";
 import { userActivity } from "./userActivity";
 
 export const user = pgTable("users", {
-	id: bigint("id", { mode: "bigint" }).primaryKey(),
+	id: text("id").primaryKey(),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

@@ -2,8 +2,8 @@ import env from "@hashira/env";
 import type { Config } from "drizzle-kit";
 
 export default {
-	schema: "./schema/*",
-	out: "drizzle/",
+	schema: "./src/schema/*",
+	out: "./drizzle/",
 	driver: "pg",
 	dbCredentials: {
 		database: env.POSTGRES_DB,
