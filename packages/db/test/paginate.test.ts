@@ -1,9 +1,9 @@
 import { afterEach, expect } from "bun:test";
 import { faker } from "@faker-js/faker";
+import { count } from "drizzle-orm";
 import { schema } from "../src";
 import { Paginate } from "../src/paginate";
 import { createUser, dbTest } from "./";
-import { count } from "drizzle-orm";
 
 afterEach(async () => {
 	faker.seed();

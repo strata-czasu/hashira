@@ -1,5 +1,5 @@
 import { type SQL } from "drizzle-orm";
-import { PgSelectBase, type PgSelect } from "drizzle-orm/pg-core";
+import { type PgSelect, PgSelectBase } from "drizzle-orm/pg-core";
 import type { JoinNullability } from "drizzle-orm/query-builders/select.types";
 
 type CountSelect = PgSelect<
