@@ -1,4 +1,4 @@
-import { test, expect, setSystemTime, beforeAll } from "bun:test";
+import { beforeAll, expect, setSystemTime, test } from "bun:test";
 import { parseDate } from "../src/dateParsing";
 
 beforeAll(() => {
@@ -11,63 +11,63 @@ test("returns null if date is null or undefined", () => {
 });
 
 test("handles natural date in start alignment", () => {
-    const now = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("now", "start", null)).toEqual(now);
+	const now = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("now", "start", null)).toEqual(now);
 
-    const tomorrow = new Date("2021-09-02T00:00:00Z");
-    expect(parseDate("tomorrow", "start", null)).toEqual(tomorrow);
+	const tomorrow = new Date("2021-09-02T00:00:00Z");
+	expect(parseDate("tomorrow", "start", null)).toEqual(tomorrow);
 
-    const yesterday = new Date("2021-08-31T00:00:00Z");
-    expect(parseDate("yesterday", "start", null)).toEqual(yesterday);
+	const yesterday = new Date("2021-08-31T00:00:00Z");
+	expect(parseDate("yesterday", "start", null)).toEqual(yesterday);
 
-    const today = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("today", "start", null)).toEqual(today);
+	const today = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("today", "start", null)).toEqual(today);
 
-    const month = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("month", "start", null)).toEqual(month);
+	const month = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("month", "start", null)).toEqual(month);
 
-    const year = new Date("2021-01-01T00:00:00Z");
-    expect(parseDate("year", "start", null)).toEqual(year);
+	const year = new Date("2021-01-01T00:00:00Z");
+	expect(parseDate("year", "start", null)).toEqual(year);
 });
 
 test("handles natural date in end alignment", () => {
-    const now = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("now", "end", null)).toEqual(now);
+	const now = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("now", "end", null)).toEqual(now);
 
-    const tomorrow = new Date("2021-09-02T23:59:59.999Z");
-    expect(parseDate("tomorrow", "end", null)).toEqual(tomorrow);
+	const tomorrow = new Date("2021-09-02T23:59:59.999Z");
+	expect(parseDate("tomorrow", "end", null)).toEqual(tomorrow);
 
-    const yesterday = new Date("2021-08-31T23:59:59.999Z");
-    expect(parseDate("yesterday", "end", null)).toEqual(yesterday);
+	const yesterday = new Date("2021-08-31T23:59:59.999Z");
+	expect(parseDate("yesterday", "end", null)).toEqual(yesterday);
 
-    const today = new Date("2021-09-01T23:59:59.999Z");
-    expect(parseDate("today", "end", null)).toEqual(today);
+	const today = new Date("2021-09-01T23:59:59.999Z");
+	expect(parseDate("today", "end", null)).toEqual(today);
 
-    const month = new Date("2021-09-30T23:59:59.999Z");
-    expect(parseDate("month", "end", null)).toEqual(month);
+	const month = new Date("2021-09-30T23:59:59.999Z");
+	expect(parseDate("month", "end", null)).toEqual(month);
 
-    const year = new Date("2021-12-31T23:59:59.999Z");
-    expect(parseDate("year", "end", null)).toEqual(year);
+	const year = new Date("2021-12-31T23:59:59.999Z");
+	expect(parseDate("year", "end", null)).toEqual(year);
 });
 
 test("handles natural date in now alignment", () => {
-    const now = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("now", "now", null)).toEqual(now);
+	const now = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("now", "now", null)).toEqual(now);
 
-    const tomorrow = new Date("2021-09-02T00:00:00Z");
-    expect(parseDate("tomorrow", "now", null)).toEqual(tomorrow);
+	const tomorrow = new Date("2021-09-02T00:00:00Z");
+	expect(parseDate("tomorrow", "now", null)).toEqual(tomorrow);
 
-    const yesterday = new Date("2021-08-31T00:00:00Z");
-    expect(parseDate("yesterday", "now", null)).toEqual(yesterday);
+	const yesterday = new Date("2021-08-31T00:00:00Z");
+	expect(parseDate("yesterday", "now", null)).toEqual(yesterday);
 
-    const today = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("today", "now", null)).toEqual(today);
+	const today = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("today", "now", null)).toEqual(today);
 
-    const month = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("month", "now", null)).toEqual(month);
+	const month = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("month", "now", null)).toEqual(month);
 
-    const year = new Date("2021-09-01T00:00:00Z");
-    expect(parseDate("year", "now", null)).toEqual(year);
+	const year = new Date("2021-09-01T00:00:00Z");
+	expect(parseDate("year", "now", null)).toEqual(year);
 });
 
 test("returns today if date is today", () => {
