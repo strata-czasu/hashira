@@ -15,4 +15,3 @@ export const mergeMap = <K, V>(
 	}
 	return result;
 };
-
