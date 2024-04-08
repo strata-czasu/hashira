@@ -91,6 +91,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
 					const paginatedView = new PaginatedView(
 						itx,
 						paginate,
+						"Auto roles",
 						(item, idx) => `${idx}. <@&${item.roleId}>`,
 					);
 					await paginatedView.render();
