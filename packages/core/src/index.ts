@@ -9,9 +9,11 @@ import {
 } from "discord.js";
 import { handleCustomEvent } from "./customEvents";
 import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
+import { SlashCommand } from "./slashCommands";
 import type {
 	BaseDecorator,
 	EventsWithContext,
+	HashiraCommands,
 	HashiraContext,
 	HashiraDecorators,
 	Prettify,
@@ -26,6 +28,8 @@ const decoratorInitBase = {
 	derive: {},
 	state: {},
 };
+
+const commandsInitBase = {};
 
 type HashiraOptions = {
 	name: string;
@@ -55,7 +59,10 @@ const handleAutoCompleteConflict = (
 	);
 };
 
-class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
+class Hashira<
+	Decorators extends HashiraDecorators = typeof decoratorInitBase,
+	Commands extends HashiraCommands = typeof commandsInitBase,
+> {
 	#state: BaseDecorator;
 	#derive: UnknownDerive[];
 	#const: BaseDecorator;
@@ -91,11 +98,14 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	const<const T extends string, const U>(
 		name: T,
 		value: U,
-	): Hashira<{
-		const: Prettify<Decorators["const"] & { [key in T]: U }>;
-		derive: Decorators["derive"];
-		state: Decorators["state"];
-	}> {
+	): Hashira<
+		{
+			const: Prettify<Decorators["const"] & { [key in T]: U }>;
+			derive: Decorators["derive"];
+			state: Decorators["state"];
+		},
+		Commands
+	> {
 		this.#const[name] = value;
 
 		return this as unknown as ReturnType<typeof this.const<T, U>>;
@@ -103,11 +113,14 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 
 	derive<const T extends BaseDecorator>(
 		transform: (ctx: HashiraContext<Decorators>) => T,
-	): Hashira<{
-		const: Decorators["const"];
-		derive: Prettify<Decorators["derive"] & T>;
-		state: Decorators["state"];
-	}> {
+	): Hashira<
+		{
+			const: Decorators["const"];
+			derive: Prettify<Decorators["derive"] & T>;
+			state: Decorators["state"];
+		},
+		Commands
+	> {
 		this.#derive.push(transform as unknown as UnknownDerive);
 
 		return this as unknown as ReturnType<typeof this.derive<T>>;
@@ -116,11 +129,14 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	state<const T extends string, U>(
 		name: T,
 		value: U,
-	): Hashira<{
-		const: Decorators["const"];
-		derive: Decorators["derive"];
-		state: Prettify<Decorators["state"] & { [key in T]: U }>;
-	}> {
+	): Hashira<
+		{
+			const: Decorators["const"];
+			derive: Decorators["derive"];
+			state: Prettify<Decorators["state"] & { [key in T]: U }>;
+		},
+		Commands
+	> {
 		this.#state[name] = value;
 
 		return this as unknown as ReturnType<typeof this.state<T, U>>;
@@ -136,12 +152,15 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 
 	use<NewHashira extends Hashira>(
 		instance: NewHashira,
-	): NewHashira extends Hashira<infer NewDecorators>
-		? Hashira<{
-				const: Prettify<Decorators["const"] & NewDecorators["const"]>;
-				derive: Prettify<Decorators["derive"] & NewDecorators["derive"]>;
-				state: Prettify<Decorators["state"] & NewDecorators["state"]>;
-		  }>
+	): NewHashira extends Hashira<infer NewDecorators, infer NewCommands>
+		? Hashira<
+				{
+					const: Prettify<Decorators["const"] & NewDecorators["const"]>;
+					derive: Prettify<Decorators["derive"] & NewDecorators["derive"]>;
+					state: Prettify<Decorators["state"] & NewDecorators["state"]>;
+				},
+				Prettify<Commands & NewCommands>
+		  >
 		: never {
 		// TODO: this might break if two instances have the same name
 		if (this.#dependencies.includes(instance.#name)) {
@@ -182,7 +201,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 	handle<const MethodName extends EventMethodName>(
 		methodName: MethodName,
 		method: EventsWithContext<HashiraContext<Decorators>>[MethodName],
-	): Hashira<Decorators> {
+	): Hashira<Decorators, Commands> {
 		const methods = this.#methods.get(methodName) ?? [];
 
 		this.#methods.set(methodName, [...methods, method as UnknownEventWithContext]);
@@ -196,7 +215,7 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 			context: HashiraContext<Decorators>,
 			interaction: ChatInputCommandInteraction,
 		) => Promise<void>,
-	): Hashira<Decorators> {
+	): Hashira<Decorators, Commands> {
 		this.#commands.set(commandBuilder.name, [
 			commandBuilder,
 			handler as (
@@ -208,12 +227,45 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 		return this;
 	}
 
-	autocomplete<T extends HashiraSlashCommandOptions>(
+	newCommand<
+		T extends SlashCommand<
+			HashiraContext<Decorators>,
+			string,
+			true,
+			true,
+			BaseDecorator
+		>,
+	>(
+		init: (builder: SlashCommand<HashiraContext<Decorators>>) => T,
+	): T extends SlashCommand<
+		HashiraContext<Decorators>,
+		infer CommandName,
+		true,
+		true,
+		infer Options
+	>
+		? CommandName extends string
+			? Hashira<
+					Decorators,
+					Prettify<
+						Commands & { [key in CommandName]: { name: CommandName; options: Options } }
+					>
+			  >
+			: never
+		: never {
+		const command = init(new SlashCommand());
+		const builder = command.toSlashCommandBuilder();
+		const handler = command.toHandler();
+		this.#commands.set(builder.name, [builder, handler]);
+		return this as unknown as ReturnType<typeof this.newCommand<T>>;
+	}
+
+	autocomplete<
+		T extends HashiraSlashCommandOptions,
+		U extends AutocompleteInteraction = AutocompleteInteraction,
+	>(
 		commandBuilder: T,
-		handler: (
-			context: HashiraContext<Decorators>,
-			interaction: AutocompleteInteraction,
-		) => Promise<void>,
+		handler: (context: HashiraContext<Decorators>, interaction: U) => Promise<void>,
 	): Hashira<Decorators> {
 		this.#autocomplete.set(
 			commandBuilder.name,
