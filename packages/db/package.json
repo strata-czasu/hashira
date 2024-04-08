@@ -10,7 +10,7 @@
 	"scripts": {
 		"generate": "drizzle-kit generate:pg",
 		"migrate": "bun run src/migrate.ts",
-		"drizzle-studio": "drizzle-kit studio --port 4982",
+		"drizzle-studio": "drizzle-kit studio",
 		"drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
 		"push": "drizzle-kit push:pg",
 		"drop": "drizzle-kit drop",
