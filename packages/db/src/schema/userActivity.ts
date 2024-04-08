@@ -5,7 +5,9 @@ import { user } from "./user";
 
 export const userActivity = pgTable("user_activity", {
 	id: serial("id").primaryKey(),
-	userId: text("userId").references(() => user.id),
+	userId: text("userId")
+		.references(() => user.id)
+		.notNull(),
 });
 
 export const userActivityRelations = relations(userActivity, ({ one }) => ({
