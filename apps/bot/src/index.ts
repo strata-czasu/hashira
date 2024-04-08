@@ -3,12 +3,14 @@ import env from "@hashira/env";
 import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
+import { miscellaneous } from "./miscellaneous";
 import { userActivity } from "./userActivity";
 
 export const bot = new Hashira({ name: "bot" })
 	.use(base)
 	.use(guildAvailability)
 	.use(emojiCounting)
+	.use(miscellaneous)
 	.use(userActivity);
 
 if (import.meta.main) {
