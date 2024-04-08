@@ -183,7 +183,6 @@ class Hashira<Decorators extends HashiraDecorators = typeof decoratorInitBase> {
 
 				if (isCustomEvent(event)) {
 					const [discordEvent, handler] = handleCustomEvent(event, rawHandler);
-					console.log("custom event", discordEvent, event, handler);
 					discordClient.on(discordEvent, (...args) => handler(this.context(), ...args));
 				} else {
 					discordClient.on(event, (...args) => rawHandler(this.context(), ...args));
