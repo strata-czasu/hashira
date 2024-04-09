@@ -19,6 +19,7 @@ import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
+import { BooleanOptionBuilder } from "./booleanOptionBuilder";
 
 const optionsInitBase = {};
 
@@ -254,6 +255,24 @@ export class SlashCommand<
     this.#builder.addRoleOption(builder);
     this.#options[name] = option;
     return this as unknown as ReturnType<typeof this.addRole<T, U>>;
+  }
+
+  addBoolean<
+    const T extends string,
+    const U extends BooleanOptionBuilder<true, boolean>,
+  >(
+    name: T,
+    input: (builder: BooleanOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new BooleanOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addBooleanOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addBoolean<T, U>>;
   }
 
   toSlashCommandBuilder(): SlashCommandSubcommandBuilder {
