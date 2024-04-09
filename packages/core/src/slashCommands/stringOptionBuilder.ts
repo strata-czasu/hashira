@@ -1,4 +1,5 @@
 import {
+  type APIApplicationCommandOptionChoice,
   type CacheType,
   ChatInputCommandInteraction,
   SlashCommandStringOption,
@@ -25,6 +26,11 @@ export class StringOptionBuilder<
   ): StringOptionBuilder<HasDescription, NewRequired> {
     this.#builder.setRequired(required);
     return this as unknown as ReturnType<typeof this.setRequired<NewRequired>>;
+  }
+
+  addChoices(...choices: APIApplicationCommandOptionChoice<string>[]) {
+    this.#builder.addChoices(...choices);
+    return this;
   }
 
   toSlashCommandOption() {
