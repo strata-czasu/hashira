@@ -1,11 +1,11 @@
 import {
-  AutocompleteInteraction,
-  ChatInputCommandInteraction,
+  type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
   Client,
   REST,
   Routes,
   type SlashCommandBuilder,
-  SlashCommandSubcommandBuilder,
+  type SlashCommandSubcommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { handleCustomEvent } from "./customEvents";

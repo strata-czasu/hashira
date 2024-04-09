@@ -1,4 +1,4 @@
-import { Collection, type FetchMessagesOptions, Message } from "discord.js";
+import type { Collection, FetchMessagesOptions, Message } from "discord.js";
 
 export async function* fetchMessages<T extends Message>(
   channel: {

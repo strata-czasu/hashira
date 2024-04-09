@@ -1,6 +1,6 @@
 import type { ClientEvents } from "discord.js";
 import { allCustomEvents } from "./events";
-import { allEventsToIntent, customEventsToIntent } from "./eventsToIntent";
+import { allEventsToIntent, type customEventsToIntent } from "./eventsToIntent";
 
 export type EventMethodName = keyof typeof allEventsToIntent;
 export type CustomEventMethodName = keyof typeof customEventsToIntent;

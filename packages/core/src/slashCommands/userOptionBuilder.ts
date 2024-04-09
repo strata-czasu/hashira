@@ -1,8 +1,8 @@
 import {
   type CacheType,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   SlashCommandUserOption,
-  User,
+  type User,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
 

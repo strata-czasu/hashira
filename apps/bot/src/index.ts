@@ -6,8 +6,8 @@ import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
-import { userActivity } from "./userActivity";
 import { moderation } from "./moderation";
+import { userActivity } from "./userActivity";
 
 Sentry.init({
   dsn: env.SENTRY_DSN,

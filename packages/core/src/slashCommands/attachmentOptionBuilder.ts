@@ -1,7 +1,7 @@
 import {
-  Attachment,
+  type Attachment,
   type CacheType,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   SlashCommandAttachmentOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";

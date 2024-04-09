@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, Team, User } from "discord.js";
+import { type ChatInputCommandInteraction, Team, User } from "discord.js";
 import { match } from "ts-pattern";
 
 export const isOwner = async (

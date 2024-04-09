@@ -1,7 +1,7 @@
 import { describe, test } from "bun:test";
 import { expectTypeOf } from "expect-type";
-import { Hashira, decoratorInitBase } from "../src/";
-import { type BaseDecorator } from "../src/types";
+import { Hashira, type decoratorInitBase } from "../src/";
+import type { BaseDecorator } from "../src/types";
 import type { Prettify } from "../src/types";
 
 type CreateDecorators<T extends Partial<BaseDecorator>> = Prettify<

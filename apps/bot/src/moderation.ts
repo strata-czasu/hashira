@@ -2,14 +2,14 @@ import { Hashira } from "@hashira/core";
 import { formatDate } from "date-fns";
 import {
   AuditLogEvent,
-  bold,
   DiscordAPIError,
-  Guild,
-  inlineCode,
-  italic,
+  type Guild,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
-  User,
+  type User,
+  bold,
+  inlineCode,
+  italic,
 } from "discord.js";
 
 const formatBanReason = (reason: string, moderator: User, createdAt: Date) =>

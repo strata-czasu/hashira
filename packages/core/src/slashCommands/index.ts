@@ -1,5 +1,5 @@
 import {
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   type Permissions,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
@@ -29,7 +29,7 @@ type UnknownCommandHandler = (
   interaction: ChatInputCommandInteraction,
 ) => Promise<void>;
 
-interface Handlers extends Record<string, Handlers | UnknownCommandHandler> {}
+interface Handlers extends Record<string, Handlers | UnknownCommandHandler> { }
 
 interface GroupSettings {
   HasDescription: boolean;
@@ -175,6 +175,7 @@ const commandSettingsInitBase: CommandSettings = {
   HasDescription: false,
   HasHandler: false,
 };
+
 
 // TODO: Disable the ability to add required options if non-required options are present
 export class SlashCommand<

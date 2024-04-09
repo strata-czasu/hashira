@@ -1,9 +1,9 @@
 import {
   type APIApplicationCommandOptionChoice,
   type CacheType,
-  ChatInputCommandInteraction,
-  escapeMarkdown,
+  type ChatInputCommandInteraction,
   SlashCommandStringOption,
+  escapeMarkdown,
 } from "discord.js";
 import type { OptionBuilder } from "../types";
 

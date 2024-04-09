@@ -2,13 +2,13 @@ import type { CountSelect, Paginate } from "@hashira/db";
 import {
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonInteraction,
+  type ButtonInteraction,
   ButtonStyle,
   type CacheType,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   type CollectorFilter,
   ComponentType,
-  InteractionResponse,
+  type InteractionResponse,
 } from "discord.js";
 import type { PgSelect } from "drizzle-orm/pg-core";
 import { match } from "ts-pattern";
