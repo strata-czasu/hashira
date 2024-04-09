@@ -64,6 +64,7 @@ class Hashira<
   Decorators extends HashiraDecorators = typeof decoratorInitBase,
   Commands extends HashiraCommands = typeof commandsInitBase,
 > {
+  #exceptionHandlers: ((error: Error) => void)[];
   #state: BaseDecorator;
   #derive: UnknownDerive[];
   #const: BaseDecorator;
@@ -86,8 +87,9 @@ class Hashira<
   #name: string;
 
   constructor(options: HashiraOptions) {
-    this.#state = {};
+    this.#exceptionHandlers = [];
     this.#derive = [];
+    this.#state = {};
     this.#const = {};
     this.#methods = new Map();
     this.#commands = new Map();
@@ -170,6 +172,10 @@ class Hashira<
     this.#const = { ...this.#const, ...instance.#const };
     this.#derive = [...this.#derive, ...instance.#derive];
     this.#state = { ...this.#state, ...instance.#state };
+    this.#exceptionHandlers = [
+      ...this.#exceptionHandlers,
+      ...instance.#exceptionHandlers,
+    ];
     this.#methods = mergeMap((a, b) => [...a, ...b], this.#methods, instance.#methods);
     this.#commands = mergeMap(
       handleCommandConflict,
@@ -299,8 +305,7 @@ class Hashira<
     try {
       await handler(this.context(), interaction);
     } catch (error) {
-      // TODO: #1 Add proper error logging
-      console.error(error);
+      if (error instanceof Error) this.handleException(error);
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({
           content: "There was an error while executing this command!",
@@ -323,8 +328,7 @@ class Hashira<
     try {
       await handler(this.context(), interaction);
     } catch (error) {
-      // TODO: #1 Add proper error logging
-      console.error(error);
+      if (error instanceof Error) this.handleException(error);
       await interaction.respond([]);
     }
   }
@@ -346,8 +350,19 @@ class Hashira<
       if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
     });
 
-    // TODO: #1 Add proper error logging
-    discordClient.on("error", console.error);
+    discordClient.on("error", this.handleException);
+  }
+
+  addExceptionHandler(handler: (error: Error) => void) {
+    this.#exceptionHandlers.push(handler);
+
+    return this;
+  }
+
+  private handleException(error: Error) {
+    for (const handler of this.#exceptionHandlers) {
+      handler(error);
+    }
   }
 
   async start(token: string) {
@@ -390,6 +405,7 @@ class Hashira<
 
       console.log("Successfully registered application commands.");
     } catch (error) {
+      if (error instanceof Error) console.error(error);
       console.error(error);
     }
   }
