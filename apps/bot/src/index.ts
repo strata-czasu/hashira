@@ -6,6 +6,7 @@ import { base } from "./base";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
+import { moderation } from "./moderation";
 import { userActivity } from "./userActivity";
 
 Sentry.init({
@@ -13,13 +14,14 @@ Sentry.init({
   tracesSampleRate: 1.0, // Capture 100% of the transactions
 });
 
-const bot = new Hashira({ name: "bot" })
+export const bot = new Hashira({ name: "bot" })
   .use(base)
   .use(guildAvailability)
   .use(emojiCounting)
   .use(miscellaneous)
   .use(userActivity)
-  .use(autoRole);
+  .use(autoRole)
+  .use(moderation);
 
 if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't

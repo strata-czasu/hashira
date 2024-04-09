@@ -1,31 +1,30 @@
 import {
   type CacheType,
   type ChatInputCommandInteraction,
-  SlashCommandUserOption,
-  type User,
+  SlashCommandBooleanOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
 
-export class UserOptionBuilder<
+export class BooleanOptionBuilder<
   HasDescription extends boolean = false,
   Required extends boolean = true,
-> implements OptionBuilder<Required, User>
+> implements OptionBuilder<Required, boolean>
 {
-  declare _: { type: If<Required, User, User | null> };
+  declare _: { type: If<Required, boolean, boolean | null> };
   // Enforce nominal typing
   protected declare readonly nominal: [HasDescription, Required];
-  #builder = new SlashCommandUserOption().setRequired(true);
+  #builder = new SlashCommandBooleanOption().setRequired(true);
 
-  setDescription(description: string): UserOptionBuilder<true, Required> {
+  setDescription(description: string): BooleanOptionBuilder<true, Required> {
     this.#builder.setDescription(description);
     return this as ReturnType<typeof this.setDescription>;
   }
 
   setRequired<NewRequired extends boolean>(
     required: NewRequired,
-  ): UserOptionBuilder<HasDescription, NewRequired> {
+  ): BooleanOptionBuilder<HasDescription, NewRequired> {
     this.#builder.setRequired(required);
-    return this as unknown as UserOptionBuilder<HasDescription, NewRequired>;
+    return this as unknown as ReturnType<typeof this.setRequired<NewRequired>>;
   }
 
   toSlashCommandOption() {
@@ -33,7 +32,7 @@ export class UserOptionBuilder<
   }
 
   async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
-    return interaction.options.getUser(
+    return interaction.options.getBoolean(
       name,
       this.#builder.required,
     ) as this["_"]["type"];

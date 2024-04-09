@@ -1,6 +1,6 @@
 import type { Message } from "discord.js";
-import * as events from "./events";
-import { type EventsToHandling } from "./util";
+import type * as events from "./events";
+import type { EventsToHandling } from "./util";
 
 export type AutoModerationConfigurationHandling = EventsToHandling<
   typeof events.autoModerationConfigurationEvents

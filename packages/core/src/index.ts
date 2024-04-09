@@ -1,16 +1,16 @@
 import {
-  AutocompleteInteraction,
-  ChatInputCommandInteraction,
+  type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
   Client,
   REST,
   Routes,
   type SlashCommandBuilder,
-  SlashCommandSubcommandBuilder,
+  type SlashCommandSubcommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 import { handleCustomEvent } from "./customEvents";
 import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
-import { Group, SlashCommand } from "./slashCommands";
+import { Group, TopLevelSlashCommand } from "./slashCommands";
 import type {
   BaseDecorator,
   EventsWithContext,
@@ -239,22 +239,22 @@ class Hashira<
 
   newCommand<
     T extends string,
-    U extends SlashCommand<
+    U extends TopLevelSlashCommand<
       HashiraContext<Decorators>,
       { HasDescription: true; HasHandler: true },
       BaseDecorator
     >,
   >(
     name: T,
-    init: (builder: SlashCommand<HashiraContext<Decorators>>) => U,
-  ): U extends SlashCommand<
+    init: (builder: TopLevelSlashCommand<HashiraContext<Decorators>>) => U,
+  ): U extends TopLevelSlashCommand<
     HashiraContext<Decorators>,
     { HasDescription: true; HasHandler: true },
     infer Options
   >
     ? Hashira<Decorators, Prettify<Commands & { [key in T]: { options: Options } }>>
     : never {
-    const command = init(new SlashCommand());
+    const command = init(new TopLevelSlashCommand());
     const builder = command.toSlashCommandBuilder().setName(name);
     const handler = command.toHandler();
     this.#commands.set(name, [builder, handler]);

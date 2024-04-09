@@ -1,30 +1,30 @@
 {
-	"name": "@hashira/db",
-	"module": "index.ts",
-	"exports": {
-		".": "./src/index.ts",
-		"./schema": "./src/schema/index.ts",
-		"./migrate": "./src/migrate.ts"
-	},
-	"type": "module",
-	"scripts": {
-		"generate": "drizzle-kit generate:pg",
-		"migrate": "bun run src/migrate.ts",
-		"drizzle-studio": "drizzle-kit studio",
-		"drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
-		"push": "drizzle-kit push:pg",
-		"drop": "drizzle-kit drop",
-		"test": "bun test --preload ./test/preload.ts test/"
-	},
-	"devDependencies": {
-		"@types/bun": "latest",
-		"typescript": "*",
-		"@faker-js/faker": "^8.4.1"
-	},
-	"dependencies": {
-		"drizzle-orm": "^0.30.7",
-		"postgres": "^3.4.4",
-		"drizzle-kit": "^0.20.14",
-		"pg": "^8.11.5"
-	}
+  "name": "@hashira/db",
+  "module": "index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./migrate": "./src/migrate.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "generate": "drizzle-kit generate:pg",
+    "migrate": "bun run src/migrate.ts",
+    "drizzle-studio": "drizzle-kit studio",
+    "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
+    "push": "drizzle-kit push:pg",
+    "drop": "drizzle-kit drop",
+    "test": "bun test --preload ./test/preload.ts test/"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "*",
+    "@faker-js/faker": "^8.4.1"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.30.7",
+    "postgres": "^3.4.4",
+    "drizzle-kit": "^0.20.14",
+    "pg": "^8.11.5"
+  }
 }

@@ -1,5 +1,5 @@
 import {
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   type Permissions,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
@@ -16,13 +16,15 @@ import type {
   UnknownContext,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
+import { BooleanOptionBuilder } from "./booleanOptionBuilder";
+import { NumberOptionBuilder } from "./numberOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
 
-const optionsInitBase = {};
+export const optionsInitBase = {};
 
-type UnknownCommandHandler = (
+export type UnknownCommandHandler = (
   ctx: UnknownContext,
   interaction: ChatInputCommandInteraction,
 ) => Promise<void>;
@@ -164,12 +166,12 @@ export class Group<
   }
 }
 
-interface CommandSettings {
+export interface CommandSettings {
   HasHandler: boolean;
   HasDescription: boolean;
 }
 
-const commandSettingsInitBase: CommandSettings = {
+export const commandSettingsInitBase: CommandSettings = {
   HasDescription: false,
   HasHandler: false,
 };
@@ -226,6 +228,21 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.addString<T, U>>;
   }
 
+  addNumber<const T extends string, const U extends NumberOptionBuilder<true, boolean>>(
+    name: T,
+    input: (builder: NumberOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new NumberOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addNumberOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addNumber<T, U>>;
+  }
+
   addUser<const T extends string, const U extends UserOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: UserOptionBuilder) => U,
@@ -256,6 +273,24 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.addRole<T, U>>;
   }
 
+  addBoolean<
+    const T extends string,
+    const U extends BooleanOptionBuilder<true, boolean>,
+  >(
+    name: T,
+    input: (builder: BooleanOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new BooleanOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addBooleanOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addBoolean<T, U>>;
+  }
+
   toSlashCommandBuilder(): SlashCommandSubcommandBuilder {
     return this.#builder;
   }
@@ -269,11 +304,8 @@ export class SlashCommand<
     // options (e.g. user, member, role, etc.) and also custom options
     const options: Record<string, unknown> = {};
     await Promise.all(
-      this.#builder.options.map(async (option) => {
-        const optionBuilder = this.#options[option.name];
-        if (!optionBuilder)
-          throw new Error(`No option builder found for ${option.name}`);
-        options[option.name] = await optionBuilder.transform(interaction, option.name);
+      Object.entries(this.#options).map(async ([name, optionBuilder]) => {
+        options[name] = await optionBuilder.transform(interaction, name);
       }),
     );
     return options as Options;
@@ -296,3 +328,5 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.handle>;
   }
 }
+
+export { TopLevelSlashCommand } from "./topLevelSlashCommand";

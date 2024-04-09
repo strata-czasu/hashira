@@ -1,6 +1,7 @@
 import {
+  type APIApplicationCommandOptionChoice,
   type CacheType,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   SlashCommandNumberOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
@@ -25,6 +26,11 @@ export class NumberOptionBuilder<
   ): NumberOptionBuilder<HasDescription, NewRequired> {
     this.#builder.setRequired(required);
     return this as unknown as ReturnType<typeof this.setRequired<NewRequired>>;
+  }
+
+  addChoices(...choices: APIApplicationCommandOptionChoice<number>[]) {
+    this.#builder.addChoices(...choices);
+    return this;
   }
 
   toSlashCommandOption() {

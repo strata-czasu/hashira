@@ -1,4 +1,4 @@
-import { type ClientEvents, GatewayIntentBits } from "discord.js";
+import type { ClientEvents, GatewayIntentBits } from "discord.js";
 
 export type EventsToHandling<Events extends readonly (keyof ClientEvents)[]> = {
   [K in Events[number]]: (...args: ClientEvents[K]) => Promise<void>;

@@ -1,7 +1,9 @@
 import {
+  type APIApplicationCommandOptionChoice,
   type CacheType,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   SlashCommandStringOption,
+  escapeMarkdown,
 } from "discord.js";
 import type { OptionBuilder } from "../types";
 
@@ -14,6 +16,7 @@ export class StringOptionBuilder<
   // Enforce nominal typing
   protected declare readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandStringOption().setRequired(true);
+  #escaped = false;
 
   setDescription(description: string): StringOptionBuilder<true, Required> {
     this.#builder.setDescription(description);
@@ -27,14 +30,26 @@ export class StringOptionBuilder<
     return this as unknown as ReturnType<typeof this.setRequired<NewRequired>>;
   }
 
+  addChoices(...choices: APIApplicationCommandOptionChoice<string>[]) {
+    this.#builder.addChoices(...choices);
+    return this;
+  }
+
+  setEscaped(escaped: boolean) {
+    this.#escaped = escaped;
+    return this;
+  }
+
   toSlashCommandOption() {
     return this.#builder;
   }
 
   async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
-    return interaction.options.getString(
+    const value = interaction.options.getString(
       name,
       this.#builder.required,
     ) as this["_"]["type"];
+    if (this.#escaped && value) return escapeMarkdown(value);
+    return value;
   }
 }

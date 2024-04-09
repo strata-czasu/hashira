@@ -1,4 +1,4 @@
-import { Collection, GuildMember, type UserResolvable } from "discord.js";
+import { Collection, type GuildMember, type UserResolvable } from "discord.js";
 
 const chunk = <T>(array: T[], size: number): T[][] => {
   const chunks: T[][] = [];
