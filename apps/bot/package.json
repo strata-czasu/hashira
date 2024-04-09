@@ -1,21 +1,22 @@
 {
-	"name": "@hashira/bot",
-	"module": "index.ts",
-	"type": "module",
-	"scripts": {
-		"start": "bun run src/index.ts",
-		"reload-commands": "bun run reload-commands.ts"
-	},
-	"dependencies": {
-		"@hashira/core": "workspace:../../packages/core",
-		"@hashira/db": "workspace:../../packages/db",
-		"@hashira/env": "workspace:../../packages/env",
-		"discord.js": "^14.14.1",
-		"ts-pattern": "5.0.8",
-		"date-fns": "3.3.1"
-	},
-	"devDependencies": {
-		"typescript": "*",
-		"@types/bun": "latest"
-	}
+  "name": "@hashira/bot",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "reload-commands": "bun run reload-commands.ts"
+  },
+  "dependencies": {
+    "@hashira/core": "workspace:../../packages/core",
+    "@hashira/db": "workspace:../../packages/db",
+    "@hashira/env": "workspace:../../packages/env",
+    "@sentry/bun": "^7.109.0",
+    "date-fns": "3.3.1",
+    "discord.js": "^14.14.1",
+    "ts-pattern": "5.0.8"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "@types/bun": "latest"
+  }
 }

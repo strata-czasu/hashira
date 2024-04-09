@@ -11,6 +11,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
       .select({ roleId: schema.autoRole.roleId })
       .from(schema.autoRole)
       .where(eq(schema.autoRole.guildId, member.guild.id));
+
     await member.roles.add(
       autoRoles.map(({ roleId }) => roleId),
       "Auto role on join",
