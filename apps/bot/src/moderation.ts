@@ -55,6 +55,8 @@ export const moderation = new Hashira({ name: "moderation" })
   .newCommand("ban", (command) =>
     command
       .setDescription("Zbanuj użytkownika")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
       .addUser("user", (user) => user.setDescription("Użytkownik"))
       .addString("reason", (reason) =>
         reason.setDescription("Powód bana").setEscaped(true),
@@ -74,7 +76,6 @@ export const moderation = new Hashira({ name: "moderation" })
           ),
       )
       .handle(async (_, { user, reason, "delete-interval": deleteInterval }, itx) => {
-        // TODO: Don't allow in DMs
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
@@ -103,12 +104,13 @@ export const moderation = new Hashira({ name: "moderation" })
   .newCommand("unban", (command) =>
     command
       .setDescription("Odbanuj użytkownika")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
       .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(true))
       .addString("reason", (reason) =>
         reason.setDescription("Powód zdjęcia bana").setRequired(false).setEscaped(true),
       )
       .handle(async (_, { user, reason }, itx) => {
-        // TODO: Don't allow in DMs
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions?.has(PermissionFlagsBits.BanMembers)) return;
