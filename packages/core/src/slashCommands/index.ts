@@ -16,20 +16,20 @@ import type {
   UnknownContext,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
+import { BooleanOptionBuilder } from "./booleanOptionBuilder";
+import { NumberOptionBuilder } from "./numberOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
-import { BooleanOptionBuilder } from "./booleanOptionBuilder";
-import { NumberOptionBuilder } from "./numberOptionBuilder";
 
-const optionsInitBase = {};
+export const optionsInitBase = {};
 
-type UnknownCommandHandler = (
+export type UnknownCommandHandler = (
   ctx: UnknownContext,
   interaction: ChatInputCommandInteraction,
 ) => Promise<void>;
 
-interface Handlers extends Record<string, Handlers | UnknownCommandHandler> { }
+interface Handlers extends Record<string, Handlers | UnknownCommandHandler> {}
 
 interface GroupSettings {
   HasDescription: boolean;
@@ -166,16 +166,15 @@ export class Group<
   }
 }
 
-interface CommandSettings {
+export interface CommandSettings {
   HasHandler: boolean;
   HasDescription: boolean;
 }
 
-const commandSettingsInitBase: CommandSettings = {
+export const commandSettingsInitBase: CommandSettings = {
   HasDescription: false,
   HasHandler: false,
 };
-
 
 // TODO: Disable the ability to add required options if non-required options are present
 export class SlashCommand<
@@ -305,11 +304,8 @@ export class SlashCommand<
     // options (e.g. user, member, role, etc.) and also custom options
     const options: Record<string, unknown> = {};
     await Promise.all(
-      this.#builder.options.map(async (option) => {
-        const optionBuilder = this.#options[option.name];
-        if (!optionBuilder)
-          throw new Error(`No option builder found for ${option.name}`);
-        options[option.name] = await optionBuilder.transform(interaction, option.name);
+      Object.entries(this.#options).map(async ([name, optionBuilder]) => {
+        options[name] = await optionBuilder.transform(interaction, name);
       }),
     );
     return options as Options;
@@ -332,3 +328,5 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.handle>;
   }
 }
+
+export { TopLevelSlashCommand } from "./topLevelSlashCommand";
