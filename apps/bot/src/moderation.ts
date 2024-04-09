@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { formatDate } from "date-fns";
 import {
+  AuditLogEvent,
   bold,
   DiscordAPIError,
   Guild,
@@ -44,6 +45,11 @@ const sendUserBanMessage = async (guild: Guild, user: User, reason: string) => {
     throw e;
   }
 };
+
+const BAN_FIXUP_GUILDS = [
+  "342022299957854220", // Piwnica
+  "211261411119202305", // Strata Czasu
+];
 
 export const moderation = new Hashira({ name: "moderation" })
   .newCommand("ban", (command) =>
@@ -128,4 +134,24 @@ export const moderation = new Hashira({ name: "moderation" })
           : `Odbanowano ${formatUserWithId(user)}`;
         await itx.reply(message);
       }),
-  );
+  )
+  .handle("guildBanAdd", async (_, { guild, user }) => {
+    // NOTE: This event could fire multiple times for unknown reasons
+    if (!BAN_FIXUP_GUILDS.includes(guild.id)) return;
+
+    const auditLogs = await guild.fetchAuditLogs({
+      type: AuditLogEvent.MemberBanAdd,
+      limit: 5,
+    });
+    const entry = auditLogs.entries.find((entry) => entry.targetId === user.id);
+    if (!entry?.executor || !entry?.createdAt || !entry?.reason) return;
+    if (entry.executor.bot) return;
+
+    await guild.members.unban(user, "Poprawienie powodu po manualnym zbanowaniu");
+    const reason = formatBanReason(
+      entry.reason ?? "Brak powodu",
+      entry.executor,
+      entry.createdAt,
+    );
+    await guild.members.ban(user, { reason: reason });
+  });
