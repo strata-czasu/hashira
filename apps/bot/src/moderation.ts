@@ -1,7 +1,11 @@
 import { Hashira } from "@hashira/core";
 import { formatDate } from "date-fns";
 import {
+  bold,
   DiscordAPIError,
+  Guild,
+  inlineCode,
+  italic,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   User,
@@ -11,7 +15,7 @@ const formatBanReason = (reason: string, moderator: User, createdAt: Date) =>
   `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
 data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;
 
-const formatUserWithId = (user: User) => `**${user.tag}** (\`${user.id}\`)`;
+const formatUserWithId = (user: User) => `${bold(user.tag)} (${inlineCode(user.id)})`;
 
 enum BanDeleteInterval {
   None = 0,
@@ -22,9 +26,23 @@ enum BanDeleteInterval {
   ThreeDays = 24 * 3,
   SevenDays = 24 * 7,
 }
-
 const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
   return deleteInterval * 3600;
+};
+
+const sendUserBanMessage = async (guild: Guild, user: User, reason: string) => {
+  try {
+    await user.send(`Zbanowano Cię na ${bold(guild.name)}. Powód: ${italic(reason)}`);
+    return true;
+  } catch (e) {
+    if (
+      e instanceof DiscordAPIError &&
+      e.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
+    ) {
+      return false;
+    }
+    throw e;
+  }
 };
 
 export const moderation = new Hashira({ name: "moderation" })
@@ -32,7 +50,9 @@ export const moderation = new Hashira({ name: "moderation" })
     command
       .setDescription("Zbanuj użytkownika")
       .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .addString("reason", (reason) => reason.setDescription("Powód bana"))
+      .addString("reason", (reason) =>
+        reason.setDescription("Powód bana").setEscaped(true),
+      )
       .addNumber("delete-interval", (deleteInterval) =>
         deleteInterval
           .setDescription("Przedział czasowy usuwania wiadomości")
@@ -53,6 +73,7 @@ export const moderation = new Hashira({ name: "moderation" })
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
 
+        const sentMessage = await sendUserBanMessage(itx.guild, user, reason);
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
         if (!deleteInterval) {
           await itx.guild.members.ban(user, { reason: banReason });
@@ -63,8 +84,14 @@ export const moderation = new Hashira({ name: "moderation" })
           });
         }
 
-        const message = `Zbanowano ${formatUserWithId(user)}. Powód: *${reason}*`;
-        await itx.reply(message);
+        const msg = `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`;
+        await itx.reply(msg);
+        if (!sentMessage) {
+          await itx.followUp({
+            content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+            ephemeral: true,
+          });
+        }
       }),
   )
   .newCommand("unban", (command) =>
@@ -72,7 +99,7 @@ export const moderation = new Hashira({ name: "moderation" })
       .setDescription("Odbanuj użytkownika")
       .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(true))
       .addString("reason", (reason) =>
-        reason.setDescription("Powód zdjęcia bana").setRequired(false),
+        reason.setDescription("Powód zdjęcia bana").setRequired(false).setEscaped(true),
       )
       .handle(async (_, { user, reason }, itx) => {
         // TODO: Don't allow in DMs
@@ -97,7 +124,7 @@ export const moderation = new Hashira({ name: "moderation" })
         }
 
         const message = reason
-          ? `Odbanowano ${formatUserWithId(user)}. Powód: *${reason}*`
+          ? `Odbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`
           : `Odbanowano ${formatUserWithId(user)}`;
         await itx.reply(message);
       }),
