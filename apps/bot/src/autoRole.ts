@@ -6,11 +6,12 @@ import { base } from "./base";
 
 export const autoRole = new Hashira({ name: "auto-role" })
   .use(base)
-  .handle("guildMemberAdd", async ({ db }, member) => {
+  .handle("guildMemberAvailable", async ({ db }, member) => {
     const autoRoles = await db
       .select({ roleId: schema.autoRole.roleId })
       .from(schema.autoRole)
       .where(eq(schema.autoRole.guildId, member.guild.id));
+
     await member.roles.add(
       autoRoles.map(({ roleId }) => roleId),
       "Auto role on join",

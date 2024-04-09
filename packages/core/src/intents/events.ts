@@ -51,6 +51,7 @@ export const guildMessageReactionsEvents = [
 
 export const guildMembersEvents = [
   "guildMemberAdd",
+  "guildMemberAvailable",
   "guildMemberUpdate",
   "guildMemberRemove",
 ] as const;
