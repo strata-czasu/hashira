@@ -6,7 +6,7 @@ import { base } from "./base";
 
 export const autoRole = new Hashira({ name: "auto-role" })
   .use(base)
-  .handle("guildMemberAvailable", async ({ db }, member) => {
+  .handle("guildMemberAdd", async ({ db }, member) => {
     const autoRoles = await db
       .select({ roleId: schema.autoRole.roleId })
       .from(schema.autoRole)
