@@ -20,6 +20,7 @@ import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
 import { UserOptionBuilder } from "./userOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
+import { NumberOptionBuilder } from "./numberOptionBuilder";
 
 const optionsInitBase = {};
 
@@ -225,6 +226,21 @@ export class SlashCommand<
     this.#builder.addStringOption(builder);
     this.#options[name] = option;
     return this as unknown as ReturnType<typeof this.addString<T, U>>;
+  }
+
+  addNumber<const T extends string, const U extends NumberOptionBuilder<true, boolean>>(
+    name: T,
+    input: (builder: NumberOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new NumberOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addNumberOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addNumber<T, U>>;
   }
 
   addUser<const T extends string, const U extends UserOptionBuilder<true, boolean>>(
