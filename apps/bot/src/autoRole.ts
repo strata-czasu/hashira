@@ -12,7 +12,10 @@ export const autoRole = new Hashira({ name: "auto-role" })
       .from(schema.autoRole)
       .where(eq(schema.autoRole.guildId, member.guild.id));
 
-    await member.roles.add(
+    // This is a workaround for a race condition where multiple bots try to add roles to a member
+    await Bun.sleep(1000);
+    const updatedMember = await member.fetch(true);
+    await updatedMember.roles.add(
       autoRoles.map(({ roleId }) => roleId),
       "Auto role on join",
     );
