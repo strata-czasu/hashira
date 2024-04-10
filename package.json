@@ -4,8 +4,10 @@
     "@biomejs/biome": "^1.6.4",
     "@types/bun": "latest",
     "expect-type": "^0.18.0",
+    "lefthook": "^1.6.9",
     "typescript": "^5.4.4"
   },
+  "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "scripts": {
     "start": "bun run --cwd apps/bot start",
     "start:prod": "bun migrate && bun run --cwd apps/bot start",
