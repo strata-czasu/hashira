@@ -51,7 +51,7 @@ const BAN_FIXUP_GUILDS = [
   "211261411119202305", // Strata Czasu
 ];
 
-export const moderation = new Hashira({ name: "moderation" })
+export const bans = new Hashira({ name: "bans" })
   .newCommand("ban", (command) =>
     command
       .setDescription("Zbanuj użytkownika")
