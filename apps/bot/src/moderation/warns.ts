@@ -1,6 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, schema } from "@hashira/db";
 import {
+  type ChatInputCommandInteraction,
   DiscordAPIError,
   type Guild,
   PermissionFlagsBits,
@@ -37,6 +38,26 @@ const sendUserWarnMessage = async (guild: Guild, user: User, reason: string) => 
 
 export const warns = new Hashira({ name: "warns" })
   .use(base)
+  .derive(({ db }) => ({
+    /** Get a warn by ID and automatically replying if it doesn't exist */
+    getWarn: async (id: number, itx: ChatInputCommandInteraction<"cached">) => {
+      const warn = await db.query.warn.findFirst({
+        where: and(
+          eq(schema.warn.guildId, itx.guildId),
+          eq(schema.warn.id, id),
+          eq(schema.warn.deleted, false),
+        ),
+      });
+      if (!warn) {
+        await itx.reply({
+          content: "Nie znaleziono ostrzeżenia o podanym ID",
+          ephemeral: true,
+        });
+        return;
+      }
+      return warn;
+    },
+  }))
   .group("warn", (group) =>
     group
       .setDescription("Zarządzaj ostrzeżeniami")
@@ -81,23 +102,11 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia ostrzeżenia").setRequired(false),
           )
-          .handle(async ({ db }, { id, reason }, itx) => {
+          .handle(async ({ db, getWarn }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await db.query.warn.findFirst({
-              where: and(
-                eq(schema.warn.guildId, itx.guildId.toString()),
-                eq(schema.warn.id, id),
-                eq(schema.warn.deleted, false),
-              ),
-            });
-            if (!warn) {
-              await itx.reply({
-                content: "Nie znaleziono ostrzeżenia o podanym ID",
-                ephemeral: true,
-              });
-              return;
-            }
+            const warn = await getWarn(id, itx);
+            if (!warn) return;
 
             // TODO: Save a log of this update in the database
             await db
@@ -122,23 +131,11 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
-          .handle(async ({ db }, { id, reason }, itx) => {
+          .handle(async ({ db, getWarn }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await db.query.warn.findFirst({
-              where: and(
-                eq(schema.warn.guildId, itx.guildId.toString()),
-                eq(schema.warn.id, id),
-                eq(schema.warn.deleted, false),
-              ),
-            });
-            if (!warn) {
-              await itx.reply({
-                content: "Nie znaleziono ostrzeżenia o podanym ID",
-                ephemeral: true,
-              });
-              return;
-            }
+            const warn = await getWarn(id, itx);
+            if (!warn) return;
 
             // TODO: Save a log of this edit in the database
             await db.update(schema.warn).set({ reason }).where(eq(schema.warn.id, id));
