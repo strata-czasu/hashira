@@ -94,10 +94,25 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
-          .handle(async (_, { id, reason }, itx) => {
-            // TODO: Editing existing warns
-            console.log(itx.user.tag, id, reason);
-            await itx.reply("Not implemented");
+          .handle(async ({ db }, { id, reason }, itx) => {
+            const warn = await db.query.warn.findFirst({
+              where: eq(schema.warn.id, id),
+            });
+            if (!warn) {
+              await itx.reply({
+                content: "Nie znaleziono ostrzeżenia o podanym ID",
+                ephemeral: true,
+              });
+              return;
+            }
+
+            // TODO: Save a log of this edit in the database
+            await db.update(schema.warn).set({ reason }).where(eq(schema.warn.id, id));
+            await itx.reply(
+              `Zaktualizowano ostrzeżenie ${inlineCode(
+                id.toString(),
+              )}. Nowy powód: ${italic(reason)}`,
+            );
           }),
       ),
   )
