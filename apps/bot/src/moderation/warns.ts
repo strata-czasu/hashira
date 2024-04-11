@@ -13,7 +13,7 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { base } from "../base";
 
 const formatUserWithId = (user: User) => `${bold(user.tag)} (${inlineCode(user.id)})`;
@@ -81,10 +81,38 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia ostrzeżenia").setRequired(false),
           )
-          .handle(async (_, { id, reason }, itx) => {
-            // TODO: Add deleting to the database (`deleted` field? + `deleteReason`)
-            console.log(itx.user.tag, id, reason);
-            await itx.reply("Not implemented");
+          .handle(async ({ db }, { id, reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const warn = await db.query.warn.findFirst({
+              where: and(
+                eq(schema.warn.guildId, itx.guildId.toString()),
+                eq(schema.warn.id, id),
+                eq(schema.warn.deleted, false),
+              ),
+            });
+            if (!warn) {
+              await itx.reply({
+                content: "Nie znaleziono ostrzeżenia o podanym ID",
+                ephemeral: true,
+              });
+              return;
+            }
+
+            // TODO: Save a log of this update in the database
+            await db
+              .update(schema.warn)
+              .set({ deletedAt: new Date(), deleted: true, deleteReason: reason })
+              .where(eq(schema.warn.id, id));
+            if (reason) {
+              await itx.reply(
+                `Usunięto ostrzeżenie ${inlineCode(
+                  id.toString(),
+                )}. Powód usunięcia: ${italic(reason)}`,
+              );
+            } else {
+              itx.reply(`Usunięto ostrzeżenie ${inlineCode(id.toString())}`);
+            }
           }),
       )
       .addCommand("edit", (command) =>
@@ -95,8 +123,14 @@ export const warns = new Hashira({ name: "warns" })
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
           .handle(async ({ db }, { id, reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
             const warn = await db.query.warn.findFirst({
-              where: eq(schema.warn.id, id),
+              where: and(
+                eq(schema.warn.guildId, itx.guildId.toString()),
+                eq(schema.warn.id, id),
+                eq(schema.warn.deleted, false),
+              ),
             });
             if (!warn) {
               await itx.reply({
@@ -127,7 +161,14 @@ export const warns = new Hashira({ name: "warns" })
             user.setDescription("Użytkownik").setRequired(false),
           )
           .handle(async ({ db }, { user: selectedUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
             const user = selectedUser ?? itx.user;
+            const warnWheres = and(
+              eq(schema.warn.guildId, itx.guildId.toString()),
+              eq(schema.warn.userId, user.id),
+              eq(schema.warn.deleted, false),
+            );
             const paginate = new Paginate({
               orderByColumn: schema.warn.createdAt,
               orderBy: "DESC",
@@ -139,14 +180,15 @@ export const warns = new Hashira({ name: "warns" })
                   moderatorId: schema.warn.moderatorId,
                 })
                 .from(schema.warn)
-                .where(eq(schema.warn.userId, user.id))
+                .where(warnWheres)
                 .$dynamic(),
               count: db
                 .select({ count: count() })
                 .from(schema.warn)
-                .where(eq(schema.warn.userId, user.id))
+                .where(warnWheres)
                 .$dynamic(),
             });
+
             const paginatedView = new PaginatedView(
               paginate,
               `Ostrzeżenia ${user.tag}`,
