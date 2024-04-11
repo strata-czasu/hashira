@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild } from "./guild";
@@ -7,7 +7,7 @@ import { user } from "./user";
 export const warn = pgTable("warn", {
   id: serial("id").primaryKey(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  editedAt: timestamp("edited_at").$onUpdate(() => sql`current_timestamp`),
+  editedAt: timestamp("edited_at").$onUpdate(() => new Date()),
   guildId: text("guild_id")
     .notNull()
     .references(() => guild.id),
