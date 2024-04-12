@@ -78,6 +78,20 @@
       "when": 1712507236665,
       "tag": "0010_nice_joystick",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1712778545402,
+      "tag": "0011_true_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1712867256881,
+      "tag": "0012_vengeful_roughhouse",
+      "breakpoints": true
     }
   ]
 }

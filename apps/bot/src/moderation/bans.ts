@@ -3,20 +3,18 @@ import { formatDate } from "date-fns";
 import {
   AuditLogEvent,
   DiscordAPIError,
-  type Guild,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type User,
   bold,
-  inlineCode,
   italic,
 } from "discord.js";
+import { sendDirectMessage } from "../util/sendDirectMessage";
+import { formatUserWithId } from "./util";
 
 const formatBanReason = (reason: string, moderator: User, createdAt: Date) =>
   `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
 data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;
-
-const formatUserWithId = (user: User) => `${bold(user.tag)} (${inlineCode(user.id)})`;
 
 enum BanDeleteInterval {
   None = 0,
@@ -31,27 +29,12 @@ const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
   return deleteInterval * 3600;
 };
 
-const sendUserBanMessage = async (guild: Guild, user: User, reason: string) => {
-  try {
-    await user.send(`Zbanowano Cię na ${bold(guild.name)}. Powód: ${italic(reason)}`);
-    return true;
-  } catch (e) {
-    if (
-      e instanceof DiscordAPIError &&
-      e.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
-    ) {
-      return false;
-    }
-    throw e;
-  }
-};
-
 const BAN_FIXUP_GUILDS = [
   "342022299957854220", // Piwnica
   "211261411119202305", // Strata Czasu
 ];
 
-export const moderation = new Hashira({ name: "moderation" })
+export const bans = new Hashira({ name: "bans" })
   .newCommand("ban", (command) =>
     command
       .setDescription("Zbanuj użytkownika")
@@ -80,7 +63,10 @@ export const moderation = new Hashira({ name: "moderation" })
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
 
-        const sentMessage = await sendUserBanMessage(itx.guild, user, reason);
+        const sentMessage = await sendDirectMessage(
+          user,
+          `Zbanowano Cię na ${bold(itx.guild.name)}. Powód: ${italic(reason)}`,
+        );
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
         if (!deleteInterval) {
           await itx.guild.members.ban(user, { reason: banReason });
