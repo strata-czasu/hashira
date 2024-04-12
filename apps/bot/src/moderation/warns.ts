@@ -2,12 +2,8 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, schema } from "@hashira/db";
 import {
   type ChatInputCommandInteraction,
-  DiscordAPIError,
-  type Guild,
   PermissionFlagsBits,
-  RESTJSONErrorCodes,
   TimestampStyles,
-  type User,
   bold,
   inlineCode,
   italic,
@@ -16,25 +12,8 @@ import {
 } from "discord.js";
 import { and, count, eq } from "drizzle-orm";
 import { base } from "../base";
-
-const formatUserWithId = (user: User) => `${bold(user.tag)} (${inlineCode(user.id)})`;
-
-const sendUserWarnMessage = async (guild: Guild, user: User, reason: string) => {
-  try {
-    await user.send(
-      `Otrzymujesz ostrzeżenie na ${bold(guild.name)}. Powód: ${italic(reason)}`,
-    );
-    return true;
-  } catch (e) {
-    if (
-      e instanceof DiscordAPIError &&
-      e.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
-    ) {
-      return false;
-    }
-    throw e;
-  }
-};
+import { sendDirectMessage } from "../util/sendDirectMessage";
+import { formatUserWithId } from "./util";
 
 const warnNotFound = async (itx: ChatInputCommandInteraction) => {
   await itx.reply({
@@ -79,7 +58,12 @@ export const warns = new Hashira({ name: "warns" })
               })
               .execute();
 
-            const sentMessage = await sendUserWarnMessage(itx.guild, user, reason);
+            const sentMessage = await sendDirectMessage(
+              user,
+              `Otrzymujesz ostrzeżenie na ${bold(itx.guild.name)}. Powód: ${italic(
+                reason,
+              )}`,
+            );
             // biome-ignore format: Long message
             await itx.reply(
               `Dodano ostrzeżenie dla ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
