@@ -36,27 +36,25 @@ const sendUserWarnMessage = async (guild: Guild, user: User, reason: string) => 
   }
 };
 
+const warnNotFound = async (itx: ChatInputCommandInteraction) => {
+  await itx.reply({
+    content: "Nie znaleziono ostrzeżenia o podanym ID",
+    ephemeral: true,
+  });
+};
+
 export const warns = new Hashira({ name: "warns" })
   .use(base)
   .derive(({ db }) => ({
     /** Get a warn by ID and automatically replying if it doesn't exist */
-    getWarn: async (id: number, itx: ChatInputCommandInteraction<"cached">) => {
-      const warn = await db.query.warn.findFirst({
+    getWarn: async (id: number, guildId: string) =>
+      db.query.warn.findFirst({
         where: and(
-          eq(schema.warn.guildId, itx.guildId),
+          eq(schema.warn.guildId, guildId),
           eq(schema.warn.id, id),
           eq(schema.warn.deleted, false),
         ),
-      });
-      if (!warn) {
-        await itx.reply({
-          content: "Nie znaleziono ostrzeżenia o podanym ID",
-          ephemeral: true,
-        });
-        return;
-      }
-      return warn;
-    },
+      }),
   }))
   .group("warn", (group) =>
     group
@@ -74,7 +72,7 @@ export const warns = new Hashira({ name: "warns" })
             await db
               .insert(schema.warn)
               .values({
-                guildId: itx.guild.id,
+                guildId: itx.guildId,
                 userId: user.id,
                 moderatorId: itx.user.id,
                 reason,
@@ -105,8 +103,8 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ db, getWarn }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await getWarn(id, itx);
-            if (!warn) return;
+            const warn = await getWarn(id, itx.guildId);
+            if (!warn) return warnNotFound(itx);
 
             // TODO: Save a log of this update in the database
             await db
@@ -134,8 +132,8 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ db, getWarn }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await getWarn(id, itx);
-            if (!warn) return;
+            const warn = await getWarn(id, itx.guildId);
+            if (!warn) return warnNotFound(itx);
 
             // TODO: Save a log of this edit in the database
             await db.update(schema.warn).set({ reason }).where(eq(schema.warn.id, id));
@@ -162,7 +160,7 @@ export const warns = new Hashira({ name: "warns" })
 
             const user = selectedUser ?? itx.user;
             const warnWheres = and(
-              eq(schema.warn.guildId, itx.guildId.toString()),
+              eq(schema.warn.guildId, itx.guildId),
               eq(schema.warn.userId, user.id),
               eq(schema.warn.deleted, false),
             );
