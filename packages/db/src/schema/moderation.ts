@@ -25,8 +25,8 @@ export const warn = pgTable(
     deleteReason: text("delete_reason"),
   },
   (table) => ({
-    userIdx: index("user_idx").on(table.userId),
-    deletedIdx: index("deleted_idx").on(table.deleted),
+    userIdx: index().on(table.userId),
+    deletedIdx: index().on(table.deleted),
   }),
 );
 
@@ -42,6 +42,50 @@ export const warnRelations = relations(warn, ({ one }) => ({
   }),
   moderator: one(user, {
     fields: [warn.moderatorId],
+    references: [user.id],
+    relationName: "moderator",
+  }),
+}));
+
+export const mute = pgTable(
+  "mute",
+  {
+    id: serial("id").primaryKey(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    editedAt: timestamp("edited_at").$onUpdate(() => new Date()),
+    deletedAt: timestamp("deleted_at"),
+    guildId: text("guild_id")
+      .notNull()
+      .references(() => guild.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    moderatorId: text("moderator_id")
+      .notNull()
+      .references(() => user.id),
+    reason: text("reason").notNull(),
+    endsAt: timestamp("ends_at").notNull(),
+    deleted: boolean("deleted").default(false),
+    deleteReason: text("delete_reason"),
+  },
+  (table) => ({
+    userIdx: index().on(table.userId),
+    deletedIdx: index().on(table.deleted),
+  }),
+);
+
+export const muteRelations = relations(mute, ({ one }) => ({
+  guild: one(guild, {
+    fields: [mute.guildId],
+    references: [guild.id],
+  }),
+  user: one(user, {
+    fields: [mute.userId],
+    references: [user.id],
+    relationName: "mutedUser",
+  }),
+  moderator: one(user, {
+    fields: [mute.moderatorId],
     references: [user.id],
     relationName: "moderator",
   }),
