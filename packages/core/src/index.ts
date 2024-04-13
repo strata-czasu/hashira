@@ -420,7 +420,7 @@ class Hashira<
       )) as { id: string; name: string }[];
 
       const commandsToDelete = currentCommands
-        .filter((command) => !(command.name in this.#commands))
+        .filter((command) => !this.#commands.has(command.name))
         .map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
 
       await Promise.all(commandsToDelete.map((route) => rest.delete(route)));
