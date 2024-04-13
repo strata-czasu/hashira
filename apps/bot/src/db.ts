@@ -5,6 +5,7 @@ import type { Client } from "discord.js";
 
 export const database = new Hashira({ name: "database" })
   .const("db", db)
-  .derive(({ db }) => ({
+  .const((ctx) => ({
+    ...ctx,
     messageQueue: new MessageQueue(db).addArg<"client", Client>(),
   }));

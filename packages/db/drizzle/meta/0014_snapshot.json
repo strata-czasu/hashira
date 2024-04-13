@@ -1,5 +1,5 @@
 {
-  "id": "a1d3f134-e7c0-4417-9f50-be4a6c07b91e",
+  "id": "b9fe3ca3-7209-41b2-a013-40abc154f06d",
   "prevId": "0f4e5a01-9b0d-4c01-93ec-9b9d9c00b4c5",
   "version": "5",
   "dialect": "pg",
@@ -462,8 +462,8 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_messageQueue": {
-      "name": "core_messageQueue",
+    "core_task": {
+      "name": "core_task",
       "schema": "",
       "columns": {
         "id": {
@@ -479,8 +479,8 @@
           "notNull": false,
           "default": "'pending'"
         },
-        "created": {
-          "name": "created",
+        "createdAt": {
+          "name": "createdAt",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,

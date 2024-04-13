@@ -1,7 +1,7 @@
 import { type TablesRelationalConfig, and, eq, lte, sql } from "drizzle-orm";
 import type { PgTransaction, QueryResultHKT } from "drizzle-orm/pg-core";
 import type { db } from ".";
-import { messageQueue } from "./schema";
+import { type TaskDataValue, task } from "./schema";
 
 type TransactionType = PgTransaction<
   QueryResultHKT,
@@ -16,28 +16,17 @@ type Prettify<T> = {
 export async function getPendingTask<T extends TransactionType>(tx: T) {
   return await tx
     .select()
-    .from(messageQueue)
-    .where(
-      and(
-        eq(messageQueue.status, "pending"),
-        lte(messageQueue.handleAfter, sql`now()`),
-      ),
-    )
+    .from(task)
+    .where(and(eq(task.status, "pending"), lte(task.handleAfter, sql`now()`)))
     .for("update", { skipLocked: true });
 }
 
 export async function finishTask<T extends TransactionType>(tx: T, id: number) {
-  await tx
-    .update(messageQueue)
-    .set({ status: "completed" })
-    .where(eq(messageQueue.id, id));
+  await tx.update(task).set({ status: "completed" }).where(eq(task.id, id));
 }
 
 export async function failTask<T extends TransactionType>(tx: T, id: number) {
-  await tx
-    .update(messageQueue)
-    .set({ status: "failed" })
-    .where(eq(messageQueue.id, id));
+  await tx.update(task).set({ status: "failed" }).where(eq(task.id, id));
 }
 
 interface TaskData {
@@ -60,10 +49,12 @@ type Handler<T, U extends Record<string, unknown>> = (
   data: T,
 ) => Promise<void>;
 
+type Handle = { [key: string]: TaskDataValue };
+
 const initHandleTypes = {};
 
 export class MessageQueue<
-  const HandleTypes extends Record<string, unknown> = typeof initHandleTypes,
+  const HandleTypes extends Handle = typeof initHandleTypes,
   const Args extends Record<string, unknown> = typeof initHandleTypes,
 > {
   #handlers: Map<string, Handler<unknown, Record<string, unknown>>> = new Map();
@@ -103,18 +94,20 @@ export class MessageQueue<
     data: HandleTypes[T],
     delay?: number,
   ) {
+    // This should never happen, but somehow typescript doesn't understand that
+    if (typeof type !== "string") throw new Error("Type must be a string");
+
     const handleAfter = delay
       ? sql`now() + make_interval(secs => ${delay})`
       : sql`now()`;
 
-    await this.#db.insert(messageQueue).values({
+    await this.#db.insert(task).values({
       data: { type, data },
       handleAfter,
     });
   }
 
   private async handleTask(props: Record<string, unknown>, task: unknown) {
-    console.log(task);
     if (!isTaskData(task)) return false;
     const handler = this.#handlers.get(task.type);
     if (!handler) return false;
