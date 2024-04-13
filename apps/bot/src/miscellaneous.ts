@@ -2,7 +2,7 @@ import { Hashira } from "@hashira/core";
 import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
-import { parseUserMentions } from "./util/parseMembers";
+import { parseUserMentions } from "./util/parseUsers";
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
   .use(base)

@@ -2,7 +2,7 @@ import { Hashira } from "@hashira/core";
 import { PermissionFlagsBits, bold, roleMention } from "discord.js";
 import { fetchMembers } from "./util/fetchMembers";
 import { modifyMembers } from "./util/modifyMembers";
-import { parseUserMentions } from "./util/parseMembers";
+import { parseUserMentions } from "./util/parseUsers";
 
 export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
   group
