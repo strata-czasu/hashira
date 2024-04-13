@@ -50,6 +50,10 @@ const handleCommandConflict = (
   );
 };
 
+const takeIncomingOnConflict = <T>(_previous: T, current: T) => {
+  return current;
+};
+
 const handleAutoCompleteConflict = (
   _a: unknown,
   _b: unknown,
@@ -64,7 +68,7 @@ class Hashira<
   Decorators extends HashiraDecorators = typeof decoratorInitBase,
   Commands extends HashiraCommands = typeof commandsInitBase,
 > {
-  #exceptionHandlers: ((error: Error) => void)[];
+  #exceptionHandlers: Map<string, (error: Error) => void>;
   #state: BaseDecorator;
   #derive: UnknownDerive[];
   #const: BaseDecorator;
@@ -87,13 +91,13 @@ class Hashira<
   #name: string;
 
   constructor(options: HashiraOptions) {
-    this.#exceptionHandlers = [];
     this.#derive = [];
     this.#state = {};
     this.#const = {};
     this.#methods = new Map();
     this.#commands = new Map();
     this.#autocomplete = new Map();
+    this.#exceptionHandlers = new Map();
     this.#dependencies = [options.name];
     this.#name = options.name;
   }
@@ -184,17 +188,19 @@ class Hashira<
         Prettify<Commands & NewCommands>
       >
     : never {
-    // TODO: THIS ACTUALLY BREAKS EVERY TIME! HANDLE DEPENDENCIES AS TREES!
+    // TODO: Handle dependencies as trees? So we can detect already added dependencies
     if (this.#dependencies.includes(instance.#name)) {
       return this as unknown as ReturnType<typeof this.use<NewHashira>>;
     }
+
     this.#const = { ...this.#const, ...instance.#const };
     this.#derive = [...this.#derive, ...instance.#derive];
     this.#state = { ...this.#state, ...instance.#state };
-    this.#exceptionHandlers = [
-      ...this.#exceptionHandlers,
-      ...instance.#exceptionHandlers,
-    ];
+    this.#exceptionHandlers = mergeMap(
+      takeIncomingOnConflict,
+      this.#exceptionHandlers,
+      instance.#exceptionHandlers,
+    );
     this.#methods = mergeMap((a, b) => [...a, ...b], this.#methods, instance.#methods);
     this.#commands = mergeMap(
       handleCommandConflict,
@@ -206,6 +212,7 @@ class Hashira<
       this.#autocomplete,
       instance.#autocomplete,
     );
+
     this.#dependencies.push(instance.#name);
 
     return this as unknown as ReturnType<typeof this.use<NewHashira>>;
@@ -372,14 +379,14 @@ class Hashira<
     discordClient.on("error", (error) => this.handleException(error));
   }
 
-  addExceptionHandler(handler: (error: Error) => void) {
-    this.#exceptionHandlers.push(handler);
+  addExceptionHandler(name: string, handler: (error: Error) => void) {
+    this.#exceptionHandlers.set(name, handler);
 
     return this;
   }
 
   private handleException(error: Error) {
-    for (const handler of this.#exceptionHandlers) {
+    for (const handler of this.#exceptionHandlers.values()) {
       handler(error);
     }
   }
