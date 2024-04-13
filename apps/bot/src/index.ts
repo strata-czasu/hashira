@@ -7,6 +7,7 @@ import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
+import { roles } from "./roles";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 
@@ -22,6 +23,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(guildAvailability)
   .use(emojiCounting)
   .use(miscellaneous)
+  .use(roles)
   .use(userActivity)
   .use(autoRole)
   .use(moderation)

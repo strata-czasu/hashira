@@ -2,15 +2,7 @@ import { Hashira } from "@hashira/core";
 import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
-
-const mentionRegex = /^<@!?(\d{15,20})>$/;
-const idRegex = /^\d{15,20}$/;
-
-const getFromIdOrMention = (idOrMention: string) => {
-  const match = idOrMention.match(mentionRegex);
-  if (match) return match[1] ?? null;
-  return idRegex.test(idOrMention) ? idOrMention : null;
-};
+import { parseUserMentions } from "./util/parseUsers";
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
   .use(base)
@@ -57,12 +49,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
             const content = await fetch(users.url).then((res) => res.text());
-            const ids = content
-              .split(/\s+/)
-              .map(getFromIdOrMention)
-              .filter((id): id is string => !!id);
-
-            const members = await fetchMembers(itx.guild, ids);
+            const members = await fetchMembers(itx.guild, parseUserMentions(content));
 
             await itx.editReply("Fetched members, now adding roles.");
 
