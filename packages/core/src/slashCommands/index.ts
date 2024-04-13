@@ -1,4 +1,5 @@
 import {
+  type Channel,
   type ChatInputCommandInteraction,
   type Permissions,
   SlashCommandBuilder,
@@ -17,6 +18,7 @@ import type {
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
+import { ChannelOptionBuilder } from "./channelOptionBuilder";
 import { NumberOptionBuilder } from "./numberOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
@@ -211,6 +213,24 @@ export class SlashCommand<
     this.#builder.addAttachmentOption(builder);
     this.#options[name] = option;
     return this as unknown as ReturnType<typeof this.addAttachment<T, U>>;
+  }
+
+  addChannel<
+    const T extends string,
+    const U extends ChannelOptionBuilder<Channel, true, boolean>,
+  >(
+    name: T,
+    input: (builder: ChannelOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new ChannelOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addChannelOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addChannel<T, U>>;
   }
 
   addString<const T extends string, const U extends StringOptionBuilder<true, boolean>>(

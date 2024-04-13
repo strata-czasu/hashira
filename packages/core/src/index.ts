@@ -242,28 +242,7 @@ class Hashira<
     return this;
   }
 
-  /**
-   *  @deprecated
-   */
-  command<T extends HashiraSlashCommandOptions>(
-    commandBuilder: T,
-    handler: (
-      context: HashiraContext<Decorators>,
-      interaction: ChatInputCommandInteraction,
-    ) => Promise<void>,
-  ): Hashira<Decorators, Commands> {
-    this.#commands.set(commandBuilder.name, [
-      commandBuilder,
-      handler as (
-        context: UnknownContext,
-        interaction: ChatInputCommandInteraction,
-      ) => Promise<void>,
-    ]);
-
-    return this;
-  }
-
-  newCommand<
+  command<
     T extends string,
     U extends TopLevelSlashCommand<
       HashiraContext<Decorators>,
@@ -284,7 +263,7 @@ class Hashira<
     const builder = command.toSlashCommandBuilder().setName(name);
     const handler = command.toHandler();
     this.#commands.set(name, [builder, handler]);
-    return this as unknown as ReturnType<typeof this.newCommand<T, U>>;
+    return this as unknown as ReturnType<typeof this.command<T, U>>;
   }
 
   group<

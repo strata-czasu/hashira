@@ -28,6 +28,16 @@ export class NumberOptionBuilder<
     return this as unknown as ReturnType<typeof this.setRequired<NewRequired>>;
   }
 
+  setMinValue(min: number): this {
+    this.#builder.setMinValue(min);
+    return this;
+  }
+
+  setMaxValue(max: number): this {
+    this.#builder.setMaxValue(max);
+    return this;
+  }
+
   addChoices(...choices: APIApplicationCommandOptionChoice<number>[]) {
     this.#builder.addChoices(...choices);
     return this;

@@ -35,7 +35,7 @@ const BAN_FIXUP_GUILDS = [
 ];
 
 export const bans = new Hashira({ name: "bans" })
-  .newCommand("ban", (command) =>
+  .command("ban", (command) =>
     command
       .setDescription("Zbanuj użytkownika")
       .setDMPermission(false)
@@ -87,7 +87,7 @@ export const bans = new Hashira({ name: "bans" })
         }
       }),
   )
-  .newCommand("unban", (command) =>
+  .command("unban", (command) =>
     command
       .setDescription("Odbanuj użytkownika")
       .setDMPermission(false)
