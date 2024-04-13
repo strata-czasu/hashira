@@ -9,10 +9,12 @@ import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { userActivity } from "./userActivity";
 
-Sentry.init({
-  dsn: env.SENTRY_DSN,
-  tracesSampleRate: 1.0, // Capture 100% of the transactions
-});
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    tracesSampleRate: 1.0, // Capture 100% of the transactions
+  });
+}
 
 export const bot = new Hashira({ name: "bot" })
   .use(base)
@@ -29,6 +31,8 @@ if (import.meta.main) {
   try {
     await bot.start(env.BOT_TOKEN);
   } catch (e) {
-    Sentry.captureException(e);
+    if (env.SENTRY_DSN) Sentry.captureException(e);
+    console.error(e);
+    throw e;
   }
 }
