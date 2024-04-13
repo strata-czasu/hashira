@@ -4,7 +4,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./migrate": "./src/migrate.ts"
+    "./migrate": "./src/migrate.ts",
+    "./tasks": "./src/tasks.ts"
   },
   "type": "module",
   "scripts": {

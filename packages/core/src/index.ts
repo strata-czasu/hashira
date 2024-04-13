@@ -98,6 +98,17 @@ class Hashira<
     this.#name = options.name;
   }
 
+  const<const U extends BaseDecorator>(
+    remap: (ctx: Decorators["const"]) => U,
+  ): Hashira<
+    {
+      const: U;
+      derive: Decorators["derive"];
+      state: Decorators["state"];
+    },
+    Commands
+  >;
+
   const<const T extends string, const U>(
     name: T,
     value: U,
@@ -108,10 +119,18 @@ class Hashira<
       state: Decorators["state"];
     },
     Commands
-  > {
-    this.#const[name] = value;
+  >;
 
-    return this as unknown as ReturnType<typeof this.const<T, U>>;
+  // biome-ignore lint/complexity/noBannedTypes: Cannot use other more specific type here
+  const(name: string | Function, value?: unknown) {
+    if (typeof name === "string") {
+      this.#const[name] = value;
+      return this;
+    }
+
+    this.#const = name(this.#const);
+
+    return this;
   }
 
   derive<const T extends BaseDecorator>(
@@ -165,7 +184,7 @@ class Hashira<
         Prettify<Commands & NewCommands>
       >
     : never {
-    // TODO: this might break if two instances have the same name
+    // TODO: THIS ACTUALLY BREAKS EVERY TIME! HANDLE DEPENDENCIES AS TREES!
     if (this.#dependencies.includes(instance.#name)) {
       return this as unknown as ReturnType<typeof this.use<NewHashira>>;
     }
@@ -350,7 +369,7 @@ class Hashira<
       if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
     });
 
-    discordClient.on("error", this.handleException);
+    discordClient.on("error", (error) => this.handleException(error));
   }
 
   addExceptionHandler(handler: (error: Error) => void) {
