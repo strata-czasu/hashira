@@ -30,5 +30,24 @@ export const settings = new Hashira({ name: "settings" })
               ephemeral: true,
             });
           }),
+      )
+      .addCommand("list", (command) =>
+        command
+          .setDescription("Wyświetl ustawienia serwera")
+          .handle(async ({ db }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const settings = await db.query.guildSettings.findFirst({
+              where: eq(schema.guildSettings.guildId, itx.guildId),
+            });
+            if (!settings) throw new Error("Guild settings not found");
+
+            await itx.reply({
+              content: `Rola do wyciszeń: ${
+                settings.muteRoleId ? roleMention(settings.muteRoleId) : "Nie ustawiono"
+              }`,
+              ephemeral: true,
+            });
+          }),
       ),
   );
