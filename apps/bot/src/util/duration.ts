@@ -24,3 +24,12 @@ export const parseDuration = (duration: string): Duration | null => {
       return null;
   }
 };
+
+export const durationToSeconds = (duration: Duration): number => {
+  return (
+    (duration.seconds ?? 0) +
+    (duration.minutes ?? 0) * 60 +
+    (duration.hours ?? 0) * 60 * 60 +
+    (duration.days ?? 0) * 60 * 60 * 24
+  );
+};
