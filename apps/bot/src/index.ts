@@ -8,6 +8,7 @@ import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { roles } from "./roles";
+import { settings } from "./settings";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 
@@ -21,6 +22,7 @@ if (env.SENTRY_DSN) {
 export const bot = new Hashira({ name: "bot" })
   .use(base)
   .use(guildAvailability)
+  .use(settings)
   .use(emojiCounting)
   .use(miscellaneous)
   .use(roles)
