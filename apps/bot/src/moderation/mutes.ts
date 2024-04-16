@@ -2,9 +2,11 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, schema } from "@hashira/db";
 import { add } from "date-fns";
 import {
+  type ChatInputCommandInteraction,
   PermissionFlagsBits,
   TimestampStyles,
   bold,
+  inlineCode,
   italic,
   time,
   userMention,
@@ -14,6 +16,13 @@ import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
+
+const muteNotFound = async (itx: ChatInputCommandInteraction) => {
+  await itx.reply({
+    content: "Nie znaleziono wyciszenia o podanym ID",
+    ephemeral: true,
+  });
+};
 
 export const mutes = new Hashira({ name: "mutes" })
   .use(base)
@@ -26,6 +35,14 @@ export const mutes = new Hashira({ name: "mutes" })
       if (!settings) return null;
       return settings.muteRoleId;
     },
+    getMute: async (id: number, guildId: string) =>
+      ctx.db.query.mute.findFirst({
+        where: and(
+          eq(schema.mute.guildId, guildId),
+          eq(schema.mute.id, id),
+          eq(schema.mute.deleted, false),
+        ),
+      }),
   }))
   .group("mute", (group) =>
     group
@@ -123,6 +140,57 @@ export const mutes = new Hashira({ name: "mutes" })
                   )}.`,
                   ephemeral: true,
                 });
+              }
+            },
+          ),
+      )
+      .addCommand("remove", (command) =>
+        command
+          .setDescription("Usuń wyciszenie")
+          .addNumber("id", (id) => id.setDescription("ID wyciszenia"))
+          .addString("reason", (reason) =>
+            reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
+          )
+          .handle(
+            async (
+              { db, messageQueue, getMute, getMuteRoleId },
+              { id, reason },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+
+              const mute = await getMute(id, itx.guildId);
+              if (!mute) return muteNotFound(itx);
+
+              // FIXME: This could fail due to a race condition
+              //        between fetching the mute and updating it
+              await db
+                .update(schema.mute)
+                .set({
+                  deletedAt: itx.createdAt,
+                  deleted: true,
+                  deleteReason: reason,
+                })
+                .where(eq(schema.mute.id, id));
+              const muteRoleId = await getMuteRoleId(itx.guildId);
+              const member = itx.guild.members.cache.get(mute.userId);
+              // NOTE: This could fail if the mute role was removed or the member left the server
+              if (muteRoleId && member) {
+                await member.roles.remove(
+                  muteRoleId,
+                  `Usunięcie wyciszenia [${mute.id}]`,
+                );
+              }
+              await messageQueue.cancel("muteEnd", mute.id.toString());
+
+              if (reason) {
+                await itx.reply(
+                  `Usunięto wyciszenie ${inlineCode(
+                    id.toString(),
+                  )}. Powód usunięcia: ${italic(reason)}`,
+                );
+              } else {
+                itx.reply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
               }
             },
           ),
