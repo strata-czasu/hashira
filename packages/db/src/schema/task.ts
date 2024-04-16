@@ -2,7 +2,12 @@ import { sql } from "drizzle-orm";
 import { jsonb, pgEnum, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 
-export const statusEnum = pgEnum("status", ["pending", "completed", "failed"]);
+export const statusEnum = pgEnum("status", [
+  "pending",
+  "completed",
+  "failed",
+  "cancelled",
+]);
 
 export type TaskDataValue =
   | string

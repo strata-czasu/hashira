@@ -109,6 +109,20 @@ export class MessageQueue<
     });
   }
 
+  async cancel<T extends keyof HandleTypes>(type: T, identifier: string) {
+    // This should never happen, but somehow typescript doesn't understand that
+    if (typeof type !== "string") throw new Error("Type must be a string");
+
+    await this.#db.transaction(async (tx) => {
+      await tx
+        .update(task)
+        .set({ status: "cancelled" })
+        .where(
+          and(eq(sql`${task.data}->>'type'`, type), eq(task.identifier, identifier)),
+        );
+    });
+  }
+
   private async handleTask(props: Record<string, unknown>, task: unknown) {
     if (!isTaskData(task)) return false;
     const handler = this.#handlers.get(task.type);
