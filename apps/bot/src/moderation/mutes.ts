@@ -147,6 +147,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("remove", (command) =>
         command
           .setDescription("Usuń wyciszenie")
+          // FIXME: This should be an integer
           .addNumber("id", (id) => id.setDescription("ID wyciszenia"))
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
@@ -194,6 +195,30 @@ export const mutes = new Hashira({ name: "mutes" })
               }
             },
           ),
+      )
+      .addCommand("edit", (command) =>
+        command
+          .setDescription("Edytuj wyciszenie")
+          // FIXME: This should be an integer
+          .addNumber("id", (id) => id.setDescription("ID wyciszenia"))
+          .addString("reason", (reason) =>
+            reason.setDescription("Nowy powód wyciszenia"),
+          )
+          // TODO: Add a way to edit the duration
+          .handle(async ({ db, getMute }, { id, reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const mute = await getMute(id, itx.guildId);
+            if (!mute) return muteNotFound(itx);
+
+            // TODO: Save a log of this edit in the database
+            await db.update(schema.mute).set({ reason }).where(eq(schema.mute.id, id));
+            await itx.reply(
+              `Zaktualizowano wyciszenie ${inlineCode(
+                id.toString(),
+              )}. Nowy powód: ${italic(reason)}`,
+            );
+          }),
       ),
   )
   .group("mutes", (group) =>
