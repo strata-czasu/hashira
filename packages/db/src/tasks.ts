@@ -93,6 +93,7 @@ export class MessageQueue<
     type: T,
     data: HandleTypes[T],
     delay?: number,
+    identifier?: string,
   ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
@@ -104,6 +105,7 @@ export class MessageQueue<
     await this.#db.insert(task).values({
       data: { type, data },
       handleAfter,
+      ...(identifier ? { identifier } : {}),
     });
   }
 

@@ -85,7 +85,7 @@ export const mutes = new Hashira({ name: "mutes" })
                 .insert(schema.user)
                 .values({ id: user.id })
                 .onConflictDoNothing();
-              const res = await db
+              const [mute] = await db
                 .insert(schema.mute)
                 .values({
                   guildId: itx.guildId,
@@ -95,13 +95,14 @@ export const mutes = new Hashira({ name: "mutes" })
                   endsAt,
                 })
                 .returning({ id: schema.mute.id });
-              const mute = res[0] as { id: number };
+              if (!mute) return;
               // FIXME: This could fail
               await member.roles.add(muteRoleId, `Wyciszenie: ${reason} [${mute.id}]`);
               await messageQueue.push(
                 "muteEnd",
                 { muteId: mute.id, guildId: itx.guildId, userId: user.id },
                 durationToSeconds(duration),
+                mute.id.toString(),
               );
 
               const sentMessage = await sendDirectMessage(
