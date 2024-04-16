@@ -226,4 +226,19 @@ export const mutes = new Hashira({ name: "mutes" })
             await paginatedView.render(itx);
           }),
       ),
-  );
+  )
+  .handle("guildMemberAdd", async ({ db, getMuteRoleId }, member) => {
+    const activeMute = await db.query.mute.findFirst({
+      where: and(
+        eq(schema.mute.guildId, member.guild.id),
+        eq(schema.mute.userId, member.id),
+        eq(schema.mute.deleted, false),
+        gte(schema.mute.endsAt, new Date()),
+      ),
+    });
+    if (!activeMute) return;
+
+    const muteRoleId = await getMuteRoleId(member.guild.id);
+    if (!muteRoleId) return;
+    await member.roles.add(muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
+  });
