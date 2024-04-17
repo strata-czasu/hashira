@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { index, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild } from "./guild";
 import { user } from "./user";
@@ -21,12 +21,10 @@ export const warn = pgTable(
       .notNull()
       .references(() => user.id),
     reason: text("reason").notNull(),
-    deleted: boolean("deleted").default(false),
     deleteReason: text("delete_reason"),
   },
   (table) => ({
     userIdx: index().on(table.userId),
-    deletedIdx: index().on(table.deleted),
   }),
 );
 
@@ -65,12 +63,10 @@ export const mute = pgTable(
       .references(() => user.id),
     reason: text("reason").notNull(),
     endsAt: timestamp("ends_at").notNull(),
-    deleted: boolean("deleted").default(false),
     deleteReason: text("delete_reason"),
   },
   (table) => ({
     userIdx: index().on(table.userId),
-    deletedIdx: index().on(table.deleted),
   }),
 );
 

@@ -11,7 +11,7 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { and, count, eq, gte } from "drizzle-orm";
+import { and, count, eq, gte, isNull } from "drizzle-orm";
 import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -32,7 +32,7 @@ const getMute = async (tx: Transaction, id: number, guildId: string) =>
       and(
         eq(schema.mute.guildId, guildId),
         eq(schema.mute.id, id),
-        eq(schema.mute.deleted, false),
+        isNull(schema.mute.deletedAt),
       ),
     );
 
@@ -169,11 +169,7 @@ export const mutes = new Hashira({ name: "mutes" })
               // TODO: Save a log of this edit in the database
               await tx
                 .update(schema.mute)
-                .set({
-                  deletedAt: itx.createdAt,
-                  deleted: true,
-                  deleteReason: reason,
-                })
+                .set({ deletedAt: itx.createdAt, deleteReason: reason })
                 .where(eq(schema.mute.id, id));
               return mute;
             });
@@ -247,7 +243,7 @@ export const mutes = new Hashira({ name: "mutes" })
 
             const muteWheres = and(
               eq(schema.mute.guildId, itx.guildId),
-              eq(schema.mute.deleted, false),
+              isNull(schema.mute.deletedAt),
               gte(schema.mute.endsAt, itx.createdAt),
             );
             const paginate = new Paginate({
@@ -299,7 +295,7 @@ export const mutes = new Hashira({ name: "mutes" })
             const muteWheres = and(
               eq(schema.mute.guildId, itx.guildId),
               eq(schema.mute.userId, user.id),
-              eq(schema.mute.deleted, false),
+              isNull(schema.mute.deletedAt),
             );
             const paginate = new Paginate({
               orderByColumn: schema.mute.createdAt,
@@ -340,7 +336,7 @@ export const mutes = new Hashira({ name: "mutes" })
       where: and(
         eq(schema.mute.guildId, member.guild.id),
         eq(schema.mute.userId, member.id),
-        eq(schema.mute.deleted, false),
+        isNull(schema.mute.deletedAt),
         gte(schema.mute.endsAt, new Date()),
       ),
     });

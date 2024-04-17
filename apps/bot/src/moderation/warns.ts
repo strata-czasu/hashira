@@ -10,7 +10,7 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { base } from "../base";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
@@ -30,7 +30,7 @@ const getWarn = async (tx: Transaction, id: number, guildId: string) =>
       and(
         eq(schema.warn.guildId, guildId),
         eq(schema.warn.id, id),
-        eq(schema.warn.deleted, false),
+        isNull(schema.warn.deletedAt),
       ),
     );
 
@@ -100,7 +100,7 @@ export const warns = new Hashira({ name: "warns" })
               // TODO: Save a log of this update in the database
               await tx
                 .update(schema.warn)
-                .set({ deletedAt: new Date(), deleted: true, deleteReason: reason })
+                .set({ deletedAt: new Date(), deleteReason: reason })
                 .where(eq(schema.warn.id, id));
               return warn;
             });
@@ -167,7 +167,7 @@ export const warns = new Hashira({ name: "warns" })
             const warnWheres = and(
               eq(schema.warn.guildId, itx.guildId),
               eq(schema.warn.userId, user.id),
-              eq(schema.warn.deleted, false),
+              isNull(schema.warn.deletedAt),
             );
             const paginate = new Paginate({
               orderByColumn: schema.warn.createdAt,
