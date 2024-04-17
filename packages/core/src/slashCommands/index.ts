@@ -19,6 +19,7 @@ import type {
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
 import { ChannelOptionBuilder } from "./channelOptionBuilder";
+import { IntegerOptionBuilder } from "./integerOptionBuilder";
 import { NumberOptionBuilder } from "./numberOptionBuilder";
 import { RoleOptionBuilder } from "./roleOptionBuilder";
 import { StringOptionBuilder } from "./stringOptionBuilder";
@@ -261,6 +262,24 @@ export class SlashCommand<
     this.#builder.addNumberOption(builder);
     this.#options[name] = option;
     return this as unknown as ReturnType<typeof this.addNumber<T, U>>;
+  }
+
+  addInteger<
+    const T extends string,
+    const U extends IntegerOptionBuilder<true, boolean>,
+  >(
+    name: T,
+    input: (builder: IntegerOptionBuilder) => U,
+  ): SlashCommand<
+    Context,
+    Settings,
+    Prettify<Options & { [key in T]: OptionDataType<U> }>
+  > {
+    const option = input(new IntegerOptionBuilder());
+    const builder = option.toSlashCommandOption().setName(name);
+    this.#builder.addIntegerOption(builder);
+    this.#options[name] = option;
+    return this as unknown as ReturnType<typeof this.addInteger<T, U>>;
   }
 
   addUser<const T extends string, const U extends UserOptionBuilder<true, boolean>>(
