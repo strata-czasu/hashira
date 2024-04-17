@@ -1,19 +1,12 @@
-import { type TablesRelationalConfig, and, eq, lte, sql } from "drizzle-orm";
-import type { PgTransaction, QueryResultHKT } from "drizzle-orm/pg-core";
-import type { db } from ".";
+import { and, eq, lte, sql } from "drizzle-orm";
+import type { Transaction, db } from ".";
 import { type TaskDataValue, task } from "./schema";
-
-type TransactionType = PgTransaction<
-  QueryResultHKT,
-  Record<string, unknown>,
-  TablesRelationalConfig
->;
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export async function getPendingTask<T extends TransactionType>(tx: T) {
+export async function getPendingTask<T extends Transaction>(tx: T) {
   return await tx
     .select()
     .from(task)
@@ -21,11 +14,11 @@ export async function getPendingTask<T extends TransactionType>(tx: T) {
     .for("update", { skipLocked: true });
 }
 
-export async function finishTask<T extends TransactionType>(tx: T, id: number) {
+export async function finishTask<T extends Transaction>(tx: T, id: number) {
   await tx.update(task).set({ status: "completed" }).where(eq(task.id, id));
 }
 
-export async function failTask<T extends TransactionType>(tx: T, id: number) {
+export async function failTask<T extends Transaction>(tx: T, id: number) {
   await tx.update(task).set({ status: "failed" }).where(eq(task.id, id));
 }
 

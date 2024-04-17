@@ -16,3 +16,4 @@ export { schema };
 
 export { Paginate } from "./paginate";
 export type { CountSelect } from "./paginate";
+export type { Transaction } from "./transaction";
