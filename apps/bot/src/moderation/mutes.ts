@@ -288,28 +288,22 @@ export const mutes = new Hashira({ name: "mutes" })
           .addUser("user", (user) =>
             user.setDescription("Użytkownik").setRequired(false),
           )
-          .handle(async ({ db }, { user: selectedUser }, itx) => {
+          .addBoolean("deleted", (deleted) =>
+            deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
+          )
+          .handle(async ({ db }, { user: selectedUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const user = selectedUser ?? itx.user;
             const muteWheres = and(
               eq(schema.mute.guildId, itx.guildId),
               eq(schema.mute.userId, user.id),
-              isNull(schema.mute.deletedAt),
+              deleted ? undefined : isNull(schema.mute.deletedAt),
             );
             const paginate = new Paginate({
               orderByColumn: schema.mute.createdAt,
               orderBy: "DESC",
-              select: db
-                .select({
-                  id: schema.mute.id,
-                  createdAt: schema.mute.createdAt,
-                  reason: schema.mute.reason,
-                  moderatorId: schema.mute.moderatorId,
-                })
-                .from(schema.mute)
-                .where(muteWheres)
-                .$dynamic(),
+              select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
               count: db
                 .select({ count: count() })
                 .from(schema.mute)
@@ -320,11 +314,25 @@ export const mutes = new Hashira({ name: "mutes" })
             const paginatedView = new PaginatedView(
               paginate,
               `Wyciszenia ${user.tag}`,
-              ({ id, createdAt, reason, moderatorId }, _) =>
-                `### ${userMention(moderatorId)} ${time(
+              ({ id, createdAt, deletedAt, reason, moderatorId, deleteReason }, _) => {
+                if (deletedAt) {
+                  return `### ~~${userMention(moderatorId)} ${time(
+                    createdAt,
+                    TimestampStyles.ShortDateTime,
+                  )} [${id}]~~\nCzas trwania: \nPowód: ${italic(
+                    reason,
+                  )}\nData usunięcia: ${time(
+                    deletedAt,
+                    TimestampStyles.ShortDateTime,
+                  )}`.concat(
+                    deleteReason ? `\nPowód usunięcia: ${italic(deleteReason)}` : "",
+                  );
+                }
+                return `### ${userMention(moderatorId)} ${time(
                   createdAt,
                   TimestampStyles.ShortDateTime,
-                )} [${id}]\nCzas trwania: \nPowód: ${italic(reason)}`,
+                )} [${id}]\nCzas trwania: \nPowód: ${italic(reason)}`;
+              },
               true,
             );
             await paginatedView.render(itx);
