@@ -129,7 +129,9 @@ export const mutes = new Hashira({ name: "mutes" })
                 )}.\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
               );
               await itx.reply(
-                `Dodano wyciszenie dla ${formatUserWithId(user)}. Powód: ${italic(
+                `Dodano wyciszenie [${inlineCode(
+                  mute.id.toString(),
+                )}] dla ${formatUserWithId(user)}. Powód: ${italic(
                   reason,
                 )}.\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
               );

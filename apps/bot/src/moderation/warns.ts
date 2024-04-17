@@ -48,7 +48,7 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ db }, { user, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            await db
+            const [warn] = await db
               .insert(schema.warn)
               .values({
                 guildId: itx.guildId,
@@ -56,7 +56,8 @@ export const warns = new Hashira({ name: "warns" })
                 moderatorId: itx.user.id,
                 reason,
               })
-              .execute();
+              .returning({ id: schema.warn.id });
+            if (!warn) return;
 
             const sentMessage = await sendDirectMessage(
               user,
@@ -64,14 +65,16 @@ export const warns = new Hashira({ name: "warns" })
                 reason,
               )}`,
             );
-            // biome-ignore format: Long message
             await itx.reply(
-              `Dodano ostrzeżenie dla ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
+              `Dodano ostrzeżenie [${inlineCode(
+                warn.id.toString(),
+              )}] dla ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
             );
             if (!sentMessage) {
-              // biome-ignore format: Long message
               await itx.followUp({
-                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
+                  user,
+                )}.`,
                 ephemeral: true,
               });
             }
