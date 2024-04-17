@@ -80,8 +80,7 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("remove", (command) =>
         command
           .setDescription("Usuń ostrzeżenie")
-          // FIXME: This should be an integer
-          .addNumber("id", (id) => id.setDescription("ID ostrzeżenia"))
+          .addInteger("id", (id) => id.setDescription("ID ostrzeżenia").setMinValue(0))
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia ostrzeżenia").setRequired(false),
           )
@@ -110,8 +109,7 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("edit", (command) =>
         command
           .setDescription("Edytuj ostrzeżenie")
-          // FIXME: This should be an integer
-          .addNumber("id", (id) => id.setDescription("ID ostrzeżenia"))
+          .addInteger("id", (id) => id.setDescription("ID ostrzeżenia").setMinValue(0))
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )

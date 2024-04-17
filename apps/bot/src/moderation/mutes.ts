@@ -147,8 +147,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("remove", (command) =>
         command
           .setDescription("Usuń wyciszenie")
-          // FIXME: This should be an integer
-          .addNumber("id", (id) => id.setDescription("ID wyciszenia"))
+          .addInteger("id", (id) => id.setDescription("ID wyciszenia").setMinValue(0))
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
@@ -199,8 +198,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("edit", (command) =>
         command
           .setDescription("Edytuj wyciszenie")
-          // FIXME: This should be an integer
-          .addNumber("id", (id) => id.setDescription("ID wyciszenia"))
+          .addInteger("id", (id) => id.setDescription("ID wyciszenia").setMinValue(0))
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód wyciszenia"),
           )
