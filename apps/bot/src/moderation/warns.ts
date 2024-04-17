@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, schema } from "@hashira/db";
+import { Paginate, type Transaction, schema } from "@hashira/db";
 import {
   type ChatInputCommandInteraction,
   PermissionFlagsBits,
@@ -22,19 +22,20 @@ const warnNotFound = async (itx: ChatInputCommandInteraction) => {
   });
 };
 
+const getWarn = async (tx: Transaction, id: number, guildId: string) =>
+  tx
+    .select()
+    .from(schema.warn)
+    .where(
+      and(
+        eq(schema.warn.guildId, guildId),
+        eq(schema.warn.id, id),
+        eq(schema.warn.deleted, false),
+      ),
+    );
+
 export const warns = new Hashira({ name: "warns" })
   .use(base)
-  .derive(({ db }) => ({
-    /** Get a warn by ID and automatically replying if it doesn't exist */
-    getWarn: async (id: number, guildId: string) =>
-      db.query.warn.findFirst({
-        where: and(
-          eq(schema.warn.guildId, guildId),
-          eq(schema.warn.id, id),
-          eq(schema.warn.deleted, false),
-        ),
-      }),
-  }))
   .group("warn", (group) =>
     group
       .setDescription("Zarządzaj ostrzeżeniami")
@@ -87,17 +88,24 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia ostrzeżenia").setRequired(false),
           )
-          .handle(async ({ db, getWarn }, { id, reason }, itx) => {
+          .handle(async ({ db }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await getWarn(id, itx.guildId);
-            if (!warn) return warnNotFound(itx);
+            const warn = await db.transaction(async (tx) => {
+              const [warn] = await getWarn(tx, id, itx.guildId);
+              if (!warn) {
+                await warnNotFound(itx);
+                return null;
+              }
+              // TODO: Save a log of this update in the database
+              await tx
+                .update(schema.warn)
+                .set({ deletedAt: new Date(), deleted: true, deleteReason: reason })
+                .where(eq(schema.warn.id, id));
+              return warn;
+            });
+            if (!warn) return;
 
-            // TODO: Save a log of this update in the database
-            await db
-              .update(schema.warn)
-              .set({ deletedAt: new Date(), deleted: true, deleteReason: reason })
-              .where(eq(schema.warn.id, id));
             if (reason) {
               await itx.reply(
                 `Usunięto ostrzeżenie ${inlineCode(
@@ -116,14 +124,24 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
-          .handle(async ({ db, getWarn }, { id, reason }, itx) => {
+          .handle(async ({ db }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warn = await getWarn(id, itx.guildId);
-            if (!warn) return warnNotFound(itx);
+            const warn = await db.transaction(async (tx) => {
+              const [warn] = await getWarn(tx, id, itx.guildId);
+              if (!warn) {
+                await warnNotFound(itx);
+                return null;
+              }
+              // TODO: Save a log of this edit in the database
+              await tx
+                .update(schema.warn)
+                .set({ reason })
+                .where(eq(schema.warn.id, id));
+              return warn;
+            });
+            if (!warn) return;
 
-            // TODO: Save a log of this edit in the database
-            await db.update(schema.warn).set({ reason }).where(eq(schema.warn.id, id));
             await itx.reply(
               `Zaktualizowano ostrzeżenie ${inlineCode(
                 id.toString(),

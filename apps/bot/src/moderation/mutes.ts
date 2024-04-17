@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, schema } from "@hashira/db";
+import { Paginate, type Transaction, schema } from "@hashira/db";
 import { add } from "date-fns";
 import {
   type ChatInputCommandInteraction,
@@ -24,6 +24,18 @@ const muteNotFound = async (itx: ChatInputCommandInteraction) => {
   });
 };
 
+const getMute = async (tx: Transaction, id: number, guildId: string) =>
+  tx
+    .select()
+    .from(schema.mute)
+    .where(
+      and(
+        eq(schema.mute.guildId, guildId),
+        eq(schema.mute.id, id),
+        eq(schema.mute.deleted, false),
+      ),
+    );
+
 export const mutes = new Hashira({ name: "mutes" })
   .use(base)
   .const((ctx) => ({
@@ -35,14 +47,6 @@ export const mutes = new Hashira({ name: "mutes" })
       if (!settings) return null;
       return settings.muteRoleId;
     },
-    getMute: async (id: number, guildId: string) =>
-      ctx.db.query.mute.findFirst({
-        where: and(
-          eq(schema.mute.guildId, guildId),
-          eq(schema.mute.id, id),
-          eq(schema.mute.deleted, false),
-        ),
-      }),
   }))
   .group("mute", (group) =>
     group
@@ -153,20 +157,17 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
-          .handle(
-            async (
-              { db, messageQueue, getMute, getMuteRoleId },
-              { id, reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
+          .handle(async ({ db, messageQueue, getMuteRoleId }, { id, reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-              const mute = await getMute(id, itx.guildId);
-              if (!mute) return muteNotFound(itx);
-
-              // FIXME: This could fail due to a race condition
-              //        between fetching the mute and updating it
-              await db
+            const mute = await db.transaction(async (tx) => {
+              const [mute] = await getMute(tx, id, itx.guildId);
+              if (!mute) {
+                await muteNotFound(itx);
+                return null;
+              }
+              // TODO: Save a log of this edit in the database
+              await tx
                 .update(schema.mute)
                 .set({
                   deletedAt: itx.createdAt,
@@ -174,28 +175,31 @@ export const mutes = new Hashira({ name: "mutes" })
                   deleteReason: reason,
                 })
                 .where(eq(schema.mute.id, id));
-              const muteRoleId = await getMuteRoleId(itx.guildId);
-              const member = itx.guild.members.cache.get(mute.userId);
-              // NOTE: This could fail if the mute role was removed or the member left the server
-              if (muteRoleId && member) {
-                await member.roles.remove(
-                  muteRoleId,
-                  `Usunięcie wyciszenia [${mute.id}]`,
-                );
-              }
-              await messageQueue.cancel("muteEnd", mute.id.toString());
+              return mute;
+            });
+            if (!mute) return;
 
-              if (reason) {
-                await itx.reply(
-                  `Usunięto wyciszenie ${inlineCode(
-                    id.toString(),
-                  )}. Powód usunięcia: ${italic(reason)}`,
-                );
-              } else {
-                itx.reply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
-              }
-            },
-          ),
+            const muteRoleId = await getMuteRoleId(itx.guildId);
+            const member = itx.guild.members.cache.get(mute.userId);
+            // NOTE: This could fail if the mute role was removed or the member left the server
+            if (muteRoleId && member) {
+              await member.roles.remove(
+                muteRoleId,
+                `Usunięcie wyciszenia [${mute.id}]`,
+              );
+            }
+            await messageQueue.cancel("muteEnd", mute.id.toString());
+
+            if (reason) {
+              await itx.reply(
+                `Usunięto wyciszenie ${inlineCode(
+                  id.toString(),
+                )}. Powód usunięcia: ${italic(reason)}`,
+              );
+            } else {
+              itx.reply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
+            }
+          }),
       )
       .addCommand("edit", (command) =>
         command
@@ -205,14 +209,24 @@ export const mutes = new Hashira({ name: "mutes" })
             reason.setDescription("Nowy powód wyciszenia"),
           )
           // TODO: Add a way to edit the duration
-          .handle(async ({ db, getMute }, { id, reason }, itx) => {
+          .handle(async ({ db }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const mute = await getMute(id, itx.guildId);
-            if (!mute) return muteNotFound(itx);
+            const mute = await db.transaction(async (tx) => {
+              const [mute] = await getMute(tx, id, itx.guildId);
+              if (!mute) {
+                await muteNotFound(itx);
+                return null;
+              }
+              // TODO: Save a log of this edit in the database
+              await tx
+                .update(schema.mute)
+                .set({ reason })
+                .where(eq(schema.mute.id, id));
+              return mute;
+            });
+            if (!mute) return;
 
-            // TODO: Save a log of this edit in the database
-            await db.update(schema.mute).set({ reason }).where(eq(schema.mute.id, id));
             await itx.reply(
               `Zaktualizowano wyciszenie ${inlineCode(
                 id.toString(),
