@@ -3,7 +3,9 @@ import { Paginate, type Transaction, schema } from "@hashira/db";
 import { add } from "date-fns";
 import {
   type ChatInputCommandInteraction,
+  DiscordAPIError,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   TimestampStyles,
   bold,
   inlineCode,
@@ -106,19 +108,45 @@ export const mutes = new Hashira({ name: "mutes" })
                 .insert(schema.user)
                 .values({ id: user.id })
                 .onConflictDoNothing();
-              const [mute] = await db
-                .insert(schema.mute)
-                .values({
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  moderatorId: itx.user.id,
-                  reason,
-                  endsAt,
-                })
-                .returning({ id: schema.mute.id });
+
+              // Create mute and try to add the mute role
+              // If adding the role fails, rollback the transaction
+              const mute = await db.transaction(async (tx) => {
+                const [mute] = await db
+                  .insert(schema.mute)
+                  .values({
+                    guildId: itx.guildId,
+                    userId: user.id,
+                    moderatorId: itx.user.id,
+                    reason,
+                    endsAt,
+                  })
+                  .returning({ id: schema.mute.id });
+                if (!mute) return null;
+                try {
+                  await member.roles.add(
+                    muteRoleId,
+                    `Wyciszenie: ${reason} [${mute.id}]`,
+                  );
+                } catch (e) {
+                  if (
+                    e instanceof DiscordAPIError &&
+                    e.code === RESTJSONErrorCodes.MissingPermissions
+                  ) {
+                    await itx.reply({
+                      content:
+                        "Nie można dodać roli wyciszenia. Sprawdź uprawnienia bota.",
+                      ephemeral: true,
+                    });
+                    tx.rollback();
+                    return null;
+                  }
+                  throw e;
+                }
+                return mute;
+              });
               if (!mute) return;
-              // FIXME: This could fail
-              await member.roles.add(muteRoleId, `Wyciszenie: ${reason} [${mute.id}]`);
+
               await messageQueue.push(
                 "muteEnd",
                 { muteId: mute.id, guildId: itx.guildId, userId: user.id },

@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
 import { MessageQueue } from "@hashira/db/tasks";
-import { type Client, bold } from "discord.js";
+import { type Client, DiscordAPIError, RESTJSONErrorCodes, bold } from "discord.js";
 import { eq } from "drizzle-orm";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
@@ -29,11 +29,24 @@ export const database = new Hashira({ name: "database" })
           const member = guild.members.cache.get(userId);
           if (!member) return;
 
-          // FIXME: This could fail
-          await member.roles.remove(
-            settings.muteRoleId,
-            `Koniec wyciszenia [${muteId}]`,
-          );
+          try {
+            await member.roles.remove(
+              settings.muteRoleId,
+              `Koniec wyciszenia [${muteId}]`,
+            );
+          } catch (e) {
+            if (
+              e instanceof DiscordAPIError &&
+              e.code === RESTJSONErrorCodes.MissingPermissions
+            ) {
+              console.warn(
+                `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
+              );
+              return;
+            }
+            throw e;
+          }
+
           // NOTE: We could mention the user on the server if sending the DM fails
           await sendDirectMessage(
             member.user,
