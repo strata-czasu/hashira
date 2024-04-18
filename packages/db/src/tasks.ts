@@ -11,7 +11,8 @@ export async function getPendingTask<T extends Transaction>(tx: T) {
     .select()
     .from(task)
     .where(and(eq(task.status, "pending"), lte(task.handleAfter, sql`now()`)))
-    .for("update", { skipLocked: true });
+    .for("update", { skipLocked: true })
+    .limit(1);
 }
 
 export async function finishTask<T extends Transaction>(tx: T, id: number) {
@@ -80,7 +81,8 @@ export class MessageQueue<
    * Enqueue a message to be handled later by the message queue
    * @param type {string} The type of message to be handled
    * @param data {unknown} The data to be handled
-   * @param delay  {number} The delay in seconds before the message is handled
+   * @param delay {number} The delay in seconds before the message is handled
+   * @param identifier {string} The identifier of the task
    */
   async push<T extends keyof HandleTypes>(
     type: T,
@@ -95,8 +97,10 @@ export class MessageQueue<
       ? sql`now() + make_interval(secs => ${delay})`
       : sql`now()`;
 
+    // FIXME: This is a workaround for a bug in drizzle-orm inserting jsonb values as strings
+    // https://github.com/drizzle-team/drizzle-orm/issues/724#issuecomment-1650670298
     await this.#db.insert(task).values({
-      data: { type, data },
+      data: sql`${{ type, data }}::jsonb`,
       handleAfter,
       ...(identifier ? { identifier } : {}),
     });
