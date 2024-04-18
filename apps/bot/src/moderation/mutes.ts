@@ -230,33 +230,86 @@ export const mutes = new Hashira({ name: "mutes" })
           .setDescription("Edytuj wyciszenie")
           .addInteger("id", (id) => id.setDescription("ID wyciszenia").setMinValue(0))
           .addString("reason", (reason) =>
-            reason.setDescription("Nowy powód wyciszenia"),
+            reason.setDescription("Nowy powód wyciszenia").setRequired(false),
           )
-          // TODO: Add a way to edit the duration
-          .handle(async ({ db }, { id, reason }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addString("duration", (duration) =>
+            duration.setDescription("Nowy czas trwania wyciszenia").setRequired(false),
+          )
+          .handle(
+            async (
+              { db, messageQueue },
+              { id, reason, duration: rawDuration },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            const mute = await db.transaction(async (tx) => {
-              const [mute] = await getMute(tx, id, itx.guildId);
-              if (!mute) {
-                await muteNotFound(itx);
-                return null;
+              if (!reason && !rawDuration) {
+                await itx.reply({
+                  content: "Podaj nowy powód lub czas trwania wyciszenia",
+                  ephemeral: true,
+                });
+                return;
               }
-              // TODO: Save a log of this edit in the database
-              await tx
-                .update(schema.mute)
-                .set({ reason })
-                .where(eq(schema.mute.id, id));
-              return mute;
-            });
-            if (!mute) return;
 
-            await itx.reply(
-              `Zaktualizowano wyciszenie ${inlineCode(
-                id.toString(),
-              )}. Nowy powód: ${italic(reason)}`,
-            );
-          }),
+              const mute = await db.transaction(async (tx) => {
+                const [mute] = await getMute(tx, id, itx.guildId);
+                if (!mute) {
+                  await muteNotFound(itx);
+                  return null;
+                }
+
+                if (rawDuration && mute.endsAt < itx.createdAt) {
+                  await itx.reply({
+                    content: "Nie można edytować wyciszenia, które już się skończyło",
+                    ephemeral: true,
+                  });
+                  return null;
+                }
+                // null - parsing failed, undefined - no duration provided
+                const duration = rawDuration ? parseDuration(rawDuration) : undefined;
+                if (duration === null) {
+                  await itx.reply({
+                    content:
+                      "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s",
+                    ephemeral: true,
+                  });
+                  return null;
+                }
+
+                // TODO: Save a log of this edit in the database
+                const [updatedMute] = await tx
+                  .update(schema.mute)
+                  .set({
+                    ...(reason ? { reason } : {}),
+                    ...(duration ? { endsAt: add(mute.createdAt, duration) } : {}),
+                  })
+                  .where(eq(schema.mute.id, id))
+                  .returning();
+                if (!updatedMute) return null;
+
+                // TODO: Send the muted user an update in DMs
+                if (duration) {
+                  await messageQueue.updateDelay(
+                    "muteEnd",
+                    updatedMute.id.toString(),
+                    durationToSeconds(duration),
+                  );
+                }
+                return updatedMute;
+              });
+              if (!mute) return;
+
+              await itx.reply(
+                `Zaktualizowano wyciszenie ${inlineCode(id.toString())}. `
+                  .concat(reason ? `Nowy powód: ${italic(reason)}` : "")
+                  .concat(
+                    rawDuration
+                      ? `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`
+                      : "",
+                  ),
+              );
+            },
+          ),
       ),
   )
   .group("mutes", (group) =>
@@ -284,6 +337,7 @@ export const mutes = new Hashira({ name: "mutes" })
                   reason: schema.mute.reason,
                   userId: schema.mute.userId,
                   moderatorId: schema.mute.moderatorId,
+                  endsAt: schema.mute.endsAt,
                 })
                 .from(schema.mute)
                 .where(muteWheres)
@@ -298,13 +352,13 @@ export const mutes = new Hashira({ name: "mutes" })
             const paginatedView = new PaginatedView(
               paginate,
               "Aktywne wyciszenia",
-              ({ id, createdAt, reason, userId, moderatorId }, _) =>
+              ({ id, createdAt, reason, userId, moderatorId, endsAt }, _) =>
                 `### ${userMention(moderatorId)} ${time(
                   createdAt,
                   TimestampStyles.ShortDateTime,
-                )} [${id}]\nUżytkownik: ${userMention(
-                  userId,
-                )}\nCzas trwania: \nPowód: ${italic(reason)}`,
+                )} [${id}]\nUżytkownik: ${userMention(userId)}\nPowód: ${italic(
+                  reason,
+                )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
               true,
             );
             await paginatedView.render(itx);
