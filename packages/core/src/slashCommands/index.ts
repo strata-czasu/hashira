@@ -32,17 +32,17 @@ export type UnknownCommandHandler = (
   interaction: ChatInputCommandInteraction,
 ) => Promise<void>;
 
-interface Handlers extends Record<string, Handlers | UnknownCommandHandler> {}
+type Handlers = { [key: string]: Handlers | UnknownCommandHandler };
 
-interface GroupSettings {
+type GroupSettings = {
   HasDescription: boolean;
   TopLevel: boolean;
-}
+};
 
-const groupSettingsInitBase: GroupSettings = {
+const groupSettingsInitBase = {
   HasDescription: false,
   TopLevel: true,
-};
+} as const;
 
 export class Group<
   const Context extends HashiraContext<HashiraDecorators>,
@@ -66,7 +66,11 @@ export class Group<
 
   setDescription(
     description: string,
-  ): Group<Context, { HasDescription: true; TopLevel: true }, Commands> {
+  ): Group<
+    Context,
+    { HasDescription: true; TopLevel: Settings["TopLevel"] },
+    Commands
+  > {
     this.#builder.setDescription(description);
     return this as unknown as ReturnType<typeof this.setDescription>;
   }
