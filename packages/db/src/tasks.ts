@@ -120,6 +120,33 @@ export class MessageQueue<
     });
   }
 
+  /**
+   * Update the delay of a task
+   * The endsAt value will be calculated from the original creation time of the task plus the new delay
+   * @param type {string} The type of message to be handled
+   * @param identifier {string} The identifier of the task
+   * @param delay {number} The delay in seconds before the message is handled
+   */
+  async updateDelay<T extends keyof HandleTypes>(
+    type: T,
+    identifier: string,
+    delay: number,
+  ) {
+    // This should never happen, but somehow typescript doesn't understand that
+    if (typeof type !== "string") throw new Error("Type must be a string");
+
+    const handleAfter = sql`${task.createdAt} + make_interval(secs => ${delay})`;
+
+    await this.#db.transaction(async (tx) => {
+      await tx
+        .update(task)
+        .set({ handleAfter })
+        .where(
+          and(eq(sql`${task.data}->>'type'`, type), eq(task.identifier, identifier)),
+        );
+    });
+  }
+
   private async handleTask(props: Record<string, unknown>, task: unknown) {
     if (!isTaskData(task)) return false;
     const handler = this.#handlers.get(task.type);
