@@ -1,15 +1,18 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, type Transaction, schema } from "@hashira/db";
-import { add } from "date-fns";
+import { add, intervalToDuration } from "date-fns";
 import {
   type ChatInputCommandInteraction,
   DiscordAPIError,
+  HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
   bold,
+  heading,
   inlineCode,
   italic,
+  strikethrough,
   time,
   userMention,
 } from "discord.js";
@@ -18,6 +21,45 @@ import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
+
+const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
+  const { createdAt, endsAt } = mute;
+  const duration = intervalToDuration({ start: createdAt, end: endsAt });
+  const durationParts = [];
+  if (duration.days) durationParts.push(`${duration.days}d`);
+  if (duration.hours) durationParts.push(`${duration.hours}h`);
+  if (duration.minutes) durationParts.push(`${duration.minutes}m`);
+  if (duration.seconds) durationParts.push(`${duration.seconds}s`);
+  if (durationParts.length === 0) return "0s";
+  return durationParts.join(" ");
+};
+
+const formatMuteInList = (mute: typeof schema.mute.$inferSelect, _idx: number) => {
+  const { id, createdAt, deletedAt, reason, moderatorId, deleteReason } = mute;
+
+  const header = heading(
+    `${userMention(moderatorId)} ${time(
+      createdAt,
+      TimestampStyles.ShortDateTime,
+    )} [${id}]`,
+    HeadingLevel.Three,
+  );
+
+  const lines = [
+    deletedAt ? strikethrough(header) : header,
+    `Czas trwania: ${formatMuteLength(mute)}`,
+    `Powód: ${italic(reason)}`,
+  ];
+
+  if (deletedAt) {
+    lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
+  }
+  if (deleteReason) {
+    lines.push(`Powód usunięcia: ${italic(deleteReason)}`);
+  }
+
+  return lines.join("\n");
+};
 
 const muteNotFound = async (itx: ChatInputCommandInteraction) => {
   await itx.reply({
@@ -106,7 +148,7 @@ export const mutes = new Hashira({ name: "mutes" })
 
               await db
                 .insert(schema.user)
-                .values({ id: user.id })
+                .values([{ id: user.id }, { id: itx.user.id }])
                 .onConflictDoNothing();
 
               // Create mute and try to add the mute role
@@ -124,6 +166,9 @@ export const mutes = new Hashira({ name: "mutes" })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
                 try {
+                  await member.voice.disconnect(
+                    `Wyciszenie: ${reason} [${itx.user.tag}]`,
+                  );
                   await member.roles.add(
                     muteRoleId,
                     `Wyciszenie: ${reason} [${mute.id}]`,
@@ -135,7 +180,7 @@ export const mutes = new Hashira({ name: "mutes" })
                   ) {
                     await itx.reply({
                       content:
-                        "Nie można dodać roli wyciszenia. Sprawdź uprawnienia bota.",
+                        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
                       ephemeral: true,
                     });
                     tx.rollback();
@@ -396,25 +441,7 @@ export const mutes = new Hashira({ name: "mutes" })
             const paginatedView = new PaginatedView(
               paginate,
               `Wyciszenia ${user.tag}`,
-              ({ id, createdAt, deletedAt, reason, moderatorId, deleteReason }, _) => {
-                if (deletedAt) {
-                  return `### ~~${userMention(moderatorId)} ${time(
-                    createdAt,
-                    TimestampStyles.ShortDateTime,
-                  )} [${id}]~~\nCzas trwania: \nPowód: ${italic(
-                    reason,
-                  )}\nData usunięcia: ${time(
-                    deletedAt,
-                    TimestampStyles.ShortDateTime,
-                  )}`.concat(
-                    deleteReason ? `\nPowód usunięcia: ${italic(deleteReason)}` : "",
-                  );
-                }
-                return `### ${userMention(moderatorId)} ${time(
-                  createdAt,
-                  TimestampStyles.ShortDateTime,
-                )} [${id}]\nCzas trwania: \nPowód: ${italic(reason)}`;
-              },
+              formatMuteInList,
               true,
             );
             await paginatedView.render(itx);
