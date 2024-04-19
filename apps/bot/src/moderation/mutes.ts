@@ -166,9 +166,12 @@ export const mutes = new Hashira({ name: "mutes" })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
                 try {
-                  await member.voice.disconnect(
-                    `Wyciszenie: ${reason} [${itx.user.tag}]`,
-                  );
+                  if (member.voice.channel) {
+                    await member.voice.disconnect(
+                      `Wyciszenie: ${reason} [${itx.user.tag}]`,
+                    );
+                  }
+
                   await member.roles.add(
                     muteRoleId,
                     `Wyciszenie: ${reason} [${mute.id}]`,
