@@ -317,15 +317,17 @@ export const mutes = new Hashira({ name: "mutes" })
                   return null;
                 }
 
+                const updates: Partial<typeof schema.mute.$inferInsert> = {};
+                if (reason) updates.reason = reason;
+                if (duration) updates.endsAt = add(mute.createdAt, duration);
+
                 // TODO: Save a log of this edit in the database
                 const [updatedMute] = await tx
                   .update(schema.mute)
-                  .set({
-                    ...(reason ? { reason } : {}),
-                    ...(duration ? { endsAt: add(mute.createdAt, duration) } : {}),
-                  })
+                  .set(updates)
                   .where(eq(schema.mute.id, id))
                   .returning();
+
                 if (!updatedMute) return null;
 
                 // TODO: Send the muted user an update in DMs
