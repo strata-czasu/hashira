@@ -306,13 +306,6 @@ export const mutes = new Hashira({ name: "mutes" })
                   return null;
                 }
 
-                if (rawDuration && mute.endsAt < itx.createdAt) {
-                  await itx.reply({
-                    content: "Nie można edytować wyciszenia, które już się skończyło",
-                    ephemeral: true,
-                  });
-                  return null;
-                }
                 // null - parsing failed, undefined - no duration provided
                 const duration = rawDuration ? parseDuration(rawDuration) : undefined;
                 if (duration === null) {
