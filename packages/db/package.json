@@ -27,7 +27,7 @@
   "dependencies": {
     "drizzle-orm": "^0.30.8",
     "postgres": "^3.4.4",
-    "drizzle-kit": "^0.20.16",
+    "drizzle-kit": "^0.20.17",
     "pg": "^8.11.5"
   }
 }
