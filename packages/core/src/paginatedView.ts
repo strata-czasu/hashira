@@ -1,4 +1,5 @@
 import type { CountSelect, Paginate } from "@hashira/db";
+import type { PgSelect } from "@hashira/db/drizzle/pgCore";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -10,7 +11,6 @@ import {
   ComponentType,
   type InteractionResponse,
 } from "discord.js";
-import type { PgSelect } from "drizzle-orm/pg-core";
 import { match } from "ts-pattern";
 
 type CreateFilter = (

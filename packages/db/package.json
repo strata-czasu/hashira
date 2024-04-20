@@ -5,7 +5,9 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./migrate": "./src/migrate.ts",
-    "./tasks": "./src/tasks.ts"
+    "./tasks": "./src/tasks.ts",
+    "./drizzle": "./src/drizzle.ts",
+    "./drizzle/pgCore": "./src/pgCore.ts"
   },
   "type": "module",
   "scripts": {
@@ -23,7 +25,7 @@
     "@faker-js/faker": "^8.4.1"
   },
   "dependencies": {
-    "drizzle-orm": "^0.30.7",
+    "drizzle-orm": "^0.30.8",
     "postgres": "^3.4.4",
     "drizzle-kit": "^0.20.16",
     "pg": "^8.11.5"

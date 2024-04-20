@@ -1,7 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, schema } from "@hashira/db";
+import { count, eq } from "@hashira/db/drizzle";
 import { PermissionFlagsBits } from "discord.js";
-import { count, eq } from "drizzle-orm";
 import { base } from "./base";
 
 export const autoRole = new Hashira({ name: "auto-role" })

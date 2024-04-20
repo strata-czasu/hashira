@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { schema } from "@hashira/db";
+import { eq } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, roleMention } from "discord.js";
-import { eq } from "drizzle-orm";
 import { base } from "./base";
 
 export const settings = new Hashira({ name: "settings" })

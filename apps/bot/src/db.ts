@@ -1,8 +1,8 @@
 import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
+import { eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
 import { type Client, DiscordAPIError, RESTJSONErrorCodes, bold } from "discord.js";
-import { eq } from "drizzle-orm";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 type MuteEndData = {
