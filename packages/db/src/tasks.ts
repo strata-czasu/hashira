@@ -142,7 +142,11 @@ export class MessageQueue<
         .update(task)
         .set({ handleAfter })
         .where(
-          and(eq(sql`${task.data}->>'type'`, type), eq(task.identifier, identifier)),
+          and(
+            eq(sql`${task.data}->>'type'`, type),
+            eq(task.identifier, identifier),
+            eq(task.status, "pending"),
+          ),
         );
     });
   }
