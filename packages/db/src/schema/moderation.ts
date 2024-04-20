@@ -67,6 +67,9 @@ export const mute = pgTable(
   },
   (table) => ({
     userIdx: index().on(table.userId),
+    createdAtIdx: index().on(table.createdAt),
+    endsAtIdx: index().on(table.endsAt),
+    deletedAtIdx: index().on(table.deletedAt),
   }),
 );
 
