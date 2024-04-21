@@ -1,11 +1,15 @@
 import { DiscordAPIError, type RESTJSONErrorCodes } from "discord.js";
 
-export const discordTry = async <T, U>(
+interface DiscordTryOptions {
+  rethrowAfterCatch?: boolean;
+}
+
+export async function discordTry<T, U>(
   fn: () => Promise<T>,
   codes: RESTJSONErrorCodes[],
   catchFn: (e: DiscordAPIError) => Promise<U>,
-  rethrowAfterCatch = false,
-) => {
+  { rethrowAfterCatch }: DiscordTryOptions = {},
+): Promise<T | U> {
   try {
     return await fn();
   } catch (e) {
@@ -15,4 +19,4 @@ export const discordTry = async <T, U>(
     }
     throw e;
   }
-};
+}
