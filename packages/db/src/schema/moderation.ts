@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { isNull, relations } from "drizzle-orm";
 import { index, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild } from "./guild";
@@ -67,9 +67,9 @@ export const mute = pgTable(
   },
   (table) => ({
     userIdx: index().on(table.userId),
-    createdAtIdx: index().on(table.createdAt),
-    endsAtIdx: index().on(table.endsAt),
-    deletedAtIdx: index().on(table.deletedAt),
+    currentNotDeletedIdx: index()
+      .on(table.endsAt, table.guildId)
+      .where(isNull(table.deletedAt)),
   }),
 );
 
