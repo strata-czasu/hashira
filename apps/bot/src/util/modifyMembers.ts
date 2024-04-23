@@ -1,9 +1,5 @@
-import {
-  type Collection,
-  DiscordAPIError,
-  type GuildMember,
-  RESTJSONErrorCodes,
-} from "discord.js";
+import { type Collection, type GuildMember, RESTJSONErrorCodes } from "discord.js";
+import { discordTry } from "./discordTry";
 
 /**
  * Modify guild members and return status of each operation
@@ -16,19 +12,15 @@ export const modifyMembers = async (
   fn: (m: GuildMember) => Promise<unknown>,
 ) => {
   return Promise.all(
-    members.map(async (m) => {
-      try {
-        await fn(m);
-        return true;
-      } catch (e) {
-        if (
-          e instanceof DiscordAPIError &&
-          e.code === RESTJSONErrorCodes.MissingPermissions
-        ) {
-          return false;
-        }
-        throw e;
-      }
-    }),
+    members.map(async (m) =>
+      discordTry(
+        async () => {
+          await fn(m);
+          return true;
+        },
+        [RESTJSONErrorCodes.MissingPermissions],
+        async () => false,
+      ),
+    ),
   );
 };

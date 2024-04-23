@@ -4,7 +4,6 @@ import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { add, intervalToDuration } from "date-fns";
 import {
   type ChatInputCommandInteraction,
-  DiscordAPIError,
   HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
@@ -18,6 +17,7 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
+import { discordTry } from "../util/discordTry";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
@@ -165,22 +165,22 @@ export const mutes = new Hashira({ name: "mutes" })
                   })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
-                try {
-                  if (member.voice.channel) {
-                    await member.voice.disconnect(
-                      `Wyciszenie: ${reason} [${itx.user.tag}]`,
-                    );
-                  }
 
-                  await member.roles.add(
-                    muteRoleId,
-                    `Wyciszenie: ${reason} [${mute.id}]`,
-                  );
-                } catch (e) {
-                  if (
-                    e instanceof DiscordAPIError &&
-                    e.code === RESTJSONErrorCodes.MissingPermissions
-                  ) {
+                return discordTry(
+                  async () => {
+                    if (member.voice.channel) {
+                      await member.voice.disconnect(
+                        `Wyciszenie: ${reason} [${itx.user.tag}]`,
+                      );
+                    }
+                    await member.roles.add(
+                      muteRoleId,
+                      `Wyciszenie: ${reason} [${mute.id}]`,
+                    );
+                    return mute;
+                  },
+                  [RESTJSONErrorCodes.MissingPermissions],
+                  async () => {
                     await itx.reply({
                       content:
                         "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
@@ -188,10 +188,8 @@ export const mutes = new Hashira({ name: "mutes" })
                     });
                     tx.rollback();
                     return null;
-                  }
-                  throw e;
-                }
-                return mute;
+                  },
+                );
               });
               if (!mute) return;
 

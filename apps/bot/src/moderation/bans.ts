@@ -2,13 +2,13 @@ import { Hashira } from "@hashira/core";
 import { formatDate } from "date-fns";
 import {
   AuditLogEvent,
-  DiscordAPIError,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type User,
   bold,
   italic,
 } from "discord.js";
+import { discordTry } from "../util/discordTry";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -101,21 +101,16 @@ export const bans = new Hashira({ name: "bans" })
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions?.has(PermissionFlagsBits.BanMembers)) return;
 
-        try {
-          await itx.guild.members.unban(user, reason ?? undefined);
-        } catch (e) {
-          if (
-            e instanceof DiscordAPIError &&
-            e.code === RESTJSONErrorCodes.UnknownBan
-          ) {
+        discordTry(
+          async () => itx.guild.members.unban(user, reason ?? undefined),
+          [RESTJSONErrorCodes.UnknownBan],
+          async () => {
             await itx.reply({
               content: `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
               ephemeral: true,
             });
-            return;
-          }
-          throw e;
-        }
+          },
+        );
 
         const message = reason
           ? `Odbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`

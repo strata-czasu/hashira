@@ -2,7 +2,8 @@ import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
 import { eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
-import { type Client, DiscordAPIError, RESTJSONErrorCodes, bold } from "discord.js";
+import { type Client, RESTJSONErrorCodes, bold } from "discord.js";
+import { discordTry } from "./util/discordTry";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 type MuteEndData = {
@@ -24,28 +25,23 @@ export const database = new Hashira({ name: "database" })
             where: eq(schema.guildSettings.guildId, guildId),
           });
           if (!settings || !settings.muteRoleId) return;
+          const muteRoleId = settings.muteRoleId;
           const guild = client.guilds.cache.get(guildId);
           if (!guild) return;
           const member = guild.members.cache.get(userId);
           if (!member) return;
 
-          try {
-            await member.roles.remove(
-              settings.muteRoleId,
-              `Koniec wyciszenia [${muteId}]`,
-            );
-          } catch (e) {
-            if (
-              e instanceof DiscordAPIError &&
-              e.code === RESTJSONErrorCodes.MissingPermissions
-            ) {
+          await discordTry(
+            async () => {
+              await member.roles.remove(muteRoleId, `Koniec wyciszenia [${muteId}]`);
+            },
+            [RESTJSONErrorCodes.MissingPermissions],
+            async () => {
               console.warn(
                 `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
               );
-              return;
-            }
-            throw e;
-          }
+            },
+          );
 
           // NOTE: We could mention the user on the server if sending the DM fails
           await sendDirectMessage(
