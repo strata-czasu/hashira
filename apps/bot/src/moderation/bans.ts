@@ -10,6 +10,7 @@ import {
   userMention,
 } from "discord.js";
 import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -64,6 +65,7 @@ export const bans = new Hashira({ name: "bans" })
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
+        await itx.deferReply();
 
         const sentMessage = await sendDirectMessage(
           user,
@@ -85,8 +87,9 @@ export const bans = new Hashira({ name: "bans" })
           });
         }
 
-        const msg = `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`;
-        await itx.reply(msg);
+        await itx.editReply(
+          `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
+        );
         if (!sentMessage) {
           await itx.followUp({
             content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
@@ -108,22 +111,23 @@ export const bans = new Hashira({ name: "bans" })
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions?.has(PermissionFlagsBits.BanMembers)) return;
+        await itx.deferReply();
 
         discordTry(
           async () => itx.guild.members.unban(user, reason ?? undefined),
           [RESTJSONErrorCodes.UnknownBan],
           async () => {
-            await itx.reply({
-              content: `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
-              ephemeral: true,
-            });
+            await errorFollowUp(
+              itx,
+              `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
+            );
           },
         );
 
         const message = reason
           ? `Odbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`
           : `Odbanowano ${formatUserWithId(user)}`;
-        await itx.reply(message);
+        await itx.editReply(message);
       }),
   )
   .handle("guildBanAdd", async (_, { guild, user }) => {
