@@ -3,6 +3,7 @@ import { schema } from "@hashira/db";
 import { addMilliseconds } from "date-fns";
 import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
+import { chunk } from "./util/chunk";
 import { fetchMembers } from "./util/fetchMembers";
 import { isOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
@@ -103,12 +104,8 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
                 mutesToInsert.flatMap((mute) => [mute.userId, mute.moderatorId]),
               ),
             ];
-            const userChunks = [];
-            for (let i = 0; i < users.length; i += 1000) {
-              userChunks.push(users.slice(i, i + 1000));
-            }
             await Promise.all(
-              userChunks.map((chunk) =>
+              chunk(users, 1000).map((chunk) =>
                 db
                   .insert(schema.user)
                   .values(chunk.map((id) => ({ id })))
