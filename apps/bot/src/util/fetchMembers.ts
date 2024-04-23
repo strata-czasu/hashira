@@ -1,12 +1,5 @@
 import { Collection, type GuildMember, type UserResolvable } from "discord.js";
-
-const chunk = <T>(array: T[], size: number): T[][] => {
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-};
+import { chunk } from "./chunk";
 
 export async function fetchMembers(
   guild: {
