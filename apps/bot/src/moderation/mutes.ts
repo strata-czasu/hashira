@@ -170,7 +170,7 @@ export const mutes = new Hashira({ name: "mutes" })
                   async () => {
                     if (member.voice.channel) {
                       await member.voice.disconnect(
-                        `Wyciszenie: ${reason} [${itx.user.tag}]`,
+                        `Wyciszenie: ${reason} [${mute.id}]`,
                       );
                     }
                     await member.roles.add(
