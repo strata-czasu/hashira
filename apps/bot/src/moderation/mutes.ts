@@ -232,7 +232,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
-          .handle(async ({ db, messageQueue, getMuteRoleId }, { id, reason }, itx) => {
+          .handle(async ({ db, messageQueue }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -247,20 +247,12 @@ export const mutes = new Hashira({ name: "mutes" })
                 .update(schema.mute)
                 .set({ deletedAt: itx.createdAt, deleteReason: reason })
                 .where(eq(schema.mute.id, id));
+
+              await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
+
               return mute;
             });
             if (!mute) return;
-
-            const muteRoleId = await getMuteRoleId(itx.guildId);
-            const member = itx.guild.members.cache.get(mute.userId);
-            // NOTE: This could fail if the mute role was removed or the member left the server
-            if (muteRoleId && member) {
-              await member.roles.remove(
-                muteRoleId,
-                `Usunięcie wyciszenia [${mute.id}]`,
-              );
-            }
-            await messageQueue.cancel("muteEnd", mute.id.toString());
 
             if (reason) {
               await itx.editReply(
