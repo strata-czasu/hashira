@@ -5,8 +5,9 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type User,
-  bold,
+  hideLinkEmbed,
   italic,
+  userMention,
 } from "discord.js";
 import { discordTry } from "../util/discordTry";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -33,6 +34,7 @@ const BAN_FIXUP_GUILDS = [
   "342022299957854220", // Piwnica
   "211261411119202305", // Strata Czasu
 ];
+const APPEAL_URL = "https://bit.ly/unban_na_stracie";
 
 export const bans = new Hashira({ name: "bans" })
   .command("ban", (command) =>
@@ -65,7 +67,13 @@ export const bans = new Hashira({ name: "bans" })
 
         const sentMessage = await sendDirectMessage(
           user,
-          `Zbanowano Cię na ${bold(itx.guild.name)}. Powód: ${italic(reason)}`,
+          `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+            itx.user.tag
+          }) nałożył Ci karę bana. Powodem Twojego bana jest ${italic(
+            reason,
+          )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
+            APPEAL_URL,
+          )}.`,
         );
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
         if (!deleteInterval) {
