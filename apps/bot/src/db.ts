@@ -2,7 +2,7 @@ import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
 import { eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
-import { type Client, RESTJSONErrorCodes, bold } from "discord.js";
+import { type Client, RESTJSONErrorCodes, userMention } from "discord.js";
 import { discordTry } from "./util/discordTry";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
@@ -46,7 +46,9 @@ export const database = new Hashira({ name: "database" })
           // NOTE: We could mention the user on the server if sending the DM fails
           await sendDirectMessage(
             member.user,
-            `Skończyło się Twoje wyciszenie na ${bold(guild.name)}!`,
+            `To znowu ja ${userMention(
+              member.id,
+            )}. Dostałem informację, że Twoje wyciszenie dobiegło końca. Do zobaczenia na czatach!`,
           );
         },
       ),
