@@ -158,7 +158,6 @@ export const warns = new Hashira({ name: "warns" })
             });
             if (!warn) return;
 
-            // NOTE: This is necessary in order to send the success message as non-ephemeral
             await itx.editReply(
               `Zaktualizowano ostrzeżenie ${inlineCode(
                 id.toString(),
