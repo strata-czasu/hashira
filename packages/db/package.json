@@ -25,7 +25,7 @@
     "@faker-js/faker": "^8.4.1"
   },
   "dependencies": {
-    "drizzle-orm": "^0.30.8",
+    "drizzle-orm": "^0.30.9",
     "postgres": "^3.4.4",
     "drizzle-kit": "^0.20.17",
     "pg": "^8.11.5"
