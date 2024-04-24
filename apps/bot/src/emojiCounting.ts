@@ -2,9 +2,15 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate } from "@hashira/db";
 import { and, between, count, countDistinct, eq } from "@hashira/db/drizzle";
 import { emojiUsage } from "@hashira/db/schema";
-import { AttachmentBuilder, type GuildEmoji, type GuildEmojiManager } from "discord.js";
+import {
+  AttachmentBuilder,
+  type GuildEmoji,
+  type GuildEmojiManager,
+  RESTJSONErrorCodes,
+} from "discord.js";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
+import { discordTry } from "./util/discordTry";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
@@ -205,7 +211,12 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
                 paginate,
                 "Guild emoji stats",
                 async (item, idx) => {
-                  const emoji = await interaction.guild.emojis.fetch(item.emojiId);
+                  const emoji = await discordTry(
+                    () => interaction.guild.emojis.fetch(item.emojiId),
+                    [RESTJSONErrorCodes.UnknownEmoji],
+                    () => "unknown emoji",
+                  );
+
                   return `${idx}. ${emoji} - ${item.count}`;
                 },
                 true,
