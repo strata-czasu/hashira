@@ -76,7 +76,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               );
 
               const paginate = new Paginate({
-                orderByColumn: count(),
+                orderBy: [count(), emojiUsage.emojiId],
                 select: db
                   .select({ emojiId: emojiUsage.emojiId, count: count() })
                   .from(emojiUsage)
@@ -141,7 +141,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               );
 
               const paginate = new Paginate({
-                orderByColumn: count(),
+                orderBy: [count(), emojiUsage.userId],
                 select: db
                   .select({ userId: emojiUsage.userId, count: count() })
                   .from(emojiUsage)
@@ -187,7 +187,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               );
 
               const paginate = new Paginate({
-                orderByColumn: count(),
+                orderBy: [count(), emojiUsage.emojiId],
                 select: db
                   .select({ emojiId: emojiUsage.emojiId, count: count() })
                   .from(emojiUsage)
@@ -241,7 +241,8 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
                     eq(emojiUsage.guildId, interaction.guild.id),
                     between(emojiUsage.timestamp, after, before),
                   ),
-                );
+                )
+                .orderBy(emojiUsage.emojiId);
 
               const usedEmojiIds = emojiUsages.map((usage) => usage.emojiId);
               const unusedEmojis = guildEmojis.filter(

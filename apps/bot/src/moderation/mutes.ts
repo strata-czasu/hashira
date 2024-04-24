@@ -397,8 +397,8 @@ export const mutes = new Hashira({ name: "mutes" })
               gte(schema.mute.endsAt, itx.createdAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.mute.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.mute.createdAt,
+              ordering: "DESC",
               select: db
                 .select({
                   id: schema.mute.id,
@@ -452,8 +452,8 @@ export const mutes = new Hashira({ name: "mutes" })
               deleted ? undefined : isNull(schema.mute.deletedAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.mute.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.mute.createdAt,
+              ordering: "DESC",
               select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
               count: db
                 .select({ count: count() })

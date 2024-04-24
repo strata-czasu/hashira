@@ -195,8 +195,8 @@ export const warns = new Hashira({ name: "warns" })
               deleted ? undefined : isNull(schema.warn.deletedAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.warn.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.warn.createdAt,
+              ordering: "DESC",
               select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
               count: db
                 .select({ count: count() })
