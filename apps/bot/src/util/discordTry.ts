@@ -5,9 +5,9 @@ interface DiscordTryOptions {
 }
 
 export async function discordTry<T, U>(
-  fn: () => Promise<T>,
+  fn: () => T,
   codes: RESTJSONErrorCodes[],
-  catchFn: (e: DiscordAPIError) => Promise<U>,
+  catchFn: (e: DiscordAPIError) => U,
   { rethrowAfterCatch }: DiscordTryOptions = {},
 ): Promise<T | U> {
   try {
