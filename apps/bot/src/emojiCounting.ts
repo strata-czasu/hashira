@@ -232,7 +232,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
           .handle(async ({ db }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             if (
-              itx.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)
+              !itx.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)
             ) {
               await itx.reply({
                 ephemeral: true,
