@@ -26,9 +26,19 @@ export const database = new Hashira({ name: "database" })
           });
           if (!settings || !settings.muteRoleId) return;
           const muteRoleId = settings.muteRoleId;
-          const guild = client.guilds.cache.get(guildId);
+
+          const guild = await discordTry(
+            async () => client.guilds.fetch(guildId),
+            [RESTJSONErrorCodes.UnknownGuild],
+            async () => null,
+          );
           if (!guild) return;
-          const member = guild.members.cache.get(userId);
+
+          const member = await discordTry(
+            async () => guild.members.fetch(userId),
+            [RESTJSONErrorCodes.UnknownMember],
+            async () => null,
+          );
           if (!member) return;
 
           await discordTry(

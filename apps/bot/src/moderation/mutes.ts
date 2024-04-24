@@ -113,11 +113,18 @@ export const mutes = new Hashira({ name: "mutes" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
-              const member = itx.guild.members.cache.get(user.id);
-              if (!member) {
-                await errorFollowUp(itx, "Nie znaleziono użytkownika na tym serwerze.");
-                return;
-              }
+              const member = await discordTry(
+                async () => itx.guild.members.fetch(user),
+                [RESTJSONErrorCodes.UnknownMember],
+                async () => {
+                  await errorFollowUp(
+                    itx,
+                    "Nie znaleziono podanego użytkownika na tym serwerze.",
+                  );
+                  return null;
+                },
+              );
+              if (!member) return;
 
               const muteRoleId = await getMuteRoleId(itx.guildId);
               if (!muteRoleId) {
@@ -335,23 +342,27 @@ export const mutes = new Hashira({ name: "mutes" })
                   );
                 }
 
-                const member = itx.guild.members.cache.get(mute.userId);
-                if (member) {
-                  let content = `Twoje wyciszenie zostało zedytowane przez ${userMention(
-                    itx.user.id,
-                  )} (${itx.user.tag}).`;
-                  if (reason) {
-                    content += `\n\nPoprzedni powód wyciszenia: ${italic(
-                      originalReason,
-                    )}\nNowy powód wyciszenia: ${italic(reason)}`;
-                  }
-                  if (duration) {
-                    content += `\n\nPoprzednia długość kary: ${bold(
-                      formatDuration(originalDuration),
-                    )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
-                  }
-                  await sendDirectMessage(member.user, content);
-                }
+                await discordTry(
+                  async () => {
+                    const member = await itx.guild.members.fetch(mute.userId);
+                    let content = `Twoje wyciszenie zostało zedytowane przez ${userMention(
+                      itx.user.id,
+                    )} (${itx.user.tag}).`;
+                    if (reason) {
+                      content += `\n\nPoprzedni powód wyciszenia: ${italic(
+                        originalReason,
+                      )}\nNowy powód wyciszenia: ${italic(reason)}`;
+                    }
+                    if (duration) {
+                      content += `\n\nPoprzednia długość kary: ${bold(
+                        formatDuration(originalDuration),
+                      )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
+                    }
+                    await sendDirectMessage(member.user, content);
+                  },
+                  [RESTJSONErrorCodes.UnknownMember],
+                  async () => {},
+                );
 
                 return updatedMute;
               });

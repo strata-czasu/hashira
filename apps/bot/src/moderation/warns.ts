@@ -3,6 +3,7 @@ import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import {
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   TimestampStyles,
   inlineCode,
   italic,
@@ -10,6 +11,7 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
+import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
@@ -142,17 +144,21 @@ export const warns = new Hashira({ name: "warns" })
                 .set({ reason })
                 .where(eq(schema.warn.id, id));
 
-              const member = itx.guild.members.cache.get(warn.userId);
-              if (member) {
-                await sendDirectMessage(
-                  member.user,
-                  `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
-                    itx.user.id,
-                  )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
-                    originalReason,
-                  )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
-                );
-              }
+              await discordTry(
+                async () => {
+                  const member = await itx.guild.members.fetch(warn.userId);
+                  await sendDirectMessage(
+                    member.user,
+                    `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
+                      itx.user.id,
+                    )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
+                      originalReason,
+                    )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
+                  );
+                },
+                [RESTJSONErrorCodes.UnknownMember],
+                async () => {},
+              );
 
               return warn;
             });
