@@ -33,3 +33,12 @@ export const durationToSeconds = (duration: Duration): number => {
     (duration.days ?? 0) * 60 * 60 * 24
   );
 };
+
+export const formatDuration = (duration: Duration): string => {
+  const parts = [];
+  if (duration.days) parts.push(`${duration.days}d`);
+  if (duration.hours) parts.push(`${duration.hours}h`);
+  if (duration.minutes) parts.push(`${duration.minutes}m`);
+  if (duration.seconds) parts.push(`${duration.seconds}s`);
+  return parts.join(" ");
+};

@@ -3,13 +3,12 @@ import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { add, intervalToDuration } from "date-fns";
 import {
-  type ChatInputCommandInteraction,
-  DiscordAPIError,
   HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
   bold,
+  channelMention,
   heading,
   inlineCode,
   italic,
@@ -18,7 +17,9 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
-import { durationToSeconds, parseDuration } from "../util/duration";
+import { discordTry } from "../util/discordTry";
+import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -61,13 +62,6 @@ const formatMuteInList = (mute: typeof schema.mute.$inferSelect, _idx: number) =
   return lines.join("\n");
 };
 
-const muteNotFound = async (itx: ChatInputCommandInteraction) => {
-  await itx.reply({
-    content: "Nie znaleziono wyciszenia o podanym ID",
-    ephemeral: true,
-  });
-};
-
 const getMute = async (tx: Transaction, id: number, guildId: string) =>
   tx
     .select()
@@ -79,6 +73,9 @@ const getMute = async (tx: Transaction, id: number, guildId: string) =>
         isNull(schema.mute.deletedAt),
       ),
     );
+
+const RULES_CHANNEL = "873167662082056232";
+const APPEALS_CHANNEL = "1213901611836117052";
 
 export const mutes = new Hashira({ name: "mutes" })
   .use(base)
@@ -114,34 +111,37 @@ export const mutes = new Hashira({ name: "mutes" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-              const member = itx.guild.members.cache.get(user.id);
-              if (!member) {
-                await itx.reply({
-                  content: "Nie znaleziono użytkownika na tym serwerze.",
-                  ephemeral: true,
-                });
-                return;
-              }
+              const member = await discordTry(
+                async () => itx.guild.members.fetch(user),
+                [RESTJSONErrorCodes.UnknownMember],
+                async () => {
+                  await errorFollowUp(
+                    itx,
+                    "Nie znaleziono podanego użytkownika na tym serwerze.",
+                  );
+                  return null;
+                },
+              );
+              if (!member) return;
 
               const muteRoleId = await getMuteRoleId(itx.guildId);
               if (!muteRoleId) {
-                await itx.reply({
-                  // TODO: Add an actual link to the settings command
-                  content:
-                    "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
-                  ephemeral: true,
-                });
+                // TODO: Add an actual link to the settings command
+                await errorFollowUp(
+                  itx,
+                  "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
+                );
                 return;
               }
 
               const duration = parseDuration(rawDuration);
               if (!duration) {
-                await itx.reply({
-                  content:
-                    "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s",
-                  ephemeral: true,
-                });
+                await errorFollowUp(
+                  itx,
+                  "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+                );
                 return;
               }
               const endsAt = add(itx.createdAt, duration);
@@ -165,33 +165,30 @@ export const mutes = new Hashira({ name: "mutes" })
                   })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
-                try {
-                  if (member.voice.channel) {
-                    await member.voice.disconnect(
-                      `Wyciszenie: ${reason} [${itx.user.tag}]`,
-                    );
-                  }
 
-                  await member.roles.add(
-                    muteRoleId,
-                    `Wyciszenie: ${reason} [${mute.id}]`,
-                  );
-                } catch (e) {
-                  if (
-                    e instanceof DiscordAPIError &&
-                    e.code === RESTJSONErrorCodes.MissingPermissions
-                  ) {
-                    await itx.reply({
-                      content:
-                        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-                      ephemeral: true,
-                    });
+                return discordTry(
+                  async () => {
+                    if (member.voice.channel) {
+                      await member.voice.disconnect(
+                        `Wyciszenie: ${reason} [${mute.id}]`,
+                      );
+                    }
+                    await member.roles.add(
+                      muteRoleId,
+                      `Wyciszenie: ${reason} [${mute.id}]`,
+                    );
+                    return mute;
+                  },
+                  [RESTJSONErrorCodes.MissingPermissions],
+                  async () => {
+                    await errorFollowUp(
+                      itx,
+                      "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+                    );
                     tx.rollback();
                     return null;
-                  }
-                  throw e;
-                }
-                return mute;
+                  },
+                );
               });
               if (!mute) return;
 
@@ -204,11 +201,20 @@ export const mutes = new Hashira({ name: "mutes" })
 
               const sentMessage = await sendDirectMessage(
                 user,
-                `Otrzymujesz wyciszenie na ${bold(itx.guild.name)}. Powód: ${italic(
+                `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+                  itx.user.tag
+                }) nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
+                  formatDuration(duration),
+                )}. Powodem Twojego wyciszenia jest: ${italic(
                   reason,
-                )}.\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
+                )}.\n\nPrzeczytaj ${channelMention(
+                  RULES_CHANNEL,
+                )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
+                  APPEALS_CHANNEL,
+                )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
               );
-              await itx.reply(
+
+              await itx.editReply(
                 `Dodano wyciszenie [${inlineCode(
                   mute.id.toString(),
                 )}] dla ${formatUserWithId(user)}. Powód: ${italic(
@@ -233,13 +239,14 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
-          .handle(async ({ db, messageQueue, getMuteRoleId }, { id, reason }, itx) => {
+          .handle(async ({ db, messageQueue }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
             const mute = await db.transaction(async (tx) => {
               const [mute] = await getMute(tx, id, itx.guildId);
               if (!mute) {
-                await muteNotFound(itx);
+                await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
                 return null;
               }
               // TODO: Save a log of this edit in the database
@@ -247,29 +254,21 @@ export const mutes = new Hashira({ name: "mutes" })
                 .update(schema.mute)
                 .set({ deletedAt: itx.createdAt, deleteReason: reason })
                 .where(eq(schema.mute.id, id));
+
+              await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
+
               return mute;
             });
             if (!mute) return;
 
-            const muteRoleId = await getMuteRoleId(itx.guildId);
-            const member = itx.guild.members.cache.get(mute.userId);
-            // NOTE: This could fail if the mute role was removed or the member left the server
-            if (muteRoleId && member) {
-              await member.roles.remove(
-                muteRoleId,
-                `Usunięcie wyciszenia [${mute.id}]`,
-              );
-            }
-            await messageQueue.cancel("muteEnd", mute.id.toString());
-
             if (reason) {
-              await itx.reply(
+              await itx.editReply(
                 `Usunięto wyciszenie ${inlineCode(
                   id.toString(),
                 )}. Powód usunięcia: ${italic(reason)}`,
               );
             } else {
-              itx.reply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
+              itx.editReply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
             }
           }),
       )
@@ -290,30 +289,35 @@ export const mutes = new Hashira({ name: "mutes" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
               if (!reason && !rawDuration) {
-                await itx.reply({
-                  content: "Podaj nowy powód lub czas trwania wyciszenia",
-                  ephemeral: true,
-                });
+                await errorFollowUp(
+                  itx,
+                  "Podaj nowy powód lub czas trwania wyciszenia",
+                );
                 return;
               }
 
               const mute = await db.transaction(async (tx) => {
                 const [mute] = await getMute(tx, id, itx.guildId);
                 if (!mute) {
-                  await muteNotFound(itx);
+                  await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
                   return null;
                 }
+                const originalReason = mute.reason;
+                const originalDuration = intervalToDuration({
+                  start: mute.createdAt,
+                  end: mute.endsAt,
+                });
 
                 // null - parsing failed, undefined - no duration provided
                 const duration = rawDuration ? parseDuration(rawDuration) : undefined;
                 if (duration === null) {
-                  await itx.reply({
-                    content:
-                      "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s",
-                    ephemeral: true,
-                  });
+                  await errorFollowUp(
+                    itx,
+                    "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+                  );
                   return null;
                 }
 
@@ -330,7 +334,6 @@ export const mutes = new Hashira({ name: "mutes" })
 
                 if (!updatedMute) return null;
 
-                // TODO: Send the muted user an update in DMs
                 if (duration) {
                   await messageQueue.updateDelay(
                     "muteEnd",
@@ -338,16 +341,39 @@ export const mutes = new Hashira({ name: "mutes" })
                     durationToSeconds(duration),
                   );
                 }
+
+                await discordTry(
+                  async () => {
+                    const member = await itx.guild.members.fetch(mute.userId);
+                    let content = `Twoje wyciszenie zostało zedytowane przez ${userMention(
+                      itx.user.id,
+                    )} (${itx.user.tag}).`;
+                    if (reason) {
+                      content += `\n\nPoprzedni powód wyciszenia: ${italic(
+                        originalReason,
+                      )}\nNowy powód wyciszenia: ${italic(reason)}`;
+                    }
+                    if (duration) {
+                      content += `\n\nPoprzednia długość kary: ${bold(
+                        formatDuration(originalDuration),
+                      )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
+                    }
+                    await sendDirectMessage(member.user, content);
+                  },
+                  [RESTJSONErrorCodes.UnknownMember],
+                  async () => {},
+                );
+
                 return updatedMute;
               });
               if (!mute) return;
 
-              await itx.reply(
+              await itx.editReply(
                 `Zaktualizowano wyciszenie ${inlineCode(id.toString())}. `
-                  .concat(reason ? `Nowy powód: ${italic(reason)}` : "")
+                  .concat(reason ? `\nNowy powód: ${italic(reason)}` : "")
                   .concat(
                     rawDuration
-                      ? `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`
+                      ? `\nKoniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`
                       : "",
                   ),
               );
@@ -371,8 +397,8 @@ export const mutes = new Hashira({ name: "mutes" })
               gte(schema.mute.endsAt, itx.createdAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.mute.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.mute.createdAt,
+              ordering: "DESC",
               select: db
                 .select({
                   id: schema.mute.id,
@@ -426,8 +452,8 @@ export const mutes = new Hashira({ name: "mutes" })
               deleted ? undefined : isNull(schema.mute.deletedAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.mute.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.mute.createdAt,
+              ordering: "DESC",
               select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
               count: db
                 .select({ count: count() })

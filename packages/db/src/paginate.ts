@@ -19,19 +19,19 @@ interface PaginateConfig<T extends PgSelect, U extends CountSelect> {
    */
   select: T;
   /**
-   * Column to order by
+   * Column or columns to order by
    */
-  orderByColumn: PgColumn | SQL | SQL.Aliased;
+  orderBy: (PgColumn | SQL | SQL.Aliased) | (PgColumn | SQL | SQL.Aliased)[];
   /**
    * Page number to start from, zero-based
    * @default 0
    */
   page?: number;
   /**
-   * Order by ascending
+   * Default odering direction
    * @default "ASC"
    */
-  orderBy?: "ASC" | "DESC";
+  ordering?: "ASC" | "DESC";
   /**
    * Number of rows per page
    * @default 10
@@ -41,18 +41,18 @@ interface PaginateConfig<T extends PgSelect, U extends CountSelect> {
 
 export class Paginate<T extends PgSelect, U extends CountSelect> {
   readonly #qb: T;
-  readonly #orderByColumn: PgColumn | SQL | SQL.Aliased;
+  readonly #orderBy: (PgColumn | SQL | SQL.Aliased)[];
   readonly #countQb: U | undefined = undefined;
   readonly #pageSize: number = 10;
-  #orderBy: "ASC" | "DESC" = "ASC";
+  #ordering: "ASC" | "DESC" = "ASC";
   #page = 0;
   #count: number = Number.MAX_SAFE_INTEGER;
 
   constructor(config: PaginateConfig<T, U>) {
     this.#qb = config.select;
-    this.#orderByColumn = config.orderByColumn;
+    this.#orderBy = Array.isArray(config.orderBy) ? config.orderBy : [config.orderBy];
     this.#countQb = config.count;
-    this.#orderBy = config.orderBy ?? this.#orderBy;
+    this.#ordering = config.ordering ?? this.#ordering;
     this.#pageSize = config.pageSize ?? this.#pageSize;
     this.#page = config.page ?? this.#page;
   }
@@ -78,7 +78,7 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
   }
 
   public get displayOrder() {
-    return this.#orderBy === "ASC" ? "Ascending" : "Descending";
+    return this.#ordering === "ASC" ? "Ascending" : "Descending";
   }
 
   public get canPrevious() {
@@ -90,9 +90,9 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
   }
 
   private get qb() {
-    const op = this.#orderBy === "ASC" ? asc : desc;
+    const op = this.#ordering === "ASC" ? asc : desc;
     return this.#qb
-      .orderBy(op(this.#orderByColumn))
+      .orderBy(...this.#orderBy.map(op))
       .limit(this.#pageSize)
       .offset(this.currentOffset);
   }
@@ -110,8 +110,8 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
   }
 
   public async reorder(orderBy?: "ASC" | "DESC") {
-    if (orderBy) this.#orderBy = orderBy;
-    else this.#orderBy = this.#orderBy === "ASC" ? "DESC" : "ASC";
+    if (orderBy) this.#ordering = orderBy;
+    else this.#ordering = this.#ordering === "ASC" ? "DESC" : "ASC";
     this.#page = 0;
     return await this.current();
   }

@@ -2,25 +2,19 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import {
-  type ChatInputCommandInteraction,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   TimestampStyles,
-  bold,
   inlineCode,
   italic,
   time,
   userMention,
 } from "discord.js";
 import { base } from "../base";
+import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
-
-const warnNotFound = async (itx: ChatInputCommandInteraction) => {
-  await itx.reply({
-    content: "Nie znaleziono ostrzeżenia o podanym ID",
-    ephemeral: true,
-  });
-};
 
 const getWarn = async (tx: Transaction, id: number, guildId: string) =>
   tx
@@ -48,6 +42,7 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) => reason.setDescription("Powód ostrzeżenia"))
           .handle(async ({ db }, { user, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
             const [warn] = await db
               .insert(schema.warn)
@@ -62,11 +57,14 @@ export const warns = new Hashira({ name: "warns" })
 
             const sentMessage = await sendDirectMessage(
               user,
-              `Otrzymujesz ostrzeżenie na ${bold(itx.guild.name)}. Powód: ${italic(
+              `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+                itx.user.tag
+              }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
                 reason,
-              )}`,
+              )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
             );
-            await itx.reply(
+
+            await itx.editReply(
               `Dodano ostrzeżenie [${inlineCode(
                 warn.id.toString(),
               )}] dla ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
@@ -90,11 +88,12 @@ export const warns = new Hashira({ name: "warns" })
           )
           .handle(async ({ db }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
             const warn = await db.transaction(async (tx) => {
               const [warn] = await getWarn(tx, id, itx.guildId);
               if (!warn) {
-                await warnNotFound(itx);
+                await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
                 return null;
               }
               // TODO: Save a log of this update in the database
@@ -107,13 +106,13 @@ export const warns = new Hashira({ name: "warns" })
             if (!warn) return;
 
             if (reason) {
-              await itx.reply(
+              await itx.editReply(
                 `Usunięto ostrzeżenie ${inlineCode(
                   id.toString(),
                 )}. Powód usunięcia: ${italic(reason)}`,
               );
             } else {
-              itx.reply(`Usunięto ostrzeżenie ${inlineCode(id.toString())}`);
+              itx.editReply(`Usunięto ostrzeżenie ${inlineCode(id.toString())}`);
             }
           }),
       )
@@ -126,23 +125,46 @@ export const warns = new Hashira({ name: "warns" })
           )
           .handle(async ({ db }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
             const warn = await db.transaction(async (tx) => {
               const [warn] = await getWarn(tx, id, itx.guildId);
               if (!warn) {
-                await warnNotFound(itx);
+                await itx.deleteReply();
+                await itx.followUp({
+                  content: "Nie znaleziono ostrzeżenia o podanym ID",
+                  ephemeral: true,
+                });
                 return null;
               }
+              const originalReason = warn.reason;
               // TODO: Save a log of this edit in the database
               await tx
                 .update(schema.warn)
                 .set({ reason })
                 .where(eq(schema.warn.id, id));
+
+              await discordTry(
+                async () => {
+                  const member = await itx.guild.members.fetch(warn.userId);
+                  await sendDirectMessage(
+                    member.user,
+                    `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
+                      itx.user.id,
+                    )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
+                      originalReason,
+                    )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
+                  );
+                },
+                [RESTJSONErrorCodes.UnknownMember],
+                async () => {},
+              );
+
               return warn;
             });
             if (!warn) return;
 
-            await itx.reply(
+            await itx.editReply(
               `Zaktualizowano ostrzeżenie ${inlineCode(
                 id.toString(),
               )}. Nowy powód: ${italic(reason)}`,
@@ -173,8 +195,8 @@ export const warns = new Hashira({ name: "warns" })
               deleted ? undefined : isNull(schema.warn.deletedAt),
             );
             const paginate = new Paginate({
-              orderByColumn: schema.warn.createdAt,
-              orderBy: "DESC",
+              orderBy: schema.warn.createdAt,
+              ordering: "DESC",
               select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
               count: db
                 .select({ count: count() })

@@ -2,13 +2,15 @@ import { Hashira } from "@hashira/core";
 import { formatDate } from "date-fns";
 import {
   AuditLogEvent,
-  DiscordAPIError,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type User,
-  bold,
+  hideLinkEmbed,
   italic,
+  userMention,
 } from "discord.js";
+import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -33,6 +35,7 @@ const BAN_FIXUP_GUILDS = [
   "342022299957854220", // Piwnica
   "211261411119202305", // Strata Czasu
 ];
+const APPEAL_URL = "https://bit.ly/unban_na_stracie";
 
 export const bans = new Hashira({ name: "bans" })
   .command("ban", (command) =>
@@ -62,10 +65,17 @@ export const bans = new Hashira({ name: "bans" })
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
+        await itx.deferReply();
 
         const sentMessage = await sendDirectMessage(
           user,
-          `Zbanowano Cię na ${bold(itx.guild.name)}. Powód: ${italic(reason)}`,
+          `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+            itx.user.tag
+          }) nałożył Ci karę bana. Powodem Twojego bana jest ${italic(
+            reason,
+          )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
+            APPEAL_URL,
+          )}.`,
         );
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
         if (!deleteInterval) {
@@ -77,8 +87,9 @@ export const bans = new Hashira({ name: "bans" })
           });
         }
 
-        const msg = `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`;
-        await itx.reply(msg);
+        await itx.editReply(
+          `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
+        );
         if (!sentMessage) {
           await itx.followUp({
             content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
@@ -100,27 +111,23 @@ export const bans = new Hashira({ name: "bans" })
         if (!itx.inCachedGuild()) return;
         // TODO: Use default permissions on the slash command
         if (!itx.memberPermissions?.has(PermissionFlagsBits.BanMembers)) return;
+        await itx.deferReply();
 
-        try {
-          await itx.guild.members.unban(user, reason ?? undefined);
-        } catch (e) {
-          if (
-            e instanceof DiscordAPIError &&
-            e.code === RESTJSONErrorCodes.UnknownBan
-          ) {
-            await itx.reply({
-              content: `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
-              ephemeral: true,
-            });
-            return;
-          }
-          throw e;
-        }
+        discordTry(
+          async () => itx.guild.members.unban(user, reason ?? undefined),
+          [RESTJSONErrorCodes.UnknownBan],
+          async () => {
+            await errorFollowUp(
+              itx,
+              `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
+            );
+          },
+        );
 
         const message = reason
           ? `Odbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`
           : `Odbanowano ${formatUserWithId(user)}`;
-        await itx.reply(message);
+        await itx.editReply(message);
       }),
   )
   .handle("guildBanAdd", async (_, { guild, user }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { durationToSeconds, parseDuration } from "../src/util/duration";
+import { durationToSeconds, formatDuration, parseDuration } from "../src/util/duration";
 
 describe("parseDuration", () => {
   test("returns seconds duration", () => {
@@ -59,5 +59,33 @@ describe("durationToSeconds", () => {
 
   test("converts empty duration", () => {
     expect(durationToSeconds({})).toBe(0);
+  });
+});
+
+describe("formatDuration", () => {
+  test("formats seconds duration", () => {
+    expect(formatDuration({ seconds: 8 })).toBe("8s");
+  });
+
+  test("formats minutes duration", () => {
+    expect(formatDuration({ minutes: 8 })).toBe("8m");
+  });
+
+  test("formats hours duration", () => {
+    expect(formatDuration({ hours: 8 })).toBe("8h");
+  });
+
+  test("formats days duration", () => {
+    expect(formatDuration({ days: 8 })).toBe("8d");
+  });
+
+  test("formats mixed duration", () => {
+    expect(formatDuration({ days: 1, hours: 2, minutes: 3, seconds: 4 })).toBe(
+      "1d 2h 3m 4s",
+    );
+  });
+
+  test("formats empty duration", () => {
+    expect(formatDuration({})).toBe("");
   });
 });
