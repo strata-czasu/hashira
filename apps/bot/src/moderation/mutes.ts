@@ -185,11 +185,12 @@ export const mutes = new Hashira({ name: "mutes" })
                 const [mute] = await db
                   .insert(schema.mute)
                   .values({
+                    createdAt: itx.createdAt,
+                    endsAt,
                     guildId: itx.guildId,
-                    userId: user.id,
                     moderatorId: itx.user.id,
                     reason,
-                    endsAt,
+                    userId: user.id,
                   })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
