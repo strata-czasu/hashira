@@ -88,7 +88,7 @@ export const bans = new Hashira({ name: "bans" })
         }
 
         await itx.editReply(
-          `Zbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
+          `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
         );
         if (!sentMessage) {
           await itx.followUp({
@@ -125,7 +125,7 @@ export const bans = new Hashira({ name: "bans" })
         );
 
         const message = reason
-          ? `Odbanowano ${formatUserWithId(user)}. Powód: ${italic(reason)}`
+          ? `Odbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`
           : `Odbanowano ${formatUserWithId(user)}`;
         await itx.editReply(message);
       }),

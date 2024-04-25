@@ -140,7 +140,7 @@ export const mutes = new Hashira({ name: "mutes" })
                   `Użytkownik jest już wyciszony do ${time(
                     activeMute.endsAt,
                     TimestampStyles.RelativeTime,
-                  )} przez ${userMention(activeMute.moderatorId)}. Powód: ${italic(
+                  )} przez ${userMention(activeMute.moderatorId)}.\nPowód: ${italic(
                     activeMute.reason,
                   )}`,
                 );
@@ -245,9 +245,9 @@ export const mutes = new Hashira({ name: "mutes" })
               await itx.editReply(
                 `Dodano wyciszenie [${inlineCode(
                   mute.id.toString(),
-                )}] dla ${formatUserWithId(user)}. Powód: ${italic(
+                )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(
                   reason,
-                )}.\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
+                )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
               );
               if (!sentMessage) {
                 await itx.followUp({

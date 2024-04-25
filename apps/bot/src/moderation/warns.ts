@@ -67,7 +67,7 @@ export const warns = new Hashira({ name: "warns" })
             await itx.editReply(
               `Dodano ostrzeżenie [${inlineCode(
                 warn.id.toString(),
-              )}] dla ${formatUserWithId(user)}. Powód: ${italic(reason)}`,
+              )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
             );
             if (!sentMessage) {
               await itx.followUp({
@@ -109,7 +109,7 @@ export const warns = new Hashira({ name: "warns" })
               await itx.editReply(
                 `Usunięto ostrzeżenie ${inlineCode(
                   id.toString(),
-                )}. Powód usunięcia: ${italic(reason)}`,
+                )}.\nPowód usunięcia: ${italic(reason)}`,
               );
             } else {
               itx.editReply(`Usunięto ostrzeżenie ${inlineCode(id.toString())}`);
