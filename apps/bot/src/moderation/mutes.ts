@@ -165,6 +165,13 @@ export const mutes = new Hashira({ name: "mutes" })
                 );
                 return;
               }
+              if (durationToSeconds(duration) === 0) {
+                await errorFollowUp(
+                  itx,
+                  "Nie można ustawić czasu trwania wyciszenia na 0",
+                );
+                return;
+              }
               const endsAt = add(itx.createdAt, duration);
 
               await db
@@ -338,6 +345,14 @@ export const mutes = new Hashira({ name: "mutes" })
                   await errorFollowUp(
                     itx,
                     "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+                  );
+                  return null;
+                }
+
+                if (duration && durationToSeconds(duration) === 0) {
+                  await errorFollowUp(
+                    itx,
+                    "Nie można ustawić czasu trwania wyciszenia na 0",
                   );
                   return null;
                 }
