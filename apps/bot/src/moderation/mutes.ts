@@ -126,6 +126,27 @@ export const mutes = new Hashira({ name: "mutes" })
               );
               if (!member) return;
 
+              const activeMute = await db.query.mute.findFirst({
+                where: and(
+                  eq(schema.mute.guildId, itx.guildId),
+                  eq(schema.mute.userId, user.id),
+                  isNull(schema.mute.deletedAt),
+                  gte(schema.mute.endsAt, itx.createdAt),
+                ),
+              });
+              if (activeMute) {
+                await errorFollowUp(
+                  itx,
+                  `Użytkownik jest już wyciszony do ${time(
+                    activeMute.endsAt,
+                    TimestampStyles.RelativeTime,
+                  )} przez ${userMention(activeMute.moderatorId)}. Powód: ${italic(
+                    activeMute.reason,
+                  )}`,
+                );
+                return;
+              }
+
               const muteRoleId = await getMuteRoleId(itx.guildId);
               if (!muteRoleId) {
                 // TODO: Add an actual link to the settings command
