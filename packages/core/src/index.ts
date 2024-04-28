@@ -64,6 +64,11 @@ const handleAutoCompleteConflict = (
   );
 };
 
+type ExtractContext<T extends Hashira<HashiraDecorators, HashiraCommands>> =
+  T extends Hashira<infer Decorators, HashiraCommands>
+    ? HashiraContext<Decorators>
+    : never;
+
 class Hashira<
   Decorators extends HashiraDecorators = typeof decoratorInitBase,
   Commands extends HashiraCommands = typeof commandsInitBase,
@@ -417,5 +422,5 @@ class Hashira<
 }
 
 export { Hashira, decoratorInitBase };
-export type { HashiraContext, HashiraDecorators, BaseDecorator };
+export type { HashiraContext, HashiraDecorators, BaseDecorator, ExtractContext };
 export { PaginatedView } from "./paginatedView";
