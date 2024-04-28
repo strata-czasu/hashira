@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
+import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
@@ -43,6 +44,8 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ db }, { user, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            await ensureUserExists(db, user);
 
             const [warn] = await db
               .insert(schema.warn)

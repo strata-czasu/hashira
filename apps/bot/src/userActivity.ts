@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import { schema } from "@hashira/db";
 import { ChannelType, SnowflakeUtil } from "discord.js";
 import { base } from "./base";
+import { ensureUserExists } from "./util/ensureUsersExist";
 import { fetchMessages } from "./util/fetchMessages";
 import { isOwner } from "./util/isOwner";
 
@@ -87,10 +88,7 @@ export const userActivity = new Hashira({ name: "user-activity" })
       .values({ id: message.guild.id })
       .onConflictDoNothing();
 
-    await db
-      .insert(schema.user)
-      .values({ id: message.author.id })
-      .onConflictDoNothing();
+    await ensureUserExists(db, message.author);
 
     await db.insert(schema.userTextActivity).values({
       userId: message.author.id,

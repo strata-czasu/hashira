@@ -19,6 +19,7 @@ import {
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
+import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
@@ -174,10 +175,7 @@ export const mutes = new Hashira({ name: "mutes" })
               }
               const endsAt = add(itx.createdAt, duration);
 
-              await db
-                .insert(schema.user)
-                .values([{ id: user.id }, { id: itx.user.id }])
-                .onConflictDoNothing();
+              await ensureUsersExist(db, [user.id, itx.user.id]);
 
               // Create mute and try to add the mute role
               // If adding the role fails, rollback the transaction
