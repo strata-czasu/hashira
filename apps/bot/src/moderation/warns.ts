@@ -1,10 +1,11 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
+  type User,
   inlineCode,
   italic,
   time,
@@ -28,6 +29,45 @@ const getWarn = async (tx: Transaction, id: number, guildId: string) =>
         isNull(schema.warn.deletedAt),
       ),
     );
+
+const getUserWarnsPaginatedView = (
+  db: ExtractContext<typeof base>["db"],
+  user: User,
+  guildId: string,
+  deleted: boolean | null,
+) => {
+  const warnWheres = and(
+    eq(schema.warn.guildId, guildId),
+    eq(schema.warn.userId, user.id),
+    deleted ? undefined : isNull(schema.warn.deletedAt),
+  );
+  const paginate = new Paginate({
+    orderBy: schema.warn.createdAt,
+    ordering: "DESC",
+    select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
+    count: db.select({ count: count() }).from(schema.warn).where(warnWheres).$dynamic(),
+  });
+  return new PaginatedView(
+    paginate,
+    `Ostrzeżenia ${user.tag}`,
+    ({ id, createdAt, deletedAt, reason, moderatorId, deleteReason }, _) => {
+      if (deletedAt) {
+        return `### ~~${userMention(moderatorId)} ${time(
+          createdAt,
+          TimestampStyles.ShortDateTime,
+        )} [${id}]~~\nPowód: ${italic(reason)}\nData usunięcia: ${time(
+          deletedAt,
+          TimestampStyles.ShortDateTime,
+        )}`.concat(deleteReason ? `\nPowód usunięcia: ${italic(deleteReason)}` : "");
+      }
+      return `### ${userMention(moderatorId)} ${time(
+        createdAt,
+        TimestampStyles.ShortDateTime,
+      )} [${id}]\nPowód: ${italic(reason)}`;
+    },
+    true,
+  );
+};
 
 export const warns = new Hashira({ name: "warns" })
   .use(base)
@@ -182,9 +222,7 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl ostrzeżenia użytkownika")
-          .addUser("user", (user) =>
-            user.setDescription("Użytkownik").setRequired(false),
-          )
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
           )
@@ -192,43 +230,29 @@ export const warns = new Hashira({ name: "warns" })
             if (!itx.inCachedGuild()) return;
 
             const user = selectedUser ?? itx.user;
-            const warnWheres = and(
-              eq(schema.warn.guildId, itx.guildId),
-              eq(schema.warn.userId, user.id),
-              deleted ? undefined : isNull(schema.warn.deletedAt),
+            const paginatedView = getUserWarnsPaginatedView(
+              db,
+              user,
+              itx.guildId,
+              deleted,
             );
-            const paginate = new Paginate({
-              orderBy: schema.warn.createdAt,
-              ordering: "DESC",
-              select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
-              count: db
-                .select({ count: count() })
-                .from(schema.warn)
-                .where(warnWheres)
-                .$dynamic(),
-            });
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("me", (command) =>
+        command
+          .setDescription("Wyświetl swoje ostrzeżenia")
+          .addBoolean("deleted", (deleted) =>
+            deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
+          )
+          .handle(async ({ db }, { deleted }, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              `Ostrzeżenia ${user.tag}`,
-              ({ id, createdAt, deletedAt, reason, moderatorId, deleteReason }, _) => {
-                if (deletedAt) {
-                  return `### ~~${userMention(moderatorId)} ${time(
-                    createdAt,
-                    TimestampStyles.ShortDateTime,
-                  )} [${id}]~~\nPowód: ${italic(reason)}\nData usunięcia: ${time(
-                    deletedAt,
-                    TimestampStyles.ShortDateTime,
-                  )}`.concat(
-                    deleteReason ? `\nPowód usunięcia: ${italic(deleteReason)}` : "",
-                  );
-                }
-                return `### ${userMention(moderatorId)} ${time(
-                  createdAt,
-                  TimestampStyles.ShortDateTime,
-                )} [${id}]\nPowód: ${italic(reason)}`;
-              },
-              true,
+            const paginatedView = getUserWarnsPaginatedView(
+              db,
+              itx.user,
+              itx.guildId,
+              deleted,
             );
             await paginatedView.render(itx);
           }),
