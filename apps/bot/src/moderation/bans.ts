@@ -114,7 +114,7 @@ export const bans = new Hashira({ name: "bans" })
       .setDescription("Odbanuj użytkownika")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-      .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(true))
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
       .addString("reason", (reason) =>
         reason.setDescription("Powód zdjęcia bana").setRequired(false).setEscaped(true),
       )
@@ -136,6 +136,32 @@ export const bans = new Hashira({ name: "bans" })
               itx,
               `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
             );
+          },
+        );
+      }),
+  )
+  .command("checkban", (command) =>
+    command
+      .setDescription("Sprawdź, czy użytkownik jest zbanowany")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
+      .handle(async (_, { user }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply();
+
+        await discordTry(
+          async () => {
+            const ban = await itx.guild.bans.fetch(user);
+            await itx.editReply(
+              `${formatUserWithId(user)} ma bana.\nPowód: ${italic(
+                ban.reason ?? "Brak",
+              )}`,
+            );
+          },
+          [RESTJSONErrorCodes.UnknownBan],
+          async () => {
+            await itx.editReply(`${formatUserWithId(user)} nie ma bana.`);
           },
         );
       }),
