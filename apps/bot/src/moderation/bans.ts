@@ -76,24 +76,37 @@ export const bans = new Hashira({ name: "bans" })
           )}.`,
         );
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
-        if (!deleteInterval) {
-          await itx.guild.members.ban(user, { reason: banReason });
-        } else {
-          await itx.guild.members.ban(user, {
-            reason: banReason,
-            deleteMessageSeconds: getBanDeleteSeconds(deleteInterval),
-          });
-        }
 
-        await itx.editReply(
-          `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+        await discordTry(
+          async () => {
+            if (!deleteInterval) {
+              await itx.guild.members.ban(user, { reason: banReason });
+            } else {
+              await itx.guild.members.ban(user, {
+                reason: banReason,
+                deleteMessageSeconds: getBanDeleteSeconds(deleteInterval),
+              });
+            }
+            await itx.editReply(
+              `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+            );
+            if (!sentMessage) {
+              await itx.followUp({
+                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
+                  user,
+                )}.`,
+                ephemeral: true,
+              });
+            }
+          },
+          [RESTJSONErrorCodes.MissingPermissions],
+          async () => {
+            await errorFollowUp(
+              itx,
+              "Nie mam uprawnień do zbanowania tego użytkownika.",
+            );
+          },
         );
-        if (!sentMessage) {
-          await itx.followUp({
-            content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-            ephemeral: true,
-          });
-        }
       }),
   )
   .command("unban", (command) =>
