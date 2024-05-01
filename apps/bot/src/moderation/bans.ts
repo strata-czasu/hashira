@@ -63,8 +63,6 @@ export const bans = new Hashira({ name: "bans" })
       )
       .handle(async (_, { user, reason, "delete-interval": deleteInterval }, itx) => {
         if (!itx.inCachedGuild()) return;
-        // TODO: Use default permissions on the slash command
-        if (!itx.memberPermissions.has(PermissionFlagsBits.BanMembers)) return;
         await itx.deferReply();
 
         const sentMessage = await sendDirectMessage(
@@ -109,12 +107,16 @@ export const bans = new Hashira({ name: "bans" })
       )
       .handle(async (_, { user, reason }, itx) => {
         if (!itx.inCachedGuild()) return;
-        // TODO: Use default permissions on the slash command
-        if (!itx.memberPermissions?.has(PermissionFlagsBits.BanMembers)) return;
         await itx.deferReply();
 
-        discordTry(
-          async () => itx.guild.members.unban(user, reason ?? undefined),
+        await discordTry(
+          async () => {
+            await itx.guild.members.unban(user, reason ?? undefined);
+            const message = reason
+              ? `Odbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`
+              : `Odbanowano ${formatUserWithId(user)}`;
+            await itx.editReply(message);
+          },
           [RESTJSONErrorCodes.UnknownBan],
           async () => {
             await errorFollowUp(
@@ -123,11 +125,6 @@ export const bans = new Hashira({ name: "bans" })
             );
           },
         );
-
-        const message = reason
-          ? `Odbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`
-          : `Odbanowano ${formatUserWithId(user)}`;
-        await itx.editReply(message);
       }),
   )
   .handle("guildBanAdd", async (_, { guild, user }) => {
