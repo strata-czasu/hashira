@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { add, intervalToDuration } from "date-fns";
@@ -7,6 +7,7 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
+  type User,
   bold,
   channelMention,
   heading,
@@ -61,6 +62,27 @@ const formatMuteInList = (mute: typeof schema.mute.$inferSelect, _idx: number) =
   }
 
   return lines.join("\n");
+};
+
+const getUserMutesPaginatedView = (
+  db: ExtractContext<typeof base>["db"],
+  user: User,
+  guildId: string,
+  deleted: boolean | null,
+) => {
+  const muteWheres = and(
+    eq(schema.mute.guildId, guildId),
+    eq(schema.mute.userId, user.id),
+    deleted ? undefined : isNull(schema.mute.deletedAt),
+  );
+  const paginate = new Paginate({
+    orderBy: schema.mute.createdAt,
+    ordering: "DESC",
+    select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
+    count: db.select({ count: count() }).from(schema.mute).where(muteWheres).$dynamic(),
+  });
+
+  return new PaginatedView(paginate, `Wyciszenia ${user.tag}`, formatMuteInList, true);
 };
 
 const getMute = async (tx: Transaction, id: number, guildId: string) =>
@@ -481,27 +503,29 @@ export const mutes = new Hashira({ name: "mutes" })
             if (!itx.inCachedGuild()) return;
 
             const user = selectedUser ?? itx.user;
-            const muteWheres = and(
-              eq(schema.mute.guildId, itx.guildId),
-              eq(schema.mute.userId, user.id),
-              deleted ? undefined : isNull(schema.mute.deletedAt),
+            const paginatedView = getUserMutesPaginatedView(
+              db,
+              user,
+              itx.guildId,
+              deleted,
             );
-            const paginate = new Paginate({
-              orderBy: schema.mute.createdAt,
-              ordering: "DESC",
-              select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
-              count: db
-                .select({ count: count() })
-                .from(schema.mute)
-                .where(muteWheres)
-                .$dynamic(),
-            });
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("me", (command) =>
+        command
+          .setDescription("Wyświetl swoje wyciszenia")
+          .addBoolean("deleted", (deleted) =>
+            deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
+          )
+          .handle(async ({ db }, { deleted }, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              `Wyciszenia ${user.tag}`,
-              formatMuteInList,
-              true,
+            const paginatedView = getUserMutesPaginatedView(
+              db,
+              itx.user,
+              itx.guildId,
+              deleted,
             );
             await paginatedView.render(itx);
           }),
