@@ -493,9 +493,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl wyciszenia użytkownika")
-          .addUser("user", (user) =>
-            user.setDescription("Użytkownik").setRequired(false),
-          )
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
           )
