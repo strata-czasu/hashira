@@ -9,6 +9,7 @@ const getFromIdOrMention = (idOrMention: string) => {
 
 export const parseUserMentions = (content: string) =>
   content
+    .replaceAll("<", " <")
     .split(/\s+/)
     .map(getFromIdOrMention)
     .filter((id): id is string => !!id);
