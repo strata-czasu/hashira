@@ -3,6 +3,7 @@ import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
 import { autoRole } from "./autoRole";
 import { base } from "./base";
+import { dmForwarding } from "./dmForwarding";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
@@ -29,7 +30,8 @@ export const bot = new Hashira({ name: "bot" })
   .use(userActivity)
   .use(autoRole)
   .use(moderation)
-  .use(tasks);
+  .use(tasks)
+  .use(dmForwarding);
 
 if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
