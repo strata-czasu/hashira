@@ -2,6 +2,7 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   Client,
+  Partials,
   REST,
   Routes,
   type SlashCommandBuilder,
@@ -385,6 +386,8 @@ class Hashira<
     const discordClient = new Client({
       intents,
       allowedMentions: { repliedUser: true },
+      // NOTE: This is required to receive DMs
+      partials: [Partials.Channel],
     });
 
     this.loadHandlers(discordClient);
@@ -421,6 +424,6 @@ class Hashira<
   }
 }
 
-export { Hashira, decoratorInitBase };
-export type { HashiraContext, HashiraDecorators, BaseDecorator, ExtractContext };
 export { PaginatedView } from "./paginatedView";
+export { Hashira, decoratorInitBase };
+export type { BaseDecorator, ExtractContext, HashiraContext, HashiraDecorators };
