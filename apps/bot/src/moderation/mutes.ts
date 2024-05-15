@@ -495,7 +495,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .setDescription("Wyświetl wyciszenia użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
-            deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
+            deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
           .handle(async ({ db }, { user: selectedUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -514,7 +514,7 @@ export const mutes = new Hashira({ name: "mutes" })
         command
           .setDescription("Wyświetl swoje wyciszenia")
           .addBoolean("deleted", (deleted) =>
-            deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
+            deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
           .handle(async ({ db }, { deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
