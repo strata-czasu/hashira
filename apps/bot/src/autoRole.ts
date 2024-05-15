@@ -81,7 +81,8 @@ export const autoRole = new Hashira({ name: "auto-role" })
           if (!itx.guildId) return;
 
           const paginate = new Paginate({
-            ordering: schema.autoRole.roleId,
+            orderBy: schema.autoRole.roleId,
+            ordering: "ASC",
             select: db
               .select({ roleId: schema.autoRole.roleId })
               .from(schema.autoRole)
