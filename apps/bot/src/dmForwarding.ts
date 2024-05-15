@@ -1,11 +1,5 @@
 import { Hashira } from "@hashira/core";
-import {
-  PermissionFlagsBits,
-  RESTJSONErrorCodes,
-  bold,
-  inlineCode,
-  userMention,
-} from "discord.js";
+import { PermissionFlagsBits, RESTJSONErrorCodes, bold, userMention } from "discord.js";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
@@ -23,9 +17,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
     if (!channel || !channel.isTextBased()) return;
 
     await channel.send({
-      content: `${bold(message.author.tag)} (${inlineCode(message.author.id)}): ${
-        message.content
-      }`,
+      content: `${bold(message.author.tag)}: ${message.content}`,
       embeds: message.embeds,
       files: message.attachments.map((attachment) => attachment.url),
     });
@@ -56,11 +48,18 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
         );
         if (!user) return;
 
-        const messageSent = await sendDirectMessage(user, content);
+        const logChannel = await itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID);
 
-        await itx.editReply(`Wysłano wiadomość do ${userMention(user.id)}: ${content}`);
-        if (!messageSent) {
-          await itx.followUp("Nie udało się wysłać wiadomości");
+        const messageSent = await sendDirectMessage(user, content);
+        if (messageSent) {
+          await itx.editReply(
+            `Wysłano wiadomość do ${userMention(user.id)}: ${content}`,
+          );
+          if (logChannel?.isTextBased()) {
+            logChannel.send(`${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`);
+          }
+        } else {
+          await itx.editReply("Nie udało się wysłać wiadomości");
         }
       }),
   );
