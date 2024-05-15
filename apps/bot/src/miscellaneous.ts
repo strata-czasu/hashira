@@ -1,56 +1,12 @@
-import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { addMilliseconds } from "date-fns";
+import { Hashira, PaginatedView } from "@hashira/core";
+import { Paginate, schema } from "@hashira/db";
+import { count, eq } from "@hashira/db/drizzle";
 import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
-import { chunk } from "./util/chunk";
+import { createFormatMuteInList } from "./moderation/mutes";
+import { createWarnFormat } from "./moderation/warns";
 import { fetchMembers } from "./util/fetchMembers";
-import { isOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
-
-interface OldMute {
-  czas_trwania: number;
-  zakonczenie: string;
-  moderator: string;
-  powod: string;
-  data_wyciszenia: string; // iso date,
-  uzytkownik: string;
-  guild_id: string;
-  id: number;
-}
-
-interface OldWarn {
-  moderator: string;
-  powod: string;
-  data_ostrzezenia: string; // iso date,
-  uzytkownik: string;
-  guild_id: string;
-  id: number;
-}
-
-const toNewMute = (oldMute: OldMute): typeof schema.mute.$inferInsert => {
-  const createdAt = new Date(oldMute.data_wyciszenia);
-  const duration = addMilliseconds(createdAt, oldMute.czas_trwania);
-  return {
-    guildId: oldMute.guild_id,
-    userId: oldMute.uzytkownik,
-    moderatorId: oldMute.moderator,
-    reason: oldMute.powod,
-    createdAt,
-    endsAt: duration,
-  };
-};
-
-const toNewWarn = (oldWarn: OldWarn): typeof schema.warn.$inferInsert => {
-  const createdAt = new Date(oldWarn.data_ostrzezenia);
-  return {
-    guildId: oldWarn.guild_id,
-    userId: oldWarn.uzytkownik,
-    moderatorId: oldWarn.moderator,
-    reason: oldWarn.powod,
-    createdAt,
-  };
-};
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
   .use(base)
@@ -106,85 +62,62 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             await itx.editReply("Added role to users");
           }),
       )
-      .addCommand("load-mutes", (command) =>
-        command
-          .setDescription("Load mutes from JSON")
-          .addAttachment("mutes", (option) =>
-            option.setDescription("The mutes to load"),
-          )
-          .handle(async ({ db }, { mutes }, itx) => {
-            if (!(await isOwner(itx))) return;
-            const content = (await fetch(mutes.url).then((res) =>
-              res.json(),
-            )) as OldMute[];
-            const mutesToInsert = content.map(toNewMute);
-            const users = [
-              ...new Set(
-                mutesToInsert.flatMap((mute) => [mute.userId, mute.moderatorId]),
-              ),
-            ];
-            await Promise.all(
-              chunk(users, 1000).map((chunk) =>
-                db
-                  .insert(schema.user)
-                  .values(chunk.map((id) => ({ id })))
-                  .onConflictDoNothing(),
-              ),
-            );
-            const chunks = [];
-            for (let i = 0; i < mutesToInsert.length; i += 1000) {
-              chunks.push(mutesToInsert.slice(i, i + 1000));
-            }
-            await Promise.all(
-              chunks.map((chunk) =>
-                db.insert(schema.mute).values(chunk).onConflictDoNothing(),
-              ),
-            );
-          }),
+      .addCommand("last-mutes", (command) =>
+        command.setDescription("Get the last mutes").handle(async ({ db }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+
+          const muteWheres = eq(schema.mute.guildId, itx.guildId);
+
+          const paginate = new Paginate({
+            orderBy: schema.mute.createdAt,
+            ordering: "DESC",
+            select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
+            count: db
+              .select({ count: count() })
+              .from(schema.mute)
+              .where(muteWheres)
+              .$dynamic(),
+          });
+
+          const formatMute = createFormatMuteInList({ includeUser: true });
+
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Ostatnie wyciszenia",
+            formatMute,
+            true,
+          );
+
+          await paginatedView.render(itx);
+        }),
       )
-      .addCommand("load-warns", (command) =>
-        command
-          .setDescription("Load warns from JSON")
-          .addAttachment("warns", (option) =>
-            option.setDescription("The warns to load"),
-          )
-          .handle(async ({ db }, { warns }, itx) => {
-            if (!(await isOwner(itx))) return;
-            const content = (await fetch(warns.url).then((res) =>
-              res.json(),
-            )) as OldWarn[];
-            const warnsToInsert = content.map(toNewWarn);
-            const users = [
-              ...new Set(
-                warnsToInsert.flatMap((warn) => [warn.userId, warn.moderatorId]),
-              ),
-            ];
-            const guilds = [...new Set(warnsToInsert.map((warn) => warn.guildId))];
-            await Promise.all(
-              chunk(guilds, 1000).map((chunk) =>
-                db
-                  .insert(schema.guild)
-                  .values(chunk.map((id) => ({ id })))
-                  .onConflictDoNothing(),
-              ),
-            );
-            await Promise.all(
-              chunk(users, 1000).map((chunk) =>
-                db
-                  .insert(schema.user)
-                  .values(chunk.map((id) => ({ id })))
-                  .onConflictDoNothing(),
-              ),
-            );
-            const chunks = [];
-            for (let i = 0; i < warnsToInsert.length; i += 1000) {
-              chunks.push(warnsToInsert.slice(i, i + 1000));
-            }
-            await Promise.all(
-              chunks.map((chunk) =>
-                db.insert(schema.warn).values(chunk).onConflictDoNothing(),
-              ),
-            );
-          }),
+      .addCommand("last-warns", (command) =>
+        command.setDescription("Get the last warns").handle(async ({ db }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+
+          const warnWheres = eq(schema.warn.guildId, itx.guildId);
+
+          const paginate = new Paginate({
+            orderBy: schema.warn.createdAt,
+            ordering: "DESC",
+            select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
+            count: db
+              .select({ count: count() })
+              .from(schema.warn)
+              .where(warnWheres)
+              .$dynamic(),
+          });
+
+          const formatWarn = createWarnFormat({ includeUser: true });
+
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Ostatnie ostrzeżenia",
+            formatWarn,
+            true,
+          );
+
+          await paginatedView.render(itx);
+        }),
       ),
   );
