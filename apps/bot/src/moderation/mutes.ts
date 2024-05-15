@@ -37,32 +37,37 @@ const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
   return durationParts.join(" ");
 };
 
-const formatMuteInList = (mute: typeof schema.mute.$inferSelect, _idx: number) => {
-  const { id, createdAt, deletedAt, reason, moderatorId, deleteReason } = mute;
+export const createFormatMuteInList =
+  ({ includeUser }: { includeUser: boolean }) =>
+  (mute: typeof schema.mute.$inferSelect, _idx: number) => {
+    const { id, createdAt, deletedAt, reason, moderatorId, deleteReason, userId } =
+      mute;
 
-  const header = heading(
-    `${userMention(moderatorId)} ${time(
-      createdAt,
-      TimestampStyles.ShortDateTime,
-    )} [${id}]`,
-    HeadingLevel.Three,
-  );
+    const mutedUserMention = includeUser ? `${userMention(userId)} ` : "";
 
-  const lines = [
-    deletedAt ? strikethrough(header) : header,
-    `Czas trwania: ${formatMuteLength(mute)}`,
-    `Powód: ${italic(reason)}`,
-  ];
+    const header = heading(
+      `${mutedUserMention}${userMention(moderatorId)} ${time(
+        createdAt,
+        TimestampStyles.ShortDateTime,
+      )} [${id}]`,
+      HeadingLevel.Three,
+    );
 
-  if (deletedAt) {
-    lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
-  }
-  if (deleteReason) {
-    lines.push(`Powód usunięcia: ${italic(deleteReason)}`);
-  }
+    const lines = [
+      deletedAt ? strikethrough(header) : header,
+      `Czas trwania: ${formatMuteLength(mute)}`,
+      `Powód: ${italic(reason)}`,
+    ];
 
-  return lines.join("\n");
-};
+    if (deletedAt) {
+      lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
+    }
+    if (deleteReason) {
+      lines.push(`Powód usunięcia: ${italic(deleteReason)}`);
+    }
+
+    return lines.join("\n");
+  };
 
 const getUserMutesPaginatedView = (
   db: ExtractContext<typeof base>["db"],
@@ -81,6 +86,8 @@ const getUserMutesPaginatedView = (
     select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.mute).where(muteWheres).$dynamic(),
   });
+
+  const formatMuteInList = createFormatMuteInList({ includeUser: false });
 
   return new PaginatedView(paginate, `Wyciszenia ${user.tag}`, formatMuteInList, true);
 };

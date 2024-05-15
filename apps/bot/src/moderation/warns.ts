@@ -6,8 +6,10 @@ import {
   RESTJSONErrorCodes,
   TimestampStyles,
   type User,
+  heading,
   inlineCode,
   italic,
+  strikethrough,
   time,
   userMention,
 } from "discord.js";
@@ -30,6 +32,35 @@ const getWarn = async (tx: Transaction, id: number, guildId: string) =>
       ),
     );
 
+export const createWarnFormat =
+  ({ includeUser }: { includeUser: boolean }) =>
+  (warn: typeof schema.warn.$inferSelect, _idx: number) => {
+    const { id, createdAt, deletedAt, reason, moderatorId, deleteReason } = warn;
+
+    const warnedUserMention = includeUser ? `${userMention(warn.userId)} ` : "";
+    const header = heading(
+      `${warnedUserMention}${userMention(moderatorId)} ${time(
+        createdAt,
+        TimestampStyles.ShortDateTime,
+      )} [${id}]`,
+    );
+
+    const lines = [
+      deletedAt ? strikethrough(header) : header,
+      `Powód: ${italic(reason)}`,
+    ];
+
+    if (deletedAt) {
+      lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
+    }
+
+    if (deleteReason) {
+      lines.push(`Powód usunięcia: ${italic(deleteReason)}`);
+    }
+
+    return lines.join("\n");
+  };
+
 const getUserWarnsPaginatedView = (
   db: ExtractContext<typeof base>["db"],
   user: User,
@@ -47,26 +78,10 @@ const getUserWarnsPaginatedView = (
     select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.warn).where(warnWheres).$dynamic(),
   });
-  return new PaginatedView(
-    paginate,
-    `Ostrzeżenia ${user.tag}`,
-    ({ id, createdAt, deletedAt, reason, moderatorId, deleteReason }, _) => {
-      if (deletedAt) {
-        return `### ~~${userMention(moderatorId)} ${time(
-          createdAt,
-          TimestampStyles.ShortDateTime,
-        )} [${id}]~~\nPowód: ${italic(reason)}\nData usunięcia: ${time(
-          deletedAt,
-          TimestampStyles.ShortDateTime,
-        )}`.concat(deleteReason ? `\nPowód usunięcia: ${italic(deleteReason)}` : "");
-      }
-      return `### ${userMention(moderatorId)} ${time(
-        createdAt,
-        TimestampStyles.ShortDateTime,
-      )} [${id}]\nPowód: ${italic(reason)}`;
-    },
-    true,
-  );
+
+  const formatWarn = createWarnFormat({ includeUser: false });
+
+  return new PaginatedView(paginate, `Ostrzeżenia ${user.tag}`, formatWarn, true);
 };
 
 export const warns = new Hashira({ name: "warns" })
