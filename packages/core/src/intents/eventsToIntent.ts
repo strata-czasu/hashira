@@ -82,6 +82,11 @@ export const guildWebhooksEventsToIntent = createEventsToIntent(
 
 export const readyEventsToIntent = createEventsToIntent(events.readyEvents, []);
 
+export const directMessageCreateToIntent = createEventsToIntent(
+  events.directMessageCreate,
+  [GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent],
+);
+
 export const guildMessageCreateToIntent = createEventsToIntent(
   events.guildMessageCreate,
   [
@@ -92,6 +97,7 @@ export const guildMessageCreateToIntent = createEventsToIntent(
 );
 
 export const customEventsToIntent = {
+  ...directMessageCreateToIntent,
   ...guildMessageCreateToIntent,
 };
 

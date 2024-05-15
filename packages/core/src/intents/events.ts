@@ -81,9 +81,10 @@ export const guildVoiceStatesEvents = ["voiceStateUpdate"] as const;
 export const guildWebhooksEvents = ["webhooksUpdate"] as const;
 export const guildInvitesEvents = ["inviteCreate", "inviteDelete"] as const;
 export const readyEvents = ["ready", "shardReady"] as const;
-export const guildMessageCreate = ["guildMessageCreate"] as const;
 
-export const allCustomEvents = [...guildMessageCreate] as const;
+export const directMessageCreate = ["directMessageCreate"] as const;
+export const guildMessageCreate = ["guildMessageCreate"] as const;
+export const allCustomEvents = [...directMessageCreate, ...guildMessageCreate] as const;
 
 export const allEvents = [
   ...autoModerationConfigurationEvents,

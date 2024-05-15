@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import type { CustomEventMethodName } from "./intents";
 
 const customEventToInternalEvent = {
+  directMessageCreate: "messageCreate",
   guildMessageCreate: "messageCreate",
 } as const;
 
@@ -31,6 +32,12 @@ export const handleCustomEvent = (
   handler: (...args: unknown[]) => Promise<void>,
 ): readonly [CustomEventToInternalEvent[typeof event], InternalHandler<typeof event>] =>
   match(event)
+    .with("directMessageCreate", (value) => {
+      return [
+        customEventToInternalEvent[value],
+        filter((message) => !message.inGuild(), handler),
+      ] as const;
+    })
     .with(
       "guildMessageCreate",
       (value) =>
