@@ -37,6 +37,13 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       .addUser("user", (user) => user.setDescription("Użytkownik"))
       .addString("content", (content) => content.setDescription("Treść wiadomości"))
       .handle(async (_, { user: rawUser, content }, itx) => {
+        if (rawUser.id === itx.client.user.id) {
+          await itx.reply({
+            content: "Nie mogę wysłać wiadomości do siebie",
+            ephemeral: true,
+          });
+          return;
+        }
         await itx.deferReply();
 
         const user = await discordTry(
