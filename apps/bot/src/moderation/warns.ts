@@ -2,6 +2,7 @@ import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { Paginate, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import {
+  HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
@@ -43,6 +44,7 @@ export const createWarnFormat =
         createdAt,
         TimestampStyles.ShortDateTime,
       )} [${id}]`,
+      HeadingLevel.Three,
     );
 
     const lines = [
