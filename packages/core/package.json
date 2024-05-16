@@ -13,7 +13,7 @@
     "@hashira/env": "workspace:../env"
   },
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "ts-pattern": "5.0.8"
+    "discord.js": "^14.15.2",
+    "ts-pattern": "5.1.1"
   }
 }

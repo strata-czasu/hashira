@@ -10,10 +10,10 @@
     "@hashira/core": "workspace:../../packages/core",
     "@hashira/db": "workspace:../../packages/db",
     "@hashira/env": "workspace:../../packages/env",
-    "@sentry/bun": "^7.109.0",
-    "date-fns": "3.3.1",
-    "discord.js": "^14.14.1",
-    "ts-pattern": "5.0.8"
+    "@sentry/bun": "^8.2.1",
+    "date-fns": "3.6.0",
+    "discord.js": "^14.15.2",
+    "ts-pattern": "5.1.1"
   },
   "devDependencies": {
     "typescript": "*",

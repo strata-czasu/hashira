@@ -7,6 +7,6 @@
     "typescript": "*"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.32.20"
+    "@sinclair/typebox": "^0.32.30"
   }
 }
