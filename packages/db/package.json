@@ -11,11 +11,11 @@
   },
   "type": "module",
   "scripts": {
-    "generate": "drizzle-kit generate:pg",
-    "migrate": "bun run src/migrate.ts",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
     "drizzle-studio": "drizzle-kit studio",
     "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
-    "push": "drizzle-kit push:pg",
+    "push": "drizzle-kit push",
     "drop": "drizzle-kit drop",
     "test": "bun test --preload ./test/preload.ts test/"
   },

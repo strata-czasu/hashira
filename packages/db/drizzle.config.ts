@@ -4,7 +4,7 @@ import type { Config } from "drizzle-kit";
 export default {
   schema: "./src/schema/*",
   out: "./drizzle/",
-  driver: "pg",
+  dialect: "postgresql",
   dbCredentials: {
     database: env.POSTGRES_DB,
     host: env.POSTGRES_HOST,
