@@ -1,12 +1,12 @@
 ARG NODE_VERSION=20
 
-FROM node:${NODE_VERSION} as base
+FROM node:${NODE_VERSION}-slim as base
 
 ARG BUN_VERSION=bun-v1.1.8
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends git \
+    && apt-get -y install --no-install-recommends git curl ca-certificates unzip \
     && curl -fsSL https://bun.sh/install | bash -s "${BUN_VERSION}"
 
 WORKDIR /app
@@ -14,8 +14,15 @@ WORKDIR /app
 FROM base as build
 
 COPY --link bun.lockb package.json ./
-COPY --link . .
+COPY --link apps/bot/package.json apps/bot/package.json
+COPY --link packages/core/package.json packages/core/package.json
+COPY --link packages/db/package.json packages/db/package.json
+COPY --link packages/env/package.json packages/env/package.json
+COPY --link tooling/tsconfig/package.json tooling/tsconfig/package.json
 
 RUN bun install --production
+
+COPY --link . .
+
 
 CMD ["bun", "start:prod"]
