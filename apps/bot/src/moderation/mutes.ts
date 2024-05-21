@@ -24,7 +24,7 @@ import { durationToSeconds, formatDuration, parseDuration } from "../util/durati
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { formatUserWithId } from "./util";
+import { formatUserWithId, getMuteRoleId } from "./util";
 
 const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
   const { createdAt, endsAt } = mute;
@@ -110,16 +110,6 @@ const APPEALS_CHANNEL = "1213901611836117052";
 
 export const mutes = new Hashira({ name: "mutes" })
   .use(base)
-  .const((ctx) => ({
-    ...ctx,
-    getMuteRoleId: async (guildId: string) => {
-      const settings = await ctx.db.query.guildSettings.findFirst({
-        where: eq(schema.guildSettings.guildId, guildId),
-      });
-      if (!settings) return null;
-      return settings.muteRoleId;
-    },
-  }))
   .group("mute", (group) =>
     group
       .setDescription("Zarządzaj wyciszeniami")
@@ -137,7 +127,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) => reason.setDescription("Powód wyciszenia"))
           .handle(
             async (
-              { db, messageQueue, getMuteRoleId },
+              { db, messageQueue },
               { user, duration: rawDuration, reason },
               itx,
             ) => {
@@ -178,7 +168,7 @@ export const mutes = new Hashira({ name: "mutes" })
                 return;
               }
 
-              const muteRoleId = await getMuteRoleId(itx.guildId);
+              const muteRoleId = await getMuteRoleId(db, itx.guildId);
               if (!muteRoleId) {
                 // TODO: Add an actual link to the settings command
                 await errorFollowUp(
@@ -537,7 +527,7 @@ export const mutes = new Hashira({ name: "mutes" })
           }),
       ),
   )
-  .handle("guildMemberAdd", async ({ db, getMuteRoleId }, member) => {
+  .handle("guildMemberAdd", async ({ db }, member) => {
     const activeMute = await db.query.mute.findFirst({
       where: and(
         eq(schema.mute.guildId, member.guild.id),
@@ -548,7 +538,7 @@ export const mutes = new Hashira({ name: "mutes" })
     });
     if (!activeMute) return;
 
-    const muteRoleId = await getMuteRoleId(member.guild.id);
+    const muteRoleId = await getMuteRoleId(db, member.guild.id);
     if (!muteRoleId) return;
     await member.roles.add(muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
   });
