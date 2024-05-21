@@ -1,6 +1,7 @@
 import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, type Transaction, schema } from "@hashira/db";
+import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
+import { PaginatorOrder } from "@hashira/paginate";
 import { add, intervalToDuration } from "date-fns";
 import {
   HeadingLevel,
@@ -80,9 +81,9 @@ const getUserMutesPaginatedView = (
     eq(schema.mute.userId, user.id),
     deleted ? undefined : isNull(schema.mute.deletedAt),
   );
-  const paginate = new Paginate({
+  const paginate = new DatabasePaginator({
     orderBy: schema.mute.createdAt,
-    ordering: "DESC",
+    ordering: PaginatorOrder.DESC,
     select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.mute).where(muteWheres).$dynamic(),
   });
@@ -460,9 +461,9 @@ export const mutes = new Hashira({ name: "mutes" })
               isNull(schema.mute.deletedAt),
               gte(schema.mute.endsAt, itx.createdAt),
             );
-            const paginate = new Paginate({
+            const paginate = new DatabasePaginator({
               orderBy: schema.mute.createdAt,
-              ordering: "DESC",
+              ordering: PaginatorOrder.DESC,
               select: db
                 .select({
                   id: schema.mute.id,

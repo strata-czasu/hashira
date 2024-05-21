@@ -1,7 +1,13 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, schema } from "@hashira/db";
+import { DatabasePaginator, schema } from "@hashira/db";
 import { count, eq } from "@hashira/db/drizzle";
-import { AttachmentBuilder, PermissionFlagsBits } from "discord.js";
+import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
+import {
+  AttachmentBuilder,
+  type GuildBasedChannel,
+  PermissionFlagsBits,
+  time,
+} from "discord.js";
 import { base } from "./base";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
@@ -68,9 +74,9 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
 
           const muteWheres = eq(schema.mute.guildId, itx.guildId);
 
-          const paginate = new Paginate({
+          const paginate = new DatabasePaginator({
             orderBy: schema.mute.createdAt,
-            ordering: "DESC",
+            ordering: PaginatorOrder.DESC,
             select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
             count: db
               .select({ count: count() })
@@ -97,9 +103,9 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
 
           const warnWheres = eq(schema.warn.guildId, itx.guildId);
 
-          const paginate = new Paginate({
+          const paginate = new DatabasePaginator({
             orderBy: schema.warn.createdAt,
-            ordering: "DESC",
+            ordering: PaginatorOrder.DESC,
             select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
             count: db
               .select({ count: count() })
@@ -119,5 +125,34 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
 
           await paginatedView.render(itx);
         }),
+      )
+      .addCommand("last-added-channels", (command) =>
+        command
+          .setDescription("Get the last added channels")
+          .handle(async (_, __, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const channels = itx.guild.channels.cache;
+
+            const paginator = new StaticPaginator({
+              items: [...channels.values()],
+              pageSize: 10,
+              compare: (a, b) => a.createdTimestamp ?? 0 - (b.createdTimestamp ?? 0),
+            });
+
+            const formatChannel = (channel: GuildBasedChannel) =>
+              `${channel.name} (${channel.id}) - ${time(
+                channel.createdAt ?? new Date(),
+              )}`;
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Ostatnio dodane kanały",
+              formatChannel,
+              true,
+            );
+
+            await paginatedView.render(itx);
+          }),
       ),
   );

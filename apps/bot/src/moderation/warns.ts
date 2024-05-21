@@ -1,6 +1,7 @@
 import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, type Transaction, schema } from "@hashira/db";
+import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
+import { PaginatorOrder } from "@hashira/paginate";
 import {
   HeadingLevel,
   PermissionFlagsBits,
@@ -74,9 +75,9 @@ const getUserWarnsPaginatedView = (
     eq(schema.warn.userId, user.id),
     deleted ? undefined : isNull(schema.warn.deletedAt),
   );
-  const paginate = new Paginate({
+  const paginate = new DatabasePaginator({
     orderBy: schema.warn.createdAt,
-    ordering: "DESC",
+    ordering: PaginatorOrder.DESC,
     select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.warn).where(warnWheres).$dynamic(),
   });

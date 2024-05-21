@@ -1,5 +1,4 @@
-import type { CountSelect, Paginate } from "@hashira/db";
-import type { PgSelect } from "@hashira/db/drizzle/pgCore";
+import type { Paginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -17,38 +16,28 @@ type CreateFilter = (
   interaction: ChatInputCommandInteraction<CacheType>,
 ) => CollectorFilter<[ButtonInteraction]>;
 
-type ItemType<T extends Paginate<PgSelect, CountSelect>> = T extends Paginate<
-  infer U,
-  CountSelect
->
-  ? U["_"]["result"][number]
-  : never;
-
-type RenderItem<T extends Paginate<PgSelect, CountSelect>> = (
-  item: ItemType<T>,
-  index: number,
-) => Promise<string> | string;
+type RenderItem<T> = (item: T, index: number) => Promise<string> | string;
 
 const createAuthorFilter: CreateFilter = (interaction) => (action) =>
   action.user.id === interaction.user.id;
 
-export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
-  readonly #paginate: T;
+export class PaginatedView<T> {
+  readonly #paginator: Paginator<T>;
   #message?: InteractionResponse<boolean>;
-  #items: ItemType<T>[] = [];
+  #items: T[] = [];
   #title?: string = undefined;
-  #orderingEnabled = false;
+  #orderingEnabled: boolean;
   readonly #renderItem: RenderItem<T>;
   constructor(
-    paginate: T,
+    paginate: Paginator<T>,
     title: string,
     renderItem: RenderItem<T>,
-    orderingEnabled?: boolean,
+    orderingEnabled = false,
   ) {
-    this.#paginate = paginate;
+    this.#paginator = paginate;
     this.#title = title;
     this.#renderItem = renderItem;
-    this.#orderingEnabled = orderingEnabled ?? false;
+    this.#orderingEnabled = orderingEnabled;
   }
 
   private async send(interaction: ChatInputCommandInteraction<CacheType>) {
@@ -60,21 +49,21 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
 
   async render(interaction: ChatInputCommandInteraction<CacheType>) {
     if (!this.#message) return await this.send(interaction);
-    this.#items = (await this.#paginate.current()) as ItemType<T>[];
+    this.#items = await this.#paginator.current();
 
-    const displayPages = this.#paginate.displayPages;
-    const displayCurrentPage = this.#paginate.displayCurrentPage;
+    const displayPages = this.#paginator.displayPages;
+    const displayCurrentPage = this.#paginator.displayCurrentPage;
 
     const defaultButtons = [
       new ButtonBuilder()
         .setLabel("Previous")
         .setCustomId("previous")
-        .setDisabled(!this.#paginate.canPrevious)
+        .setDisabled(!this.#paginator.canPrevious)
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setLabel("Next")
         .setCustomId("next")
-        .setDisabled(!this.#paginate.canNext)
+        .setDisabled(!this.#paginator.canNext)
         .setStyle(ButtonStyle.Primary),
     ];
 
@@ -94,7 +83,7 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
 
     const renderedItems = await Promise.all(
       this.#items.map((item, index) =>
-        this.#renderItem(item, index + this.#paginate.currentOffset + 1),
+        this.#renderItem(item, index + this.#paginator.currentOffset + 1),
       ),
     );
 
@@ -118,12 +107,12 @@ export class PaginatedView<T extends Paginate<PgSelect, CountSelect>> {
       });
 
       const newItems = await match(buttonAction)
-        .with({ customId: "previous" }, async () => await this.#paginate.previous())
-        .with({ customId: "next" }, async () => await this.#paginate.next())
-        .with({ customId: "orderBy" }, async () => await this.#paginate.reorder())
+        .with({ customId: "previous" }, async () => await this.#paginator.previous())
+        .with({ customId: "next" }, async () => await this.#paginator.next())
+        .with({ customId: "orderBy" }, async () => await this.#paginator.reorder())
         .run();
 
-      this.#items = newItems as ItemType<T>[];
+      this.#items = newItems;
 
       buttonAction.deferUpdate();
       await this.render(interaction);

@@ -14,6 +14,6 @@ export const db = drizzle(connection, { schema });
 
 export { schema };
 
-export { Paginate } from "./paginate";
+export { DatabasePaginator } from "./paginate";
 export type { CountSelect } from "./paginate";
 export type { Transaction } from "./transaction";

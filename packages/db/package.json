@@ -25,6 +25,7 @@
     "@faker-js/faker": "^8.4.1"
   },
   "dependencies": {
+    "@hashira/paginate": "workspace:packages/paginate",
     "drizzle-orm": "^0.30.10",
     "postgres": "^3.4.4",
     "drizzle-kit": "^0.21.2",

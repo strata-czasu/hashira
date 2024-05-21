@@ -24,6 +24,7 @@
     "test:core": "bun run --cwd packages/core test",
     "test:bot": "bun run --cwd apps/bot test",
     "test:db": "bun run --cwd packages/db test",
+    "test:paginate": "bun run --cwd packages/paginate test",
     "reload-commands": "bun run --cwd apps/bot reload-commands"
   },
   "type": "module",

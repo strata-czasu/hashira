@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { Paginate } from "@hashira/db";
+import { DatabasePaginator } from "@hashira/db";
 import {
   and,
   between,
@@ -84,7 +84,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               between(emojiUsage.timestamp, after, before),
             );
 
-            const paginate = new Paginate({
+            const paginate = new DatabasePaginator({
               orderBy: [count(), emojiUsage.emojiId],
               select: db
                 .select({ emojiId: emojiUsage.emojiId, count: count() })
@@ -148,7 +148,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
                 between(emojiUsage.timestamp, after, before),
               );
 
-              const paginate = new Paginate({
+              const paginate = new DatabasePaginator({
                 orderBy: [count(), emojiUsage.userId],
                 select: db
                   .select({ userId: emojiUsage.userId, count: count() })
@@ -193,7 +193,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               between(emojiUsage.timestamp, after, before),
             );
 
-            const paginate = new Paginate({
+            const paginate = new DatabasePaginator({
               orderBy: [count(), emojiUsage.emojiId],
               select: db
                 .select({ emojiId: emojiUsage.emojiId, count: count() })

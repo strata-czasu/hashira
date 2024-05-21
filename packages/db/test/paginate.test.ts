@@ -2,7 +2,7 @@ import { afterEach, expect } from "bun:test";
 import { faker } from "@faker-js/faker";
 import { count } from "drizzle-orm";
 import { schema } from "../src";
-import { Paginate } from "../src/paginate";
+import { DatabasePaginator } from "../src/paginate";
 import { createUser, dbTest } from "./";
 
 afterEach(async () => {
@@ -12,7 +12,7 @@ afterEach(async () => {
 dbTest("paginate unknown size", async (tx) => {
   const users = faker.helpers.multiple(createUser, { count: 100 });
   await tx.insert(schema.user).values(users);
-  const paginator = new Paginate({
+  const paginator = new DatabasePaginator({
     orderBy: schema.user.id,
     select: tx.select().from(schema.user).$dynamic(),
     pageSize: 10,
@@ -61,7 +61,7 @@ dbTest("paginate unknown size", async (tx) => {
 dbTest("paginate known size", async (tx) => {
   const users = faker.helpers.multiple(createUser, { count: 100 });
   await tx.insert(schema.user).values(users);
-  const paginator = new Paginate({
+  const paginator = new DatabasePaginator({
     orderBy: schema.user.id,
     select: tx.select().from(schema.user).$dynamic(),
     count: tx.select({ count: count() }).from(schema.user).$dynamic(),

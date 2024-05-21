@@ -3,7 +3,6 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "@hashira/tsconfig": "workspace:../../tooling/tsconfig",
     "typescript": "*"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { Paginate, schema } from "@hashira/db";
+import { DatabasePaginator, schema } from "@hashira/db";
 import { count, eq } from "@hashira/db/drizzle";
+import { PaginatorOrder } from "@hashira/paginate";
 import { PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
 
@@ -80,9 +81,9 @@ export const autoRole = new Hashira({ name: "auto-role" })
         command.setDescription("List all autoroles").handle(async ({ db }, _, itx) => {
           if (!itx.guildId) return;
 
-          const paginate = new Paginate({
+          const paginate = new DatabasePaginator({
             orderBy: schema.autoRole.roleId,
-            ordering: "ASC",
+            ordering: PaginatorOrder.ASC,
             select: db
               .select({ roleId: schema.autoRole.roleId })
               .from(schema.autoRole)

@@ -1,3 +1,4 @@
+import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import { type SQL, asc, desc } from "drizzle-orm";
 import type { PgColumn, PgSelect } from "drizzle-orm/pg-core";
 import type { JoinNullability } from "drizzle-orm/query-builders/select.types";
@@ -9,7 +10,7 @@ export type CountSelect = PgSelect<
   Record<string, JoinNullability>
 >;
 
-interface PaginateConfig<T extends PgSelect, U extends CountSelect> {
+interface DatabasePaginatorConfig<T extends PgSelect, U extends CountSelect> {
   /**
    * Query for fetching the count of selected rows
    */
@@ -29,9 +30,9 @@ interface PaginateConfig<T extends PgSelect, U extends CountSelect> {
   page?: number;
   /**
    * Default odering direction
-   * @default "ASC"
+   * @default {PaginatorOrder.ASC}
    */
-  ordering?: "ASC" | "DESC";
+  ordering?: PaginatorOrder;
   /**
    * Number of rows per page
    * @default 10
@@ -39,16 +40,18 @@ interface PaginateConfig<T extends PgSelect, U extends CountSelect> {
   pageSize?: number;
 }
 
-export class Paginate<T extends PgSelect, U extends CountSelect> {
+export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
+  implements Paginator<T["_"]["result"][number]>
+{
   readonly #qb: T;
   readonly #orderBy: (PgColumn | SQL | SQL.Aliased)[];
   readonly #countQb: U | undefined = undefined;
   readonly #pageSize: number = 10;
-  #ordering: "ASC" | "DESC" = "ASC";
+  #ordering: PaginatorOrder = PaginatorOrder.ASC;
   #page = 0;
   #count: number = Number.MAX_SAFE_INTEGER;
 
-  constructor(config: PaginateConfig<T, U>) {
+  constructor(config: DatabasePaginatorConfig<T, U>) {
     this.#qb = config.select;
     this.#orderBy = Array.isArray(config.orderBy) ? config.orderBy : [config.orderBy];
     this.#countQb = config.count;
@@ -75,10 +78,6 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
 
   public get displayCurrentPage() {
     return (this.#page + 1).toString();
-  }
-
-  public get displayOrder() {
-    return this.#ordering === "ASC" ? "Ascending" : "Descending";
   }
 
   public get canPrevious() {
@@ -109,20 +108,19 @@ export class Paginate<T extends PgSelect, U extends CountSelect> {
     return result;
   }
 
-  public async reorder(orderBy?: "ASC" | "DESC") {
-    if (orderBy) this.#ordering = orderBy;
-    else this.#ordering = this.#ordering === "ASC" ? "DESC" : "ASC";
+  public async reorder(orderBy: PaginatorOrder) {
+    this.#ordering = orderBy;
     this.#page = 0;
     return await this.current();
   }
 
-  public async next(): Promise<T["_"]["result"]> {
+  public async next() {
     if (!this.canNext) return [];
     this.#page++;
     return await this.current();
   }
 
-  public async previous(): Promise<T["_"]["result"]> {
+  public async previous() {
     if (!this.canPrevious) return [];
     this.#page--;
     return await this.current();
