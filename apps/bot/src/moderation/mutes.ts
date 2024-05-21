@@ -24,7 +24,7 @@ import { durationToSeconds, formatDuration, parseDuration } from "../util/durati
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { formatUserWithId, getMuteRoleId } from "./util";
+import { applyMute, formatUserWithId, getMuteRoleId } from "./util";
 
 const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
   const { createdAt, endsAt } = mute;
@@ -213,29 +213,20 @@ export const mutes = new Hashira({ name: "mutes" })
                   .returning({ id: schema.mute.id });
                 if (!mute) return null;
 
-                return discordTry(
-                  async () => {
-                    if (member.voice.channel) {
-                      await member.voice.disconnect(
-                        `Wyciszenie: ${reason} [${mute.id}]`,
-                      );
-                    }
-                    await member.roles.add(
-                      muteRoleId,
-                      `Wyciszenie: ${reason} [${mute.id}]`,
-                    );
-                    return mute;
-                  },
-                  [RESTJSONErrorCodes.MissingPermissions],
-                  async () => {
-                    await errorFollowUp(
-                      itx,
-                      "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-                    );
-                    tx.rollback();
-                    return null;
-                  },
+                const appliedMute = await applyMute(
+                  member,
+                  muteRoleId,
+                  `Wyciszenie: ${reason} [${mute.id}]`,
                 );
+                if (!appliedMute) {
+                  await errorFollowUp(
+                    itx,
+                    "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+                  );
+                  tx.rollback();
+                  return null;
+                }
+                return mute;
               });
               if (!mute) return;
 
