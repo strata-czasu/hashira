@@ -7,9 +7,10 @@
     "reload-commands": "bun run reload-commands.ts"
   },
   "dependencies": {
-    "@hashira/core": "workspace:../../packages/core",
-    "@hashira/db": "workspace:../../packages/db",
-    "@hashira/env": "workspace:../../packages/env",
+    "@hashira/paginate": "workspace:packages/paginate",
+    "@hashira/core": "workspace:packages/core",
+    "@hashira/db": "workspace:packages/db",
+    "@hashira/env": "workspace:packages/env",
     "@sentry/bun": "^8.2.1",
     "date-fns": "3.6.0",
     "discord.js": "^14.15.2",

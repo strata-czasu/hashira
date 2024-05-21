@@ -10,9 +10,10 @@
     "typescript": "*"
   },
   "peerDependencies": {
-    "@hashira/env": "workspace:../env"
+    "@hashira/env": "workspace:packages/env"
   },
   "dependencies": {
+    "@hashira/paginate": "workspace:packages/paginate",
     "discord.js": "^14.15.2",
     "ts-pattern": "5.1.1"
   }
