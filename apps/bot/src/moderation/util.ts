@@ -1,6 +1,7 @@
 import type { ExtractContext } from "@hashira/core";
 import { schema } from "@hashira/db";
 import { eq } from "@hashira/db/drizzle";
+import { formatDate } from "date-fns";
 import {
   type GuildMember,
   RESTJSONErrorCodes,
@@ -46,3 +47,10 @@ export const applyMute = async (
     () => false,
   );
 };
+
+export const formatBanReason = (
+  reason: string,
+  moderator: User,
+  createdAt: Date,
+) => `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
+data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;

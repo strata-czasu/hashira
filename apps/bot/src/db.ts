@@ -21,6 +21,12 @@ export const database = new Hashira({ name: "database" })
       .addHandler(
         "muteEnd",
         async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
+          // Don't remove the mute role if the user has a verification in progress
+          const verificationInProgress = await db.query.verification.findFirst({
+            where: eq(schema.verification.userId, userId),
+          });
+          if (verificationInProgress) return;
+
           const settings = await ctx.db.query.guildSettings.findFirst({
             where: eq(schema.guildSettings.guildId, guildId),
           });

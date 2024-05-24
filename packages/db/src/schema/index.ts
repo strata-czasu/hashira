@@ -7,3 +7,4 @@ export * from "./moderation";
 export * from "./task";
 export * from "./user";
 export * from "./userTextActivity";
+export * from "./verification";
