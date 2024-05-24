@@ -2,7 +2,7 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, schema } from "@hashira/db";
 import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { PaginatorOrder } from "@hashira/paginate";
-import { add } from "date-fns";
+import { type Duration, add } from "date-fns";
 import {
   EmbedBuilder,
   PermissionFlagsBits,
@@ -14,15 +14,17 @@ import {
 } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
+import { durationToSeconds } from "../util/duration";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatBanReason, formatUserWithId, getMuteRoleId } from "./util";
 
 const TICKETS_CHANNEL = "1213901611836117052";
+const VERIFICATION_DURATION: Duration = { hours: 24 };
 
 const get13PlusVerificationEnd = (createdAt: Date) => {
-  return add(createdAt, { hours: 24 });
+  return add(createdAt, VERIFICATION_DURATION);
 };
 
 export const verification = new Hashira({ name: "verification" })
@@ -37,7 +39,7 @@ export const verification = new Hashira({ name: "verification" })
           .setDescription("Rozpocznij weryfikację 13+")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           // TODO)) Add `force` parameter to start verification even if the user has a verification level
-          .handle(async ({ db }, { user }, itx) => {
+          .handle(async ({ db, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -106,13 +108,16 @@ export const verification = new Hashira({ name: "verification" })
             // Create verification and try to add the mute role
             // If adding the role fails, rollback the transaction
             const verification = await db.transaction(async (tx) => {
-              const verification = await tx.insert(schema.verification).values({
-                guildId: itx.guildId,
-                userId: user.id,
-                moderatorId: itx.user.id,
-                type: "13_plus",
-                status: "in_progress",
-              });
+              const [verification] = await tx
+                .insert(schema.verification)
+                .values({
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  moderatorId: itx.user.id,
+                  type: "13_plus",
+                  status: "in_progress",
+                })
+                .returning({ id: schema.verification.id });
               const appliedMute = applyMute(
                 member,
                 muteRoleId,
@@ -130,7 +135,12 @@ export const verification = new Hashira({ name: "verification" })
             });
             if (!verification) return;
 
-            // TODO)) Schedule a notification for the moderator that the verification time is up
+            await messageQueue.push(
+              "verificationEnd",
+              { verificationId: verification.id },
+              durationToSeconds(VERIFICATION_DURATION),
+              verification.id.toString(),
+            );
 
             // TODO)) Update DM
             const sentMessage = await sendDirectMessage(
@@ -209,7 +219,7 @@ export const verification = new Hashira({ name: "verification" })
               .setDescription("Typ weryfikacji")
               .addChoices({ name: "13+", value: 13 }, { name: "18+", value: 18 }),
           )
-          .handle(async ({ db }, { user, type }, itx) => {
+          .handle(async ({ db, messageQueue }, { user, type }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -243,15 +253,15 @@ export const verification = new Hashira({ name: "verification" })
               });
 
               await db.transaction(async (tx) => {
-                await tx
-                  .update(schema.user)
-                  .set({ verificationLevel: "13_plus" })
-                  .where(eq(schema.user.id, user.id));
                 if (verificationInProgress) {
                   await tx
                     .update(schema.verification)
                     .set({ status: "accepted", acceptedAt: itx.createdAt })
                     .where(eq(schema.verification.id, verificationInProgress.id));
+                  await messageQueue.cancel(
+                    "verificationEnd",
+                    verificationInProgress.id.toString(),
+                  );
                 } else {
                   await tx.insert(schema.verification).values({
                     createdAt: itx.createdAt,
@@ -263,9 +273,11 @@ export const verification = new Hashira({ name: "verification" })
                     status: "accepted",
                   });
                 }
+                await tx
+                  .update(schema.user)
+                  .set({ verificationLevel: "13_plus" })
+                  .where(eq(schema.user.id, user.id));
               });
-
-              // TODO)) Delete the scheduled notification for the moderator
 
               // Try to remove the mute role if the verification was in progress and there is no active mute
               const activeMute = await db.query.mute.findFirst({
@@ -378,7 +390,7 @@ export const verification = new Hashira({ name: "verification" })
         command
           .setDescription("Odrzuć weryfikację 13+")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ db }, { user }, itx) => {
+          .handle(async ({ db, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -401,7 +413,10 @@ export const verification = new Hashira({ name: "verification" })
                 .update(schema.verification)
                 .set({ status: "rejected", rejectedAt: itx.createdAt })
                 .where(eq(schema.verification.id, verificationInProgress.id));
-              // TODO)) Delete the scheduled notification for the moderator
+              await messageQueue.cancel(
+                "verificationEnd",
+                verificationInProgress.id.toString(),
+              );
             } else {
               await db.insert(schema.verification).values({
                 createdAt: itx.createdAt,
