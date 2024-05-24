@@ -1,10 +1,8 @@
 import { Hashira } from "@hashira/core";
-import { formatDate } from "date-fns";
 import {
   AuditLogEvent,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
-  type User,
   hideLinkEmbed,
   italic,
   userMention,
@@ -12,11 +10,7 @@ import {
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { formatUserWithId } from "./util";
-
-const formatBanReason = (reason: string, moderator: User, createdAt: Date) =>
-  `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
-data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;
+import { formatBanReason, formatUserWithId } from "./util";
 
 enum BanDeleteInterval {
   None = 0,

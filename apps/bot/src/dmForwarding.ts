@@ -13,14 +13,23 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
     if (message.author.bot) return;
     if (!message.channel.isDMBased()) return;
 
-    const channel = await message.client.channels.fetch(DM_FORWARD_CHANNEL_ID);
+    const channel = await discordTry(
+      async () => message.client.channels.fetch(DM_FORWARD_CHANNEL_ID),
+      [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
+      () => null,
+    );
     if (!channel || !channel.isTextBased()) return;
 
-    await channel.send({
-      content: `${bold(message.author.tag)}: ${message.content}`,
-      embeds: message.embeds,
-      files: message.attachments.map((attachment) => attachment.url),
-    });
+    await discordTry(
+      async () =>
+        channel.send({
+          content: `${bold(message.author.tag)}: ${message.content}`,
+          embeds: message.embeds,
+          files: message.attachments.map((attachment) => attachment.url),
+        }),
+      [RESTJSONErrorCodes.MissingAccess],
+      () => console.warn("Missing access to send message to DM forward channel"),
+    );
   })
   .command("dm", (command) =>
     command

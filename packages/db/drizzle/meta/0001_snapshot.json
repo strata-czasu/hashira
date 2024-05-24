@@ -1,211 +1,227 @@
 {
-	"id": "83ab2585-2000-43ae-914f-cd08613a3bb0",
-	"prevId": "ead76db9-6c9a-4bfc-942d-fc6b6e3aab43",
-	"version": "5",
-	"dialect": "pg",
-	"tables": {
-		"core_currency": {
-			"name": "core_currency",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "serial",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"name": {
-					"name": "name",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"symbol": {
-					"name": "symbol",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"core_wallet": {
-			"name": "core_wallet",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "serial",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"name": {
-					"name": "name",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"userId": {
-					"name": "userId",
-					"type": "bigint",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"currency": {
-					"name": "currency",
-					"type": "integer",
-					"primaryKey": false,
-					"notNull": false
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {
-				"core_wallet_userId_core_users_id_fk": {
-					"name": "core_wallet_userId_core_users_id_fk",
-					"tableFrom": "core_wallet",
-					"tableTo": "core_users",
-					"columnsFrom": ["userId"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				},
-				"core_wallet_currency_core_currency_id_fk": {
-					"name": "core_wallet_currency_core_currency_id_fk",
-					"tableFrom": "core_wallet",
-					"tableTo": "core_currency",
-					"columnsFrom": ["currency"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"core_emoji_usage": {
-			"name": "core_emoji_usage",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "serial",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"guildId": {
-					"name": "guildId",
-					"type": "bigint",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"emojiId": {
-					"name": "emojiId",
-					"type": "bigint",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"userId": {
-					"name": "userId",
-					"type": "bigint",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"timestamp": {
-					"name": "timestamp",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {
-				"core_emoji_usage_guildId_core_guild_id_fk": {
-					"name": "core_emoji_usage_guildId_core_guild_id_fk",
-					"tableFrom": "core_emoji_usage",
-					"tableTo": "core_guild",
-					"columnsFrom": ["guildId"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"core_guild": {
-			"name": "core_guild",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "bigint",
-					"primaryKey": true,
-					"notNull": true
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"core_users": {
-			"name": "core_users",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "bigint",
-					"primaryKey": true,
-					"notNull": true
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"core_user_activity": {
-			"name": "core_user_activity",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "serial",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"userId": {
-					"name": "userId",
-					"type": "bigint",
-					"primaryKey": false,
-					"notNull": false
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {
-				"core_user_activity_userId_core_users_id_fk": {
-					"name": "core_user_activity_userId_core_users_id_fk",
-					"tableFrom": "core_user_activity",
-					"tableTo": "core_users",
-					"columnsFrom": ["userId"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		}
-	},
-	"enums": {},
-	"schemas": {},
-	"_meta": {
-		"columns": {},
-		"schemas": {},
-		"tables": {}
-	}
+  "version": "6",
+  "dialect": "postgresql",
+  "tables": {
+    "public.core_currency": {
+      "name": "core_currency",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "symbol": {
+          "name": "symbol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.core_wallet": {
+      "name": "core_wallet",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "core_wallet_userId_core_users_id_fk": {
+          "name": "core_wallet_userId_core_users_id_fk",
+          "tableFrom": "core_wallet",
+          "columnsFrom": [
+            "userId"
+          ],
+          "tableTo": "core_users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "core_wallet_currency_core_currency_id_fk": {
+          "name": "core_wallet_currency_core_currency_id_fk",
+          "tableFrom": "core_wallet",
+          "columnsFrom": [
+            "currency"
+          ],
+          "tableTo": "core_currency",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.core_emoji_usage": {
+      "name": "core_emoji_usage",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "guildId": {
+          "name": "guildId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emojiId": {
+          "name": "emojiId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "core_emoji_usage_guildId_core_guild_id_fk": {
+          "name": "core_emoji_usage_guildId_core_guild_id_fk",
+          "tableFrom": "core_emoji_usage",
+          "columnsFrom": [
+            "guildId"
+          ],
+          "tableTo": "core_guild",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.core_guild": {
+      "name": "core_guild",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.core_users": {
+      "name": "core_users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.core_user_activity": {
+      "name": "core_user_activity",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "core_user_activity_userId_core_users_id_fk": {
+          "name": "core_user_activity_userId_core_users_id_fk",
+          "tableFrom": "core_user_activity",
+          "columnsFrom": [
+            "userId"
+          ],
+          "tableTo": "core_users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "id": "83ab2585-2000-43ae-914f-cd08613a3bb0",
+  "prevId": "ead76db9-6c9a-4bfc-942d-fc6b6e3aab43"
 }
