@@ -1,10 +1,8 @@
 {
-  "id": "7297b772-9a51-459f-9abf-2809e5aa8830",
-  "prevId": "83ab2585-2000-43ae-914f-cd08613a3bb0",
-  "version": "5",
-  "dialect": "pg",
+  "version": "6",
+  "dialect": "postgresql",
   "tables": {
-    "core_currency": {
+    "public.core_currency": {
       "name": "core_currency",
       "schema": "",
       "columns": {
@@ -32,7 +30,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_wallet": {
+    "public.core_wallet": {
       "name": "core_wallet",
       "schema": "",
       "columns": {
@@ -66,21 +64,21 @@
         "core_wallet_currency_core_currency_id_fk": {
           "name": "core_wallet_currency_core_currency_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_currency",
           "columnsFrom": [
             "currency"
           ],
+          "tableTo": "core_currency",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_emoji_usage": {
+    "public.core_emoji_usage": {
       "name": "core_emoji_usage",
       "schema": "",
       "columns": {
@@ -121,7 +119,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild": {
+    "public.core_guild": {
       "name": "core_guild",
       "schema": "",
       "columns": {
@@ -137,7 +135,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_users": {
+    "public.core_users": {
       "name": "core_users",
       "schema": "",
       "columns": {
@@ -153,7 +151,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_user_activity": {
+    "public.core_user_activity": {
       "name": "core_user_activity",
       "schema": "",
       "columns": {
@@ -179,8 +177,10 @@
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "7297b772-9a51-459f-9abf-2809e5aa8830",
+  "prevId": "83ab2585-2000-43ae-914f-cd08613a3bb0"
 }

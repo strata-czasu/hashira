@@ -1,10 +1,8 @@
 {
-  "id": "354ddbfc-8a5a-44cc-b294-3e32155a9f71",
-  "prevId": "3894ca16-38b0-49de-ae60-158e60b31766",
-  "version": "5",
-  "dialect": "pg",
+  "version": "6",
+  "dialect": "postgresql",
   "tables": {
-    "core_currency": {
+    "public.core_currency": {
       "name": "core_currency",
       "schema": "",
       "columns": {
@@ -47,7 +45,7 @@
         }
       }
     },
-    "core_wallet": {
+    "public.core_wallet": {
       "name": "core_wallet",
       "schema": "",
       "columns": {
@@ -117,7 +115,7 @@
         }
       }
     },
-    "core_emoji_usage": {
+    "public.core_emoji_usage": {
       "name": "core_emoji_usage",
       "schema": "",
       "columns": {
@@ -172,7 +170,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild": {
+    "public.core_guild": {
       "name": "core_guild",
       "schema": "",
       "columns": {
@@ -188,7 +186,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_users": {
+    "public.core_users": {
       "name": "core_users",
       "schema": "",
       "columns": {
@@ -204,7 +202,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_user_text_activity": {
+    "public.core_user_text_activity": {
       "name": "core_user_text_activity",
       "schema": "",
       "columns": {
@@ -281,8 +279,10 @@
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "354ddbfc-8a5a-44cc-b294-3e32155a9f71",
+  "prevId": "3894ca16-38b0-49de-ae60-158e60b31766"
 }

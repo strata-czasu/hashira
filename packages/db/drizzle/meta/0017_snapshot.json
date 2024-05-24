@@ -1,10 +1,8 @@
 {
-  "id": "658f938c-f333-4c99-982d-a66916a297fa",
-  "prevId": "efa71fed-c551-4571-8935-5124a5e8b44f",
-  "version": "5",
-  "dialect": "pg",
+  "version": "6",
+  "dialect": "postgresql",
   "tables": {
-    "core_auto_role": {
+    "public.core_auto_role": {
       "name": "core_auto_role",
       "schema": "",
       "columns": {
@@ -39,30 +37,30 @@
         "core_auto_role_guild_id_core_guild_id_fk": {
           "name": "core_auto_role_guild_id_core_guild_id_fk",
           "tableFrom": "core_auto_role",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_auto_role_guild_id_role_id_unique": {
           "name": "core_auto_role_guild_id_role_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "guild_id",
             "role_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_currency": {
+    "public.core_currency": {
       "name": "core_currency",
       "schema": "",
       "columns": {
@@ -91,21 +89,21 @@
       "uniqueConstraints": {
         "core_currency_name_unique": {
           "name": "core_currency_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "core_currency_symbol_unique": {
           "name": "core_currency_symbol_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "symbol"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_wallet": {
+    "public.core_wallet": {
       "name": "core_wallet",
       "schema": "",
       "columns": {
@@ -139,43 +137,43 @@
         "core_wallet_userId_core_users_id_fk": {
           "name": "core_wallet_userId_core_users_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_wallet_currency_core_currency_id_fk": {
           "name": "core_wallet_currency_core_currency_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_currency",
           "columnsFrom": [
             "currency"
           ],
+          "tableTo": "core_currency",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_wallet_userId_name_unique": {
           "name": "core_wallet_userId_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "userId",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_emoji_usage": {
+    "public.core_emoji_usage": {
       "name": "core_emoji_usage",
       "schema": "",
       "columns": {
@@ -216,21 +214,21 @@
         "core_emoji_usage_guildId_core_guild_id_fk": {
           "name": "core_emoji_usage_guildId_core_guild_id_fk",
           "tableFrom": "core_emoji_usage",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild": {
+    "public.core_guild": {
       "name": "core_guild",
       "schema": "",
       "columns": {
@@ -246,7 +244,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild_settings": {
+    "public.core_guild_settings": {
       "name": "core_guild_settings",
       "schema": "",
       "columns": {
@@ -274,29 +272,29 @@
         "core_guild_settings_guild_id_core_guild_id_fk": {
           "name": "core_guild_settings_guild_id_core_guild_id_fk",
           "tableFrom": "core_guild_settings",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_guild_settings_guild_id_unique": {
           "name": "core_guild_settings_guild_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "guild_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_mute": {
+    "public.core_mute": {
       "name": "core_mute",
       "schema": "",
       "columns": {
@@ -389,47 +387,47 @@
         "core_mute_guild_id_core_guild_id_fk": {
           "name": "core_mute_guild_id_core_guild_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_mute_user_id_core_users_id_fk": {
           "name": "core_mute_user_id_core_users_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_mute_moderator_id_core_users_id_fk": {
           "name": "core_mute_moderator_id_core_users_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_users",
           "columnsFrom": [
             "moderator_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_warn": {
+    "public.core_warn": {
       "name": "core_warn",
       "schema": "",
       "columns": {
@@ -516,47 +514,47 @@
         "core_warn_guild_id_core_guild_id_fk": {
           "name": "core_warn_guild_id_core_guild_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_warn_user_id_core_users_id_fk": {
           "name": "core_warn_user_id_core_users_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_warn_moderator_id_core_users_id_fk": {
           "name": "core_warn_moderator_id_core_users_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_users",
           "columnsFrom": [
             "moderator_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_task": {
+    "public.core_task": {
       "name": "core_task",
       "schema": "",
       "columns": {
@@ -606,7 +604,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_users": {
+    "public.core_users": {
       "name": "core_users",
       "schema": "",
       "columns": {
@@ -622,7 +620,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_user_text_activity": {
+    "public.core_user_text_activity": {
       "name": "core_user_text_activity",
       "schema": "",
       "columns": {
@@ -668,28 +666,28 @@
         "core_user_text_activity_userId_core_users_id_fk": {
           "name": "core_user_text_activity_userId_core_users_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_user_text_activity_guildId_core_guild_id_fk": {
           "name": "core_user_text_activity_guildId_core_guild_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -697,20 +695,23 @@
     }
   },
   "enums": {
-    "status": {
+    "public.status": {
       "name": "status",
-      "values": {
-        "pending": "pending",
-        "completed": "completed",
-        "failed": "failed",
-        "cancelled": "cancelled"
-      }
+      "schema": "public",
+      "values": [
+        "pending",
+        "completed",
+        "failed",
+        "cancelled"
+      ]
     }
   },
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "658f938c-f333-4c99-982d-a66916a297fa",
+  "prevId": "efa71fed-c551-4571-8935-5124a5e8b44f"
 }

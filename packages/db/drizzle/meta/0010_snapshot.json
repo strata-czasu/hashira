@@ -1,10 +1,8 @@
 {
-  "id": "7a3ce492-336c-4a05-8a64-a76386907a66",
-  "prevId": "354ddbfc-8a5a-44cc-b294-3e32155a9f71",
-  "version": "5",
-  "dialect": "pg",
+  "version": "6",
+  "dialect": "postgresql",
   "tables": {
-    "core_auto_role": {
+    "public.core_auto_role": {
       "name": "core_auto_role",
       "schema": "",
       "columns": {
@@ -39,30 +37,30 @@
         "core_auto_role_guild_id_core_guild_id_fk": {
           "name": "core_auto_role_guild_id_core_guild_id_fk",
           "tableFrom": "core_auto_role",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_auto_role_guild_id_role_id_unique": {
           "name": "core_auto_role_guild_id_role_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "guild_id",
             "role_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_currency": {
+    "public.core_currency": {
       "name": "core_currency",
       "schema": "",
       "columns": {
@@ -91,21 +89,21 @@
       "uniqueConstraints": {
         "core_currency_name_unique": {
           "name": "core_currency_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "core_currency_symbol_unique": {
           "name": "core_currency_symbol_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "symbol"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_wallet": {
+    "public.core_wallet": {
       "name": "core_wallet",
       "schema": "",
       "columns": {
@@ -139,43 +137,43 @@
         "core_wallet_userId_core_users_id_fk": {
           "name": "core_wallet_userId_core_users_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_wallet_currency_core_currency_id_fk": {
           "name": "core_wallet_currency_core_currency_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_currency",
           "columnsFrom": [
             "currency"
           ],
+          "tableTo": "core_currency",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_wallet_userId_name_unique": {
           "name": "core_wallet_userId_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "userId",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
-    "core_emoji_usage": {
+    "public.core_emoji_usage": {
       "name": "core_emoji_usage",
       "schema": "",
       "columns": {
@@ -216,21 +214,21 @@
         "core_emoji_usage_guildId_core_guild_id_fk": {
           "name": "core_emoji_usage_guildId_core_guild_id_fk",
           "tableFrom": "core_emoji_usage",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild": {
+    "public.core_guild": {
       "name": "core_guild",
       "schema": "",
       "columns": {
@@ -246,7 +244,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_users": {
+    "public.core_users": {
       "name": "core_users",
       "schema": "",
       "columns": {
@@ -262,7 +260,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_user_text_activity": {
+    "public.core_user_text_activity": {
       "name": "core_user_text_activity",
       "schema": "",
       "columns": {
@@ -308,28 +306,28 @@
         "core_user_text_activity_userId_core_users_id_fk": {
           "name": "core_user_text_activity_userId_core_users_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_user_text_activity_guildId_core_guild_id_fk": {
           "name": "core_user_text_activity_guildId_core_guild_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -339,8 +337,10 @@
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "7a3ce492-336c-4a05-8a64-a76386907a66",
+  "prevId": "354ddbfc-8a5a-44cc-b294-3e32155a9f71"
 }

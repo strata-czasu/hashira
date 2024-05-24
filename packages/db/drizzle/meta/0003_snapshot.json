@@ -1,10 +1,8 @@
 {
-  "id": "ce98efdb-a1ab-449f-b813-1528f8d949c3",
-  "prevId": "7297b772-9a51-459f-9abf-2809e5aa8830",
-  "version": "5",
-  "dialect": "pg",
+  "version": "6",
+  "dialect": "postgresql",
   "tables": {
-    "core_currency": {
+    "public.core_currency": {
       "name": "core_currency",
       "schema": "",
       "columns": {
@@ -32,7 +30,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_wallet": {
+    "public.core_wallet": {
       "name": "core_wallet",
       "schema": "",
       "columns": {
@@ -66,34 +64,34 @@
         "core_wallet_userId_core_users_id_fk": {
           "name": "core_wallet_userId_core_users_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_wallet_currency_core_currency_id_fk": {
           "name": "core_wallet_currency_core_currency_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_currency",
           "columnsFrom": [
             "currency"
           ],
+          "tableTo": "core_currency",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_emoji_usage": {
+    "public.core_emoji_usage": {
       "name": "core_emoji_usage",
       "schema": "",
       "columns": {
@@ -134,21 +132,21 @@
         "core_emoji_usage_guildId_core_guild_id_fk": {
           "name": "core_emoji_usage_guildId_core_guild_id_fk",
           "tableFrom": "core_emoji_usage",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_guild": {
+    "public.core_guild": {
       "name": "core_guild",
       "schema": "",
       "columns": {
@@ -164,7 +162,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_users": {
+    "public.core_users": {
       "name": "core_users",
       "schema": "",
       "columns": {
@@ -180,7 +178,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "core_user_activity": {
+    "public.core_user_activity": {
       "name": "core_user_activity",
       "schema": "",
       "columns": {
@@ -202,15 +200,15 @@
         "core_user_activity_userId_core_users_id_fk": {
           "name": "core_user_activity_userId_core_users_id_fk",
           "tableFrom": "core_user_activity",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -220,8 +218,10 @@
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "ce98efdb-a1ab-449f-b813-1528f8d949c3",
+  "prevId": "7297b772-9a51-459f-9abf-2809e5aa8830"
 }
