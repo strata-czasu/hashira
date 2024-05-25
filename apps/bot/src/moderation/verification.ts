@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, schema } from "@hashira/db";
 import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -12,6 +12,7 @@ import {
   time,
   userMention,
 } from "discord.js";
+import { match } from "ts-pattern";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
@@ -26,6 +27,39 @@ const VERIFICATION_DURATION: Duration = { hours: 24 };
 const get13PlusVerificationEnd = (createdAt: Date) => {
   return add(createdAt, VERIFICATION_DURATION);
 };
+
+type VerificationLevel = typeof schema.user.$inferSelect.verificationLevel;
+const satisfiesVerificationLevel = (
+  level: VerificationLevel,
+  target: VerificationLevel,
+) => {
+  if (level === null) return false;
+  if (target === null) return true;
+  const levels = { "13_plus": 0, "18_plus": 1 };
+  return levels[level] >= levels[target];
+};
+
+const formatVerificationType = (type: VerificationLevel) => {
+  return match(type)
+    .with("13_plus", () => "13+")
+    .with("18_plus", () => "18+")
+    .with(null, () => "Brak")
+    .exhaustive();
+};
+
+const getActive13PlusVerification = async (
+  db: ExtractContext<typeof base>["db"],
+  guildId: string,
+  userId: string,
+) =>
+  db.query.verification.findFirst({
+    where: and(
+      eq(schema.verification.guildId, guildId),
+      eq(schema.verification.userId, userId),
+      eq(schema.verification.type, "13_plus"),
+      eq(schema.verification.status, "in_progress"),
+    ),
+  });
 
 export const verification = new Hashira({ name: "verification" })
   .use(base)
@@ -59,26 +93,20 @@ export const verification = new Hashira({ name: "verification" })
             });
             if (!dbUser) return;
 
-            if (dbUser.verificationLevel === "13_plus") {
+            if (dbUser.verificationLevel !== null) {
               return await errorFollowUp(
                 itx,
-                `${userMention(user.id)} ma już weryfikację 13+`,
-              );
-            }
-            if (dbUser.verificationLevel === "18_plus") {
-              return await errorFollowUp(
-                itx,
-                `${userMention(user.id)} ma już weryfikację 18+`,
+                `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
+                  dbUser.verificationLevel,
+                )}`,
               );
             }
 
-            const verificationInProgress = await db.query.verification.findFirst({
-              where: and(
-                eq(schema.verification.guildId, itx.guildId),
-                eq(schema.verification.userId, user.id),
-                eq(schema.verification.status, "in_progress"),
-              ),
-            });
+            const verificationInProgress = await getActive13PlusVerification(
+              db,
+              itx.guildId,
+              user.id,
+            );
             if (verificationInProgress) {
               return await errorFollowUp(
                 itx,
@@ -214,14 +242,18 @@ export const verification = new Hashira({ name: "verification" })
         command
           .setDescription("Przyjmij weryfikację")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addInteger("type", (type) =>
+          .addString("type", (type) =>
             type
               .setDescription("Typ weryfikacji")
-              .addChoices({ name: "13+", value: 13 }, { name: "18+", value: 18 }),
+              .addChoices(
+                { name: "13+", value: "13_plus" },
+                { name: "18+", value: "18_plus" },
+              ),
           )
-          .handle(async ({ db, messageQueue }, { user, type }, itx) => {
+          .handle(async ({ db, messageQueue }, { user, type: rawType }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+            const verificationType = rawType as VerificationLevel;
 
             await ensureUsersExist(db, [user, itx.user]);
             const dbUser = await db.query.user.findFirst({
@@ -229,143 +261,46 @@ export const verification = new Hashira({ name: "verification" })
             });
             if (!dbUser) return;
 
-            if (type === 13) {
-              if (dbUser.verificationLevel && dbUser.verificationLevel === "13_plus") {
-                return await errorFollowUp(
-                  itx,
-                  `${userMention(user.id)} ma już weryfikację 13+`,
-                );
-              }
-              if (dbUser.verificationLevel && dbUser.verificationLevel === "18_plus") {
-                return await errorFollowUp(
-                  itx,
-                  `${userMention(user.id)} ma już weryfikację 18+`,
-                );
-              }
-
-              const verificationInProgress = await db.query.verification.findFirst({
-                where: and(
-                  eq(schema.verification.guildId, itx.guildId),
-                  eq(schema.verification.userId, user.id),
-                  eq(schema.verification.type, "13_plus"),
-                  eq(schema.verification.status, "in_progress"),
-                ),
-              });
-
-              await db.transaction(async (tx) => {
-                if (verificationInProgress) {
-                  await tx
-                    .update(schema.verification)
-                    .set({ status: "accepted", acceptedAt: itx.createdAt })
-                    .where(eq(schema.verification.id, verificationInProgress.id));
-                  await messageQueue.cancel(
-                    "verificationEnd",
-                    verificationInProgress.id.toString(),
-                  );
-                } else {
-                  await tx.insert(schema.verification).values({
-                    createdAt: itx.createdAt,
-                    acceptedAt: itx.createdAt,
-                    guildId: itx.guildId,
-                    userId: user.id,
-                    moderatorId: itx.user.id,
-                    type: "13_plus",
-                    status: "accepted",
-                  });
-                }
-                await tx
-                  .update(schema.user)
-                  .set({ verificationLevel: "13_plus" })
-                  .where(eq(schema.user.id, user.id));
-              });
-
-              // Try to remove the mute role if the verification was in progress and there is no active mute
-              const activeMute = await db.query.mute.findFirst({
-                where: and(
-                  eq(schema.mute.guildId, itx.guildId),
-                  eq(schema.mute.userId, user.id),
-                  isNull(schema.mute.deletedAt),
-                  gte(schema.mute.endsAt, itx.createdAt),
-                ),
-              });
-              const shouldRemoveMuteRole = verificationInProgress && !activeMute;
-              let muteRemovalFailed = false;
-              if (shouldRemoveMuteRole) {
-                muteRemovalFailed = await discordTry(
-                  async () => {
-                    const muteRoleId = await getMuteRoleId(db, itx.guildId);
-                    if (!muteRoleId) return true;
-                    const member = await itx.guild.members.fetch(user.id);
-                    await member.roles.remove(
-                      muteRoleId,
-                      `Weryfikacja 13+ zaakceptowana przez ${itx.user.tag} (${itx.user.id})`,
-                    );
-                    return false;
-                  },
-                  [
-                    RESTJSONErrorCodes.UnknownMember,
-                    RESTJSONErrorCodes.MissingPermissions,
-                  ],
-                  () => true,
-                );
-              }
-
-              // TODO)) Update DM
-              const sentMessage = await sendDirectMessage(
-                user,
-                `Gratulacje! Twoja weryfikacja wieku 13+ została zaakceptowana przez ${userMention(
-                  itx.user.id,
-                )} (${itx.user.tag}).`,
+            if (
+              satisfiesVerificationLevel(dbUser.verificationLevel, verificationType)
+            ) {
+              return await errorFollowUp(
+                itx,
+                `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
+                  verificationType,
+                )}`,
               );
-
-              await itx.editReply(
-                `Przyjęto weryfikację 13+ dla ${userMention(user.id)}`,
-              );
-              if (shouldRemoveMuteRole && muteRemovalFailed) {
-                await errorFollowUp(
-                  itx,
-                  `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
-                );
-              }
-              if (!sentMessage) {
-                await errorFollowUp(
-                  itx,
-                  `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-                );
-              }
-              return;
             }
 
-            if (type === 18) {
-              if (dbUser.verificationLevel === "18_plus") {
-                return await errorFollowUp(
-                  itx,
-                  `${userMention(user.id)} ma już weryfikację 18+`,
-                );
-              }
-
-              const active13PlusVerification = await db.query.verification.findFirst({
-                where: and(
-                  eq(schema.verification.guildId, itx.guildId),
-                  eq(schema.verification.userId, user.id),
-                  eq(schema.verification.type, "13_plus"),
-                  eq(schema.verification.status, "in_progress"),
-                ),
-              });
+            const active13PlusVerification = await db.transaction(async (tx) => {
+              // Check for an active 13_plus verification even when accepting a 18_plus verification
+              const active13PlusVerification = await getActive13PlusVerification(
+                tx,
+                itx.guildId,
+                user.id,
+              );
               if (active13PlusVerification) {
-                return await errorFollowUp(
-                  itx,
-                  `${userMention(
-                    user.id,
-                  )} jest w trakcie weryfikacji 13+. Zakończ ją przed przyjęciem weryfikacji 18+`,
+                await tx
+                  .update(schema.verification)
+                  .set({ status: "accepted", acceptedAt: itx.createdAt })
+                  .where(eq(schema.verification.id, active13PlusVerification.id));
+                await messageQueue.cancel(
+                  "verificationEnd",
+                  active13PlusVerification.id.toString(),
                 );
+              } else {
+                await tx.insert(schema.verification).values({
+                  createdAt: itx.createdAt,
+                  acceptedAt: itx.createdAt,
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  moderatorId: itx.user.id,
+                  type: "13_plus",
+                  status: "accepted",
+                });
               }
 
-              await db.transaction(async (tx) => {
-                await tx
-                  .update(schema.user)
-                  .set({ verificationLevel: "18_plus" })
-                  .where(eq(schema.user.id, user.id));
+              if (verificationType === "18_plus") {
                 await tx.insert(schema.verification).values({
                   createdAt: itx.createdAt,
                   acceptedAt: itx.createdAt,
@@ -375,15 +310,70 @@ export const verification = new Hashira({ name: "verification" })
                   type: "18_plus",
                   status: "accepted",
                 });
-              });
+              }
 
-              await itx.editReply(
-                `Przyjęto weryfikację 18+ dla ${userMention(user.id)}`,
+              await tx
+                .update(schema.user)
+                .set({ verificationLevel: verificationType })
+                .where(eq(schema.user.id, user.id));
+              return active13PlusVerification;
+            });
+
+            // Try to remove the mute role if the verification was in progress and there is no active mute
+            const activeMute = await db.query.mute.findFirst({
+              where: and(
+                eq(schema.mute.guildId, itx.guildId),
+                eq(schema.mute.userId, user.id),
+                isNull(schema.mute.deletedAt),
+                gte(schema.mute.endsAt, itx.createdAt),
+              ),
+            });
+            const shouldRemoveMuteRole = active13PlusVerification && !activeMute;
+            let muteRemovalFailed = false;
+            if (shouldRemoveMuteRole) {
+              muteRemovalFailed = await discordTry(
+                async () => {
+                  const muteRoleId = await getMuteRoleId(db, itx.guildId);
+                  if (!muteRoleId) return true;
+                  const member = await itx.guild.members.fetch(user.id);
+                  await member.roles.remove(
+                    muteRoleId,
+                    `Weryfikacja 13+ zaakceptowana przez ${itx.user.tag} (${itx.user.id})`,
+                  );
+                  return false;
+                },
+                [
+                  RESTJSONErrorCodes.UnknownMember,
+                  RESTJSONErrorCodes.MissingPermissions,
+                ],
+                () => true,
               );
-              return;
             }
 
-            await errorFollowUp(itx, "Nieznany typ weryfikacji");
+            const sentMessage = await sendDirectMessage(
+              user,
+              `Gratulacje! Twoja weryfikacja wieku została zaakceptowana przez ${userMention(
+                itx.user.id,
+              )} (${itx.user.tag}).`,
+            );
+
+            await itx.editReply(
+              `Przyjęto weryfikację ${formatVerificationType(
+                verificationType,
+              )} dla ${userMention(user.id)}`,
+            );
+            if (shouldRemoveMuteRole && muteRemovalFailed) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
+              );
+            }
+            if (!sentMessage) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+              );
+            }
           }),
       )
       .addCommand("odrzuc", (command) =>
@@ -505,7 +495,7 @@ export const verification = new Hashira({ name: "verification" })
             },
             {
               name: "Poziom weryfikacji",
-              value: dbUser.verificationLevel ?? "Brak",
+              value: formatVerificationType(dbUser.verificationLevel),
             },
             {
               name: "Na serwerze?",
