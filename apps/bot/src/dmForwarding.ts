@@ -1,5 +1,14 @@
-import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, RESTJSONErrorCodes, bold, userMention } from "discord.js";
+import { Hashira, PaginatedView } from "@hashira/core";
+import { TextChannelPaginator } from "@hashira/core/paginate";
+import {
+  type Message,
+  PermissionFlagsBits,
+  RESTJSONErrorCodes,
+  TimestampStyles,
+  bold,
+  time,
+  userMention,
+} from "discord.js";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
@@ -31,44 +40,81 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       () => console.warn("Missing access to send message to DM forward channel"),
     );
   })
-  .command("dm", (command) =>
-    command
-      .setDescription("Wyślij prywatną wiaodmość")
+  .group("dm", (group) =>
+    group
+      .setDescription("Komendy do zarządzania prywatnymi wiadomościami")
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-      .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .addString("content", (content) => content.setDescription("Treść wiadomości"))
-      .handle(async (_, { user: rawUser, content }, itx) => {
-        if (rawUser.id === itx.client.user.id) {
-          await itx.reply({
-            content: "Nie mogę wysłać wiadomości do siebie",
-            ephemeral: true,
-          });
-          return;
-        }
-        await itx.deferReply();
+      .addCommand("send", (command) =>
+        command
+          .setDescription("Wyślij prywatną wiaodmość")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("content", (content) => content.setDescription("Treść wiadomości"))
+          .handle(async (_, { user, content }, itx) => {
+            if (user.id === itx.client.user.id) {
+              await itx.reply({
+                content: "Nie mogę wysłać wiadomości do siebie",
+                ephemeral: true,
+              });
+              return;
+            }
+            await itx.deferReply();
 
-        const user = await discordTry(
-          async () => itx.client.users.fetch(rawUser.id),
-          [RESTJSONErrorCodes.UnknownMember],
-          async () => {
-            await errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
-            return null;
-          },
-        );
-        if (!user) return;
+            const logChannel = await itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID);
 
-        const logChannel = await itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID);
+            const messageSent = await sendDirectMessage(user, content);
+            if (messageSent) {
+              await itx.editReply(
+                `Wysłano wiadomość do ${userMention(user.id)}: ${content}`,
+              );
+              if (logChannel?.isTextBased()) {
+                logChannel.send(
+                  `${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`,
+                );
+              }
+            } else {
+              await itx.editReply("Nie udało się wysłać wiadomości");
+            }
+          }),
+      )
+      .addCommand("history", (command) =>
+        command
+          .setDescription("Wyświetl historię wiadomości")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async (_, { user }, itx) => {
+            await itx.deferReply();
 
-        const messageSent = await sendDirectMessage(user, content);
-        if (messageSent) {
-          await itx.editReply(
-            `Wysłano wiadomość do ${userMention(user.id)}: ${content}`,
-          );
-          if (logChannel?.isTextBased()) {
-            logChannel.send(`${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`);
-          }
-        } else {
-          await itx.editReply("Nie udało się wysłać wiadomości");
-        }
-      }),
+            if (user.id === itx.client.user.id) {
+              return await errorFollowUp(
+                itx,
+                "Nie mogę wyświetlić historii wiadomości z samym sobą",
+              );
+            }
+
+            await user.createDM();
+            if (!user.dmChannel) {
+              return errorFollowUp(
+                itx,
+                "Nie mogę wyświetlić historii wiadomości z tym użytkownikiem",
+              );
+            }
+
+            const paginator = new TextChannelPaginator({
+              channel: user.dmChannel,
+              pageSize: 15,
+            });
+
+            const formatMessage = (message: Message) =>
+              `${time(message.createdTimestamp, TimestampStyles.ShortTime)} ${bold(
+                message.author.username,
+              )}: ${message.content}`;
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              `Historia wiadomości z ${user.tag}`,
+              formatMessage,
+              false,
+            );
+            await paginatedView.render(itx);
+          }),
+      ),
   );
