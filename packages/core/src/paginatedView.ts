@@ -8,7 +8,7 @@ import {
   type ChatInputCommandInteraction,
   type CollectorFilter,
   ComponentType,
-  type InteractionResponse,
+  type Message,
 } from "discord.js";
 import { match } from "ts-pattern";
 
@@ -23,7 +23,7 @@ const createAuthorFilter: CreateFilter = (interaction) => (action) =>
 
 export class PaginatedView<T> {
   readonly #paginator: Paginator<T>;
-  #message?: InteractionResponse<boolean>;
+  #message?: Message<boolean>;
   #items: T[] = [];
   #title?: string = undefined;
   #orderingEnabled: boolean;
@@ -41,8 +41,13 @@ export class PaginatedView<T> {
   }
 
   private async send(interaction: ChatInputCommandInteraction<CacheType>) {
-    if (!this.#message) {
-      this.#message = await interaction.reply({ content: "Loading..." });
+    if (interaction.deferred && !this.#message) {
+      this.#message = await interaction.editReply({ content: "Loading..." });
+    } else if (!this.#message) {
+      this.#message = await interaction.reply({
+        content: "Loading...",
+        fetchReply: true,
+      });
     }
     await this.render(interaction);
   }
