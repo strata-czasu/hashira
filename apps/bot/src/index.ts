@@ -31,7 +31,11 @@ export const bot = new Hashira({ name: "bot" })
   .use(autoRole)
   .use(moderation)
   .use(tasks)
-  .use(dmForwarding);
+  .use(dmForwarding)
+  .handle("ready", async () => {
+    // TODO)) Use a proper logger
+    console.log("Bot is ready");
+  });
 
 if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
