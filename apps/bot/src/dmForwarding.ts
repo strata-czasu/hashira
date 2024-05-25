@@ -59,7 +59,12 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
             }
             await itx.deferReply();
 
-            const logChannel = await itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID);
+            const logChannel = await discordTry(
+              async () => itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID),
+              [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
+              () => null,
+            );
+            if (!logChannel) return;
 
             const messageSent = await sendDirectMessage(user, content);
             if (messageSent) {
