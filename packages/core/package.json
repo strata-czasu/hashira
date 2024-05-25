@@ -2,7 +2,8 @@
   "name": "@hashira/core",
   "exports": {
     ".": "./src/index.ts",
-    "./intents": "./src/intents/index.ts"
+    "./intents": "./src/intents/index.ts",
+    "./paginate": "./src/paginate.ts"
   },
   "type": "module",
   "devDependencies": {
