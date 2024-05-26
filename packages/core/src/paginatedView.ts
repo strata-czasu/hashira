@@ -25,19 +25,23 @@ export class PaginatedView<T> {
   readonly #paginator: Paginator<T>;
   #message?: Message<boolean>;
   #items: T[] = [];
-  #title?: string = undefined;
-  #orderingEnabled: boolean;
+  readonly #title?: string = undefined;
+  readonly #orderingEnabled: boolean;
+  readonly #footerExtra: string | null;
   readonly #renderItem: RenderItem<T>;
+
   constructor(
     paginate: Paginator<T>,
     title: string,
     renderItem: RenderItem<T>,
     orderingEnabled = false,
+    footerExtra: string | null = null,
   ) {
     this.#paginator = paginate;
     this.#title = title;
     this.#renderItem = renderItem;
     this.#orderingEnabled = orderingEnabled;
+    this.#footerExtra = footerExtra;
   }
 
   private async send(interaction: ChatInputCommandInteraction<CacheType>) {
@@ -55,9 +59,6 @@ export class PaginatedView<T> {
   async render(interaction: ChatInputCommandInteraction<CacheType>) {
     if (!this.#message) return await this.send(interaction);
     this.#items = await this.#paginator.current();
-
-    const displayPages = this.#paginator.displayPages;
-    const displayCurrentPage = this.#paginator.displayCurrentPage;
 
     const defaultButtons = [
       new ButtonBuilder()
@@ -98,7 +99,7 @@ export class PaginatedView<T> {
         {
           title: this.#title ?? "List of items",
           description: renderedItems.join("\n"),
-          footer: { text: `Page ${displayCurrentPage}/${displayPages}` },
+          footer: { text: this.getFooter() },
         },
       ],
       components: [actionRow],
@@ -125,5 +126,15 @@ export class PaginatedView<T> {
       // Handle timeout
       await this.#message.edit({ components: [] });
     }
+  }
+
+  private getFooter() {
+    const displayPages = this.#paginator.displayPages;
+    const displayCurrentPage = this.#paginator.displayCurrentPage;
+    let footer = `Page ${displayCurrentPage}/${displayPages}`;
+    if (this.#footerExtra) {
+      footer = footer.concat(` | ${this.#footerExtra}`);
+    }
+    return footer;
   }
 }
