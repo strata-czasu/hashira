@@ -84,7 +84,13 @@ const getUserWarnsPaginatedView = (
 
   const formatWarn = createWarnFormat({ includeUser: false });
 
-  return new PaginatedView(paginate, `Ostrzeżenia ${user.tag}`, formatWarn, true);
+  return new PaginatedView(
+    paginate,
+    `Ostrzeżenia ${user.tag}`,
+    formatWarn,
+    true,
+    `ID: ${user.id}`,
+  );
 };
 
 export const warns = new Hashira({ name: "warns" })

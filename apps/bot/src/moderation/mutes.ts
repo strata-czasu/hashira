@@ -90,7 +90,13 @@ const getUserMutesPaginatedView = (
 
   const formatMuteInList = createFormatMuteInList({ includeUser: false });
 
-  return new PaginatedView(paginate, `Wyciszenia ${user.tag}`, formatMuteInList, true);
+  return new PaginatedView(
+    paginate,
+    `Wyciszenia ${user.tag}`,
+    formatMuteInList,
+    true,
+    `ID: ${user.id}`,
+  );
 };
 
 const getMute = async (tx: Transaction, id: number, guildId: string) =>

@@ -118,6 +118,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
               `Historia wiadomości z ${user.tag}`,
               formatMessage,
               false,
+              `ID: ${user.id}`,
             );
             await paginatedView.render(itx);
           }),
