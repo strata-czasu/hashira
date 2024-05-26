@@ -132,8 +132,11 @@ export class PaginatedView<T> {
     const displayPages = this.#paginator.displayPages;
     const displayCurrentPage = this.#paginator.displayCurrentPage;
     let footer = `Page ${displayCurrentPage}/${displayPages}`;
+    if (this.#paginator.count) {
+      footer += ` (${this.#paginator.count})`;
+    }
     if (this.#footerExtra) {
-      footer = footer.concat(` | ${this.#footerExtra}`);
+      footer += ` | ${this.#footerExtra}`;
     }
     return footer;
   }

@@ -4,6 +4,7 @@ export enum PaginatorOrder {
 }
 
 export interface Paginator<T> {
+  count: number | null;
   currentOffset: number;
   displayPages: string;
   displayCurrentPage: string;
@@ -38,6 +39,10 @@ export class StaticPaginator<T> implements Paginator<T> {
     this.#ordering = ordering ?? PaginatorOrder.ASC;
 
     if (this.#ordering === PaginatorOrder.DESC) this.#items.reverse();
+  }
+
+  get count(): number | null {
+    return this.#items.length;
   }
 
   get currentOffset(): number {

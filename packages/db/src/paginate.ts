@@ -67,6 +67,11 @@ export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
     else this.#count = 0;
   }
 
+  public get count() {
+    if (this.isCountUnknown) return null;
+    return this.#count;
+  }
+
   public get currentOffset() {
     return this.#page * this.#pageSize;
   }

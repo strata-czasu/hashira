@@ -18,6 +18,11 @@ export class TextChannelPaginator implements Paginator<Message> {
     this.#pageSize = pageSize;
   }
 
+  public get count(): number | null {
+    if (!this.#lastPage) return null;
+    return this.#items.length;
+  }
+
   public get currentOffset(): number {
     return this.#page * this.#pageSize;
   }
