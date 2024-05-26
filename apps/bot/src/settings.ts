@@ -4,6 +4,9 @@ import { eq } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, roleMention } from "discord.js";
 import { base } from "./base";
 
+const formatRoleSetting = (name: string, roleId: string | null) =>
+  `${name}: ${roleId ? roleMention(roleId) : "Nie ustawiono"}`;
+
 export const settings = new Hashira({ name: "settings" })
   .use(base)
   .group("settings", (group) =>
@@ -31,6 +34,25 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("18-plus-role", (command) =>
+        command
+          .setDescription("Ustaw rolę 18+")
+          .addRole("role", (role) =>
+            role.setDescription("Rola, która ma być nadawana po weryfikacji 18+"),
+          )
+          .handle(async ({ db }, { role }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await db
+              .update(schema.guildSettings)
+              .set({ plus18RoleId: role.id })
+              .where(eq(schema.guildSettings.guildId, itx.guildId));
+            await itx.reply({
+              content: `Rola 18+ została ustawiona na ${roleMention(role.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl ustawienia serwera")
@@ -43,9 +65,10 @@ export const settings = new Hashira({ name: "settings" })
             if (!settings) throw new Error("Guild settings not found");
 
             await itx.reply({
-              content: `Rola do wyciszeń: ${
-                settings.muteRoleId ? roleMention(settings.muteRoleId) : "Nie ustawiono"
-              }`,
+              content: `${formatRoleSetting(
+                "Rola do wyciszeń",
+                settings.muteRoleId,
+              )}\n${formatRoleSetting("Rola 18+", settings.plus18RoleId)}`,
               ephemeral: true,
             });
           }),

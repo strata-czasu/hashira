@@ -1,0 +1,1 @@
+ALTER TABLE "core_guild_settings" ADD COLUMN "plus18_role_id" text;

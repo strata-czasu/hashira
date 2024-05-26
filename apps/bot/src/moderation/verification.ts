@@ -46,9 +46,9 @@ const formatVerificationType = (type: VerificationLevel) => {
     .with(null, () => "Brak")
     .exhaustive();
 };
-
+type BaseContext = ExtractContext<typeof base>;
 const getActive13PlusVerification = async (
-  db: ExtractContext<typeof base>["db"],
+  db: BaseContext["db"],
   guildId: string,
   userId: string,
 ) =>
@@ -60,6 +60,14 @@ const getActive13PlusVerification = async (
       eq(schema.verification.status, "in_progress"),
     ),
   });
+
+const get18PlusRoleId = async (db: BaseContext["db"], guildId: string) => {
+  const settings = await db.query.guildSettings.findFirst({
+    where: eq(schema.guildSettings.guildId, guildId),
+  });
+  if (!settings) return null;
+  return settings.plus18RoleId;
+};
 
 export const verification = new Hashira({ name: "verification" })
   .use(base)
@@ -350,6 +358,28 @@ export const verification = new Hashira({ name: "verification" })
               );
             }
 
+            let plus18RoleAdditionFailed = false;
+            if (verificationType === "18_plus") {
+              const plus18RoleId = await get18PlusRoleId(db, itx.guildId);
+              if (plus18RoleId) {
+                plus18RoleAdditionFailed = await discordTry(
+                  async () => {
+                    const member = await itx.guild.members.fetch(user.id);
+                    await member.roles.add(
+                      plus18RoleId,
+                      `Weryfikacja 18+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
+                    );
+                    return false;
+                  },
+                  [
+                    RESTJSONErrorCodes.UnknownMember,
+                    RESTJSONErrorCodes.MissingPermissions,
+                  ],
+                  () => false,
+                );
+              }
+            }
+
             const sentMessage = await sendDirectMessage(
               user,
               `Gratulacje! Twoja weryfikacja wieku została zaakceptowana przez ${userMention(
@@ -366,6 +396,12 @@ export const verification = new Hashira({ name: "verification" })
               await errorFollowUp(
                 itx,
                 `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
+              );
+            }
+            if (verificationType === "18_plus" && plus18RoleAdditionFailed) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się dodać roli 18+ dla ${formatUserWithId(user)}.`,
               );
             }
             if (!sentMessage) {

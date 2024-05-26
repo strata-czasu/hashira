@@ -10,6 +10,7 @@ export const guildSettings = pgTable("guild_settings", {
     .unique()
     .references(() => guild.id),
   muteRoleId: text("mute_role_id"),
+  plus18RoleId: text("plus18_role_id"),
 });
 
 export const guildSettingsRelations = relations(guildSettings, ({ one }) => ({
