@@ -280,6 +280,7 @@ export const verification = new Hashira({ name: "verification" })
               );
             }
 
+            const currentVerificationLevel = dbUser.verificationLevel;
             const active13PlusVerification = await db.transaction(async (tx) => {
               // Check for an active 13_plus verification even when accepting a 18_plus verification
               const active13PlusVerification = await getActive13PlusVerification(
@@ -296,7 +297,8 @@ export const verification = new Hashira({ name: "verification" })
                   "verificationEnd",
                   active13PlusVerification.id.toString(),
                 );
-              } else {
+              } else if (currentVerificationLevel === null) {
+                // Create a 13_plus verification if there is no active verification.
                 await tx.insert(schema.verification).values({
                   createdAt: itx.createdAt,
                   acceptedAt: itx.createdAt,
