@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
 import { autoRole } from "./autoRole";
+import { avatar } from "./avatar";
 import { base } from "./base";
 import { dmForwarding } from "./dmForwarding";
 import { emojiCounting } from "./emojiCounting";
@@ -32,6 +33,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(moderation)
   .use(tasks)
   .use(dmForwarding)
+  .use(avatar)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
