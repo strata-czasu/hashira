@@ -9,10 +9,12 @@ import {
   RESTJSONErrorCodes,
   TimestampStyles,
   channelMention,
+  hideLinkEmbed,
   time,
   userMention,
 } from "discord.js";
 import { match } from "ts-pattern";
+import { BAN_APPEAL_URL } from ".";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
@@ -178,14 +180,15 @@ export const verification = new Hashira({ name: "verification" })
               verification.id.toString(),
             );
 
-            // TODO)) Update DM
             const sentMessage = await sendDirectMessage(
               user,
-              `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-                itx.user.tag
-              }) rozpoczął Ci weryfikację wieku 13+.\n\nAby zweryfikować swój wiek, otwórz ticket na kanale ${channelMention(
+              `Hejka ${userMention(
+                user.id,
+              )}! Na podstawie Twojego zachowania na serwerze lub którejś z Twoich wiadomości uznaliśmy, że **możesz mieć mniej niż 13 lat**. Dlatego przed chwilą jedna z osób z administracji (${userMention(
+                itx.user.id,
+              )}) **rozpoczęła weryfikację Twojego wieku**.\n\n**Masz teraz 24 godziny na otworzenie ticketa na kanale \`#wyslij-ticket\`: ${channelMention(
                 TICKETS_CHANNEL,
-              )} klikając przycisk ":underage: Wiek".\nNa zweryfikowanie swojego wieku masz 24 godziny. Podczas jej trwania zabrałem Ci możliwość pisania na serwerze.`,
+              )}** (musisz kliknąć przycisk "Wiek"). Po utworzeniu ticketa musisz przejść pozytywnie przez proces weryfikacji. Najczęściej sprowadza się to do wysłania jednego zdjęcia. Instrukcje co masz wysłać znajdziesz w na kanale z linka. Brak weryfikacji w ciągu 24 godzin **zakończy się banem**, dlatego proszę nie ignoruj tej wiadomości. Pozdrawiam!`,
             );
 
             await itx.editReply(
@@ -382,12 +385,32 @@ export const verification = new Hashira({ name: "verification" })
               }
             }
 
-            const sentMessage = await sendDirectMessage(
-              user,
-              `Gratulacje! Twoja weryfikacja wieku została zaakceptowana przez ${userMention(
-                itx.user.id,
-              )} (${itx.user.tag}).`,
-            );
+            let directMessageContent: string;
+            if (verificationType === "13_plus" && currentVerificationLevel === null) {
+              // null -> 13_plus
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 13 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (
+              verificationType === "18_plus" &&
+              currentVerificationLevel === "13_plus"
+            ) {
+              // 13_plus -> 18_plus
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! Przed chwilą **Twoja weryfikacja pełnoletności została pozytywnie rozpatrzona**. Otrzymałxś rolę \`18+\` i dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i pozdrawiam!`;
+            } else if (
+              verificationType === "18_plus" &&
+              currentVerificationLevel === null
+            ) {
+              // null -> 18_plus
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 13 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else {
+              throw new Error("Invalid verification transition");
+            }
+            const sentMessage = await sendDirectMessage(user, directMessageContent);
 
             await itx.editReply(
               `Przyjęto weryfikację ${formatVerificationType(
@@ -457,12 +480,13 @@ export const verification = new Hashira({ name: "verification" })
               });
             }
 
-            // TODO)) Update DM
             const sentMessage = await sendDirectMessage(
               user,
-              `Przykro mi, ale Twoja weryfikacja wieku 13+ została odrzucona przez ${userMention(
-                itx.user.id,
-              )} (${itx.user.tag}).`,
+              `Hej ${userMention(
+                user.id,
+              )}! Niestety nie zweryfikowałxś swojego wieku w wyznaczonym terminie lub Twoja weryfikacja wieku została odrzucona i dlatego **musiałem zbanować Cię na Stracie Czasu**.\n\nNadal możesz do nas wrócić po ukończeniu 13 lat. Wystarczy, że **zgłosisz się do nas poprzez ten formularz zaraz po 13 urodzinach: ${hideLinkEmbed(
+                BAN_APPEAL_URL,
+              )}**. Mam nadzieję, że jeszcze kiedyś się zobaczymy, pozdrawiam!`,
             );
 
             const banned = await discordTry(
