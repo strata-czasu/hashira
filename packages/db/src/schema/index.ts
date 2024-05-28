@@ -8,3 +8,4 @@ export * from "./task";
 export * from "./user";
 export * from "./userTextActivity";
 export * from "./verification";
+export * from "./strata/colorRole";

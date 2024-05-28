@@ -11,6 +11,7 @@ import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { roles } from "./roles";
 import { settings } from "./settings";
+import { colorRoles } from "./strata/colorRoles";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 
@@ -34,6 +35,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(tasks)
   .use(dmForwarding)
   .use(avatar)
+  .use(colorRoles)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");

@@ -1,0 +1,213 @@
+import { Hashira } from "@hashira/core";
+import { schema } from "@hashira/db";
+import { and, eq } from "@hashira/db/drizzle";
+import { addDays, addMonths, addWeeks, addYears } from "date-fns";
+import {
+  type ColorResolvable,
+  PermissionFlagsBits,
+  RESTJSONErrorCodes,
+  inlineCode,
+  resolveColor,
+  time,
+} from "discord.js";
+import { match } from "ts-pattern";
+import { base } from "../base";
+import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
+
+const preprocessColor = (color: string): `#${string}` => {
+  if (color.startsWith("#")) {
+    return color as `#${string}`;
+  }
+  return `#${color}`;
+};
+
+const getColor = (rawColor: ColorResolvable | string) => {
+  const color = typeof rawColor === "string" ? preprocessColor(rawColor) : rawColor;
+  try {
+    return resolveColor(color);
+  } catch (err) {
+    return null;
+  }
+};
+
+const readExpiration = (expiration: string): Date | null => {
+  const now = new Date();
+
+  return match(expiration)
+    .with("1d", () => addDays(now, 1))
+    .with("1w", () => addWeeks(now, 1))
+    .with("1m", () => addMonths(now, 1))
+    .with("3m", () => addMonths(now, 3))
+    .with("6m", () => addMonths(now, 6))
+    .with("1y", () => addYears(now, 1))
+    .otherwise(() => null);
+};
+
+export const colorRoles = new Hashira({ name: "color-role" })
+  .use(base)
+  .group("kolorki", (group) =>
+    group
+      .setDescription("Zarządzaj swoimi kolorkami")
+      .addCommand("dodaj", (command) =>
+        command
+          .setDescription("[MODERACYJNE] Dodaj nowy kolor")
+          .addString("nazwa", (name) => name.setDescription("Nazwa koloru"))
+          .addUser("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
+          .addString("wygaśnięcie", (expiration) =>
+            expiration
+              .setDescription("Czas po którym kolor wygaśnie")
+              .addChoices(
+                { name: "Bez wygaśnięcia", value: "0" },
+                { name: "1 dzień", value: "1d" },
+                { name: "1 tydzień", value: "1w" },
+                { name: "1 miesiąc", value: "1m" },
+                { name: "3 miesiące", value: "3m" },
+                { name: "6 miesięcy", value: "6m" },
+                { name: "1 rok", value: "1y" },
+              ),
+          )
+          .addInteger("sloty", (slots) =>
+            slots.setDescription("Ilość slotów na użytkowników").addChoices(
+              {
+                name: "1",
+                value: 1,
+              },
+              { name: "10", value: 10 },
+            ),
+          )
+          .handle(
+            async (
+              { db },
+              {
+                nazwa: name,
+                właściciel: owner,
+                wygaśnięcie: rawExpiration,
+                sloty: slots,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              if (!itx.memberPermissions.has(PermissionFlagsBits.ManageRoles)) return;
+
+              await itx.deferReply();
+
+              const expiration = readExpiration(rawExpiration);
+
+              const role = await discordTry(
+                () => itx.guild.roles.create({ name, color: 0x000000 }),
+                [RESTJSONErrorCodes.MissingPermissions],
+                () => null,
+              );
+
+              if (!role) return await errorFollowUp(itx, "Failed to create role");
+
+              await db.insert(schema.colorRole).values({
+                name,
+                ownerId: owner.id,
+                guildId: itx.guildId,
+                expiration,
+                roleId: role.id,
+                slots,
+              });
+
+              const member = await itx.guild.members.fetch(owner.id);
+              await member.roles.add(role.id, "Utworzenie koloru");
+
+              const expirationText = expiration
+                ? time(expiration)
+                : inlineCode("nigdy");
+
+              await itx.editReply({
+                content: `Dodano kolor ${name} dla ${owner.tag}, który wygaśnie: ${expirationText}`,
+              });
+            },
+          ),
+      )
+      .addCommand("przypisz", (command) =>
+        command
+          .setDescription("[MODERACYJNE] Dodaj do bazy istniejący kolor")
+          .addRole("rola", (role) =>
+            role.setDescription("Rola do dodania").setRequired(true),
+          )
+          .addUser("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
+          .addInteger("sloty", (slots) =>
+            slots.setDescription("Ilość slotów na użytkowników"),
+          )
+          .handle(
+            async ({ db }, { rola: role, właściciel: owner, sloty: slots }, itx) => {
+              if (!itx.inCachedGuild()) return;
+              if (!itx.memberPermissions.has(PermissionFlagsBits.ManageRoles)) return;
+
+              await itx.deferReply();
+
+              const colorRole = await db.query.colorRole.findFirst({
+                where: and(eq(schema.colorRole.roleId, role.id)),
+              });
+
+              if (colorRole) {
+                return await errorFollowUp(itx, "Kolor już jest przypisany");
+              }
+
+              await db.insert(schema.colorRole).values({
+                name: role.name,
+                ownerId: owner.id,
+                guildId: itx.guildId,
+                roleId: role.id,
+                slots,
+              });
+
+              const member = await itx.guild.members.fetch(owner.id);
+              await member.roles.add(role.id, "Przypisanie koloru");
+
+              await itx.editReply({
+                content: `Dodano kolor ${role.name} dla ${owner.tag}`,
+              });
+            },
+          ),
+      )
+      .addCommand("hex", (command) =>
+        command
+          .setDescription("Ustaw kolor roli na podstawie hexa")
+          .addRole("rola", (role) =>
+            role.setDescription("Rola której kolor zmienić").setRequired(true),
+          )
+          .addString("kolor", (color) =>
+            color.setDescription("Hex jaki ustawić").setRequired(true),
+          )
+          .handle(async ({ db }, { rola: role, kolor: color }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await itx.deferReply();
+
+            const hexColor = getColor(color);
+            if (!hexColor) return await errorFollowUp(itx, "Invalid color");
+
+            const colorRole = await db.query.colorRole.findFirst({
+              where: and(
+                eq(schema.colorRole.ownerId, itx.user.id),
+                eq(schema.colorRole.guildId, itx.guildId),
+                eq(schema.colorRole.roleId, role.id),
+              ),
+            });
+
+            if (!colorRole) {
+              return await errorFollowUp(itx, "You do not own this role");
+            }
+
+            const result = await discordTry(
+              () => role.setColor(hexColor),
+              [RESTJSONErrorCodes.MissingPermissions],
+              () => errorFollowUp(itx, "Missing permissions"),
+            );
+
+            if (result) {
+              await itx.editReply({
+                content: `Zmieniono kolor roli ${role.name} na #${hexColor.toString(
+                  16,
+                )}`,
+              });
+            }
+          }),
+      ),
+  );
