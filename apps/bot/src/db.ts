@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
+import { and, eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { discordTry } from "./util/discordTry";
@@ -27,7 +27,11 @@ export const database = new Hashira({ name: "database" })
         async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
           // Don't remove the mute role if the user has a verification in progress
           const verificationInProgress = await db.query.verification.findFirst({
-            where: eq(schema.verification.userId, userId),
+            where: and(
+              eq(schema.verification.userId, userId),
+              eq(schema.verification.guildId, guildId),
+              eq(schema.verification.status, "in_progress"),
+            ),
           });
           if (verificationInProgress) return;
 
