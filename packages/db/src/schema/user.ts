@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { pgEnum, text } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { type AnyPgColumn, pgEnum, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { wallet } from "./economy/wallet";
 import { mute, warn } from "./moderation";
@@ -10,6 +10,10 @@ export const verificationLevel = pgEnum("verification_level", ["13_plus", "18_pl
 export const user = pgTable("users", {
   id: text("id").primaryKey(),
   verificationLevel: verificationLevel("verification_level"),
+  marriedTo: text("married_to")
+    .references((): AnyPgColumn => user.id)
+    .default(sql`null`),
+  marriedAt: timestamp("married_at"),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

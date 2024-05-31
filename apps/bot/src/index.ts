@@ -9,6 +9,7 @@ import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
+import { profile } from "./profile";
 import { roles } from "./roles";
 import { settings } from "./settings";
 import { colorRoles } from "./strata/colorRoles";
@@ -36,6 +37,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(dmForwarding)
   .use(avatar)
   .use(colorRoles)
+  .use(profile)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
