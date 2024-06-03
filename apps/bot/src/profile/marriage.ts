@@ -84,4 +84,69 @@ export const marriage = new Hashira({ name: "marriage" })
         );
         await dialog.render(itx);
       }),
+  )
+  .command("divorce", (command) =>
+    command
+      .setDescription("Rozwiedź się")
+      .setDMPermission(false)
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
+      .handle(async ({ db }, { user: { id: targetUserId } }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply();
+
+        await ensureUsersExist(db, [itx.user.id, targetUserId]);
+
+        const user = await db.query.user.findFirst({
+          where: eq(schema.user.id, itx.user.id),
+        });
+        if (!user) return;
+        if (!user.marriedTo) {
+          return await errorFollowUp(itx, "Nie jesteś w związku!");
+        }
+
+        const targetUser = await db.query.user.findFirst({
+          where: eq(schema.user.id, targetUserId),
+        });
+        if (!targetUser) return;
+        if (user.marriedTo !== targetUserId) {
+          return await errorFollowUp(
+            itx,
+            `Nie jesteś w związku z ${userMention(targetUserId)}!`,
+          );
+        }
+
+        const dialog = new ConfirmationDialog(
+          `Czy na pewno chcesz się rozwieść z ${userMention(
+            targetUserId,
+          )}? :broken_heart:`,
+          "Tak",
+          "Nie",
+          async () => {
+            await db.transaction(async (tx) => {
+              await tx
+                .update(schema.user)
+                .set({ marriedTo: null, marriedAt: null })
+                .where(eq(schema.user.id, user.id));
+              await tx
+                .update(schema.user)
+                .set({ marriedTo: null, marriedAt: null })
+                .where(eq(schema.user.id, targetUserId));
+            });
+            await itx.editReply({
+              content: `${userMention(itx.user.id)} i ${userMention(
+                targetUserId,
+              )} nie są już małżeństwem. :broken_heart:`,
+              components: [],
+            });
+          },
+          async () => {
+            await itx.editReply({
+              content: "Rozwód anulowany.",
+              components: [],
+            });
+          },
+          (action) => action.user.id === user.id,
+        );
+        await dialog.render(itx);
+      }),
   );
