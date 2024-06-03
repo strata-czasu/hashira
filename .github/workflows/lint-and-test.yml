@@ -1,0 +1,49 @@
+name: Lint and Test
+
+on: [push, pull_request]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        env:
+          POSTGRES_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.1.8
+      - run: bun install
+      - name: Run Linting
+        run: bunx biome lint .
+      - name: Check Formatting
+        run: bunx biome format .
+      - name: Run tests
+        # FIXME: This is a workaround for the issue with `bun test`
+        #        There's some issue with using and/or migrating the DB
+        run: |
+          bun test:core
+          bun test:bot
+          bun test:db
+          bun test:paginate
+        env:
+          POSTGRES_TEST_HOST: localhost
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # Dummy variables
+          POSTGRES_HOST: dummy
+          BOT_CLIENT_ID: dummy
+          BOT_DEVELOPER_GUILD_ID: dummy
+          BOT_TOKEN: dummy

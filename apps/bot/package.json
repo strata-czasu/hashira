@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
-    "reload-commands": "bun run reload-commands.ts"
+    "reload-commands": "bun run reload-commands.ts",
+    "test": "bun test test/"
   },
   "dependencies": {
     "@hashira/paginate": "workspace:packages/paginate",
