@@ -10,6 +10,7 @@ export default {
     host: env.POSTGRES_HOST,
     password: env.POSTGRES_PASSWORD,
     user: env.POSTGRES_USER,
+    ssl: env.USE_SSL ?? false,
   },
   strict: true,
   verbose: true,

@@ -11,11 +11,14 @@ export const Env = Type.Object({
   POSTGRES_USER: Type.String(),
   POSTGRES_TEST_HOST: Type.String(),
   SENTRY_DSN: Type.Optional(Type.String()),
+  USE_SSL: Type.Optional(Type.Boolean()),
 });
 
 export type Env = Static<typeof Env>;
 
-const env = Value.Clean(Env, process.env);
+const cleanedEnv = Value.Clean(Env, process.env);
+
+const env = Value.Convert(Env, Value.Default(Env, cleanedEnv));
 
 const errors = [...Value.Errors(Env, env)];
 

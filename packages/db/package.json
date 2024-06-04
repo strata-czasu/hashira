@@ -26,9 +26,9 @@
   },
   "dependencies": {
     "@hashira/paginate": "workspace:packages/paginate",
-    "drizzle-orm": "^0.30.10",
+    "drizzle-orm": "^0.31.1",
     "postgres": "^3.4.4",
-    "drizzle-kit": "^0.21.2",
+    "drizzle-kit": "^0.22.2",
     "pg": "^8.11.5"
   }
 }
