@@ -6,11 +6,14 @@ import {
   AttachmentBuilder,
   type GuildBasedChannel,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   time,
 } from "discord.js";
 import { base } from "./base";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
+import { discordTry } from "./util/discordTry";
+import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { parseUserMentions } from "./util/parseUsers";
 
@@ -152,6 +155,54 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               true,
             );
 
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("did-not-react", (command) =>
+        command
+          .setDescription("Pokaż osoby z roli, które nie zareagowały na wiadomość")
+          .addString("message", (message) => message.setDescription("ID wiadomości"))
+          .addRole("role", (role) => role.setDescription("Rola"))
+          .addString("emoji", (emoji) => emoji.setDescription("Emoji"))
+          .handle(async (_, { message: messageId, role, emoji: emojiName }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const message = await discordTry(
+              async () => itx.channel?.messages.fetch(messageId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              () => null,
+            );
+            if (!message) {
+              return await errorFollowUp(itx, "Nie znaleziono wiadomości");
+            }
+
+            const reaction = message.reactions.cache.find(
+              (reaction) => reaction.emoji.name === emojiName,
+            );
+            if (!reaction) {
+              return await errorFollowUp(itx, "Nie znaleziono reakcji");
+            }
+
+            const users = await reaction.users.fetch();
+            const reactedMembers = await fetchMembers(
+              itx.guild,
+              users.map((user) => user.id),
+            );
+            const notReactedMembers = role.members.filter(
+              (member) => !reactedMembers.has(member.id),
+            );
+
+            const paginator = new StaticPaginator({
+              items: [...notReactedMembers.values()],
+              pageSize: 10,
+            });
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Osoby, które nie zareagowały",
+              (member) => `${member.user.tag} (${member.id})`,
+              true,
+            );
             await paginatedView.render(itx);
           }),
       ),
