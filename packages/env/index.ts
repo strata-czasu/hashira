@@ -1,9 +1,14 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
+const SpaceSeparatedArray = (defaultValue: string) =>
+  Type.Transform(Type.String({ default: defaultValue }))
+    .Decode((value) => value.split(" "))
+    .Encode((value) => value.join(" "));
+
 export const Env = Type.Object({
   BOT_CLIENT_ID: Type.String(),
-  BOT_DEVELOPER_GUILD_ID: Type.String(),
+  BOT_DEVELOPER_GUILD_IDS: SpaceSeparatedArray(""),
   BOT_TOKEN: Type.String(),
   POSTGRES_DB: Type.String(),
   POSTGRES_HOST: Type.String(),
@@ -29,4 +34,4 @@ if (errors.length > 0) {
   throw new Error("Invalid environment variables");
 }
 
-export default Value.Cast(Env, env);
+export default Value.Decode(Env, env);

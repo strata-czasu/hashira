@@ -3,6 +3,6 @@ import { bot } from "./src";
 
 await bot.registerCommands(
   env.BOT_TOKEN,
-  env.BOT_DEVELOPER_GUILD_ID,
+  env.BOT_DEVELOPER_GUILD_IDS,
   env.BOT_CLIENT_ID,
 );

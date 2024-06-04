@@ -395,7 +395,14 @@ class Hashira<
     await discordClient.login(token);
   }
 
-  async registerCommands(token: string, guildId: string, clientId: string) {
+  async registerCommands(token: string, guildIds: string[], clientId: string) {
+    console.log(`Registering application commands for ${guildIds.join(", ")}.`);
+    await Promise.all(
+      guildIds.map((guildId) => this.registerGuildCommands(token, guildId, clientId)),
+    );
+  }
+
+  async registerGuildCommands(token: string, guildId: string, clientId: string) {
     const rest = new REST().setToken(token);
     const commands = [...this.#commands.values()].map(([commandBuilder]) =>
       commandBuilder.toJSON(),
@@ -416,7 +423,7 @@ class Hashira<
         body: commands,
       });
 
-      console.log("Successfully registered application commands.");
+      console.log(`Successfully registered application commands for guild ${guildId}.`);
     } catch (error) {
       if (error instanceof Error) console.error(error);
       console.error(error);
