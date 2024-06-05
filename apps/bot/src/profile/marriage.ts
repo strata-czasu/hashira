@@ -13,7 +13,7 @@ export const marriage = new Hashira({ name: "marriage" })
       .setDescription("Oświadcz się komuś")
       .setDMPermission(false)
       .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .handle(async ({ db }, { user: { id: targetUserId } }, itx) => {
+      .handle(async ({ db, lock }, { user: { id: targetUserId } }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
 
@@ -82,7 +82,15 @@ export const marriage = new Hashira({ name: "marriage" })
           },
           (action) => action.user.id === targetUser.id,
         );
-        await dialog.render(itx);
+        await lock.run(
+          [itx.user.id, targetUserId],
+          async () => dialog.render(itx),
+          () =>
+            errorFollowUp(
+              itx,
+              "Masz już aktywne oświadczyny lub ktoś inny właśnie oświadczył się tej osobie! Poczekaj aż sytuacja się wyjaśni.",
+            ),
+        );
       }),
   )
   .command("divorce", (command) =>
