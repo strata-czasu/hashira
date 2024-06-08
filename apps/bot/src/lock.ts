@@ -26,8 +26,13 @@ export class LockManager {
   async run<T, U>(key: string[], fn: () => T, lockInUseFn: () => U): Promise<T | U> {
     if (key.length === 0) throw new Error("Key must not be empty");
 
-    if (!key.every((k) => this.acquire(k))) {
+    // Check if all keys are available before acquiring
+    if (!key.every((k) => !this.isLocked(k))) {
       return await lockInUseFn();
+    }
+
+    if (!key.every((k) => this.acquire(k))) {
+      throw new Error("Failed to acquire lock(s)");
     }
 
     try {

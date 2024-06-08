@@ -38,6 +38,19 @@ describe("lockManager", () => {
     expect(lockInUseFn).toHaveBeenCalled();
   });
 
+  test("doesn't acquire other locks if one fails", async () => {
+    const lockManager = new LockManager();
+    lockManager.acquire("key2");
+    const fn = mock();
+    const lockInUseFn = mock();
+
+    await lockManager.run(["key1", "key2"], fn, lockInUseFn);
+    expect(fn).not.toHaveBeenCalled();
+    expect(lockInUseFn).toHaveBeenCalled();
+    expect(lockManager.isLocked("key1")).toBe(false);
+    expect(lockManager.isLocked("key2")).toBe(true);
+  });
+
   test("releases lock after running function", async () => {
     const lockManager = new LockManager();
     await lockManager.run(["key"], mock(), mock());
