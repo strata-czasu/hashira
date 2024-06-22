@@ -5,6 +5,7 @@ import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
 import { dmForwarding } from "./dmForwarding";
+import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { miscellaneous } from "./miscellaneous";
@@ -25,19 +26,20 @@ if (env.SENTRY_DSN) {
 
 export const bot = new Hashira({ name: "bot" })
   .use(base)
-  .use(guildAvailability)
-  .use(settings)
-  .use(emojiCounting)
-  .use(miscellaneous)
-  .use(roles)
-  .use(userActivity)
   .use(autoRole)
-  .use(moderation)
-  .use(tasks)
-  .use(dmForwarding)
   .use(avatar)
   .use(colorRoles)
+  .use(dmForwarding)
+  .use(economy)
+  .use(emojiCounting)
+  .use(guildAvailability)
+  .use(miscellaneous)
+  .use(moderation)
   .use(profile)
+  .use(roles)
+  .use(settings)
+  .use(tasks)
+  .use(userActivity)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
