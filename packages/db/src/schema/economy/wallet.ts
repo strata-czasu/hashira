@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
-import { integer, serial, text, unique } from "drizzle-orm/pg-core";
+import { boolean, integer, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { pgTable } from "../../pgtable";
+import { guild } from "../guild";
 import { user } from "../user";
 import { currency } from "./currency";
 
@@ -9,11 +10,23 @@ export const wallet = pgTable(
   {
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
-    userId: text("userId").references(() => user.id),
-    currencyId: integer("currency").references(() => currency.id),
+    default: boolean("default").notNull().default(false),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    guildId: text("guildId")
+      .notNull()
+      .references(() => guild.id),
+    currencyId: integer("currency")
+      .notNull()
+      .references(() => currency.id, {
+        onDelete: "cascade",
+      }),
+    balance: integer("balance").notNull().default(0),
   },
   (t) => ({
-    uniqueUserToName: unique().on(t.userId, t.name),
+    uniqueUserToName: unique().on(t.userId, t.name, t.guildId),
   }),
 );
 
@@ -25,5 +38,9 @@ export const walletRelations = relations(wallet, ({ one }) => ({
   currency: one(currency, {
     fields: [wallet.currencyId],
     references: [currency.id],
+  }),
+  guild: one(guild, {
+    fields: [wallet.guildId],
+    references: [guild.id],
   }),
 }));

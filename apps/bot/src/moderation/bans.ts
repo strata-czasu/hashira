@@ -8,6 +8,7 @@ import {
   userMention,
 } from "discord.js";
 import { BAN_APPEAL_URL } from ".";
+import { GUILD_IDS } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -26,10 +27,8 @@ const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
   return deleteInterval * 3600;
 };
 
-const BAN_FIXUP_GUILDS = [
-  "342022299957854220", // Piwnica
-  "211261411119202305", // Strata Czasu
-];
+const BAN_FIXUP_GUILDS = [GUILD_IDS.Homik, GUILD_IDS.Piwnica, GUILD_IDS.StrataCzasu];
+
 export const bans = new Hashira({ name: "bans" })
   .command("ban", (command) =>
     command
