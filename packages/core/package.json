@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@hashira/paginate": "workspace:packages/paginate",
-    "discord.js": "^14.15.2",
-    "ts-pattern": "5.1.1"
+    "discord.js": "^14.15.3",
+    "ts-pattern": "5.2.0"
   }
 }

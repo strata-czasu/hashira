@@ -12,10 +12,10 @@
     "@hashira/core": "workspace:packages/core",
     "@hashira/db": "workspace:packages/db",
     "@hashira/env": "workspace:packages/env",
-    "@sentry/bun": "^8.7.0",
+    "@sentry/bun": "^8.11.0",
     "date-fns": "3.6.0",
-    "discord.js": "^14.15.2",
-    "ts-pattern": "5.1.1"
+    "discord.js": "^14.15.3",
+    "ts-pattern": "5.2.0"
   },
   "devDependencies": {
     "typescript": "*",

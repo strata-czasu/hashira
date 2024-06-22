@@ -1,11 +1,11 @@
 {
   "name": "hashira",
   "devDependencies": {
-    "@biomejs/biome": "^1.7.3",
+    "@biomejs/biome": "^1.8.2",
     "@types/bun": "latest",
     "expect-type": "^0.19.0",
-    "lefthook": "^1.6.11",
-    "typescript": "^5.4.5"
+    "lefthook": "^1.6.18",
+    "typescript": "^5.5.2"
   },
   "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "scripts": {
