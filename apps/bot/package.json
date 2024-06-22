@@ -8,10 +8,10 @@
     "test": "bun test test/"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:packages/paginate",
-    "@hashira/core": "workspace:packages/core",
-    "@hashira/db": "workspace:packages/db",
-    "@hashira/env": "workspace:packages/env",
+    "@hashira/paginate": "workspace:*",
+    "@hashira/core": "workspace:*",
+    "@hashira/db": "workspace:*",
+    "@hashira/env": "workspace:*",
     "@sentry/bun": "^8.11.0",
     "date-fns": "3.6.0",
     "discord.js": "^14.15.3",

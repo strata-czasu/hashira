@@ -2,7 +2,7 @@ ARG NODE_VERSION=20
 
 FROM node:${NODE_VERSION}-slim as base
 
-ARG BUN_VERSION=bun-v1.1.10
+ARG BUN_VERSION=bun-v1.1.15
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update \
