@@ -14,10 +14,10 @@
     "typescript": "*"
   },
   "peerDependencies": {
-    "@hashira/env": "workspace:packages/env"
+    "@hashira/env": "workspace:*"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:packages/paginate",
+    "@hashira/paginate": "workspace:*",
     "discord.js": "^14.15.3",
     "ts-pattern": "5.2.0"
   }
