@@ -1,6 +1,6 @@
 import type { ExtractContext } from "@hashira/core";
 import { schema } from "@hashira/db";
-import { and, eq, sql } from "@hashira/db/drizzle";
+import { and, eq, inArray, sql } from "@hashira/db/drizzle";
 import type { base } from "../base";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../specializedConstants";
 
@@ -12,42 +12,47 @@ const getDefaultWalletName = (guildId: string) => {
   return "Wallet";
 };
 
-const createDefaultWallet = async (
-  tx: Context["db"],
+const createDefaultWallets = async (
+  db: Context["db"],
   currencyId: number,
-  userId: string,
   guildId: string,
+  userIds: string[],
 ) => {
-  const [wallet] = await tx
-    .insert(schema.wallet)
-    .values({
-      name: getDefaultWalletName(guildId),
-      userId,
-      guildId,
-      currencyId,
-      default: true,
-    })
-    .returning();
+  const values = userIds.map((userId) => ({
+    name: getDefaultWalletName(guildId),
+    userId,
+    guildId,
+    currencyId,
+    default: true,
+  }));
 
-  if (!wallet) throw new Error("Failed to create wallet!");
+  const wallets = await db.insert(schema.wallet).values(values).returning();
 
-  return wallet;
+  const usersWithoutWallet = userIds.filter(
+    (userId) => !wallets.some((wallet) => wallet.userId === userId),
+  );
+
+  if (wallets.length !== userIds.length) {
+    throw new Error(`Failed to create wallets for ${usersWithoutWallet.join(", ")}`);
+  }
+
+  return wallets;
 };
 
-export const getDefaultWallet = async (
-  db: Context["db"],
-  userId: string,
-  guildId: string,
-  currencySymbol: string,
-) => {
-  return await db.transaction(async (tx) => {
-    const currency = await tx.query.currency.findFirst({
-      where: and(
-        eq(schema.currency.guildId, guildId),
-        eq(schema.currency.symbol, currencySymbol),
-      ),
-    });
+type GetDefaultWalletOptions = {
+  db: Context["db"];
+  userId: string;
+  guildId: string;
+} & GetCurrencyConditionOptions;
 
+export const getDefaultWallet = async ({
+  db,
+  userId,
+  guildId,
+  ...currencyOptions
+}: GetDefaultWalletOptions) => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db, guildId, ...currencyOptions });
     if (!currency) throw new Error("Currency not found!");
 
     const wallet = await tx.query.wallet.findFirst({
@@ -61,7 +66,31 @@ export const getDefaultWallet = async (
 
     if (wallet) return wallet;
 
-    return await createDefaultWallet(tx, currency.id, userId, guildId);
+    const [defaultWallet] = await createDefaultWallets(tx, currency.id, guildId, [
+      userId,
+    ]);
+
+    if (!defaultWallet) throw new Error("Failed to create default wallet!");
+
+    return defaultWallet;
+  });
+};
+
+type GetCurrencyConditionOptions = { currencySymbol: string } | { currencyId: number };
+
+type GetCurrencyOptions = {
+  db: Context["db"];
+  guildId: string;
+} & GetCurrencyConditionOptions;
+
+const getCurrency = async ({ db, guildId, ...options }: GetCurrencyOptions) => {
+  const currencyCondition =
+    "currencySymbol" in options
+      ? eq(schema.currency.symbol, options.currencySymbol)
+      : eq(schema.currency.id, options.currencyId);
+
+  return await db.query.currency.findFirst({
+    where: and(eq(schema.currency.guildId, guildId), currencyCondition),
   });
 };
 
@@ -70,20 +99,17 @@ type GetWalletOptions = {
   userId: string;
   guildId: string;
   walletName?: string | undefined;
-} & ({ currencySymbol: string } | { currencyId: number });
+} & GetCurrencyConditionOptions;
 
-export const getWallet = async (options: GetWalletOptions) => {
-  const { db, userId, guildId, walletName } = options;
-
+export const getWallet = async ({
+  db,
+  userId,
+  guildId,
+  walletName,
+  ...currencyOptions
+}: GetWalletOptions): Promise<typeof schema.wallet.$inferSelect> => {
   return await db.transaction(async (tx) => {
-    const currencyCondition =
-      "currencySymbol" in options
-        ? eq(schema.currency.symbol, options.currencySymbol)
-        : eq(schema.currency.id, options.currencyId);
-
-    const currency = await tx.query.currency.findFirst({
-      where: and(eq(schema.currency.guildId, guildId), currencyCondition),
-    });
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
 
     if (!currency) throw new Error("Currency not found!");
 
@@ -100,11 +126,56 @@ export const getWallet = async (options: GetWalletOptions) => {
       ),
     });
 
-    if (!wallet && !walletName) {
-      return await createDefaultWallet(tx, currency.id, userId, guildId);
+    if (!wallet) {
+      if (walletName) throw new Error("Wallet not found!");
+
+      const [wallet] = await createDefaultWallets(tx, currency.id, guildId, [userId]);
+      if (!wallet) throw new Error("Failed to create default wallet!");
+
+      return wallet;
     }
 
     return wallet;
+  });
+};
+
+type GetDefaultWalletsOptions = {
+  db: Context["db"];
+  userIds: string[];
+  guildId: string;
+} & GetCurrencyConditionOptions;
+
+export const getDefaultWallets = async ({
+  db,
+  userIds,
+  guildId,
+  ...currencyOptions
+}: GetDefaultWalletsOptions): Promise<(typeof schema.wallet.$inferSelect)[]> => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+    if (!currency) throw new Error("Currency not found!");
+
+    const wallets = await tx.query.wallet.findMany({
+      where: and(
+        inArray(schema.wallet.userId, userIds),
+        eq(schema.wallet.guildId, guildId),
+        eq(schema.wallet.currencyId, currency.id),
+        eq(schema.wallet.default, true),
+      ),
+    });
+
+    const missingWallets = userIds.filter(
+      (userId) => !wallets.some((wallet) => wallet.userId === userId),
+    );
+
+    const createdDefaultWallets = await createDefaultWallets(
+      tx,
+      currency.id,
+      guildId,
+      missingWallets,
+    );
+
+    return [...wallets, ...createdDefaultWallets];
   });
 };
 
@@ -113,30 +184,24 @@ type TransferBalanceOptions = {
   fromUserId: string;
   toUserId: string;
   guildId: string;
-  currencySymbol: string;
   amount: number;
   fromWalletName?: string;
   toWalletName?: string;
-};
+} & GetCurrencyConditionOptions;
 
+// TODO: reason
 export const transferBalance = async ({
   db,
   fromUserId,
   toUserId,
   guildId,
-  currencySymbol,
   amount,
   fromWalletName,
   toWalletName,
+  ...currencyOptions
 }: TransferBalanceOptions) => {
   return await db.transaction(async (tx) => {
-    const currency = await tx.query.currency.findFirst({
-      where: and(
-        eq(schema.currency.guildId, guildId),
-        eq(schema.currency.symbol, currencySymbol),
-      ),
-    });
-
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
     if (!currency) throw new Error("Currency not found!");
 
     const fromWallet = await getWallet({
@@ -159,23 +224,22 @@ export const transferBalance = async ({
 
     if (!toWallet) throw new Error("To wallet not found!");
 
-    if (fromWallet.id === toWallet.id)
+    if (fromWallet.id === toWallet.id) {
       throw new Error("Cannot transfer to the same wallet!");
+    }
 
-    if (fromWallet.balance < amount) throw new Error("Insufficient balance!");
+    if (fromWallet.balance < amount) {
+      throw new Error("Insufficient balance!");
+    }
 
     await tx
       .update(schema.wallet)
-      .set({
-        balance: sql`${schema.wallet.balance} - ${amount}`,
-      })
+      .set({ balance: sql`${schema.wallet.balance} - ${amount}` })
       .where(eq(schema.wallet.id, fromWallet.id));
 
     await tx
       .update(schema.wallet)
-      .set({
-        balance: sql`${schema.wallet.balance} + ${amount}`,
-      })
+      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
       .where(eq(schema.wallet.id, toWallet.id));
 
     await tx.insert(schema.transaction).values({
@@ -194,28 +258,22 @@ type AddBalanceOptions = {
   fromUserId: string;
   toUserId: string;
   guildId: string;
-  currencySymbol: string;
   amount: number;
   walletName?: string;
-};
+} & GetCurrencyConditionOptions;
 
+// TODO: reason
 export const addBalance = async ({
   db,
   fromUserId,
   toUserId,
   guildId,
-  currencySymbol,
   amount,
   walletName,
+  ...currencyOptions
 }: AddBalanceOptions) => {
   return await db.transaction(async (tx) => {
-    const currency = await tx.query.currency.findFirst({
-      where: and(
-        eq(schema.currency.guildId, guildId),
-        eq(schema.currency.symbol, currencySymbol),
-      ),
-    });
-
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
     if (!currency) throw new Error("Currency not found!");
 
     const wallet = await getWallet({
@@ -230,9 +288,7 @@ export const addBalance = async ({
 
     await tx
       .update(schema.wallet)
-      .set({
-        balance: sql`${schema.wallet.balance} + ${amount}`,
-      })
+      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
       .where(eq(schema.wallet.id, wallet.id));
 
     await tx.insert(schema.transaction).values({
@@ -242,5 +298,123 @@ export const addBalance = async ({
       amount,
       currencyId: currency.id,
     });
+  });
+};
+
+type AddBalancesOptions = {
+  db: Context["db"];
+  fromUserId: string;
+  toUserIds: string[];
+  guildId: string;
+  amount: number;
+} & GetCurrencyConditionOptions;
+
+// TODO: reason
+export const addBalances = async ({
+  db,
+  fromUserId,
+  toUserIds,
+  guildId,
+  amount,
+  ...currencyOptions
+}: AddBalancesOptions) => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+    if (!currency) throw new Error("Currency not found!");
+
+    const wallets = await getDefaultWallets({
+      db: tx,
+      userIds: toUserIds,
+      guildId,
+      currencyId: currency.id,
+    });
+
+    await Promise.all(
+      wallets.map(async (wallet) => {
+        await tx
+          .update(schema.wallet)
+          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
+          .where(eq(schema.wallet.id, wallet.id));
+
+        await tx.insert(schema.transaction).values({
+          fromUserId,
+          toUserId: wallet.userId,
+          toWalletId: wallet.id,
+          amount,
+          currencyId: currency.id,
+        });
+      }),
+    );
+  });
+};
+
+type TransferBalancesOptions = {
+  db: Context["db"];
+  fromUserId: string;
+  toUserIds: string[];
+  guildId: string;
+  amount: number;
+} & GetCurrencyConditionOptions;
+
+// TODO: reason
+export const transferBalances = async ({
+  db,
+  fromUserId,
+  toUserIds,
+  guildId,
+  amount,
+  ...currencyOptions
+}: TransferBalancesOptions) => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+    if (!currency) throw new Error("Currency not found!");
+
+    const fromWallet = await getDefaultWallet({
+      db: tx,
+      userId: fromUserId,
+      guildId,
+      currencySymbol: currency.symbol,
+    });
+
+    if (!fromWallet) throw new Error("From wallet not found!");
+    const sum = toUserIds.length * amount;
+
+    if (fromWallet.balance < sum) {
+      throw new Error("Insufficient balance!");
+    }
+
+    const wallets = await getDefaultWallets({
+      db: tx,
+      userIds: toUserIds,
+      guildId,
+      currencyId: currency.id,
+    });
+
+    if (wallets.length !== toUserIds.length) {
+      throw new Error("Failed to create wallets for some users!");
+    }
+
+    await tx
+      .update(schema.wallet)
+      .set({ balance: sql`${schema.wallet.balance} - ${sum}` })
+      .where(eq(schema.wallet.id, fromWallet.id));
+
+    await Promise.all(
+      wallets.map(async (wallet) => {
+        await tx
+          .update(schema.wallet)
+          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
+          .where(eq(schema.wallet.id, wallet.id));
+
+        await tx.insert(schema.transaction).values({
+          fromUserId,
+          toUserId: wallet.userId,
+          fromWalletId: fromWallet.id,
+          toWalletId: wallet.id,
+          amount,
+          currencyId: currency.id,
+        });
+      }),
+    );
   });
 };
