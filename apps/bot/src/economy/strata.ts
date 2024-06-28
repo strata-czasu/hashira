@@ -1,29 +1,17 @@
 import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
-import { GUILD_IDS, STRATA_CZASU_CURRENCY, USER_IDS } from "../specializedConstants";
+import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { fetchMembers } from "../util/fetchMembers";
 import { parseUserMentions } from "../util/parseUsers";
-import { addBalance, getDefaultWallet, transferBalance } from "./util";
+import { addBalances, getDefaultWallet, transferBalances } from "./util";
 
 const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance}${currencySymbol}`);
 
 export const strataEconomy = new Hashira({ name: "strata-economy" })
   .use(base)
-  .handle("ready", async ({ db }) => {
-    await db
-      .insert(schema.currency)
-      .values({
-        guildId: GUILD_IDS.StrataCzasu,
-        name: STRATA_CZASU_CURRENCY.name,
-        symbol: STRATA_CZASU_CURRENCY.symbol,
-        createdBy: USER_IDS.Defous,
-      })
-      .onConflictDoNothing();
-  })
   .group("punkty", (group) =>
     group
       .setDescription("Komendy do punktów")
@@ -40,12 +28,13 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
 
             const userId = user?.id ?? itx.user.id;
 
-            const wallet = await getDefaultWallet(
+            const wallet = await getDefaultWallet({
               db,
               userId,
-              itx.guildId,
-              STRATA_CZASU_CURRENCY.symbol,
-            );
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            });
+
             const self = itx.user.id === userId;
             const balance = formatBalance(wallet.balance, STRATA_CZASU_CURRENCY.symbol);
             if (self) {
@@ -79,19 +68,14 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
               parseUserMentions(rawMembers),
             );
 
-            await Promise.all(
-              members.map(async (member) => {
-                // TODO: Error handling instead of crashing the command
-                await addBalance({
-                  db,
-                  fromUserId: itx.user.id,
-                  toUserId: member.id,
-                  guildId: itx.guildId,
-                  currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-                  amount,
-                });
-              }),
-            );
+            await addBalances({
+              db,
+              fromUserId: itx.user.id,
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              toUserIds: [...members.keys()],
+              amount,
+            });
 
             const amountFormatted = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
@@ -101,28 +85,34 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
       .addCommand("przekaz", (command) =>
         command
           .setDescription("Przekaż punkty użytkownikowi")
-          .addUser("użytkownik", (option) =>
-            option.setDescription("Użytkownik, któremu chcesz przekazać punkty"),
+          .addString("użytkownicy", (option) =>
+            option.setDescription("Użytkownicy, którym chcesz przekazać punkty"),
           )
           .addInteger("ilość", (option) =>
             option.setDescription("Ilość punktów do przekazania"),
           )
-          .handle(async ({ db }, { użytkownik: user, ilość: amount }, itx) => {
+          .handle(async ({ db }, { użytkownicy: rawMembers, ilość: amount }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            // TODO: Error handling instead of crashing the command
-            await transferBalance({
+            const members = await fetchMembers(
+              itx.guild,
+              parseUserMentions(rawMembers),
+            );
+
+            await transferBalances({
               db,
               fromUserId: itx.user.id,
-              toUserId: user.id,
               guildId: itx.guildId,
               currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              toUserIds: [...members.keys()],
               amount,
             });
 
             const amountFormatted = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
-            await itx.reply(`Przekazano ${amountFormatted} użytkownikowi ${user}`);
+            await itx.reply(
+              `Przekazano ${amountFormatted} dla każdego z ${members.size} użytkownikowów.`,
+            );
           }),
       ),
   );
