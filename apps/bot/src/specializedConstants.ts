@@ -7,6 +7,7 @@ export const GUILD_IDS = {
 export const USER_IDS = {
   Defous: "211260587038998528",
   hkg: "503299438757019659",
+  Daste: "195935967440404480",
 };
 
 export const STRATA_CZASU_CURRENCY = {

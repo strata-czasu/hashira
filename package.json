@@ -25,7 +25,8 @@
     "test:bot": "bun run --cwd apps/bot test",
     "test:db": "bun run --cwd packages/db test",
     "test:paginate": "bun run --cwd packages/paginate test",
-    "reload-commands": "bun run --cwd apps/bot reload-commands"
+    "reload-commands": "bun run --cwd apps/bot reload-commands",
+    "seed": "bun run --cwd apps/bot seed"
   },
   "type": "module",
   "workspaces": ["tooling/*", "packages/*", "apps/*"]
