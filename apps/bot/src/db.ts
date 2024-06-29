@@ -6,12 +6,14 @@ import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discor
 import { discordTry } from "./util/discordTry";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
+// TODO: how to enable migrations of this data?
 type MuteEndData = {
   muteId: number;
   guildId: string;
   userId: string;
 };
 
+// TODO: how to enable migrations of this data?
 type VerificationEndData = {
   verificationId: number;
 };

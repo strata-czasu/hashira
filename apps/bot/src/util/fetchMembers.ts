@@ -1,6 +1,7 @@
 import { Collection, type GuildMember, type UserResolvable } from "discord.js";
 import { chunk } from "./chunk";
 
+// TODO: holy, this type is a mess, we probably should only take in fetch method by itself
 export async function fetchMembers(
   guild: {
     members: {
