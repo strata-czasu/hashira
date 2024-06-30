@@ -22,6 +22,7 @@ export class ConfirmationDialog {
   readonly #acceptCallback: DialogCallback;
   readonly #declineCallback: DialogCallback;
   readonly #filter: DialogFilter;
+  readonly #timeoutCallback: DialogCallback | null;
 
   constructor(
     title: string,
@@ -30,6 +31,7 @@ export class ConfirmationDialog {
     acceptCallback: DialogCallback,
     declineCallback: DialogCallback,
     filter: DialogFilter,
+    timeoutCallback: DialogCallback | null = null,
   ) {
     this.#title = title;
     this.#acceptMessage = acceptMessage;
@@ -37,6 +39,7 @@ export class ConfirmationDialog {
     this.#acceptCallback = acceptCallback;
     this.#declineCallback = declineCallback;
     this.#filter = filter;
+    this.#timeoutCallback = timeoutCallback;
   }
 
   private async send(interaction: ChatInputCommandInteraction<CacheType>) {
@@ -84,7 +87,11 @@ export class ConfirmationDialog {
         .run();
     } catch (error) {
       // Handle timeout
-      await this.#message.edit({ components: [] });
+      if (this.#timeoutCallback) {
+        await this.#timeoutCallback();
+      } else {
+        await this.#message.edit({ components: [] });
+      }
     }
   }
 }

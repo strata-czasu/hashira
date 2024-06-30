@@ -81,6 +81,12 @@ export const marriage = new Hashira({ name: "marriage" })
             });
           },
           (action) => action.user.id === targetUser.id,
+          async () => {
+            await itx.editReply({
+              content: `${userMention(targetUser.id)} nie odpowiedział na czas.`,
+              components: [],
+            });
+          },
         );
         await lock.run(
           [itx.user.id, targetUserId],
@@ -147,6 +153,12 @@ export const marriage = new Hashira({ name: "marriage" })
             });
           },
           (action) => action.user.id === user.id,
+          async () => {
+            await itx.editReply({
+              content: "Minął czas na decyzję.",
+              components: [],
+            });
+          },
         );
         await dialog.render(itx);
       }),
