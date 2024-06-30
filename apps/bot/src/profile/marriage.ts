@@ -3,7 +3,7 @@ import { schema } from "@hashira/db";
 import { eq } from "@hashira/db/drizzle";
 import { userMention } from "discord.js";
 import { base } from "../base";
-import { ensureUsersExist } from "../util/ensureUsersExist";
+import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 
 export const marriage = new Hashira({ name: "marriage" })
@@ -97,12 +97,11 @@ export const marriage = new Hashira({ name: "marriage" })
     command
       .setDescription("Rozwiedź się")
       .setDMPermission(false)
-      .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .handle(async ({ db }, { user: { id: targetUserId } }, itx) => {
+      .handle(async ({ db }, _, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
 
-        await ensureUsersExist(db, [itx.user.id, targetUserId]);
+        await ensureUserExists(db, itx.user.id);
 
         const user = await db.query.user.findFirst({
           where: eq(schema.user.id, itx.user.id),
@@ -113,19 +112,13 @@ export const marriage = new Hashira({ name: "marriage" })
         }
 
         const targetUser = await db.query.user.findFirst({
-          where: eq(schema.user.id, targetUserId),
+          where: eq(schema.user.id, user.marriedTo),
         });
         if (!targetUser) return;
-        if (user.marriedTo !== targetUserId) {
-          return await errorFollowUp(
-            itx,
-            `Nie jesteś w związku z ${userMention(targetUserId)}!`,
-          );
-        }
 
         const dialog = new ConfirmationDialog(
           `Czy na pewno chcesz się rozwieść z ${userMention(
-            targetUserId,
+            targetUser.id,
           )}? :broken_heart:`,
           "Tak",
           "Nie",
@@ -138,11 +131,11 @@ export const marriage = new Hashira({ name: "marriage" })
               await tx
                 .update(schema.user)
                 .set({ marriedTo: null, marriedAt: null })
-                .where(eq(schema.user.id, targetUserId));
+                .where(eq(schema.user.id, targetUser.id));
             });
             await itx.editReply({
               content: `${userMention(itx.user.id)} i ${userMention(
-                targetUserId,
+                targetUser.id,
               )} nie są już małżeństwem. :broken_heart:`,
               components: [],
             });
