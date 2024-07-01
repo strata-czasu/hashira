@@ -5,6 +5,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "reload-commands": "bun run reload-commands.ts",
+    "seed": "bun run seed.ts",
     "test": "bun test test/"
   },
   "dependencies": {
@@ -12,7 +13,7 @@
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
-    "@sentry/bun": "^8.11.0",
+    "@sentry/bun": "^8.13.0",
     "date-fns": "3.6.0",
     "discord.js": "^14.15.3",
     "ts-pattern": "5.2.0"
