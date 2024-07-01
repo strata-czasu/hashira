@@ -1,3 +1,4 @@
 export * from "./currency";
-export * from "./wallet";
+export * from "./shop";
 export * from "./transaction";
+export * from "./wallet";
