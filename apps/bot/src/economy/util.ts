@@ -3,6 +3,13 @@ import { schema } from "@hashira/db";
 import { and, eq, inArray, sql } from "@hashira/db/drizzle";
 import type { base } from "../base";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import {
+  CurrencyNotFoundError,
+  InsufficientBalanceError,
+  SelfTransferError,
+  WalletCreationError,
+  WalletNotFoundError,
+} from "./economyError";
 
 type Context = ExtractContext<typeof base>;
 
@@ -28,13 +35,12 @@ const createDefaultWallets = async (
 
   const wallets = await db.insert(schema.wallet).values(values).returning();
 
-  const usersWithoutWallet = userIds.filter(
+  const usersWithoutWallets = userIds.filter(
     (userId) => !wallets.some((wallet) => wallet.userId === userId),
   );
 
-  if (wallets.length !== userIds.length) {
-    throw new Error(`Failed to create wallets for ${usersWithoutWallet.join(", ")}`);
-  }
+  if (wallets.length !== userIds.length)
+    throw new WalletCreationError(usersWithoutWallets);
 
   return wallets;
 };
@@ -53,7 +59,6 @@ export const getDefaultWallet = async ({
 }: GetDefaultWalletOptions) => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const wallet = await tx.query.wallet.findFirst({
       where: and(
@@ -70,7 +75,7 @@ export const getDefaultWallet = async ({
       userId,
     ]);
 
-    if (!defaultWallet) throw new Error("Failed to create default wallet!");
+    if (!defaultWallet) throw new WalletCreationError([userId]);
 
     return defaultWallet;
   });
@@ -89,9 +94,13 @@ const getCurrency = async ({ db, guildId, ...options }: GetCurrencyOptions) => {
       ? eq(schema.currency.symbol, options.currencySymbol)
       : eq(schema.currency.id, options.currencyId);
 
-  return await db.query.currency.findFirst({
+  const currency = await db.query.currency.findFirst({
     where: and(eq(schema.currency.guildId, guildId), currencyCondition),
   });
+
+  if (!currency) throw new CurrencyNotFoundError();
+
+  return currency;
 };
 
 type GetWalletOptions = {
@@ -111,8 +120,6 @@ export const getWallet = async ({
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
 
-    if (!currency) throw new Error("Currency not found!");
-
     const walletCondition = walletName
       ? eq(schema.wallet.name, walletName)
       : eq(schema.wallet.default, true);
@@ -127,10 +134,10 @@ export const getWallet = async ({
     });
 
     if (!wallet) {
-      if (walletName) throw new Error("Wallet not found!");
+      if (walletName) throw new WalletNotFoundError(walletName);
 
       const [wallet] = await createDefaultWallets(tx, currency.id, guildId, [userId]);
-      if (!wallet) throw new Error("Failed to create default wallet!");
+      if (!wallet) throw new WalletCreationError([userId]);
 
       return wallet;
     }
@@ -153,7 +160,6 @@ export const getDefaultWallets = async ({
 }: GetDefaultWalletsOptions): Promise<(typeof schema.wallet.$inferSelect)[]> => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const wallets = await tx.query.wallet.findMany({
       where: and(
@@ -185,24 +191,24 @@ type TransferBalanceOptions = {
   toUserId: string;
   guildId: string;
   amount: number;
+  reason: string | null;
   fromWalletName?: string;
   toWalletName?: string;
 } & GetCurrencyConditionOptions;
 
-// TODO: reason
 export const transferBalance = async ({
   db,
   fromUserId,
   toUserId,
   guildId,
   amount,
+  reason,
   fromWalletName,
   toWalletName,
   ...currencyOptions
 }: TransferBalanceOptions) => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const fromWallet = await getWallet({
       db,
@@ -212,8 +218,6 @@ export const transferBalance = async ({
       currencyId: currency.id,
     });
 
-    if (!fromWallet) throw new Error("From wallet not found!");
-
     const toWallet = await getWallet({
       db,
       userId: toUserId,
@@ -222,15 +226,9 @@ export const transferBalance = async ({
       currencyId: currency.id,
     });
 
-    if (!toWallet) throw new Error("To wallet not found!");
+    if (fromWallet.id === toWallet.id) throw new SelfTransferError();
 
-    if (fromWallet.id === toWallet.id) {
-      throw new Error("Cannot transfer to the same wallet!");
-    }
-
-    if (fromWallet.balance < amount) {
-      throw new Error("Insufficient balance!");
-    }
+    if (fromWallet.balance < amount) throw new InsufficientBalanceError();
 
     await tx
       .update(schema.wallet)
@@ -248,6 +246,7 @@ export const transferBalance = async ({
       fromWalletId: fromWallet.id,
       toWalletId: toWallet.id,
       amount,
+      reason,
       currencyId: currency.id,
     });
   });
@@ -259,22 +258,22 @@ type AddBalanceOptions = {
   toUserId: string;
   guildId: string;
   amount: number;
+  reason: string | null;
   walletName?: string;
 } & GetCurrencyConditionOptions;
 
-// TODO: reason
 export const addBalance = async ({
   db,
   fromUserId,
   toUserId,
   guildId,
   amount,
+  reason,
   walletName,
   ...currencyOptions
 }: AddBalanceOptions) => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const wallet = await getWallet({
       db,
@@ -283,8 +282,6 @@ export const addBalance = async ({
       walletName,
       currencyId: currency.id,
     });
-
-    if (!wallet) throw new Error("Wallet not found!");
 
     await tx
       .update(schema.wallet)
@@ -297,6 +294,7 @@ export const addBalance = async ({
       toWalletId: wallet.id,
       amount,
       currencyId: currency.id,
+      reason,
     });
   });
 };
@@ -307,20 +305,20 @@ type AddBalancesOptions = {
   toUserIds: string[];
   guildId: string;
   amount: number;
+  reason: string | null;
 } & GetCurrencyConditionOptions;
 
-// TODO: reason
 export const addBalances = async ({
   db,
   fromUserId,
   toUserIds,
   guildId,
   amount,
+  reason,
   ...currencyOptions
 }: AddBalancesOptions) => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const wallets = await getDefaultWallets({
       db: tx,
@@ -342,6 +340,7 @@ export const addBalances = async ({
           toWalletId: wallet.id,
           amount,
           currencyId: currency.id,
+          reason,
         });
       }),
     );
@@ -354,20 +353,20 @@ type TransferBalancesOptions = {
   toUserIds: string[];
   guildId: string;
   amount: number;
+  reason: string | null;
 } & GetCurrencyConditionOptions;
 
-// TODO: reason
 export const transferBalances = async ({
   db,
   fromUserId,
   toUserIds,
   guildId,
   amount,
+  reason,
   ...currencyOptions
 }: TransferBalancesOptions) => {
   return await db.transaction(async (tx) => {
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-    if (!currency) throw new Error("Currency not found!");
 
     const fromWallet = await getDefaultWallet({
       db: tx,
@@ -376,23 +375,18 @@ export const transferBalances = async ({
       currencySymbol: currency.symbol,
     });
 
-    if (!fromWallet) throw new Error("From wallet not found!");
-    const sum = toUserIds.length * amount;
+    const uniqueToUserIds = [...new Set(toUserIds)];
 
-    if (fromWallet.balance < sum) {
-      throw new Error("Insufficient balance!");
-    }
+    const sum = uniqueToUserIds.length * amount;
+
+    if (fromWallet.balance < sum) throw new InsufficientBalanceError();
 
     const wallets = await getDefaultWallets({
       db: tx,
-      userIds: toUserIds,
+      userIds: uniqueToUserIds,
       guildId,
       currencyId: currency.id,
     });
-
-    if (wallets.length !== toUserIds.length) {
-      throw new Error("Failed to create wallets for some users!");
-    }
 
     await tx
       .update(schema.wallet)
@@ -413,6 +407,7 @@ export const transferBalances = async ({
           toWalletId: wallet.id,
           amount,
           currencyId: currency.id,
+          reason,
         });
       }),
     );
