@@ -10,6 +10,10 @@ export const errorFollowUp = async (
   itx: ChatInputCommandInteraction,
   content: string,
 ) => {
+  if (!itx.deferred && !itx.replied) {
+    await itx.reply({ content, ephemeral: true });
+    return;
+  }
   if (itx.deferred && !itx.ephemeral) {
     await itx.deleteReply();
   }
