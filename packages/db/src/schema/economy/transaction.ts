@@ -17,6 +17,7 @@ export const transaction = pgTable("transaction", {
     .notNull(),
   amount: integer("amount").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reason: text("reason"),
 });
 
 export const transactionRelations = relations(transaction, ({ one }) => ({
