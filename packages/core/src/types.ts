@@ -8,8 +8,6 @@ export type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export type MaybePromise<T> = T | Promise<T>;
-
 export type EventsWithContext<Context extends HashiraContext<HashiraDecorators>> = {
   [K in keyof AllEventsHandling]: (
     ctx: Context,
