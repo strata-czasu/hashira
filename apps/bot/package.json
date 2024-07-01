@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "typescript": "*",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@hashira/tsconfig": "workspace:*"
   }
 }

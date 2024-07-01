@@ -11,10 +11,8 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "*"
-  },
-  "peerDependencies": {
-    "@hashira/env": "workspace:*"
+    "typescript": "*",
+    "@hashira/tsconfig": "workspace:*"
   },
   "dependencies": {
     "@hashira/paginate": "workspace:*",

@@ -3,7 +3,8 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "typescript": "*"
+    "typescript": "*",
+    "@hashira/tsconfig": "workspace:*"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.32.34"

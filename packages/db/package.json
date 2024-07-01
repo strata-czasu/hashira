@@ -22,13 +22,15 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "*",
-    "@faker-js/faker": "^8.4.1"
+    "@faker-js/faker": "^8.4.1",
+    "@hashira/tsconfig": "workspace:*"
   },
   "dependencies": {
+    "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "drizzle-orm": "^0.31.2",
     "postgres": "^3.4.4",
-    "drizzle-kit": "^0.22.7",
+    "drizzle-kit": "^0.22.8",
     "pg": "^8.12.0"
   }
 }
