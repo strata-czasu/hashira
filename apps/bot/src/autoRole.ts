@@ -13,7 +13,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
       .from(schema.autoRole)
       .where(eq(schema.autoRole.guildId, member.guild.id));
 
-    // This is a workaround for a race condition where multiple bots try to add roles to a member
+    // TODO: This is a workaround for a race condition where multiple bots try to add roles to a member
     await Bun.sleep(1000);
     const updatedMember = await member.fetch(true);
     await updatedMember.roles.add(
