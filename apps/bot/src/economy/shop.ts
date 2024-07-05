@@ -1,8 +1,15 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { countDistinct, isNull } from "@hashira/db/drizzle";
-import { PermissionFlagsBits, bold } from "discord.js";
+import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
+import { and, countDistinct, eq, isNull } from "@hashira/db/drizzle";
+import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
+import { errorFollowUp } from "../util/errorFollowUp";
+
+const getItem = async (tx: Transaction, id: number) =>
+  tx
+    .select()
+    .from(schema.shopItem)
+    .where(and(eq(schema.shopItem.id, id), isNull(schema.shopItem.deletedAt)));
 
 // TODO)) Inventory management
 export const shop = new Hashira({ name: "shop" })
@@ -85,8 +92,30 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            // TODO)) Impl
-            await itx.editReply(`Edytuj przedmiot ${id}`);
+            if (!name && !price && !description) {
+              await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
+              return;
+            }
+
+            const item = await db.transaction(async (tx) => {
+              const [item] = await getItem(tx, id);
+              if (!item) {
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
+                return null;
+              }
+              await tx
+                .update(schema.shopItem)
+                .set({
+                  name: name ?? item.name,
+                  price: price ?? item.price,
+                  description: description ?? item.description,
+                })
+                .where(eq(schema.shopItem.id, id));
+              return item;
+            });
+            if (!item) return;
+
+            await itx.editReply(`Edytowano przedmiot ${inlineCode(id.toString())}`);
           }),
       )
       .addCommand("usun", (command) =>
@@ -97,8 +126,23 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            // TODO)) Impl
-            await itx.editReply(`Usunięto przedmiot ${id} do sklepu`);
+            const item = await db.transaction(async (tx) => {
+              const [item] = await getItem(tx, id);
+              if (!item) {
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
+                return null;
+              }
+              await tx
+                .update(schema.shopItem)
+                .set({ deletedAt: new Date() })
+                .where(eq(schema.shopItem.id, id));
+              return item;
+            });
+            if (!item) return;
+
+            await itx.editReply(
+              `Usunięto przedmiot ${inlineCode(id.toString())} ze sklepu`,
+            );
           }),
       ),
   );
