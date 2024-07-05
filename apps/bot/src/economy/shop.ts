@@ -5,13 +5,18 @@ import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
 
+const formatAmount = (amount: number) => {
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;
+  if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
+  return amount.toString();
+};
+
 const getItem = async (tx: Transaction, id: number) =>
   tx
     .select()
     .from(schema.item)
     .where(and(eq(schema.item.id, id), isNull(schema.item.deletedAt)));
 
-// TODO)) Inventory management
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -39,7 +44,7 @@ export const shop = new Hashira({ name: "shop" })
               paginator,
               "Sklep",
               ({ id, name, price, description }) =>
-                `### ${name} - ${price} [${id}]\n${description}`,
+                `### ${name} - ${formatAmount(price)} [${id}]\n${description}`,
               true,
             );
             await paginatedView.render(itx);
@@ -51,7 +56,7 @@ export const shop = new Hashira({ name: "shop" })
     group
       .setDescription("Komendy administracyjne sklepu")
       .setDMPermission(false)
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addCommand("dodaj", (command) =>
         command
           .setDescription("Dodaj przedmiot do sklepu")
