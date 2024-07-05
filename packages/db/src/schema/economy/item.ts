@@ -2,7 +2,7 @@ import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../../pgtable";
 import { user } from "../user";
 
-export const shopItem = pgTable("shop_item", {
+export const item = pgTable("item", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
