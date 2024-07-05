@@ -8,8 +8,8 @@ import { errorFollowUp } from "../util/errorFollowUp";
 const getItem = async (tx: Transaction, id: number) =>
   tx
     .select()
-    .from(schema.shopItem)
-    .where(and(eq(schema.shopItem.id, id), isNull(schema.shopItem.deletedAt)));
+    .from(schema.item)
+    .where(and(eq(schema.item.id, id), isNull(schema.item.deletedAt)));
 
 // TODO)) Inventory management
 export const shop = new Hashira({ name: "shop" })
@@ -25,13 +25,13 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = isNull(schema.shopItem.deletedAt);
+            const where = isNull(schema.item.deletedAt);
             const paginator = new DatabasePaginator({
-              orderBy: [schema.shopItem.price],
-              select: db.select().from(schema.shopItem).where(where).$dynamic(),
+              orderBy: [schema.item.price],
+              select: db.select().from(schema.item).where(where).$dynamic(),
               count: db
-                .select({ count: countDistinct(schema.shopItem.id) })
-                .from(schema.shopItem)
+                .select({ count: countDistinct(schema.item.id) })
+                .from(schema.item)
                 .where(where)
                 .$dynamic(),
             });
@@ -62,7 +62,7 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await db.insert(schema.shopItem).values({
+            await db.insert(schema.item).values({
               name,
               price,
               description,
@@ -104,13 +104,13 @@ export const shop = new Hashira({ name: "shop" })
                 return null;
               }
               await tx
-                .update(schema.shopItem)
+                .update(schema.item)
                 .set({
                   name: name ?? item.name,
                   price: price ?? item.price,
                   description: description ?? item.description,
                 })
-                .where(eq(schema.shopItem.id, id));
+                .where(eq(schema.item.id, id));
               return item;
             });
             if (!item) return;
@@ -133,9 +133,9 @@ export const shop = new Hashira({ name: "shop" })
                 return null;
               }
               await tx
-                .update(schema.shopItem)
+                .update(schema.item)
                 .set({ deletedAt: new Date() })
-                .where(eq(schema.shopItem.id, id));
+                .where(eq(schema.item.id, id));
               return item;
             });
             if (!item) return;
