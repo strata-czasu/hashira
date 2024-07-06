@@ -1,6 +1,6 @@
 ARG NODE_VERSION=20
 
-FROM node:${NODE_VERSION}-slim as base
+FROM node:${NODE_VERSION}-slim AS base
 
 ARG BUN_VERSION=bun-v1.1.15
 ENV BUN_INSTALL=/usr/local
@@ -11,7 +11,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-FROM base as build
+FROM base AS build
 
 COPY --link bun.lockb package.json ./
 COPY --link apps/bot/package.json apps/bot/package.json
