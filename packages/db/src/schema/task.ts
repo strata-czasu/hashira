@@ -19,9 +19,9 @@ export type TaskData = { type: string; data: TaskDataValue };
 
 export const task = pgTable("task", {
   id: serial("id").primaryKey(),
-  status: statusEnum("status").default("pending"),
-  createdAt: timestamp("createdAt").defaultNow(),
-  handleAfter: timestamp("handleAfter").defaultNow(),
+  status: statusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  handleAfter: timestamp("handleAfter").notNull().defaultNow(),
   data: jsonb("data").$type<TaskData>().notNull(),
-  identifier: text("identifier").default(sql`gen_random_uuid()::text`),
+  identifier: text("identifier").notNull().default(sql`gen_random_uuid()::text`),
 });
