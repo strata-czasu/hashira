@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS "core_mute_ends_at_guild_id_index";--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "core_mute_ends_at_guild_id_index" ON "core_mute" USING btree ("ends_at","guild_id") WHERE "core_mute"."deleted_at" is null;

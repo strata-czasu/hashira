@@ -169,6 +169,13 @@
       "when": 1717430500652,
       "tag": "0023_overrated_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1720272049092,
+      "tag": "0024_typical_echo",
+      "breakpoints": true
     }
   ]
 }
