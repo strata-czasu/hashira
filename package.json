@@ -11,7 +11,7 @@
   "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "scripts": {
     "start": "bun run --cwd apps/bot start",
-    "start:prod": "bun migrate && bun run --cwd apps/bot start",
+    "start:prod": "bun migrate && bun seed && bun run --cwd apps/bot start",
     "generate": "bun run --cwd packages/db generate",
     "migrate": "bun run --cwd packages/db migrate",
     "drizzle-studio": "bun run --cwd packages/db drizzle-studio",
@@ -26,7 +26,8 @@
     "test:bot": "bun run --cwd apps/bot test",
     "test:db": "bun run --cwd packages/db test",
     "test:paginate": "bun run --cwd packages/paginate test",
-    "reload-commands": "bun run --cwd apps/bot reload-commands"
+    "reload-commands": "bun run --cwd apps/bot reload-commands",
+    "seed": "bun run --cwd apps/bot seed"
   },
   "type": "module",
   "workspaces": ["tooling/*", "packages/*", "apps/*"]

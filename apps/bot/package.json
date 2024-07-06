@@ -5,6 +5,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "reload-commands": "bun run reload-commands.ts",
+    "seed": "bun run seed.ts",
     "test": "bun test test/"
   },
   "dependencies": {
