@@ -1,5 +1,5 @@
 {
-  "version": "6",
+  "version": "7",
   "dialect": "postgresql",
   "tables": {
     "public.core_auto_role": {
@@ -402,18 +402,34 @@
       },
       "indexes": {
         "user_idx": {
-          "name": "user_idx",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "user_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "deleted_idx": {
-          "name": "deleted_idx",
           "columns": [
-            "deleted"
+            {
+              "expression": "deleted",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "deleted_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {

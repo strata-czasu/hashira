@@ -1,7 +1,5 @@
 {
-  "id": "94386ea4-2fd1-4c58-9ea7-fcf36ffa2871",
-  "prevId": "88f5ef51-823c-4786-8156-0809043b8cb9",
-  "version": "6",
+  "version": "7",
   "dialect": "postgresql",
   "tables": {
     "public.core_auto_role": {
@@ -39,26 +37,26 @@
         "core_auto_role_guild_id_core_guild_id_fk": {
           "name": "core_auto_role_guild_id_core_guild_id_fk",
           "tableFrom": "core_auto_role",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_auto_role_guild_id_role_id_unique": {
           "name": "core_auto_role_guild_id_role_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "guild_id",
             "role_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
@@ -91,17 +89,17 @@
       "uniqueConstraints": {
         "core_currency_name_unique": {
           "name": "core_currency_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         },
         "core_currency_symbol_unique": {
           "name": "core_currency_symbol_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "symbol"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
@@ -139,39 +137,39 @@
         "core_wallet_userId_core_users_id_fk": {
           "name": "core_wallet_userId_core_users_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_wallet_currency_core_currency_id_fk": {
           "name": "core_wallet_currency_core_currency_id_fk",
           "tableFrom": "core_wallet",
-          "tableTo": "core_currency",
           "columnsFrom": [
             "currency"
           ],
+          "tableTo": "core_currency",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_wallet_userId_name_unique": {
           "name": "core_wallet_userId_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "userId",
             "name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
@@ -216,15 +214,15 @@
         "core_emoji_usage_guildId_core_guild_id_fk": {
           "name": "core_emoji_usage_guildId_core_guild_id_fk",
           "tableFrom": "core_emoji_usage",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -280,25 +278,25 @@
         "core_guild_settings_guild_id_core_guild_id_fk": {
           "name": "core_guild_settings_guild_id_core_guild_id_fk",
           "tableFrom": "core_guild_settings",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "core_guild_settings_guild_id_unique": {
           "name": "core_guild_settings_guild_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "guild_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
       }
     },
@@ -370,60 +368,81 @@
       },
       "indexes": {
         "core_mute_user_id_index": {
-          "name": "core_mute_user_id_index",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "core_mute_user_id_index",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "core_mute_ends_at_guild_id_index": {
-          "name": "core_mute_ends_at_guild_id_index",
           "columns": [
-            "ends_at",
-            "guild_id"
+            {
+              "expression": "ends_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "guild_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "core_mute_ends_at_guild_id_index",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "core_mute_guild_id_core_guild_id_fk": {
           "name": "core_mute_guild_id_core_guild_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_mute_user_id_core_users_id_fk": {
           "name": "core_mute_user_id_core_users_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_mute_moderator_id_core_users_id_fk": {
           "name": "core_mute_moderator_id_core_users_id_fk",
           "tableFrom": "core_mute",
-          "tableTo": "core_users",
           "columnsFrom": [
             "moderator_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -491,52 +510,60 @@
       },
       "indexes": {
         "core_warn_user_id_index": {
-          "name": "core_warn_user_id_index",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "core_warn_user_id_index",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "core_warn_guild_id_core_guild_id_fk": {
           "name": "core_warn_guild_id_core_guild_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_warn_user_id_core_users_id_fk": {
           "name": "core_warn_user_id_core_users_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_warn_moderator_id_core_users_id_fk": {
           "name": "core_warn_moderator_id_core_users_id_fk",
           "tableFrom": "core_warn",
-          "tableTo": "core_users",
           "columnsFrom": [
             "moderator_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -594,28 +621,28 @@
         "strata_color_role_guildId_core_guild_id_fk": {
           "name": "strata_color_role_guildId_core_guild_id_fk",
           "tableFrom": "strata_color_role",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "strata_color_role_ownerId_core_users_id_fk": {
           "name": "strata_color_role_ownerId_core_users_id_fk",
           "tableFrom": "strata_color_role",
-          "tableTo": "core_users",
           "columnsFrom": [
             "ownerId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -708,15 +735,15 @@
         "core_users_married_to_core_users_id_fk": {
           "name": "core_users_married_to_core_users_id_fk",
           "tableFrom": "core_users",
-          "tableTo": "core_users",
           "columnsFrom": [
             "married_to"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -768,28 +795,28 @@
         "core_user_text_activity_userId_core_users_id_fk": {
           "name": "core_user_text_activity_userId_core_users_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_users",
           "columnsFrom": [
             "userId"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_user_text_activity_guildId_core_guild_id_fk": {
           "name": "core_user_text_activity_guildId_core_guild_id_fk",
           "tableFrom": "core_user_text_activity",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guildId"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -863,41 +890,41 @@
         "core_verification_guild_id_core_guild_id_fk": {
           "name": "core_verification_guild_id_core_guild_id_fk",
           "tableFrom": "core_verification",
-          "tableTo": "core_guild",
           "columnsFrom": [
             "guild_id"
           ],
+          "tableTo": "core_guild",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_verification_user_id_core_users_id_fk": {
           "name": "core_verification_user_id_core_users_id_fk",
           "tableFrom": "core_verification",
-          "tableTo": "core_users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "core_verification_moderator_id_core_users_id_fk": {
           "name": "core_verification_moderator_id_core_users_id_fk",
           "tableFrom": "core_verification",
-          "tableTo": "core_users",
           "columnsFrom": [
             "moderator_id"
           ],
+          "tableTo": "core_users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -943,8 +970,10 @@
   },
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "94386ea4-2fd1-4c58-9ea7-fcf36ffa2871",
+  "prevId": "88f5ef51-823c-4786-8156-0809043b8cb9"
 }

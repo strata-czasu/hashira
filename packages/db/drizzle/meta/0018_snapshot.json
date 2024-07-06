@@ -1,5 +1,5 @@
 {
-  "version": "6",
+  "version": "7",
   "dialect": "postgresql",
   "tables": {
     "public.core_auto_role": {
@@ -362,11 +362,19 @@
       },
       "indexes": {
         "core_mute_user_id_index": {
-          "name": "core_mute_user_id_index",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "core_mute_user_id_index",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
@@ -475,11 +483,19 @@
       },
       "indexes": {
         "core_warn_user_id_index": {
-          "name": "core_warn_user_id_index",
           "columns": [
-            "user_id"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "core_warn_user_id_index",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
