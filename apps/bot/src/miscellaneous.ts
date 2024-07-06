@@ -5,8 +5,11 @@ import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   AttachmentBuilder,
   type GuildBasedChannel,
+  HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  heading,
+  inlineCode,
   time,
 } from "discord.js";
 import { base } from "./base";
@@ -118,8 +121,23 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             orderBy: schema.task.createdAt,
           });
 
-          const formatTask = ({ id, data }: typeof schema.task.$inferSelect) =>
-            `ID: ${id}, Type: ${data.type}, Data: ${JSON.stringify(data.data)}`;
+          const formatTask = ({
+            id,
+            data,
+            createdAt,
+            handleAfter,
+            identifier,
+          }: typeof schema.task.$inferSelect) => {
+            const lines = [
+              heading(`Task ${id}`, HeadingLevel.Three),
+              `Created at: ${time(createdAt)}`,
+              `Handle after: ${time(handleAfter)}`,
+              `Identifier: ${identifier}`,
+              `Data: ${inlineCode(JSON.stringify(data))}`,
+            ];
+
+            return lines.join("\n");
+          };
 
           const paginatedView = new PaginatedView(
             paginator,
