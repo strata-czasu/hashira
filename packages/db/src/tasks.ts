@@ -168,15 +168,19 @@ export class MessageQueue<
   }
 
   private async innerConsumeLoop(props: Args) {
-    await this.#db.transaction(async (tx) => {
-      const [task] = await getPendingTask(tx);
-      if (!task) return;
+    try {
+      await this.#db.transaction(async (tx) => {
+        const [task] = await getPendingTask(tx);
+        if (!task) return;
 
-      const handled = await this.handleTask(props, task.data);
-      if (!handled) return await failTask(tx, task.id);
+        const handled = await this.handleTask(props, task.data);
+        if (!handled) return await failTask(tx, task.id);
 
-      await finishTask(tx, task.id);
-    });
+        await finishTask(tx, task.id);
+      });
+    } catch (e) {
+      console.error(e);
+    }
 
     setTimeout(() => this.innerConsumeLoop(props), this.#interval);
   }
