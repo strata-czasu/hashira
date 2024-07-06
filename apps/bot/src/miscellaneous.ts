@@ -100,6 +100,37 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           await paginatedView.render(itx);
         }),
       )
+      .addCommand("show-pending-tasks", (command) =>
+        command.setDescription("Show pending tasks").handle(async ({ db }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+
+          const paginator = new DatabasePaginator({
+            select: db
+              .select()
+              .from(schema.task)
+              .where(eq(schema.task.status, "pending"))
+              .$dynamic(),
+            count: db
+              .select({ count: count() })
+              .from(schema.task)
+              .where(eq(schema.task.status, "pending"))
+              .$dynamic(),
+            orderBy: schema.task.createdAt,
+          });
+
+          const formatTask = ({ id, data }: typeof schema.task.$inferSelect) =>
+            `ID: ${id}, Type: ${data.type}, Data: ${JSON.stringify(data.data)}`;
+
+          const paginatedView = new PaginatedView(
+            paginator,
+            "Pending tasks",
+            formatTask,
+            true,
+          );
+
+          await paginatedView.render(itx);
+        }),
+      )
       .addCommand("last-warns", (command) =>
         command.setDescription("Get the last warns").handle(async ({ db }, _, itx) => {
           if (!itx.inCachedGuild()) return;
