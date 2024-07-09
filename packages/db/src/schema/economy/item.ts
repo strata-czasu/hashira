@@ -14,3 +14,15 @@ export const item = pgTable("item", {
     .notNull()
     .references(() => user.id),
 });
+
+export const inventoryItem = pgTable("inventory_item", {
+  id: serial("id").primaryKey(),
+  itemId: integer("itemId")
+    .notNull()
+    .references(() => item.id),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  deletedAt: timestamp("deletedAt"),
+});
