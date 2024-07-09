@@ -89,7 +89,7 @@ export const marriage = new Hashira({ name: "marriage" })
           },
         );
         await lock.run(
-          [itx.user.id, targetUserId],
+          [`marriage_${itx.user.id}`, `marriage_${targetUserId}`],
           async () => dialog.render(itx),
           () =>
             errorFollowUp(
