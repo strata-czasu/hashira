@@ -1,21 +1,16 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
-import { and, countDistinct, eq, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, schema } from "@hashira/db";
+import { countDistinct, eq, isNull } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { getItem } from "./util";
 
 const formatAmount = (amount: number) => {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
   return amount.toString();
 };
-
-const getItem = async (tx: Transaction, id: number) =>
-  tx
-    .select()
-    .from(schema.item)
-    .where(and(eq(schema.item.id, id), isNull(schema.item.deletedAt)));
 
 export const shop = new Hashira({ name: "shop" })
   .use(base)
@@ -103,7 +98,7 @@ export const shop = new Hashira({ name: "shop" })
             }
 
             const item = await db.transaction(async (tx) => {
-              const [item] = await getItem(tx, id);
+              const item = await getItem(tx, id);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
@@ -132,7 +127,7 @@ export const shop = new Hashira({ name: "shop" })
             await itx.deferReply();
 
             const item = await db.transaction(async (tx) => {
-              const [item] = await getItem(tx, id);
+              const item = await getItem(tx, id);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
