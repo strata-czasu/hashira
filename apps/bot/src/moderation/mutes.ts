@@ -84,6 +84,7 @@ const getUserMutesPaginatedView = (
   const paginate = new DatabasePaginator({
     orderBy: schema.mute.createdAt,
     ordering: PaginatorOrder.DESC,
+    pageSize: 5,
     select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.mute).where(muteWheres).$dynamic(),
   });
