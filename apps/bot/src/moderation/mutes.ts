@@ -451,6 +451,7 @@ export const mutes = new Hashira({ name: "mutes" })
             const paginate = new DatabasePaginator({
               orderBy: schema.mute.createdAt,
               ordering: PaginatorOrder.DESC,
+              pageSize: 5,
               select: db
                 .select({
                   id: schema.mute.id,

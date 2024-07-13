@@ -78,6 +78,7 @@ const getUserWarnsPaginatedView = (
   const paginate = new DatabasePaginator({
     orderBy: schema.warn.createdAt,
     ordering: PaginatorOrder.DESC,
+    pageSize: 5,
     select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
     count: db.select({ count: count() }).from(schema.warn).where(warnWheres).$dynamic(),
   });
