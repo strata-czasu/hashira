@@ -1,12 +1,15 @@
 import { Hashira } from "@hashira/core";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
-import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
-import { errorFollowUp } from "../util/errorFollowUp";
-import { fetchMembers } from "../util/fetchMembers";
-import { parseUserMentions } from "../util/parseUsers";
-import { createPluralize } from "../util/pluralize";
-import { addBalances, getDefaultWallet, transferBalances } from "./util";
+import { base } from "../../base";
+import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
+import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
+import { errorFollowUp } from "../../util/errorFollowUp";
+import { fetchMembers } from "../../util/fetchMembers";
+import { parseUserMentions } from "../../util/parseUsers";
+import { createPluralize } from "../../util/pluralize";
+import { EconomyError } from "../economyError";
+import { addBalances, transferBalances } from "../managers/transferManager";
+import { getDefaultWallet } from "../managers/walletManager";
 
 const pluralizeUsers = createPluralize({
   1: "użytkownikowi",
@@ -16,7 +19,7 @@ const pluralizeUsers = createPluralize({
 const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance}${currencySymbol}`);
 
-export const strataEconomy = new Hashira({ name: "strata-economy" })
+export const strataCurrency = new Hashira({ name: "strata-currency" })
   .use(base)
   .group("punkty", (group) =>
     group
@@ -33,6 +36,8 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
             if (!itx.inCachedGuild()) return;
 
             const userId = user?.id ?? itx.user.id;
+
+            await ensureUserExists(db, userId);
 
             const wallet = await getDefaultWallet({
               db,
@@ -82,7 +87,7 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
                 parseUserMentions(rawMembers),
               );
 
-              console.log(members);
+              await ensureUsersExist(db, [...members.keys(), itx.user.id]);
 
               try {
                 await addBalances({
@@ -95,7 +100,7 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
                   reason,
                 });
               } catch (error) {
-                if (error instanceof Error) {
+                if (error instanceof EconomyError) {
                   return await errorFollowUp(itx, error.message);
                 }
                 throw error;
@@ -137,6 +142,8 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
                 parseUserMentions(rawMembers),
               );
 
+              await ensureUsersExist(db, [...members.keys(), itx.user.id]);
+
               try {
                 await transferBalances({
                   db,
@@ -148,7 +155,7 @@ export const strataEconomy = new Hashira({ name: "strata-economy" })
                   reason,
                 });
               } catch (error) {
-                if (error instanceof Error) {
+                if (error instanceof EconomyError) {
                   return await errorFollowUp(itx, error.message);
                 }
                 throw error;
