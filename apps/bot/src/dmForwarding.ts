@@ -109,7 +109,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
             });
 
             const formatMessage = (message: Message) =>
-              `${time(message.createdTimestamp, TimestampStyles.ShortTime)} ${bold(
+              `${time(message.createdAt, TimestampStyles.ShortTime)} ${bold(
                 message.author.username,
               )}: ${message.content}`;
 
