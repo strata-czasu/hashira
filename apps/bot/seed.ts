@@ -1,11 +1,13 @@
 import { connection, db, schema } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY, USER_IDS } from "./src/specializedConstants";
+import { ensureUserExists } from "./src/util/ensureUsersExist";
 
 const createGuild = (guildId: string) =>
   db.insert(schema.guild).values({ id: guildId }).onConflictDoNothing();
 
 const createDefaultStrataCzasuCurrency = async (guildId: string) => {
   await createGuild(guildId);
+  await ensureUserExists(db, USER_IDS.Defous);
   await db
     .insert(schema.currency)
     .values({
