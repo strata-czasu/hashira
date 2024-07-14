@@ -1,9 +1,13 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, schema } from "@hashira/db";
-import { and, countDistinct, eq, isNotNull, isNull } from "@hashira/db/drizzle";
+import { and, countDistinct, eq, isNotNull, isNull, sql } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
+import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { getDefaultWallet } from "./managers/walletManager";
+import { formatBalance } from "./strata/strataCurrency";
 import { getItem, getShopItem } from "./util";
 
 const formatAmount = (amount: number) => {
@@ -51,7 +55,57 @@ export const shop = new Hashira({ name: "shop" })
               true,
             );
             await paginatedView.render(itx);
-            // TODO)) /sklep kup id (if price is not null)
+          }),
+      )
+      .addCommand("kup", (command) =>
+        command
+          .setDescription("Kup przedmiot ze sklepu")
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .handle(async ({ db }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            ensureUserExists(db, itx.user.id);
+
+            const success = await db.transaction(async (tx) => {
+              const shopItem = await getShopItem(tx, id);
+              if (!shopItem) {
+                await errorFollowUp(
+                  itx,
+                  "Nie znaleziono przedmiotu w sklepie o podanym ID",
+                );
+                return false;
+              }
+
+              const wallet = await getDefaultWallet({
+                db: tx,
+                userId: itx.user.id,
+                guildId: itx.guild.id,
+                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              });
+              if (wallet.balance < shopItem.price) {
+                const missing = shopItem.price - wallet.balance;
+                await errorFollowUp(
+                  itx,
+                  `Nie masz wystarczająco punktów. Brakuje Ci ${formatBalance(missing, STRATA_CZASU_CURRENCY.symbol)}`,
+                );
+                return false;
+              }
+
+              // FIXME: Create a transaction to the system wallet (null) - use correct utils
+              await tx
+                .update(schema.wallet)
+                .set({ balance: sql`${schema.wallet.balance} - ${shopItem.price}` })
+                .where(eq(schema.wallet.id, wallet.id));
+              await tx.insert(schema.inventoryItem).values({
+                itemId: shopItem.itemId,
+                userId: itx.user.id,
+              });
+              return true;
+            });
+            if (!success) return;
+
+            await itx.editReply("Kupiono przedmiot ze sklepu");
           }),
       ),
   )

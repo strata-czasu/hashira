@@ -159,6 +159,7 @@ export const getDefaultWallets = async ({
       (userId) => !wallets.some((wallet) => wallet.userId === userId),
     );
 
+    if (missingWallets.length === 0) return wallets;
     const createdDefaultWallets = await createDefaultWallets({
       db: tx,
       currencyId: currency.id,

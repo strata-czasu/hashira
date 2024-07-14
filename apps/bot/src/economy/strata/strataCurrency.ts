@@ -12,11 +12,12 @@ import { addBalances, transferBalances } from "../managers/transferManager";
 import { getDefaultWallet } from "../managers/walletManager";
 
 const pluralizeUsers = createPluralize({
-  1: "użytkownikowi",
+  // FIXME: Keys should be sorted automatically
   2: "użytkownikom",
+  1: "użytkownikowi",
 });
 
-const formatBalance = (balance: number, currencySymbol: string) =>
+export const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance}${currencySymbol}`);
 
 export const strataCurrency = new Hashira({ name: "strata-currency" })
