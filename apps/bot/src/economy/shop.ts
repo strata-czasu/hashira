@@ -1,10 +1,10 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, schema } from "@hashira/db";
-import { countDistinct, eq, isNull } from "@hashira/db/drizzle";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import { and, countDistinct, eq, isNotNull, isNull } from "@hashira/db/drizzle";
+import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { getItem } from "./util";
+import { getItem, getShopItem } from "./util";
 
 const formatAmount = (amount: number) => {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;
@@ -25,77 +25,49 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = isNull(schema.item.deletedAt);
+            const where = and(
+              isNotNull(schema.shopItem.price),
+              isNull(schema.shopItem.deletedAt),
+            );
             const paginator = new DatabasePaginator({
-              orderBy: [schema.item.price],
-              select: db.select().from(schema.item).where(where).$dynamic(),
+              orderBy: [schema.shopItem.price],
+              select: db
+                .select()
+                .from(schema.shopItem)
+                .innerJoin(schema.item, eq(schema.shopItem.itemId, schema.item.id))
+                .where(where)
+                .$dynamic(),
               count: db
-                .select({ count: countDistinct(schema.item.id) })
-                .from(schema.item)
+                .select({ count: countDistinct(schema.shopItem.id) })
+                .from(schema.shopItem)
                 .where(where)
                 .$dynamic(),
             });
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ id, name, price, description }) =>
-                `### ${name} - ${formatAmount(price)} [${id}]\n${description}`,
+              ({ shop_item: { id, price }, item: { name, description } }) =>
+                `### ${name} - ${formatAmount(price as number)} [${id}]\n${description}`,
               true,
             );
             await paginatedView.render(itx);
-            // TODO)) /sklep kup id
+            // TODO)) /sklep kup id (if price is not null)
           }),
       ),
   )
   .group("sklep-admin", (group) =>
     group
-      .setDescription("Komendy administracyjne sklepu")
+      .setDescription("Zarządzanie sklepem")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-      .addCommand("dodaj", (command) =>
+      .addCommand("wystaw", (command) =>
         command
-          .setDescription("Dodaj przedmiot do sklepu")
-          .addString("name", (name) => name.setDescription("Nazwa przedmiotu"))
-          .addInteger("price", (name) => name.setDescription("Cena przedmiotu"))
-          .addString("description", (name) => name.setDescription("Opis przedmiotu"))
-          .handle(async ({ db }, { name, price, description }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            await db.insert(schema.item).values({
-              name,
-              price,
-              description,
-              createdBy: itx.user.id,
-            });
-            await itx.editReply(
-              `Dodano przedmiot ${bold(name)} o cenie ${bold(
-                price.toString(),
-              )} do sklepu.`,
-            );
-          }),
-      )
-      .addCommand("edytuj", (command) =>
-        command
-          .setDescription("Edytuj przedmiot w sklepie")
+          .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .addString("name", (name) =>
-            name.setDescription("Nowa nazwa przedmiotu").setRequired(false),
-          )
-          .addInteger("price", (name) =>
-            name.setDescription("Nowa cena przedmiotu").setRequired(false),
-          )
-          .addString("description", (name) =>
-            name.setDescription("Nowy opis przedmiotu").setRequired(false),
-          )
-          .handle(async ({ db }, { id, name, price, description }, itx) => {
+          .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
+          .handle(async ({ db }, { id, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-
-            if (!name && !price && !description) {
-              await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
-              return;
-            }
 
             const item = await db.transaction(async (tx) => {
               const item = await getItem(tx, id);
@@ -104,44 +76,72 @@ export const shop = new Hashira({ name: "shop" })
                 return null;
               }
               await tx
-                .update(schema.item)
-                .set({
-                  name: name ?? item.name,
-                  price: price ?? item.price,
-                  description: description ?? item.description,
+                .insert(schema.shopItem)
+                .values({
+                  itemId: item.id,
+                  price,
+                  createdBy: itx.user.id,
                 })
-                .where(eq(schema.item.id, id));
+                .returning();
               return item;
             });
             if (!item) return;
 
-            await itx.editReply(`Edytowano przedmiot ${inlineCode(id.toString())}`);
+            await itx.editReply(`Wystawiono ${item.name} za ${formatAmount(price)}`);
           }),
       )
-      .addCommand("usun", (command) =>
+      .addCommand("zdejmij", (command) =>
         command
           .setDescription("Usuń przedmiot ze sklepu")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .handle(async ({ db }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await db.transaction(async (tx) => {
-              const item = await getItem(tx, id);
-              if (!item) {
+            const removed = await db.transaction(async (tx) => {
+              const shopItem = await getShopItem(tx, id);
+              if (!shopItem) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
-                return null;
+                return false;
               }
               await tx
-                .update(schema.item)
-                .set({ deletedAt: new Date() })
-                .where(eq(schema.item.id, id));
-              return item;
+                .update(schema.shopItem)
+                .set({ deletedAt: itx.createdAt })
+                .where(eq(schema.shopItem.id, id))
+                .returning();
+              return true;
             });
-            if (!item) return;
+            if (!removed) return;
+
+            await itx.editReply("Przedmiot usunięty ze sklepu");
+          }),
+      )
+      .addCommand("edytuj", (command) =>
+        command
+          .setDescription("Zmień cenę przedmiotu w sklepie")
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .addInteger("price", (price) => price.setDescription("Nowa cena przedmiotu"))
+          .handle(async ({ db }, { id, price }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const updated = await db.transaction(async (tx) => {
+              const shopItem = await getShopItem(tx, id);
+              if (!shopItem) {
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
+                return false;
+              }
+              await tx
+                .update(schema.shopItem)
+                .set({ price, editedAt: itx.createdAt })
+                .where(eq(schema.shopItem.id, id))
+                .returning();
+              return true;
+            });
+            if (!updated) return;
 
             await itx.editReply(
-              `Usunięto przedmiot ${inlineCode(id.toString())} ze sklepu`,
+              `Zaktualizowano cenę przedmiotu ${inlineCode(id.toString())}`,
             );
           }),
       ),
