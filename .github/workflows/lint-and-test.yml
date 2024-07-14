@@ -2,6 +2,17 @@ name: Lint and Test
 
 on: [push, pull_request]
 
+env:
+  POSTGRES_TEST_HOST: localhost
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  # Dummy variables
+  POSTGRES_HOST: dummy
+  BOT_CLIENT_ID: dummy
+  BOT_DEVELOPER_GUILD_ID: dummy
+  BOT_TOKEN: dummy
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -29,6 +40,8 @@ jobs:
         run: bunx biome lint .
       - name: Check Formatting
         run: bunx biome format .
+      - name: Check migrations
+        run: bun check-migrations
       - name: Run tests
         # FIXME: This is a workaround for the issue with `bun test`
         #        There's some issue with using and/or migrating the DB
@@ -37,13 +50,3 @@ jobs:
           bun test:bot
           bun test:db
           bun test:paginate
-        env:
-          POSTGRES_TEST_HOST: localhost
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          # Dummy variables
-          POSTGRES_HOST: dummy
-          BOT_CLIENT_ID: dummy
-          BOT_DEVELOPER_GUILD_ID: dummy
-          BOT_TOKEN: dummy
