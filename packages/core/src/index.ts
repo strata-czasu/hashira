@@ -319,8 +319,7 @@ class Hashira<
   userContextMenu<T extends string>(
     name: T,
     handler: (
-      // TODO)) Use correct context type
-      ctx: UnknownContext,
+      ctx: HashiraContext<Decorators>,
       interaction: UserContextMenuCommandInteraction,
     ) => Promise<void>,
   ): Hashira<Decorators, Commands> {
@@ -330,7 +329,13 @@ class Hashira<
       .setName(name)
       // TODO)) Let the builder set this
       .setNameLocalization("en-US", capitalize(name));
-    this.#userContextMenus.set(name, [builder, handler]);
+    this.#userContextMenus.set(name, [
+      builder,
+      handler as unknown as (
+        ctx: UnknownContext,
+        interaction: UserContextMenuCommandInteraction,
+      ) => Promise<void>,
+    ]);
     return this as unknown as ReturnType<typeof this.userContextMenu<T>>;
   }
 
