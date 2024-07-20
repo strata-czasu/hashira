@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { sub } from "date-fns";
 import { type Message, PermissionFlagsBits } from "discord.js";
-import { chunk } from "../util/chunk";
+import { chunk } from "es-toolkit";
 
 enum PruneDeleteInterval {
   FiveMinutes = 5,

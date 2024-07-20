@@ -1,5 +1,5 @@
 import { Collection, type GuildMember, type UserResolvable } from "discord.js";
-import { chunk } from "./chunk";
+import { chunk } from "es-toolkit";
 
 // TODO: holy, this type is a mess, we probably should only take in fetch method by itself
 export async function fetchMembers(
@@ -12,8 +12,9 @@ export async function fetchMembers(
   },
   users: string[],
 ): Promise<Collection<string, GuildMember>> {
-  const userChunks = chunk(users, 100);
-  const members = userChunks.map((chunk) => guild.members.fetch({ user: chunk }));
+  const members = chunk(users, 100).map((chunk) =>
+    guild.members.fetch({ user: chunk }),
+  );
   const resolvedMembers = await Promise.all(members);
 
   return new Collection<string, GuildMember>().concat(...resolvedMembers);
