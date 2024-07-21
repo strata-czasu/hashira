@@ -25,5 +25,5 @@ RUN bun install --production
 
 COPY --link . .
 
-
+ENV NODE_ENV=production
 CMD ["bun", "start:prod"]
