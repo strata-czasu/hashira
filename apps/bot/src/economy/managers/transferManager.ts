@@ -1,6 +1,10 @@
 import { type db, schema } from "@hashira/db";
 import { eq, sql } from "@hashira/db/drizzle";
-import { InsufficientBalanceError, SelfTransferError } from "../economyError";
+import {
+  InsufficientBalanceError,
+  InvalidAmountError,
+  SelfTransferError,
+} from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
 import { getCurrency } from "./currencyManager";
 import { getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
@@ -123,6 +127,8 @@ export const transferBalance = async ({
   ...currencyOptions
 }: TransferBalanceOptions) => {
   return await db.transaction(async (tx) => {
+    if (amount <= 0) throw new InvalidAmountError();
+
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getWallet({
@@ -133,6 +139,8 @@ export const transferBalance = async ({
       currencyId: currency.id,
     });
 
+    if (fromWallet.balance < amount) throw new InsufficientBalanceError();
+
     const toWallet = await getWallet({
       db,
       userId: toUserId,
@@ -142,8 +150,6 @@ export const transferBalance = async ({
     });
 
     if (fromWallet.id === toWallet.id) throw new SelfTransferError();
-
-    if (fromWallet.balance < amount) throw new InsufficientBalanceError();
 
     await tx
       .update(schema.wallet)
@@ -196,6 +202,8 @@ export const transferBalances = async ({
   ...currencyOptions
 }: TransferBalancesOptions) => {
   return await db.transaction(async (tx) => {
+    if (amount <= 0) throw new InvalidAmountError();
+
     const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getDefaultWallet({
