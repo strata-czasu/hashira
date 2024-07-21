@@ -5,6 +5,7 @@ import {
   Client,
   ContextMenuCommandBuilder,
   Partials,
+  type Permissions,
   REST,
   Routes,
   type SlashCommandBuilder,
@@ -318,6 +319,7 @@ class Hashira<
 
   userContextMenu<T extends string>(
     name: T,
+    permissions: Permissions | bigint | number | null | undefined,
     handler: (
       ctx: HashiraContext<Decorators>,
       interaction: UserContextMenuCommandInteraction,
@@ -325,6 +327,7 @@ class Hashira<
   ): Hashira<Decorators, Commands> {
     const builder = new ContextMenuCommandBuilder()
       .setDMPermission(false)
+      .setDefaultMemberPermissions(permissions)
       .setType(ApplicationCommandType.User)
       .setName(name)
       // TODO)) Let the builder set this

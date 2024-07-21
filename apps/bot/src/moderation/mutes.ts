@@ -554,55 +554,59 @@ export const mutes = new Hashira({ name: "mutes" })
     if (!muteRoleId) return;
     await member.roles.add(muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
   })
-  .userContextMenu("mute", async ({ addMute }, itx) => {
-    if (!itx.inCachedGuild()) return;
+  .userContextMenu(
+    "mute",
+    PermissionFlagsBits.ModerateMembers,
+    async ({ addMute }, itx) => {
+      if (!itx.inCachedGuild()) return;
 
-    const rows = [
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-        new TextInputBuilder()
-          .setCustomId("duration")
-          .setLabel("Czas trwania wyciszenia")
-          .setRequired(true)
-          .setPlaceholder("3h, 8h, 1d")
-          .setMinLength(2)
-          .setStyle(TextInputStyle.Short),
-      ),
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-        new TextInputBuilder()
-          .setCustomId("reason")
-          .setLabel("Powód")
-          .setRequired(true)
-          .setPlaceholder("Toxic")
-          .setMaxLength(500)
-          .setStyle(TextInputStyle.Paragraph),
-      ),
-    ];
-    const modal = new ModalBuilder()
-      .setCustomId(`mute-${itx.targetUser.id}`)
-      .setTitle(`Wycisz ${itx.targetUser.tag}`)
-      .addComponents(...rows);
-    await itx.showModal(modal);
+      const rows = [
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+          new TextInputBuilder()
+            .setCustomId("duration")
+            .setLabel("Czas trwania wyciszenia")
+            .setRequired(true)
+            .setPlaceholder("3h, 8h, 1d")
+            .setMinLength(2)
+            .setStyle(TextInputStyle.Short),
+        ),
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+          new TextInputBuilder()
+            .setCustomId("reason")
+            .setLabel("Powód")
+            .setRequired(true)
+            .setPlaceholder("Toxic")
+            .setMaxLength(500)
+            .setStyle(TextInputStyle.Paragraph),
+        ),
+      ];
+      const modal = new ModalBuilder()
+        .setCustomId(`mute-${itx.targetUser.id}`)
+        .setTitle(`Wycisz ${itx.targetUser.tag}`)
+        .addComponents(...rows);
+      await itx.showModal(modal);
 
-    try {
-      const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
-      await submitAction.deferReply();
+      try {
+        const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
+        await submitAction.deferReply();
 
-      // TODO)) Abstract this into a helper/common util
-      const duration = submitAction.components
-        .at(0)
-        ?.components.find((c) => c.customId === "duration")?.value;
-      const reason = submitAction.components
-        .at(1)
-        ?.components.find((c) => c.customId === "reason")?.value;
-      if (!duration || !reason) {
-        return await errorFollowUp(
-          submitAction as unknown as CommandInteraction,
-          "Nie podano wszystkich wymaganych danych!",
-        );
+        // TODO)) Abstract this into a helper/common util
+        const duration = submitAction.components
+          .at(0)
+          ?.components.find((c) => c.customId === "duration")?.value;
+        const reason = submitAction.components
+          .at(1)
+          ?.components.find((c) => c.customId === "reason")?.value;
+        if (!duration || !reason) {
+          return await errorFollowUp(
+            submitAction as unknown as CommandInteraction,
+            "Nie podano wszystkich wymaganych danych!",
+          );
+        }
+
+        await addMute({ itx: submitAction, user: itx.targetUser, duration, reason });
+      } catch (e) {
+        console.log("Modal submit error", e);
       }
-
-      await addMute({ itx: submitAction, user: itx.targetUser, duration, reason });
-    } catch (e) {
-      console.log("Modal submit error", e);
-    }
-  });
+    },
+  );
