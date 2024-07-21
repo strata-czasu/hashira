@@ -5,13 +5,12 @@ import { PaginatorOrder } from "@hashira/paginate";
 import { add, intervalToDuration } from "date-fns";
 import {
   ActionRowBuilder,
-  type CommandInteraction,
   HeadingLevel,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
-  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  type RepliableInteraction,
   TextInputBuilder,
   TextInputStyle,
   TimestampStyles,
@@ -77,8 +76,10 @@ export const createFormatMuteInList =
     return lines.join("\n");
   };
 
+type Context = ExtractContext<typeof base>;
+
 const getUserMutesPaginatedView = (
-  db: ExtractContext<typeof base>["db"],
+  db: Context["db"],
   user: User,
   guildId: string,
   deleted: boolean | null,
@@ -122,153 +123,150 @@ const getMute = async (tx: Transaction, id: number, guildId: string) =>
 const RULES_CHANNEL = "873167662082056232";
 const APPEALS_CHANNEL = "1213901611836117052";
 
+const addMute = async ({
+  db,
+  messageQueue,
+  itx,
+  user,
+  duration: rawDuration,
+  reason,
+}: {
+  db: Context["db"];
+  messageQueue: Context["messageQueue"];
+  itx: RepliableInteraction<"cached">;
+  user: User;
+  duration: string;
+  reason: string;
+}) => {
+  const member = await discordTry(
+    async () => itx.guild.members.fetch(user),
+    [RESTJSONErrorCodes.UnknownMember],
+    async () => {
+      await errorFollowUp(itx, "Nie znaleziono podanego użytkownika na tym serwerze.");
+      return null;
+    },
+  );
+  if (!member) return;
+
+  const activeMute = await db.query.mute.findFirst({
+    where: and(
+      eq(schema.mute.guildId, itx.guildId),
+      eq(schema.mute.userId, user.id),
+      isNull(schema.mute.deletedAt),
+      gte(schema.mute.endsAt, itx.createdAt),
+    ),
+  });
+  if (activeMute) {
+    await errorFollowUp(
+      itx,
+      `Użytkownik jest już wyciszony do ${time(
+        activeMute.endsAt,
+        TimestampStyles.RelativeTime,
+      )} przez ${userMention(activeMute.moderatorId)}.\nPowód: ${italic(
+        activeMute.reason,
+      )}`,
+    );
+    return;
+  }
+
+  const muteRoleId = await getMuteRoleId(db, itx.guildId);
+  if (!muteRoleId) {
+    // TODO: Add an actual link to the settings command
+    await errorFollowUp(
+      itx,
+      "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
+    );
+    return;
+  }
+
+  const duration = parseDuration(rawDuration);
+  if (!duration) {
+    await errorFollowUp(
+      itx,
+      "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+    );
+    return;
+  }
+  if (durationToSeconds(duration) === 0) {
+    await errorFollowUp(itx, "Nie można ustawić czasu trwania wyciszenia na 0");
+    return;
+  }
+  const endsAt = add(itx.createdAt, duration);
+
+  await ensureUsersExist(db, [user.id, itx.user.id]);
+
+  // Create mute and try to add the mute role
+  // If adding the role fails, rollback the transaction
+  const mute = await db.transaction(async (tx) => {
+    const [mute] = await db
+      .insert(schema.mute)
+      .values({
+        createdAt: itx.createdAt,
+        endsAt,
+        guildId: itx.guildId,
+        moderatorId: itx.user.id,
+        reason,
+        userId: user.id,
+      })
+      .returning({ id: schema.mute.id });
+    if (!mute) return null;
+
+    const appliedMute = await applyMute(
+      member,
+      muteRoleId,
+      `Wyciszenie: ${reason} [${mute.id}]`,
+    );
+    if (!appliedMute) {
+      await errorFollowUp(
+        itx,
+        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+      );
+      tx.rollback();
+      return null;
+    }
+    return mute;
+  });
+  if (!mute) return;
+
+  await messageQueue.push(
+    "muteEnd",
+    { muteId: mute.id, guildId: itx.guildId, userId: user.id },
+    durationToSeconds(duration),
+    mute.id.toString(),
+  );
+
+  const sentMessage = await sendDirectMessage(
+    user,
+    `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+      itx.user.tag
+    }) nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
+      formatDuration(duration),
+    )}. Powodem Twojego wyciszenia jest: ${italic(
+      reason,
+    )}.\n\nPrzeczytaj ${channelMention(
+      RULES_CHANNEL,
+    )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
+      APPEALS_CHANNEL,
+    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
+  );
+
+  await itx.editReply(
+    `Dodano wyciszenie [${inlineCode(
+      mute.id.toString(),
+    )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(
+      reason,
+    )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
+  );
+  if (!sentMessage) {
+    await itx.followUp({
+      content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+      ephemeral: true,
+    });
+  }
+};
+
 export const mutes = new Hashira({ name: "mutes" })
   .use(base)
-  .const((ctx) => ({
-    ...ctx,
-    addMute: async ({
-      itx,
-      user,
-      duration: rawDuration,
-      reason,
-    }: {
-      itx: CommandInteraction<"cached"> | ModalSubmitInteraction<"cached">;
-      user: User;
-      duration: string;
-      reason: string;
-    }) => {
-      const { db, messageQueue } = ctx;
-
-      const member = await discordTry(
-        async () => itx.guild.members.fetch(user),
-        [RESTJSONErrorCodes.UnknownMember],
-        async () => {
-          await errorFollowUp(
-            itx,
-            "Nie znaleziono podanego użytkownika na tym serwerze.",
-          );
-          return null;
-        },
-      );
-      if (!member) return;
-
-      const activeMute = await db.query.mute.findFirst({
-        where: and(
-          eq(schema.mute.guildId, itx.guildId),
-          eq(schema.mute.userId, user.id),
-          isNull(schema.mute.deletedAt),
-          gte(schema.mute.endsAt, itx.createdAt),
-        ),
-      });
-      if (activeMute) {
-        await errorFollowUp(
-          itx,
-          `Użytkownik jest już wyciszony do ${time(
-            activeMute.endsAt,
-            TimestampStyles.RelativeTime,
-          )} przez ${userMention(activeMute.moderatorId)}.\nPowód: ${italic(
-            activeMute.reason,
-          )}`,
-        );
-        return;
-      }
-
-      const muteRoleId = await getMuteRoleId(db, itx.guildId);
-      if (!muteRoleId) {
-        // TODO: Add an actual link to the settings command
-        await errorFollowUp(
-          itx,
-          "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
-        );
-        return;
-      }
-
-      const duration = parseDuration(rawDuration);
-      if (!duration) {
-        await errorFollowUp(
-          itx,
-          "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
-        );
-        return;
-      }
-      if (durationToSeconds(duration) === 0) {
-        await errorFollowUp(itx, "Nie można ustawić czasu trwania wyciszenia na 0");
-        return;
-      }
-      const endsAt = add(itx.createdAt, duration);
-
-      await ensureUsersExist(db, [user.id, itx.user.id]);
-
-      // Create mute and try to add the mute role
-      // If adding the role fails, rollback the transaction
-      const mute = await db.transaction(async (tx) => {
-        const [mute] = await db
-          .insert(schema.mute)
-          .values({
-            createdAt: itx.createdAt,
-            endsAt,
-            guildId: itx.guildId,
-            moderatorId: itx.user.id,
-            reason,
-            userId: user.id,
-          })
-          .returning({ id: schema.mute.id });
-        if (!mute) return null;
-
-        const appliedMute = await applyMute(
-          member,
-          muteRoleId,
-          `Wyciszenie: ${reason} [${mute.id}]`,
-        );
-        if (!appliedMute) {
-          await errorFollowUp(
-            itx,
-            "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-          );
-          tx.rollback();
-          return null;
-        }
-        return mute;
-      });
-      if (!mute) return;
-
-      await messageQueue.push(
-        "muteEnd",
-        { muteId: mute.id, guildId: itx.guildId, userId: user.id },
-        durationToSeconds(duration),
-        mute.id.toString(),
-      );
-
-      const sentMessage = await sendDirectMessage(
-        user,
-        `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-          itx.user.tag
-        }) nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
-          formatDuration(duration),
-        )}. Powodem Twojego wyciszenia jest: ${italic(
-          reason,
-        )}.\n\nPrzeczytaj ${channelMention(
-          RULES_CHANNEL,
-        )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
-          APPEALS_CHANNEL,
-        )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
-      );
-
-      await itx.editReply(
-        `Dodano wyciszenie [${inlineCode(
-          mute.id.toString(),
-        )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(
-          reason,
-        )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
-      );
-      if (!sentMessage) {
-        await itx.followUp({
-          content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-          ephemeral: true,
-        });
-      }
-    },
-  }))
   .group("mute", (group) =>
     group
       .setDescription("Zarządzaj wyciszeniami")
@@ -284,10 +282,10 @@ export const mutes = new Hashira({ name: "mutes" })
             duration.setDescription("Czas trwania wyciszenia"),
           )
           .addString("reason", (reason) => reason.setDescription("Powód wyciszenia"))
-          .handle(async ({ addMute }, { user, duration, reason }, itx) => {
+          .handle(async ({ db, messageQueue }, { user, duration, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-            await addMute({ itx, user, duration, reason });
+            await addMute({ db, messageQueue, itx, user, duration, reason });
           }),
       )
       .addCommand("remove", (command) =>
@@ -557,7 +555,7 @@ export const mutes = new Hashira({ name: "mutes" })
   .userContextMenu(
     "mute",
     PermissionFlagsBits.ModerateMembers,
-    async ({ addMute }, itx) => {
+    async ({ db, messageQueue }, itx) => {
       if (!itx.inCachedGuild()) return;
 
       const rows = [
@@ -586,27 +584,30 @@ export const mutes = new Hashira({ name: "mutes" })
         .addComponents(...rows);
       await itx.showModal(modal);
 
-      try {
-        const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
-        await submitAction.deferReply();
+      const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
+      await submitAction.deferReply();
 
-        // TODO)) Abstract this into a helper/common util
-        const duration = submitAction.components
-          .at(0)
-          ?.components.find((c) => c.customId === "duration")?.value;
-        const reason = submitAction.components
-          .at(1)
-          ?.components.find((c) => c.customId === "reason")?.value;
-        if (!duration || !reason) {
-          return await errorFollowUp(
-            submitAction as unknown as CommandInteraction,
-            "Nie podano wszystkich wymaganych danych!",
-          );
-        }
-
-        await addMute({ itx: submitAction, user: itx.targetUser, duration, reason });
-      } catch (e) {
-        console.log("Modal submit error", e);
+      // TODO)) Abstract this into a helper/common util
+      const duration = submitAction.components
+        .at(0)
+        ?.components.find((c) => c.customId === "duration")?.value;
+      const reason = submitAction.components
+        .at(1)
+        ?.components.find((c) => c.customId === "reason")?.value;
+      if (!duration || !reason) {
+        return await errorFollowUp(
+          submitAction,
+          "Nie podano wszystkich wymaganych danych!",
+        );
       }
+
+      await addMute({
+        db,
+        messageQueue,
+        itx: submitAction,
+        user: itx.targetUser,
+        duration,
+        reason,
+      });
     },
   );

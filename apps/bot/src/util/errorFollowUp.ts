@@ -1,4 +1,4 @@
-import type { CommandInteraction, ModalSubmitInteraction } from "discord.js";
+import type { RepliableInteraction } from "discord.js";
 
 /**
  * Send an error follow-up message to the user
@@ -6,10 +6,7 @@ import type { CommandInteraction, ModalSubmitInteraction } from "discord.js";
  * Deletes the original reply if it isn't ephemeral
  * and sends a new ephemeral message
  */
-export const errorFollowUp = async (
-  itx: CommandInteraction | ModalSubmitInteraction,
-  content: string,
-) => {
+export const errorFollowUp = async (itx: RepliableInteraction, content: string) => {
   if (!itx.deferred && !itx.replied) {
     await itx.reply({ content, ephemeral: true });
     return;
