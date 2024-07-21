@@ -16,7 +16,7 @@ const extractDeclinations = (
 
   if (entries.length === 0) throw new Error("No possibilities provided");
 
-  return entries;
+  return entries.toSorted(([numA], [numB]) => numB - numA);
 };
 
 export const pluralize = (count: number, declinations: Record<number, string>) => {
