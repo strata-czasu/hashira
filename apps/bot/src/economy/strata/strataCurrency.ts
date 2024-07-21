@@ -3,7 +3,6 @@ import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
-import { errorFollowUp } from "../../util/errorFollowUp";
 import { fetchMembers } from "../../util/fetchMembers";
 import { parseUserMentions } from "../../util/parseUsers";
 import { createPluralize } from "../../util/pluralize";
@@ -78,10 +77,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               if (!itx.inCachedGuild()) return;
               // Check if the user has moderate members permission
               if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
-                return await errorFollowUp(
-                  itx,
-                  "Nie masz uprawnień do dodawania punktów",
-                );
+                await itx.reply("Nie masz uprawnień do dodawania punktów");
+                return;
               }
 
               const members = await fetchMembers(
@@ -103,7 +100,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 });
               } catch (error) {
                 if (error instanceof EconomyError) {
-                  return await errorFollowUp(itx, error.message);
+                  await itx.reply(error.message);
+                  return;
                 }
                 throw error;
               }
@@ -158,7 +156,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 });
               } catch (error) {
                 if (error instanceof EconomyError) {
-                  return await errorFollowUp(itx, error.message);
+                  await itx.reply(error.message);
+                  return;
                 }
                 throw error;
               }
