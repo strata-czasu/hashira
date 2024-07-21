@@ -1,14 +1,19 @@
 import {
+  ApplicationCommandType,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   Client,
+  ContextMenuCommandBuilder,
   Partials,
+  type Permissions,
   REST,
   Routes,
   type SlashCommandBuilder,
   type SlashCommandSubcommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
+  type UserContextMenuCommandInteraction,
 } from "discord.js";
+import { capitalize } from "es-toolkit";
 import { handleCustomEvent } from "./customEvents";
 import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
 import { Group, TopLevelSlashCommand } from "./slashCommands";
@@ -51,6 +56,13 @@ const handleCommandConflict = (
   );
 };
 
+const handleContextMenuConflict = (
+  [a]: [ContextMenuCommandBuilder, unknown],
+  [b]: [ContextMenuCommandBuilder, unknown],
+) => {
+  throw new Error(`Context menu ${a.name} conflicts with ${b.name}`);
+};
+
 const takeIncomingOnConflict = <T>(_previous: T, current: T) => {
   return current;
 };
@@ -89,6 +101,16 @@ class Hashira<
       ) => Promise<void>,
     ]
   >;
+  #userContextMenus: Map<
+    string,
+    [
+      ContextMenuCommandBuilder,
+      (
+        context: UnknownContext,
+        interaction: UserContextMenuCommandInteraction,
+      ) => Promise<void>,
+    ]
+  >;
   #autocomplete: Map<
     string,
     (context: UnknownContext, interaction: AutocompleteInteraction) => Promise<void>
@@ -102,6 +124,7 @@ class Hashira<
     this.#const = {};
     this.#methods = new Map();
     this.#commands = new Map();
+    this.#userContextMenus = new Map();
     this.#autocomplete = new Map();
     this.#exceptionHandlers = new Map();
     this.#dependencies = [options.name];
@@ -213,6 +236,11 @@ class Hashira<
       this.#commands,
       instance.#commands,
     );
+    this.#userContextMenus = mergeMap(
+      handleContextMenuConflict,
+      this.#userContextMenus,
+      instance.#userContextMenus,
+    );
     this.#autocomplete = mergeMap(
       handleAutoCompleteConflict,
       this.#autocomplete,
@@ -289,6 +317,31 @@ class Hashira<
     return this;
   }
 
+  userContextMenu<T extends string>(
+    name: T,
+    permissions: Permissions | bigint | number | null | undefined,
+    handler: (
+      ctx: HashiraContext<Decorators>,
+      interaction: UserContextMenuCommandInteraction,
+    ) => Promise<void>,
+  ): Hashira<Decorators, Commands> {
+    const builder = new ContextMenuCommandBuilder()
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(permissions)
+      .setType(ApplicationCommandType.User)
+      .setName(name)
+      // TODO)) Let the builder set this
+      .setNameLocalization("en-US", capitalize(name));
+    this.#userContextMenus.set(name, [
+      builder,
+      handler as unknown as (
+        ctx: UnknownContext,
+        interaction: UserContextMenuCommandInteraction,
+      ) => Promise<void>,
+    ]);
+    return this as unknown as ReturnType<typeof this.userContextMenu<T>>;
+  }
+
   autocomplete<
     T extends HashiraSlashCommandOptions,
     U extends AutocompleteInteraction = AutocompleteInteraction,
@@ -331,6 +384,19 @@ class Hashira<
     }
   }
 
+  private async handleUserContextMenu(interaction: UserContextMenuCommandInteraction) {
+    const contextMenu = this.#userContextMenus.get(interaction.commandName);
+
+    if (!contextMenu) return;
+    const [_, handler] = contextMenu;
+
+    try {
+      await handler(this.context(), interaction);
+    } catch (error) {
+      if (error instanceof Error) this.handleException(error);
+    }
+  }
+
   private async handleAutocomplete(interaction: AutocompleteInteraction) {
     const handler = this.#autocomplete.get(interaction.commandName);
 
@@ -358,6 +424,8 @@ class Hashira<
 
     discordClient.on("interactionCreate", async (interaction) => {
       if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
+      if (interaction.isUserContextMenuCommand())
+        return this.handleUserContextMenu(interaction);
       if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
     });
 
@@ -404,8 +472,9 @@ class Hashira<
 
   async registerGuildCommands(token: string, guildId: string, clientId: string) {
     const rest = new REST().setToken(token);
-    const commands = [...this.#commands.values()].map(([commandBuilder]) =>
-      commandBuilder.toJSON(),
+    const commands = [...this.#commands.values()].map(([builder]) => builder.toJSON());
+    const contextMenus = [...this.#userContextMenus.values()].map(([builder]) =>
+      builder.toJSON(),
     );
 
     try {
@@ -414,15 +483,20 @@ class Hashira<
       )) as { id: string; name: string }[];
 
       const commandsToDelete = currentCommands
-        .filter((command) => !this.#commands.has(command.name))
+        .filter(
+          (command) =>
+            !this.#commands.has(command.name) &&
+            !this.#userContextMenus.has(command.name),
+        )
         .map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
 
       await Promise.all(commandsToDelete.map((route) => rest.delete(route)));
 
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-        body: commands,
+        body: [...commands, ...contextMenus],
       });
 
+      // TODO)) Log how much commands and context menus were registered
       console.log(`Successfully registered application commands for guild ${guildId}.`);
     } catch (error) {
       if (error instanceof Error) console.error(error);
