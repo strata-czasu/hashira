@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from "discord.js";
+import type { CommandInteraction, ModalSubmitInteraction } from "discord.js";
 
 /**
  * Send an error follow-up message to the user
@@ -7,7 +7,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
  * and sends a new ephemeral message
  */
 export const errorFollowUp = async (
-  itx: ChatInputCommandInteraction,
+  itx: CommandInteraction | ModalSubmitInteraction,
   content: string,
 ) => {
   if (!itx.deferred && !itx.replied) {
