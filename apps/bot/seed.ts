@@ -28,4 +28,6 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
+console.log(`Seeding completed for ${process.env.NODE_ENV} environment`);
+
 await connection.end();
