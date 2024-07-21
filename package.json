@@ -11,7 +11,7 @@
   "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "scripts": {
     "start": "bun run --cwd apps/bot start",
-    "start:prod": "bun migrate && bun seed && bun run --cwd apps/bot start",
+    "start:prod": "bun migrate && bun seed --production && bun run --cwd apps/bot start",
     "generate": "bun run --cwd packages/db generate",
     "migrate": "bun run --cwd packages/db migrate",
     "check-migrations": "bun run --cwd packages/db check-migrations",

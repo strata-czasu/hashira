@@ -2,6 +2,8 @@ import { connection, db, schema } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY, USER_IDS } from "./src/specializedConstants";
 import { ensureUserExists } from "./src/util/ensureUsersExist";
 
+const isProduction = process.argv.includes("--production");
+
 const createGuild = (guildId: string) =>
   db.insert(schema.guild).values({ id: guildId }).onConflictDoNothing();
 
@@ -19,7 +21,7 @@ const createDefaultStrataCzasuCurrency = async (guildId: string) => {
     .onConflictDoNothing();
 };
 
-if (process.env.NODE_ENV === "production") {
+if (isProduction) {
   await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
 } else {
   const testingServers = [GUILD_IDS.Homik, GUILD_IDS.Piwnica];
@@ -28,6 +30,6 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
-console.log(`Seeding completed for ${process.env.NODE_ENV} environment`);
+console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);
 
 await connection.end();
