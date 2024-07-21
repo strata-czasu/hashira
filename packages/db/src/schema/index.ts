@@ -5,6 +5,7 @@ export * from "./guild";
 export * from "./guildSettings";
 export * from "./moderation";
 export * from "./strata/colorRole";
+export * from "./strata/daily";
 export * from "./task";
 export * from "./user";
 export * from "./userTextActivity";

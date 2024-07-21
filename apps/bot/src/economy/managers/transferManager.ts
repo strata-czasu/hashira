@@ -5,6 +5,101 @@ import type { GetCurrencyConditionOptions } from "../util";
 import { getCurrency } from "./currencyManager";
 import { getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
 
+type AddBalanceOptions = {
+  db: typeof db;
+  fromUserId?: string | null;
+  toUserId: string;
+  guildId: string;
+  amount: number;
+  reason: string | null;
+  walletName?: string;
+} & GetCurrencyConditionOptions;
+
+export const addBalance = async ({
+  db,
+  fromUserId = null,
+  toUserId,
+  guildId,
+  amount,
+  reason,
+  walletName,
+  ...currencyOptions
+}: AddBalanceOptions) => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+
+    const wallet = await getWallet({
+      db,
+      userId: toUserId,
+      guildId,
+      walletName,
+      currencyId: currency.id,
+    });
+
+    await tx
+      .update(schema.wallet)
+      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
+      .where(eq(schema.wallet.id, wallet.id));
+
+    await tx.insert(schema.transaction).values({
+      walletId: wallet.id,
+      relatedUserId: fromUserId,
+      amount,
+      reason,
+      entryType: amount > 0 ? "credit" : "debit",
+      transactionType: "add",
+    });
+  });
+};
+
+type AddBalancesOptions = {
+  db: typeof db;
+  fromUserId?: string | null;
+  toUserIds: string[];
+  guildId: string;
+  amount: number;
+  reason: string | null;
+} & GetCurrencyConditionOptions;
+
+export const addBalances = async ({
+  db,
+  fromUserId = null,
+  toUserIds,
+  guildId,
+  amount,
+  reason,
+  ...currencyOptions
+}: AddBalancesOptions) => {
+  return await db.transaction(async (tx) => {
+    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+
+    const wallets = await getDefaultWallets({
+      db: tx,
+      userIds: toUserIds,
+      guildId,
+      currencyId: currency.id,
+    });
+
+    await Promise.all(
+      wallets.map(async (wallet) => {
+        await tx
+          .update(schema.wallet)
+          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
+          .where(eq(schema.wallet.id, wallet.id));
+
+        await tx.insert(schema.transaction).values({
+          walletId: wallet.id,
+          relatedUserId: fromUserId,
+          amount,
+          reason,
+          entryType: amount > 0 ? "credit" : "debit",
+          transactionType: "add",
+        });
+      }),
+    );
+  });
+};
+
 type TransferBalanceOptions = {
   db: typeof db;
   fromUserId: string;
@@ -61,109 +156,24 @@ export const transferBalance = async ({
       .where(eq(schema.wallet.id, toWallet.id));
 
     await tx.insert(schema.transaction).values({
-      fromUserId: fromUserId,
-      toUserId: toUserId,
-      fromWalletId: fromWallet.id,
-      toWalletId: toWallet.id,
+      relatedUserId: toUserId,
+      relatedWalletId: toWallet.id,
+      walletId: fromWallet.id,
       amount,
       reason,
-      currencyId: currency.id,
+      entryType: "debit",
+      transactionType: "transfer",
     });
-  });
-};
-
-type AddBalanceOptions = {
-  db: typeof db;
-  fromUserId: string;
-  toUserId: string;
-  guildId: string;
-  amount: number;
-  reason: string | null;
-  walletName?: string;
-} & GetCurrencyConditionOptions;
-
-export const addBalance = async ({
-  db,
-  fromUserId,
-  toUserId,
-  guildId,
-  amount,
-  reason,
-  walletName,
-  ...currencyOptions
-}: AddBalanceOptions) => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-
-    const wallet = await getWallet({
-      db,
-      userId: toUserId,
-      guildId,
-      walletName,
-      currencyId: currency.id,
-    });
-
-    await tx
-      .update(schema.wallet)
-      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-      .where(eq(schema.wallet.id, wallet.id));
 
     await tx.insert(schema.transaction).values({
-      fromUserId,
-      toUserId,
-      toWalletId: wallet.id,
+      relatedUserId: fromUserId,
+      relatedWalletId: fromWallet.id,
+      walletId: toWallet.id,
       amount,
-      currencyId: currency.id,
       reason,
+      entryType: "credit",
+      transactionType: "transfer",
     });
-  });
-};
-
-type AddBalancesOptions = {
-  db: typeof db;
-  fromUserId: string;
-  toUserIds: string[];
-  guildId: string;
-  amount: number;
-  reason: string | null;
-} & GetCurrencyConditionOptions;
-
-export const addBalances = async ({
-  db,
-  fromUserId,
-  toUserIds,
-  guildId,
-  amount,
-  reason,
-  ...currencyOptions
-}: AddBalancesOptions) => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
-
-    const wallets = await getDefaultWallets({
-      db: tx,
-      userIds: toUserIds,
-      guildId,
-      currencyId: currency.id,
-    });
-
-    await Promise.all(
-      wallets.map(async (wallet) => {
-        await tx
-          .update(schema.wallet)
-          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-          .where(eq(schema.wallet.id, wallet.id));
-
-        await tx.insert(schema.transaction).values({
-          fromUserId,
-          toUserId: wallet.userId,
-          toWalletId: wallet.id,
-          amount,
-          currencyId: currency.id,
-          reason,
-        });
-      }),
-    );
   });
 };
 
@@ -213,6 +223,16 @@ export const transferBalances = async ({
       .set({ balance: sql`${schema.wallet.balance} - ${sum}` })
       .where(eq(schema.wallet.id, fromWallet.id));
 
+    await tx.insert(schema.transaction).values({
+      walletId: fromWallet.id,
+      relatedUserId: null,
+      relatedWalletId: null,
+      amount: sum,
+      reason,
+      entryType: "debit",
+      transactionType: "transfer",
+    });
+
     await Promise.all(
       wallets.map(async (wallet) => {
         await tx
@@ -221,13 +241,13 @@ export const transferBalances = async ({
           .where(eq(schema.wallet.id, wallet.id));
 
         await tx.insert(schema.transaction).values({
-          fromUserId,
-          toUserId: wallet.userId,
-          fromWalletId: fromWallet.id,
-          toWalletId: wallet.id,
+          walletId: wallet.id,
+          relatedUserId: fromUserId,
+          relatedWalletId: fromWallet.id,
           amount,
-          currencyId: currency.id,
           reason,
+          entryType: "credit",
+          transactionType: "transfer",
         });
       }),
     );

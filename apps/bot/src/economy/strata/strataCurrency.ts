@@ -24,6 +24,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
   .use(base)
   .group("punkty", (group) =>
     group
+      .setDefaultMemberPermissions(0)
       .setDescription("Komendy do punktów")
       .addCommand("sprawdz", (command) =>
         command

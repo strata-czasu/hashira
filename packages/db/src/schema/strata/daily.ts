@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild, user } from "..";
 import { strataPgTable } from "../../pgtable";
 
@@ -12,7 +12,6 @@ export const dailyPointsRedeems = strataPgTable("daily_points_redeems", {
     .notNull()
     .references(() => user.id),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
-  points: integer("points").notNull(),
 });
 
 export const dailyPointsRedeemsRelations = relations(dailyPointsRedeems, ({ one }) => ({

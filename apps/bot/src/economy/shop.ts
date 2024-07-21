@@ -1,11 +1,12 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, schema } from "@hashira/db";
-import { and, countDistinct, eq, isNotNull, isNull, sql } from "@hashira/db/drizzle";
+import { and, countDistinct, eq, isNotNull, isNull } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { addBalance } from "./managers/transferManager";
 import { getDefaultWallet } from "./managers/walletManager";
 import { formatBalance } from "./strata/strataCurrency";
 import { getItem, getShopItem } from "./util";
@@ -83,6 +84,7 @@ export const shop = new Hashira({ name: "shop" })
                 guildId: itx.guild.id,
                 currencySymbol: STRATA_CZASU_CURRENCY.symbol,
               });
+
               if (wallet.balance < shopItem.price) {
                 const missing = shopItem.price - wallet.balance;
                 await errorFollowUp(
@@ -92,17 +94,23 @@ export const shop = new Hashira({ name: "shop" })
                 return false;
               }
 
-              // FIXME: Create a transaction to the system wallet (null) - use correct utils
-              await tx
-                .update(schema.wallet)
-                .set({ balance: sql`${schema.wallet.balance} - ${shopItem.price}` })
-                .where(eq(schema.wallet.id, wallet.id));
+              await addBalance({
+                db: tx,
+                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                guildId: itx.guild.id,
+                toUserId: itx.user.id,
+                amount: -shopItem.price,
+                reason: `Zakup przedmiotu ${shopItem.id}`,
+              });
+
               await tx.insert(schema.inventoryItem).values({
                 itemId: shopItem.itemId,
                 userId: itx.user.id,
               });
+
               return true;
             });
+
             if (!success) return;
 
             await itx.editReply("Kupiono przedmiot ze sklepu");

@@ -1,32 +1,30 @@
 import { relations } from "drizzle-orm";
-import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, pgEnum, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../../pgtable";
 import { user } from "../user";
 import { wallet } from "./wallet";
 
+export const entryType = pgEnum("entry_type", ["debit", "credit"]);
+export const transactionType = pgEnum("transaction_type", ["transfer", "add"]);
+
 export const transaction = pgTable("transaction", {
   id: serial("id").primaryKey(),
-  currencyId: integer("transactionCurrencyId").notNull(),
-  fromWalletId: integer("fromWallet").references(() => wallet.id),
-  toWalletId: integer("toWallet")
+  walletId: integer("wallet")
     .references(() => wallet.id)
     .notNull(),
-  fromUserId: text("fromUserId").references(() => user.id),
-  toUserId: text("toUserId")
-    .references(() => user.id)
-    .notNull(),
+  relatedWalletId: integer("relatedWallet").references(() => wallet.id),
+  relatedUserId: text("relatedUserId").references(() => user.id),
   amount: integer("amount").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   reason: text("reason"),
+  transactionType: transactionType("transactionType").notNull(),
+  entryType: entryType("entryType").notNull(),
 });
 
 export const transactionRelations = relations(transaction, ({ one }) => ({
-  currency: one(wallet, { fields: [transaction.currencyId], references: [wallet.id] }),
-  fromWallet: one(wallet, {
-    fields: [transaction.fromWalletId],
+  relatedWalet: one(wallet, {
+    fields: [transaction.relatedWalletId],
     references: [wallet.id],
   }),
-  toWallet: one(wallet, { fields: [transaction.toWalletId], references: [wallet.id] }),
-  fromUser: one(user, { fields: [transaction.fromUserId], references: [user.id] }),
-  toUser: one(user, { fields: [transaction.toUserId], references: [user.id] }),
+  wallet: one(wallet, { fields: [transaction.walletId], references: [wallet.id] }),
 }));
