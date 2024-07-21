@@ -13,8 +13,10 @@ import {
   time,
 } from "discord.js";
 import { base } from "./base";
+import { addBalances } from "./economy/managers/transferManager";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
+import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
@@ -253,6 +255,43 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               true,
             );
             await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("clean-balances", (command) =>
+        command.setDescription("Clean balances").handle(async ({ db }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+          await itx.deferReply();
+
+          await db
+            .update(schema.wallet)
+            .set({ balance: 0 })
+            .where(eq(schema.wallet.guildId, itx.guildId));
+
+          await itx.editReply("Balances cleaned");
+        }),
+      )
+      .addCommand("add-balance-to-role", (command) =>
+        command
+          .setDescription("Add balance to role")
+          .addRole("role", (role) => role.setDescription("Role"))
+          .addInteger("amount", (amount) => amount.setDescription("Amount"))
+          .handle(async ({ db }, { role, amount }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const members = [...role.members.keys()];
+
+            await addBalances({
+              db,
+              fromUserId: itx.user.id,
+              guildId: itx.guildId,
+              toUserIds: members,
+              amount,
+              reason: "Added balance to role",
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            });
+
+            await itx.editReply("Added balance to role");
           }),
       ),
   );
