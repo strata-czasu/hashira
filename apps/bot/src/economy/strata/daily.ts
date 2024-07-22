@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { type db, schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
+import { desc, eq } from "@hashira/db/drizzle";
 import { isSameDay, subDays } from "date-fns";
 import { bold } from "discord.js";
 import { randomInt } from "es-toolkit";
@@ -26,7 +26,7 @@ const calculateDailyAmount = (marriageBonus: boolean, targetNotSelf: boolean) =>
 const calculateDailyStreak = async (database: typeof db, userId: string) => {
   const redeems = await database.query.dailyPointsRedeems.findMany({
     where: eq(schema.dailyPointsRedeems.userId, userId),
-    orderBy: schema.dailyPointsRedeems.timestamp,
+    orderBy: desc(schema.dailyPointsRedeems.timestamp),
     columns: { timestamp: true },
   });
 
