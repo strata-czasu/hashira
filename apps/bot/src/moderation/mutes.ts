@@ -62,15 +62,17 @@ export const createFormatMuteInList =
 
     const lines = [
       deletedAt ? strikethrough(header) : header,
-      `Czas trwania: ${formatMuteLength(mute)}`,
-      `Powód: ${italic(reason)}`,
+      `${bold("Czas trwania")}: ${formatMuteLength(mute)}`,
+      `${bold("Powód")}: ${italic(reason)}`,
     ];
 
     if (deletedAt) {
-      lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
+      lines.push(
+        `${bold("Data usunięcia")}: ${time(deletedAt, TimestampStyles.ShortDateTime)}`,
+      );
     }
     if (deleteReason) {
-      lines.push(`Powód usunięcia: ${italic(deleteReason)}`);
+      lines.push(`${bold("Powód usunięcia")}: ${italic(deleteReason)}`);
     }
 
     return lines.join("\n");
@@ -488,10 +490,13 @@ export const mutes = new Hashira({ name: "mutes" })
               "Aktywne wyciszenia",
               (mute) => {
                 const lines = [
-                  `### ${userMention(mute.userId)} ${time(mute.createdAt, TimestampStyles.ShortDateTime)} [${mute.id}]`,
-                  `Moderator: ${userMention(mute.moderatorId)}`,
-                  `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`,
-                  `Powód: ${italic(mute.reason)}`,
+                  heading(
+                    `${userMention(mute.userId)} ${time(mute.createdAt, TimestampStyles.ShortDateTime)} [${mute.id}]`,
+                    HeadingLevel.Three,
+                  ),
+                  `${bold("Moderator")}: ${userMention(mute.moderatorId)}`,
+                  `${bold("Koniec")}: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`,
+                  `${bold("Powód")}: ${italic(mute.reason)}`,
                 ];
 
                 return lines.join("\n");
