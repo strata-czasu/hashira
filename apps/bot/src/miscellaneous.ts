@@ -8,10 +8,12 @@ import {
   HeadingLevel,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  channelMention,
   heading,
   inlineCode,
   time,
 } from "discord.js";
+import { isNotNil } from "es-toolkit";
 import { base } from "./base";
 import { addBalances } from "./economy/managers/transferManager";
 import { createFormatMuteInList } from "./moderation/mutes";
@@ -292,6 +294,34 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             });
 
             await itx.editReply("Added balance to role");
+          }),
+      )
+      .addCommand("check-remaining-user-permisisons", (command) =>
+        command
+          .setDescription("Find all channels where the user has per-user permissions")
+          .addUser("user", (user) => user.setDescription("User"))
+          .handle(async (_, { user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const channels = await itx.guild.channels.fetch();
+            const overrides = channels
+              .mapValues((channel) => channel?.permissionOverwrites.resolve(user.id))
+              .filter(isNotNil);
+
+            const paginator = new StaticPaginator({
+              items: [...overrides.keys()].map(channelMention),
+              pageSize: 10,
+            });
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Channels with per-user permissions",
+              (channel) => channel,
+              false,
+            );
+
+            await paginatedView.render(itx);
           }),
       ),
   );
