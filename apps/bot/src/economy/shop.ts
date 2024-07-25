@@ -62,11 +62,19 @@ export const shop = new Hashira({ name: "shop" })
         command
           .setDescription("Kup przedmiot ze sklepu")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ db }, { id }, itx) => {
+          .addInteger("ilość", (amount) =>
+            amount
+              .setDescription("Ilość przedmiotów")
+              .setRequired(false)
+              .setMinValue(1),
+          )
+          .handle(async ({ db }, { id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            ensureUserExists(db, itx.user.id);
+            await ensureUserExists(db, itx.user.id);
+
+            const amount = rawAmount ?? 1;
 
             const success = await db.transaction(async (tx) => {
               const shopItem = await getShopItem(tx, id);
@@ -78,6 +86,8 @@ export const shop = new Hashira({ name: "shop" })
                 return false;
               }
 
+              const allItemsPrice = shopItem.price * amount;
+
               const wallet = await getDefaultWallet({
                 db: tx,
                 userId: itx.user.id,
@@ -85,8 +95,8 @@ export const shop = new Hashira({ name: "shop" })
                 currencySymbol: STRATA_CZASU_CURRENCY.symbol,
               });
 
-              if (wallet.balance < shopItem.price) {
-                const missing = shopItem.price - wallet.balance;
+              if (wallet.balance < allItemsPrice) {
+                const missing = allItemsPrice - wallet.balance;
                 await errorFollowUp(
                   itx,
                   `Nie masz wystarczająco punktów. Brakuje Ci ${formatBalance(missing, STRATA_CZASU_CURRENCY.symbol)}`,
@@ -99,14 +109,15 @@ export const shop = new Hashira({ name: "shop" })
                 currencySymbol: STRATA_CZASU_CURRENCY.symbol,
                 guildId: itx.guild.id,
                 toUserId: itx.user.id,
-                amount: -shopItem.price,
+                amount: -allItemsPrice,
                 reason: `Zakup przedmiotu ${shopItem.id}`,
               });
 
-              await tx.insert(schema.inventoryItem).values({
-                itemId: shopItem.itemId,
-                userId: itx.user.id,
-              });
+              const items = new Array<typeof schema.inventoryItem.$inferInsert>(
+                amount,
+              ).fill({ itemId: shopItem.itemId, userId: itx.user.id });
+
+              await tx.insert(schema.inventoryItem).values(items);
 
               return true;
             });
