@@ -167,8 +167,12 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 STRATA_CZASU_CURRENCY.symbol,
               );
 
+              const memberMentions = members
+                .map((member) => member.toString())
+                .join(", ");
+
               await itx.reply(
-                `Przekazano ${amountFormatted} ${members.size} ${pluralizeUsers(members.size)}.`,
+                `Przekazano ${amountFormatted} ${members.size} ${pluralizeUsers(members.size)}: ${memberMentions}.`,
               );
             },
           ),
