@@ -3,8 +3,13 @@ import { DatabasePaginator, schema } from "@hashira/db";
 import { countDistinct, eq, isNull } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
+import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { formatBalance } from "./strata/strataCurrency";
 import { getItem } from "./util";
+
+const formatItem = ({ name, id }: typeof schema.item.$inferSelect) =>
+  `${bold(name)} [${inlineCode(id.toString())}]`;
 
 export const items = new Hashira({ name: "items" })
   .use(base)
@@ -55,7 +60,7 @@ export const items = new Hashira({ name: "items" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const created = await db.transaction(async (tx) => {
+            const item = await db.transaction(async (tx) => {
               const [item] = await tx
                 .insert(schema.item)
                 .values({
@@ -64,7 +69,7 @@ export const items = new Hashira({ name: "items" })
                   createdBy: itx.user.id,
                 })
                 .returning();
-              if (!item) return false;
+              if (!item) return null;
               if (price !== null) {
                 await tx.insert(schema.shopItem).values({
                   itemId: item.id,
@@ -72,13 +77,13 @@ export const items = new Hashira({ name: "items" })
                   createdBy: itx.user.id,
                 });
               }
-              return true;
+              return item;
             });
-            if (!created) return;
+            if (!item) return;
 
-            let message = `Utworzono przedmio ${bold(name)}`;
+            let message = `Utworzono przedmiot ${formatItem(item)}`;
             if (price !== null) {
-              message += ` i dodano go do sklepu za ${bold(price.toString())}`;
+              message += ` i dodano go do sklepu za ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`;
             }
             await itx.editReply(message);
           }),
