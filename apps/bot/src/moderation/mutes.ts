@@ -486,13 +486,16 @@ export const mutes = new Hashira({ name: "mutes" })
             const paginatedView = new PaginatedView(
               paginate,
               "Aktywne wyciszenia",
-              ({ id, createdAt, reason, userId, moderatorId, endsAt }, _) =>
-                `### ${userMention(moderatorId)} ${time(
-                  createdAt,
-                  TimestampStyles.ShortDateTime,
-                )} [${id}]\nUżytkownik: ${userMention(userId)}\nPowód: ${italic(
-                  reason,
-                )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
+              (mute) => {
+                const lines = [
+                  `### ${userMention(mute.userId)} ${time(mute.createdAt, TimestampStyles.ShortDateTime)} [${mute.id}]`,
+                  `Moderator: ${userMention(mute.moderatorId)}`,
+                  `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`,
+                  `Powód: ${italic(mute.reason)}`,
+                ];
+
+                return lines.join("\n");
+              },
               true,
             );
             await paginatedView.render(itx);
