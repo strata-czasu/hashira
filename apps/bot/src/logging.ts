@@ -1,5 +1,4 @@
 import { Hashira } from "@hashira/core";
-import { strikethrough } from "discord.js";
 import { base } from "./base";
 import { GUILD_IDS } from "./specializedConstants";
 
@@ -14,10 +13,7 @@ export const logging = new Hashira({ name: "logging" })
     if (message.guildId !== GUILD_IDS.Piwnica) return;
     if (message.author.bot) return;
 
-    log.push(
-      "messageDelete",
-      `Deleted message by ${message.author.tag}: ${message.content}`,
-    );
+    log.push("messageDelete", { message });
   })
   .handle("messageUpdate", async ({ log }, oldMessage, newMessage) => {
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
@@ -29,10 +25,5 @@ export const logging = new Hashira({ name: "logging" })
       return;
     if (oldMessage.author.bot || newMessage.author.bot) return;
 
-    log.push(
-      "messageUpdate",
-      `Edited message by ${oldMessage.author.tag}: ${strikethrough(
-        oldMessage.content,
-      )} -> ${newMessage.content}`,
-    );
+    log.push("messageUpdate", { oldMessage, newMessage });
   });

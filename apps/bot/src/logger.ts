@@ -4,24 +4,30 @@ type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-type LogMessageData = string;
+type LogMessageData = { [key: string]: unknown };
 type LogMessageType = { [key: string]: LogMessageData };
 const initLogMessageTypes = {};
+
+type Handler<T> = (client: Client, data: T) => Promise<string>;
 
 export class Logger<
   const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes,
 > {
-  #messageTypes: Set<string> = new Set();
+  #messageTypes: Map<string, Handler<unknown>> = new Map();
   #messages: Array<{ type: keyof LogMessageTypes; data: LogMessageData }> = [];
   #interval = 5000;
   #running = false;
 
-  // TODO)) Custom data for each message type
-  // TODO)) Custom format for each message type
-  addMessageType<T extends string>(
+  /**
+   * Register a new log message type and define how it will be formatted
+   * @param type Unique log message name
+   * @param handler Function to format a log message as string
+   */
+  addMessageType<T extends string, U extends LogMessageData>(
     type: T,
-  ): Logger<Prettify<LogMessageTypes & Record<T, LogMessageData>>> {
-    this.#messageTypes.add(type);
+    handler: Handler<U>,
+  ): Logger<Prettify<LogMessageTypes & Record<T, U>>> {
+    this.#messageTypes.set(type, handler as Handler<unknown>);
     return this;
   }
 
