@@ -3,6 +3,7 @@ import env from "@hashira/env";
 import { captureException } from "@sentry/bun";
 import { database } from "./db";
 import { LockManager } from "./lock";
+import { Logger } from "./logger";
 
 export const base = new Hashira({ name: "base" })
   .use(database)
@@ -13,4 +14,5 @@ export const base = new Hashira({ name: "base" })
   .const((ctx) => ({
     ...ctx,
     lock: new LockManager(),
+    log: new Logger().addMessageType("messageDelete").addMessageType("messageUpdate"),
   }));
