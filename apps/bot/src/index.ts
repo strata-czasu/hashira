@@ -8,6 +8,7 @@ import { dmForwarding } from "./dmForwarding";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
+import { logging } from "./logging";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { profile } from "./profile";
@@ -39,6 +40,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(roles)
   .use(settings)
   .use(tasks)
+  .use(logging)
   .use(userActivity)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
