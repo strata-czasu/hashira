@@ -1,12 +1,12 @@
 {
   "name": "@hashira/env",
   "module": "index.ts",
-  "type": "module",
   "devDependencies": {
     "typescript": "*",
     "@hashira/tsconfig": "workspace:*"
   },
+  "type": "module",
   "dependencies": {
-    "@sinclair/typebox": "^0.32.34"
+    "valibot": "^0.36.0"
   }
 }

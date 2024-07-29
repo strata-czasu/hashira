@@ -3,12 +3,9 @@ name: Lint and Test
 on: [push, pull_request]
 
 env:
-  POSTGRES_TEST_HOST: localhost
-  POSTGRES_DB: postgres
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
+  DATABASET_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
   # Dummy variables
-  POSTGRES_HOST: dummy
+  DATABASE_URL: dummy
   BOT_CLIENT_ID: dummy
   BOT_DEVELOPER_GUILD_ID: dummy
   BOT_TOKEN: dummy

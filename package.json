@@ -8,7 +8,6 @@
     "lefthook": "^1.7.4",
     "typescript": "^5.5.3"
   },
-  "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "scripts": {
     "start": "bun run --cwd apps/bot start",
     "start:prod": "bun migrate && bun seed --production && bun run --cwd apps/bot start",
@@ -30,6 +29,7 @@
     "reload-commands": "bun run --cwd apps/bot reload-commands",
     "seed": "bun run --cwd apps/bot seed"
   },
+  "trustedDependencies": ["lefthook", "@biomejs/biome"],
   "type": "module",
   "workspaces": ["tooling/*", "packages/*", "apps/*"]
 }
