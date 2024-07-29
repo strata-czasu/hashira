@@ -5,9 +5,9 @@ on: [push, pull_request]
 env:
   DATABASET_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
   # Dummy variables
-  DATABASE_URL: dummy
-  BOT_CLIENT_ID: dummy
-  BOT_DEVELOPER_GUILD_ID: dummy
+  DATABASE_URL: postgres://dummy
+  BOT_CLIENT_ID: 000000000000000000
+  BOT_DEVELOPER_GUILD_ID: 000000000000000000
   BOT_TOKEN: dummy
 
 jobs:
