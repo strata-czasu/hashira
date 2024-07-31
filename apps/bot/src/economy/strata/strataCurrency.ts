@@ -17,7 +17,7 @@ const pluralizeUsers = createPluralize({
 });
 
 export const formatBalance = (balance: number, currencySymbol: string) =>
-  inlineCode(`${balance}${currencySymbol}`);
+  inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);
 
 export const strataCurrency = new Hashira({ name: "strata-currency" })
   .use(base)
