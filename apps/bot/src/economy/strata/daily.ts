@@ -2,7 +2,7 @@ import { Hashira } from "@hashira/core";
 import { type db, schema } from "@hashira/db";
 import { desc, eq } from "@hashira/db/drizzle";
 import { isSameDay, subDays } from "date-fns";
-import { bold } from "discord.js";
+import { bold, userMention } from "discord.js";
 import { randomInt } from "es-toolkit";
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
@@ -104,7 +104,9 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           guildId: itx.guildId,
         });
 
-        const giveOrReceive = shouldApplyTargetNotSelf ? "Przekazujesz" : "Otrzymujesz";
+        const giveOrReceive = shouldApplyTargetNotSelf
+          ? `Przekazujesz dla ${userMention(targetUser.id)}`
+          : "Otrzymujesz";
 
         const lines = [
           bold("Twoje codzienne punkty!"),
