@@ -45,13 +45,11 @@ export class PaginatedView<T> {
   }
 
   private async send(interaction: ChatInputCommandInteraction<CacheType>) {
+    const content = "Ładowanie...";
     if (interaction.deferred && !this.#message) {
-      this.#message = await interaction.editReply({ content: "Loading..." });
+      this.#message = await interaction.editReply({ content });
     } else if (!this.#message) {
-      this.#message = await interaction.reply({
-        content: "Loading...",
-        fetchReply: true,
-      });
+      this.#message = await interaction.reply({ content, fetchReply: true });
     }
     await this.render(interaction);
   }
@@ -97,7 +95,7 @@ export class PaginatedView<T> {
       content: "",
       embeds: [
         {
-          title: this.#title ?? "List of items",
+          title: this.#title ?? "Lista",
           description: renderedItems.join("\n"),
           footer: { text: this.getFooter() },
         },
@@ -131,7 +129,7 @@ export class PaginatedView<T> {
   private getFooter() {
     const displayPages = this.#paginator.displayPages;
     const displayCurrentPage = this.#paginator.displayCurrentPage;
-    let footer = `Page ${displayCurrentPage}/${displayPages}`;
+    let footer = `Strona ${displayCurrentPage}/${displayPages}`;
     if (this.#paginator.count) {
       footer += ` (${this.#paginator.count})`;
     }
