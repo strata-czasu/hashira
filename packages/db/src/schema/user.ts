@@ -4,7 +4,6 @@ import { pgTable } from "../pgtable";
 import { currency } from "./economy";
 import { wallet } from "./economy/wallet";
 import { mute, warn } from "./moderation";
-import { dailyPointsRedeems } from "./strata/daily";
 import { userTextActivity } from "./userTextActivity";
 
 export const verificationLevel = pgEnum("verification_level", ["13_plus", "18_plus"]);
@@ -26,5 +25,4 @@ export const userRelations = relations(user, ({ many }) => ({
   givenWarns: many(warn, { relationName: "moderator" }),
   receivedMutes: many(mute, { relationName: "mutedUser" }),
   givenMutes: many(mute, { relationName: "moderator" }),
-  dailyPointsRedeems: many(dailyPointsRedeems, { relationName: "user" }),
 }));

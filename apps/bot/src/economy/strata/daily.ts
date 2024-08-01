@@ -24,11 +24,11 @@ const calculateDailyAmount = (marriageBonus: boolean, targetNotSelf: boolean) =>
 };
 
 const calculateDailyStreak = async (database: typeof db, userId: string) => {
-  const redeems = await database.query.dailyPointsRedeems.findMany({
-    where: eq(schema.dailyPointsRedeems.userId, userId),
-    orderBy: desc(schema.dailyPointsRedeems.timestamp),
-    columns: { timestamp: true },
-  });
+  const redeems = await database
+    .select({ timestamp: schema.dailyPointsRedeems.timestamp })
+    .from(schema.dailyPointsRedeems)
+    .where(eq(schema.dailyPointsRedeems.userId, userId))
+    .orderBy(desc(schema.dailyPointsRedeems.timestamp));
 
   let streak = 0;
   let lastTimestamp = new Date();
