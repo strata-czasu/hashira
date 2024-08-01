@@ -4,9 +4,9 @@
     "@biomejs/biome": "^1.8.3",
     "@types/bun": "latest",
     "expect-type": "^0.19.0",
-    "knip": "^5.26.0",
-    "lefthook": "^1.7.4",
-    "typescript": "^5.5.3"
+    "knip": "^5.27.0",
+    "lefthook": "^1.7.11",
+    "typescript": "^5.5.4"
   },
   "scripts": {
     "start": "bun run --cwd apps/bot start",
