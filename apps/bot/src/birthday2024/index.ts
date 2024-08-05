@@ -25,6 +25,39 @@ const NON_PARTICIPANT_MESSAGE = [
   "Jeżeli już mi pomagasz, to pewnie nie to czego szukamy. Pomyśl! To musi być gdzieś blisko!",
 ].join("\n");
 
+type ReplaceCtx = {
+  userId: string;
+};
+
+const replacers: Record<string, (ctx: ReplaceCtx) => string> = {
+  "\\n": () => "\n",
+  "{{user}}": ({ userId }) => `<@${userId}>`,
+};
+
+const readComponents = (
+  stage: typeof schema.birthdayEvent2024Stage.$inferSelect,
+): ActionRowBuilder<ButtonBuilder>[] => {
+  if (stage.buttons.length === 0) return [];
+
+  const actionRow = new ActionRowBuilder<ButtonBuilder>();
+  // Split buttons into label and customId
+  const buttons = stage.buttons.map((button) => button.split(":"));
+  for (const [label, customId] of buttons) {
+    if (!label || !customId) {
+      throw new Error("Invalid button format");
+    }
+
+    actionRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(customId)
+        .setLabel(label)
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+
+  return [actionRow];
+};
+
 const completeStage = async (
   database: typeof db,
   stage: typeof schema.birthdayEvent2024Stage.$inferSelect,
@@ -36,30 +69,14 @@ const completeStage = async (
     stageId: stage.id,
   });
 
-  if (stage.buttons.length > 0) {
-    const actionRow = new ActionRowBuilder<ButtonBuilder>();
-    // button format LABEL:ID
-    const buttons = stage.buttons.map((button) => button.split(":"));
-    for (const [label, customId] of buttons) {
-      if (!label || !customId) {
-        throw new Error("Invalid button format");
-      }
-
-      actionRow.addComponents(
-        new ButtonBuilder()
-          .setCustomId(customId)
-          .setLabel(label)
-          .setStyle(ButtonStyle.Primary),
-      );
-    }
-
-    return await reply({
-      content: stage.outputRequirementsValid,
-      components: [actionRow],
-    });
+  let content = stage.outputRequirementsValid;
+  for (const [key, replacer] of Object.entries(replacers)) {
+    content = content.replaceAll(key, replacer({ userId: authorId }));
   }
 
-  await reply({ content: stage.outputRequirementsValid });
+  const components = readComponents(stage);
+
+  await reply({ content, components });
 };
 
 const handleStageInput = async (
@@ -79,15 +96,13 @@ const handleStageInput = async (
   });
 
   if (!mentionedStage) {
-    await reply({ content: NON_PARTICIPANT_MESSAGE });
-    return;
+    return await reply({ content: NON_PARTICIPANT_MESSAGE });
   }
 
   const lastStagesIds = lastFinishedStages.map((stage) => stage.stageId);
 
   if (lastStagesIds.includes(mentionedStage.id)) {
-    await reply({ content: "Już rozwiązałeś to zadanie!" });
-    return;
+    return await reply({ content: "Już rozwiązałeś to zadanie!" });
   }
 
   if (
