@@ -39,7 +39,7 @@ const replacers: Record<string, (ctx: ReplaceCtx) => string> = {
 const runReplacers = (content: string, ctx: ReplaceCtx) => {
   let result = content;
   for (const [key, replacer] of Object.entries(replacers)) {
-    result = content.replaceAll(key, replacer(ctx));
+    result = result.replaceAll(key, replacer(ctx));
   }
 
   return result;
