@@ -11,8 +11,10 @@ import {
   codeBlock,
   heading,
   inlineCode,
+  userMention,
 } from "discord.js";
 import { base } from "../base";
+import { sendDirectMessage } from "../util/sendDirectMessage";
 
 const INSTRUCTION_CHANNEL_ID = "1268218097605541898";
 
@@ -304,6 +306,44 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
             const graph = ["graph TD", ...nodes, ...edges].join("\n");
 
             await itx.reply(codeBlock("mermaid", graph));
+          }),
+      )
+      .addCommand("notify-participants", (command) =>
+        command
+          .setDescription("Powiadamia uczestników o urodzinach 2024")
+          .addString("message", (option) =>
+            option.setDescription("Wiadomość do wysłania"),
+          )
+          .handle(async ({ db }, { message }, itx) => {
+            await itx.deferReply();
+            const participants = await db
+              .selectDistinct({
+                userId: schema.birthdayEvent2024StageCompletion.userId,
+              })
+              .from(schema.birthdayEvent2024StageCompletion);
+
+            const sendDmPromises = participants.map(async ({ userId }) => {
+              const content = runReplacers(message, { userId });
+              const user = await itx.client.users.fetch(userId);
+              return [await sendDirectMessage(user, content), user.id] as const;
+            });
+
+            const results = await Promise.all(sendDmPromises);
+
+            const failed = results.filter(([success]) => !success);
+
+            if (failed.length > 0) {
+              await itx.editReply(
+                `Wysłano powiadomienia do ${participants.length} uczestników, ale nie udało się wysłać do: ${failed
+                  .map(([, userId]) => userMention(userId))
+                  .join(", ")}`,
+              );
+              return;
+            }
+
+            await itx.editReply(
+              `Wysłano powiadomienia do ${participants.length} uczestników`,
+            );
           }),
       ),
   )
