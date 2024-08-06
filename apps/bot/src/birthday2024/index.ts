@@ -34,6 +34,15 @@ const replacers: Record<string, (ctx: ReplaceCtx) => string> = {
   "{{user}}": ({ userId }) => `<@${userId}>`,
 };
 
+const runReplacers = (content: string, ctx: ReplaceCtx) => {
+  let result = content;
+  for (const [key, replacer] of Object.entries(replacers)) {
+    result = content.replaceAll(key, replacer(ctx));
+  }
+
+  return result;
+};
+
 const readComponents = (
   stage: typeof schema.birthdayEvent2024Stage.$inferSelect,
 ): ActionRowBuilder<ButtonBuilder>[] => {
@@ -69,11 +78,7 @@ const completeStage = async (
     stageId: stage.id,
   });
 
-  let content = stage.outputRequirementsValid;
-  for (const [key, replacer] of Object.entries(replacers)) {
-    content = content.replaceAll(key, replacer({ userId: authorId }));
-  }
-
+  const content = runReplacers(stage.outputRequirementsValid, { userId: authorId });
   const components = readComponents(stage);
 
   await reply({ content, components });
@@ -110,7 +115,10 @@ const handleStageInput = async (
     !lastStagesIds.includes(mentionedStage.requiredStageId)
   ) {
     if (mentionedStage.outputRequirementsInvalid) {
-      await reply({ content: mentionedStage.outputRequirementsInvalid });
+      const content = runReplacers(mentionedStage.outputRequirementsInvalid, {
+        userId: authorId,
+      });
+      await reply({ content });
     }
 
     return;
