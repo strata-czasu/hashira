@@ -314,13 +314,23 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           .addString("message", (option) =>
             option.setDescription("Wiadomość do wysłania"),
           )
-          .handle(async ({ db }, { message }, itx) => {
+          .addInteger("stage-id", (option) =>
+            option
+              .setRequired(false)
+              .setDescription("ID etapu, który uczestnicy ukończyli"),
+          )
+          .handle(async ({ db }, { message, "stage-id": stageId }, itx) => {
             await itx.deferReply();
             const participants = await db
               .selectDistinct({
                 userId: schema.birthdayEvent2024StageCompletion.userId,
               })
-              .from(schema.birthdayEvent2024StageCompletion);
+              .from(schema.birthdayEvent2024StageCompletion)
+              .where(
+                stageId
+                  ? eq(schema.birthdayEvent2024StageCompletion.stageId, stageId)
+                  : undefined,
+              );
 
             const sendDmPromises = participants.map(async ({ userId }) => {
               const content = runReplacers(message, { userId });
