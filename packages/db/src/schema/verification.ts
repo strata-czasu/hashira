@@ -3,8 +3,12 @@ import { pgTable } from "../pgtable";
 import { guild } from "./guild";
 import { user } from "./user";
 
-export const verificationType = pgEnum("verification_type", ["13_plus", "18_plus"]);
-// NOTE: Only the "13_plus" verification type can use "in_progress" and "rejected" statuses.
+export const verificationType = pgEnum("verification_type", [
+  "13_plus",
+  "16_plus",
+  "18_plus",
+]);
+// NOTE: Only "13_plus" and "16_plus" can use "in_progress" and "rejected" statuses.
 //       The "18_plus" verification type can only be "accepted".
 export const verificationStatus = pgEnum("verification_status", [
   "in_progress",

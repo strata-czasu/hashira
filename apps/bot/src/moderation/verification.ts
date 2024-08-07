@@ -9,24 +9,32 @@ import {
   RESTJSONErrorCodes,
   TimestampStyles,
   channelMention,
-  hideLinkEmbed,
+  inlineCode,
   time,
   userMention,
 } from "discord.js";
 import { match } from "ts-pattern";
-import { BAN_APPEAL_URL } from ".";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, formatBanReason, formatUserWithId, getMuteRoleId } from "./util";
+import {
+  applyMute,
+  cancelVerificationReminders,
+  formatBanReason,
+  formatUserWithId,
+  getMuteRoleId,
+  scheduleVerificationReminders,
+  sendVerificationFailedMessage,
+} from "./util";
 
-const TICKETS_CHANNEL = "1213901611836117052";
-const VERIFICATION_DURATION: Duration = { hours: 24 };
+const TICKETS_CHANNEL = "1213901611836117052" as const;
+const VERIFICATION_DURATION: Duration = { hours: 72 } as const;
+type BaseContext = ExtractContext<typeof base>;
 
-const get13PlusVerificationEnd = (createdAt: Date) => {
+const get16PlusVerificationEnd = (createdAt: Date) => {
   return add(createdAt, VERIFICATION_DURATION);
 };
 
@@ -37,19 +45,20 @@ const satisfiesVerificationLevel = (
 ) => {
   if (level === null) return false;
   if (target === null) return true;
-  const levels = { "13_plus": 0, "18_plus": 1 };
+  const levels = { "13_plus": 0, "16_plus": 1, "18_plus": 2 };
   return levels[level] >= levels[target];
 };
 
 const formatVerificationType = (type: VerificationLevel) => {
   return match(type)
     .with("13_plus", () => "13+")
+    .with("16_plus", () => "16+")
     .with("18_plus", () => "18+")
     .with(null, () => "Brak")
     .exhaustive();
 };
-type BaseContext = ExtractContext<typeof base>;
-const getActive13PlusVerification = async (
+
+const getActive16PlusVerification = async (
   db: BaseContext["db"],
   guildId: string,
   userId: string,
@@ -58,7 +67,7 @@ const getActive13PlusVerification = async (
     where: and(
       eq(schema.verification.guildId, guildId),
       eq(schema.verification.userId, userId),
-      eq(schema.verification.type, "13_plus"),
+      eq(schema.verification.type, "16_plus"),
       eq(schema.verification.status, "in_progress"),
     ),
   });
@@ -80,7 +89,7 @@ export const verification = new Hashira({ name: "verification" })
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addCommand("rozpocznij", (command) =>
         command
-          .setDescription("Rozpocznij weryfikację 13+")
+          .setDescription("Rozpocznij weryfikację 16+")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           // TODO)) Add `force` parameter to start verification even if the user has a verification level
           .handle(async ({ db, messageQueue }, { user }, itx) => {
@@ -103,7 +112,7 @@ export const verification = new Hashira({ name: "verification" })
             });
             if (!dbUser) return;
 
-            if (dbUser.verificationLevel !== null) {
+            if (satisfiesVerificationLevel(dbUser.verificationLevel, "16_plus")) {
               return await errorFollowUp(
                 itx,
                 `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
@@ -112,7 +121,7 @@ export const verification = new Hashira({ name: "verification" })
               );
             }
 
-            const verificationInProgress = await getActive13PlusVerification(
+            const verificationInProgress = await getActive16PlusVerification(
               db,
               itx.guildId,
               user.id,
@@ -128,7 +137,7 @@ export const verification = new Hashira({ name: "verification" })
                   verificationInProgress.createdAt,
                   TimestampStyles.ShortDateTime,
                 )}\nKoniec: ${time(
-                  get13PlusVerificationEnd(verificationInProgress.createdAt),
+                  get16PlusVerificationEnd(verificationInProgress.createdAt),
                   TimestampStyles.RelativeTime,
                 )}`,
               );
@@ -152,14 +161,14 @@ export const verification = new Hashira({ name: "verification" })
                   guildId: itx.guildId,
                   userId: user.id,
                   moderatorId: itx.user.id,
-                  type: "13_plus",
+                  type: "16_plus",
                   status: "in_progress",
                 })
                 .returning({ id: schema.verification.id });
               const appliedMute = applyMute(
                 member,
                 muteRoleId,
-                `Weryfikacja 13+, moderator: ${itx.user.tag} (${itx.user.id})`,
+                `Weryfikacja 16+, moderator: ${itx.user.tag} (${itx.user.id})`,
               );
               if (!appliedMute) {
                 await errorFollowUp(
@@ -179,20 +188,21 @@ export const verification = new Hashira({ name: "verification" })
               durationToSeconds(VERIFICATION_DURATION),
               verification.id.toString(),
             );
+            await scheduleVerificationReminders(messageQueue, verification.id);
 
             const sentMessage = await sendDirectMessage(
               user,
               `Hejka ${userMention(
                 user.id,
-              )}! Na podstawie Twojego zachowania na serwerze lub którejś z Twoich wiadomości uznaliśmy, że **możesz mieć mniej niż 13 lat**. Dlatego przed chwilą jedna z osób z administracji (${userMention(
+              )}! Na podstawie Twojego zachowania na serwerze lub którejś z Twoich wiadomości uznaliśmy, że **możesz mieć mniej niż 16 lat**. Dlatego przed chwilą jedna z osób z administracji (${userMention(
                 itx.user.id,
-              )}) **rozpoczęła weryfikację Twojego wieku**.\n\n**Masz teraz 24 godziny na otworzenie ticketa na kanale \`#wyslij-ticket\`: ${channelMention(
+              )}) **rozpoczęła weryfikację Twojego wieku**.\n\n**Masz teraz 72 godziny na otwarcie ticketa na kanale \`#wyslij-ticket\`: ${channelMention(
                 TICKETS_CHANNEL,
-              )}** (musisz kliknąć przycisk "Wiek"). Po utworzeniu ticketa musisz przejść pozytywnie przez proces weryfikacji. Najczęściej sprowadza się to do wysłania jednego zdjęcia. Instrukcje co masz wysłać znajdziesz w na kanale z linka. Brak weryfikacji w ciągu 24 godzin **zakończy się banem**, dlatego proszę nie ignoruj tej wiadomości. Pozdrawiam!`,
+              )}** (musisz kliknąć przycisk "Wiek"). Po utworzeniu ticketa musisz przejść pozytywnie przez proces weryfikacji. Najczęściej sprowadza się to do wysłania jednego zdjęcia. Instrukcje co masz wysłać znajdziesz w na kanale z linka. Brak weryfikacji w ciągu 72 godzin **zakończy się banem**, dlatego proszę nie ignoruj tej wiadomości. Pozdrawiam!`,
             );
 
             await itx.editReply(
-              `Rozpoczęto weryfikację 13+ dla ${userMention(user.id)}`,
+              `Rozpoczęto weryfikację 16+ dla ${userMention(user.id)}`,
             );
             if (!sentMessage) {
               await errorFollowUp(
@@ -210,7 +220,7 @@ export const verification = new Hashira({ name: "verification" })
 
             const wheres = and(
               eq(schema.verification.guildId, itx.guildId),
-              eq(schema.verification.type, "13_plus"),
+              eq(schema.verification.type, "16_plus"),
               eq(schema.verification.status, "in_progress"),
             );
             const paginate = new DatabasePaginator({
@@ -235,13 +245,10 @@ export const verification = new Hashira({ name: "verification" })
 
             const paginatedView = new PaginatedView(
               paginate,
-              "Aktywne weryfikacje 13+",
-              ({ id, createdAt, userId, moderatorId }) =>
-                `### ${userMention(moderatorId)} ${time(
-                  createdAt,
-                  TimestampStyles.ShortDateTime,
-                )} [${id}]\nUżytkownik: ${userMention(userId)}\nKoniec: ${time(
-                  get13PlusVerificationEnd(createdAt),
+              "Aktywne weryfikacje 16+",
+              ({ createdAt, userId, moderatorId }) =>
+                `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.ShortDateTime)}\nKoniec: ${time(
+                  get16PlusVerificationEnd(createdAt),
                   TimestampStyles.RelativeTime,
                 )}`,
               true,
@@ -257,7 +264,7 @@ export const verification = new Hashira({ name: "verification" })
             type
               .setDescription("Typ weryfikacji")
               .addChoices(
-                { name: "13+", value: "13_plus" },
+                { name: "16+", value: "16_plus" },
                 { name: "18+", value: "18_plus" },
               ),
           )
@@ -284,31 +291,35 @@ export const verification = new Hashira({ name: "verification" })
             }
 
             const currentVerificationLevel = dbUser.verificationLevel;
-            const active13PlusVerification = await db.transaction(async (tx) => {
-              // Check for an active 13_plus verification even when accepting a 18_plus verification
-              const active13PlusVerification = await getActive13PlusVerification(
+            const active16PlusVerification = await db.transaction(async (tx) => {
+              // Check for an active 16_plus verification even when accepting a 18_plus verification
+              const active16PlusVerification = await getActive16PlusVerification(
                 tx,
                 itx.guildId,
                 user.id,
               );
-              if (active13PlusVerification) {
+              if (active16PlusVerification) {
                 await tx
                   .update(schema.verification)
                   .set({ status: "accepted", acceptedAt: itx.createdAt })
-                  .where(eq(schema.verification.id, active13PlusVerification.id));
+                  .where(eq(schema.verification.id, active16PlusVerification.id));
                 await messageQueue.cancel(
                   "verificationEnd",
-                  active13PlusVerification.id.toString(),
+                  active16PlusVerification.id.toString(),
+                );
+                await cancelVerificationReminders(
+                  messageQueue,
+                  active16PlusVerification.id,
                 );
               } else if (currentVerificationLevel === null) {
-                // Create a 13_plus verification if there is no active verification.
+                // Create a 16_plus verification if there is no active verification.
                 await tx.insert(schema.verification).values({
                   createdAt: itx.createdAt,
                   acceptedAt: itx.createdAt,
                   guildId: itx.guildId,
                   userId: user.id,
                   moderatorId: itx.user.id,
-                  type: "13_plus",
+                  type: "16_plus",
                   status: "accepted",
                 });
               }
@@ -329,7 +340,7 @@ export const verification = new Hashira({ name: "verification" })
                 .update(schema.user)
                 .set({ verificationLevel: verificationType })
                 .where(eq(schema.user.id, user.id));
-              return active13PlusVerification;
+              return active16PlusVerification;
             });
 
             // Try to remove the mute role if the verification was in progress and there is no active mute
@@ -341,9 +352,9 @@ export const verification = new Hashira({ name: "verification" })
                 gte(schema.mute.endsAt, itx.createdAt),
               ),
             });
-            const shouldRemoveMuteRole = active13PlusVerification && !activeMute;
+            const shouldRemoveMute = active16PlusVerification && !activeMute;
             let muteRemovalFailed = false;
-            if (shouldRemoveMuteRole) {
+            if (shouldRemoveMute) {
               muteRemovalFailed = await discordTry(
                 async () => {
                   const muteRoleId = await getMuteRoleId(db, itx.guildId);
@@ -351,7 +362,7 @@ export const verification = new Hashira({ name: "verification" })
                   const member = await itx.guild.members.fetch(user.id);
                   await member.roles.remove(
                     muteRoleId,
-                    `Weryfikacja 13+ zaakceptowana przez ${itx.user.tag} (${itx.user.id})`,
+                    `Weryfikacja 16+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
                   );
                   return false;
                 },
@@ -386,29 +397,30 @@ export const verification = new Hashira({ name: "verification" })
             }
 
             let directMessageContent: string;
-            if (verificationType === "13_plus" && currentVerificationLevel === null) {
-              // null -> 13_plus
+            if (verificationType === "16_plus" && shouldRemoveMute) {
+              // any -> 16_plus with an active verification
               directMessageContent = `Hej ${userMention(
                 user.id,
-              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 13 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
-            } else if (
-              verificationType === "18_plus" &&
-              currentVerificationLevel === "13_plus"
-            ) {
-              // 13_plus -> 18_plus
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "16_plus" && !shouldRemoveMute) {
+              // any -> 16_plus with an active verification
               directMessageContent = `Hej ${userMention(
                 user.id,
-              )}! Przed chwilą **Twoja weryfikacja pełnoletności została pozytywnie rozpatrzona**. Otrzymałxś rolę \`18+\` i dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i pozdrawiam!`;
-            } else if (
-              verificationType === "18_plus" &&
-              currentVerificationLevel === null
-            ) {
-              // null -> 18_plus
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "18_plus" && shouldRemoveMute) {
+              // any -> 18_plus with an active verification
               directMessageContent = `Hej ${userMention(
                 user.id,
-              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 13 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "18_plus" && !shouldRemoveMute) {
+              // null -> 18_plus without starting a 16_plus verification
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
             } else {
-              throw new Error("Invalid verification transition");
+              throw new Error(
+                `Invalid verification transition from ${currentVerificationLevel} to ${verificationType}`,
+              );
             }
             const sentMessage = await sendDirectMessage(user, directMessageContent);
 
@@ -417,7 +429,7 @@ export const verification = new Hashira({ name: "verification" })
                 verificationType,
               )} dla ${userMention(user.id)}`,
             );
-            if (shouldRemoveMuteRole && muteRemovalFailed) {
+            if (shouldRemoveMute && muteRemovalFailed) {
               await errorFollowUp(
                 itx,
                 `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
@@ -439,7 +451,7 @@ export const verification = new Hashira({ name: "verification" })
       )
       .addCommand("odrzuc", (command) =>
         command
-          .setDescription("Odrzuć weryfikację 13+")
+          .setDescription("Odrzuć weryfikację 16+")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .handle(async ({ db, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -451,14 +463,11 @@ export const verification = new Hashira({ name: "verification" })
             });
             if (!dbUser) return;
 
-            const verificationInProgress = await db.query.verification.findFirst({
-              where: and(
-                eq(schema.verification.guildId, itx.guildId),
-                eq(schema.verification.userId, user.id),
-                eq(schema.verification.type, "13_plus"),
-                eq(schema.verification.status, "in_progress"),
-              ),
-            });
+            const verificationInProgress = await getActive16PlusVerification(
+              db,
+              itx.guildId,
+              user.id,
+            );
             if (verificationInProgress) {
               await db
                 .update(schema.verification)
@@ -468,6 +477,10 @@ export const verification = new Hashira({ name: "verification" })
                 "verificationEnd",
                 verificationInProgress.id.toString(),
               );
+              await cancelVerificationReminders(
+                messageQueue,
+                verificationInProgress.id,
+              );
             } else {
               await db.insert(schema.verification).values({
                 createdAt: itx.createdAt,
@@ -475,37 +488,28 @@ export const verification = new Hashira({ name: "verification" })
                 guildId: itx.guildId,
                 userId: user.id,
                 moderatorId: itx.user.id,
-                type: "13_plus",
+                type: "16_plus",
                 status: "rejected",
               });
             }
 
-            const sentMessage = await sendDirectMessage(
-              user,
-              `Hej ${userMention(
-                user.id,
-              )}! Niestety nie zweryfikowałxś swojego wieku w wyznaczonym terminie lub Twoja weryfikacja wieku została odrzucona i dlatego **musiałem zbanować Cię na Stracie Czasu**.\n\nNadal możesz do nas wrócić po ukończeniu 13 lat. Wystarczy, że **zgłosisz się do nas poprzez ten formularz zaraz po 13 urodzinach: ${hideLinkEmbed(
-                BAN_APPEAL_URL,
-              )}**. Mam nadzieję, że jeszcze kiedyś się zobaczymy, pozdrawiam!`,
-            );
-
+            const sentMessage = await sendVerificationFailedMessage(user);
             const banned = await discordTry(
               async () => {
-                const member = await itx.guild.members.fetch(user.id);
-                const reason = formatBanReason(
-                  "Nieudana weryfikacja 13+",
-                  itx.user,
-                  itx.createdAt,
-                );
-                await member.ban({ reason });
+                let baseReason = "Nieudana weryfikacja 16+";
+                if (verificationInProgress) {
+                  baseReason += ` [${verificationInProgress.id}]`;
+                }
+                const reason = formatBanReason(baseReason, itx.user, itx.createdAt);
+                await itx.guild.bans.create(user, { reason });
                 return true;
               },
-              [RESTJSONErrorCodes.UnknownMember, RESTJSONErrorCodes.MissingPermissions],
+              [RESTJSONErrorCodes.MissingPermissions],
               () => false,
             );
 
             await itx.editReply(
-              `Odrzucono weryfikację 13+ dla ${userMention(user.id)}`,
+              `Odrzucono weryfikację 16+ dla ${userMention(user.id)}`,
             );
             if (!sentMessage) {
               await errorFollowUp(
@@ -544,7 +548,7 @@ export const verification = new Hashira({ name: "verification" })
           [RESTJSONErrorCodes.UnknownMember],
           () => null,
         );
-        const isOnGuild = member !== null;
+        const isInGuild = member !== null;
 
         const embed = new EmbedBuilder()
           .setTitle(`Kartoteka ${user.tag}`)
@@ -561,10 +565,10 @@ export const verification = new Hashira({ name: "verification" })
             },
             {
               name: "Na serwerze?",
-              value: isOnGuild ? "Tak" : "Nie",
+              value: isInGuild ? "Tak" : "Nie",
             },
           );
-        if (isOnGuild && member.joinedAt) {
+        if (isInGuild && member.joinedAt) {
           embed.addFields({
             name: "Data dołączenia na serwer",
             value: time(member.joinedAt, TimestampStyles.ShortDateTime),

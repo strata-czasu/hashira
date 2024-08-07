@@ -7,8 +7,7 @@ import {
   italic,
   userMention,
 } from "discord.js";
-import { BAN_APPEAL_URL } from ".";
-import { GUILD_IDS } from "../specializedConstants";
+import { STRATA_BAN_APPEAL_URL, GUILD_IDS } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
