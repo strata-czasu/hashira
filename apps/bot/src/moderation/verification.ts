@@ -9,20 +9,24 @@ import {
   RESTJSONErrorCodes,
   TimestampStyles,
   channelMention,
-  hideLinkEmbed,
   inlineCode,
   time,
   userMention,
 } from "discord.js";
 import { match } from "ts-pattern";
-import { BAN_APPEAL_URL } from ".";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, formatBanReason, formatUserWithId, getMuteRoleId } from "./util";
+import {
+  applyMute,
+  formatBanReason,
+  formatUserWithId,
+  getMuteRoleId,
+  sendVerificationFailedMessage,
+} from "./util";
 
 const TICKETS_CHANNEL = "1213901611836117052" as const;
 const VERIFICATION_DURATION: Duration = { hours: 72 } as const;
@@ -478,15 +482,7 @@ export const verification = new Hashira({ name: "verification" })
               });
             }
 
-            const sentMessage = await sendDirectMessage(
-              user,
-              `Hej ${userMention(
-                user.id,
-              )}! Niestety nie zweryfikowałxś swojego wieku w wyznaczonym terminie lub Twoja weryfikacja wieku została odrzucona i dlatego **musiałem zbanować Cię na Stracie Czasu**.\n\nNadal możesz do nas wrócić po ukończeniu 16 lat. Wystarczy, że **zgłosisz się do nas poprzez ten formularz zaraz po 16 urodzinach: ${hideLinkEmbed(
-                BAN_APPEAL_URL,
-              )}**. Mam nadzieję, że jeszcze kiedyś się zobaczymy, pozdrawiam!`,
-            );
-
+            const sentMessage = await sendVerificationFailedMessage(user);
             const banned = await discordTry(
               async () => {
                 let baseReason = "Nieudana weryfikacja 16+";

@@ -15,3 +15,5 @@ export const STRATA_CZASU_CURRENCY = {
   symbol: "$",
   defaultWalletName: "Portfel",
 } as const;
+
+export const BAN_APPEAL_URL = "https://bit.ly/unban_na_stracie";

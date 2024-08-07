@@ -11,4 +11,3 @@ export const moderation = new Hashira({ name: "moderation" })
   .use(mutes)
   .use(prune)
   .use(verification);
-export const BAN_APPEAL_URL = "https://bit.ly/unban_na_stracie";

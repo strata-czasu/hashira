@@ -3,6 +3,7 @@ import { db, schema } from "@hashira/db";
 import { and, eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
+import { formatBanReason, sendVerificationFailedMessage } from "./moderation/util";
 import { discordTry } from "./util/discordTry";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
@@ -14,7 +15,7 @@ type MuteEndData = {
 };
 
 // TODO: how to enable migrations of this data?
-type VerificationEndData = {
+type VerificationData = {
   verificationId: number;
 };
 
@@ -80,7 +81,7 @@ export const database = new Hashira({ name: "database" })
       )
       .addHandler(
         "verificationEnd",
-        async ({ client }, { verificationId }: VerificationEndData) => {
+        async ({ client }, { verificationId }: VerificationData) => {
           const verification = await db.query.verification.findFirst({
             where: eq(schema.verification.id, verificationId),
           });
@@ -93,12 +94,45 @@ export const database = new Hashira({ name: "database" })
           );
           if (!moderator) return;
 
-          await sendDirectMessage(
-            moderator,
-            `Weryfikacja 13+ ${userMention(verification.userId)} (${inlineCode(
-              verification.userId,
-            )}) [${inlineCode(verificationId.toString())}] dobiegła końca.`,
+          // Automatically reject the verification and ban the user
+          const rejectedAt = new Date();
+          await db
+            .update(schema.verification)
+            .set({ status: "rejected", rejectedAt })
+            .where(eq(schema.verification.id, verificationId));
+
+          const user = await client.users.fetch(verification.userId);
+          const guild = await client.guilds.fetch(verification.guildId);
+          const sentMessage = await sendVerificationFailedMessage(user);
+          const banned = await discordTry(
+            async () => {
+              const reason = formatBanReason(
+                `Nieudana weryfikacja 16+ [${verificationId}]`,
+                moderator,
+                rejectedAt,
+              );
+              await guild.bans.create(user, { reason });
+              return true;
+            },
+            [RESTJSONErrorCodes.MissingPermissions],
+            () => false,
           );
+
+          // Notify the moderator about the verification end
+          let directMessageContent = `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
+            verification.userId,
+          )}) [${inlineCode(verificationId.toString())}] dobiegła końca.`;
+          if (banned) {
+            directMessageContent += " Użytkownik został zbanowany.";
+          } else {
+            directMessageContent +=
+              " Nie udało się zbanować użytkownika. Sprawdź permisje i zbanuj go ręcznie.";
+          }
+          if (!sentMessage) {
+            directMessageContent +=
+              " Nie udało się powiadomić użytkownika o nieudanej weryfikacji.";
+          }
+          await sendDirectMessage(moderator, directMessageContent);
         },
       ),
   }));
