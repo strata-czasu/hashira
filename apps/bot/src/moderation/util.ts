@@ -12,7 +12,7 @@ import {
   userMention,
 } from "discord.js";
 import type { base } from "../base";
-import { BAN_APPEAL_URL } from "../specializedConstants";
+import { STRATA_BAN_APPEAL_URL } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -101,6 +101,6 @@ export const sendVerificationFailedMessage = async (user: User) =>
     `Hej ${userMention(
       user.id,
     )}! Niestety nie zweryfikowałxś swojego wieku w wyznaczonym terminie lub Twoja weryfikacja wieku została odrzucona i dlatego **musiałem zbanować Cię na Stracie Czasu**.\n\nNadal możesz do nas wrócić po ukończeniu 16 lat. Wystarczy, że **zgłosisz się do nas poprzez ten formularz zaraz po 16 urodzinach: ${hideLinkEmbed(
-      BAN_APPEAL_URL,
+      STRATA_BAN_APPEAL_URL,
     )}**. Mam nadzieję, że jeszcze kiedyś się zobaczymy, pozdrawiam!`,
   );
