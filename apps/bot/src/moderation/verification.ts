@@ -10,6 +10,7 @@ import {
   TimestampStyles,
   channelMention,
   hideLinkEmbed,
+  inlineCode,
   time,
   userMention,
 } from "discord.js";
@@ -236,11 +237,8 @@ export const verification = new Hashira({ name: "verification" })
             const paginatedView = new PaginatedView(
               paginate,
               "Aktywne weryfikacje 13+",
-              ({ id, createdAt, userId, moderatorId }) =>
-                `### ${userMention(moderatorId)} ${time(
-                  createdAt,
-                  TimestampStyles.ShortDateTime,
-                )} [${id}]\nUżytkownik: ${userMention(userId)}\nKoniec: ${time(
+              ({ createdAt, userId, moderatorId }) =>
+                `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.ShortDateTime)}\nKoniec: ${time(
                   get13PlusVerificationEnd(createdAt),
                   TimestampStyles.RelativeTime,
                 )}`,
