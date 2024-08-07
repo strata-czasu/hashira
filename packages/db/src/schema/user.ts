@@ -6,7 +6,11 @@ import { wallet } from "./economy/wallet";
 import { mute, warn } from "./moderation";
 import { userTextActivity } from "./userTextActivity";
 
-export const verificationLevel = pgEnum("verification_level", ["13_plus", "18_plus"]);
+export const verificationLevel = pgEnum("verification_level", [
+  "13_plus",
+  "16_plus",
+  "18_plus",
+]);
 
 export const user = pgTable("users", {
   id: text("id").primaryKey(),
