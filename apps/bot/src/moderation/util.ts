@@ -14,6 +14,7 @@ import {
 import type { base } from "../base";
 import { BAN_APPEAL_URL } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
+import { durationToSeconds } from "../util/duration";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
 type BaseContext = ExtractContext<typeof base>;
@@ -58,6 +59,41 @@ export const formatBanReason = (
   createdAt: Date,
 ) => `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
 data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;
+
+export const scheduleVerificationReminders = async (
+  messageQueue: BaseContext["messageQueue"],
+  verificationId: number,
+) => {
+  await messageQueue.push(
+    "verificationReminder",
+    {
+      verificationId: verificationId,
+      elapsed: { hours: 24 },
+      remaining: { hours: 48 },
+    },
+    durationToSeconds({ hours: 24 }),
+    `${verificationId}-reminder-24h`,
+  );
+  await messageQueue.push(
+    "verificationReminder",
+    {
+      verificationId: verificationId,
+      elapsed: { hours: 48 },
+      remaining: { hours: 24 },
+    },
+    durationToSeconds({ hours: 48 }),
+    `${verificationId}-reminder-48h`,
+  );
+};
+
+export const cancelVerificationReminders = async (
+  messageQueue: BaseContext["messageQueue"],
+  verificationId: number,
+) =>
+  await Promise.all([
+    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-24h`),
+    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-48h`),
+  ]);
 
 export const sendVerificationFailedMessage = async (user: User) =>
   sendDirectMessage(

@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import { db, schema } from "@hashira/db";
 import { and, eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
+import type { Duration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { formatBanReason, sendVerificationFailedMessage } from "./moderation/util";
 import { discordTry } from "./util/discordTry";
@@ -15,8 +16,15 @@ type MuteEndData = {
 };
 
 // TODO: how to enable migrations of this data?
-type VerificationData = {
+type VerificationEndData = {
   verificationId: number;
+};
+
+// TODO: how to enable migrations of this data?
+type VerificationReminderData = {
+  verificationId: number;
+  elapsed: Duration;
+  remaining: Duration;
 };
 
 export const database = new Hashira({ name: "database" })
@@ -81,7 +89,7 @@ export const database = new Hashira({ name: "database" })
       )
       .addHandler(
         "verificationEnd",
-        async ({ client }, { verificationId }: VerificationData) => {
+        async ({ client }, { verificationId }: VerificationEndData) => {
           const verification = await db.query.verification.findFirst({
             where: eq(schema.verification.id, verificationId),
           });
@@ -133,6 +141,32 @@ export const database = new Hashira({ name: "database" })
               " Nie udało się powiadomić użytkownika o nieudanej weryfikacji.";
           }
           await sendDirectMessage(moderator, directMessageContent);
+        },
+      )
+      .addHandler(
+        "verificationReminder",
+        async (
+          { client },
+          { verificationId, elapsed, remaining }: VerificationReminderData,
+        ) => {
+          const verification = await db.query.verification.findFirst({
+            where: eq(schema.verification.id, verificationId),
+          });
+          if (!verification) return;
+
+          const moderator = await discordTry(
+            async () => client.users.fetch(verification.moderatorId),
+            [RESTJSONErrorCodes.UnknownMember],
+            async () => null,
+          );
+          if (!moderator) return;
+
+          await sendDirectMessage(
+            moderator,
+            `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
+              verification.userId,
+            )}) [${inlineCode(verificationId.toString())}] trwa już ${elapsed}. Pozostało ${remaining}. Nie zapomnij o niej!`,
+          );
         },
       ),
   }));

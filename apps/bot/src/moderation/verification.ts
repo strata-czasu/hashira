@@ -22,9 +22,11 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import {
   applyMute,
+  cancelVerificationReminders,
   formatBanReason,
   formatUserWithId,
   getMuteRoleId,
+  scheduleVerificationReminders,
   sendVerificationFailedMessage,
 } from "./util";
 
@@ -186,6 +188,7 @@ export const verification = new Hashira({ name: "verification" })
               durationToSeconds(VERIFICATION_DURATION),
               verification.id.toString(),
             );
+            await scheduleVerificationReminders(messageQueue, verification.id);
 
             const sentMessage = await sendDirectMessage(
               user,
@@ -303,6 +306,10 @@ export const verification = new Hashira({ name: "verification" })
                 await messageQueue.cancel(
                   "verificationEnd",
                   active16PlusVerification.id.toString(),
+                );
+                await cancelVerificationReminders(
+                  messageQueue,
+                  active16PlusVerification.id,
                 );
               } else if (currentVerificationLevel === null) {
                 // Create a 16_plus verification if there is no active verification.
@@ -469,6 +476,10 @@ export const verification = new Hashira({ name: "verification" })
               await messageQueue.cancel(
                 "verificationEnd",
                 verificationInProgress.id.toString(),
+              );
+              await cancelVerificationReminders(
+                messageQueue,
+                verificationInProgress.id,
               );
             } else {
               await db.insert(schema.verification).values({
