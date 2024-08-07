@@ -23,7 +23,6 @@ const Env = v.object({
   BOT_DEVELOPER_GUILD_IDS: SpaceSeparatedArray(ID),
   BOT_TOKEN: v.string(),
   SENTRY_DSN: v.optional(v.string()),
-  USE_SSL: v.optional(Bool, "false"),
   DATABASE_URL: v.pipe(v.string(), v.url()),
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),
 });
