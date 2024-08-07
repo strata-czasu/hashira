@@ -13,11 +13,6 @@ const SpaceSeparatedArray = <
     v.array(matcher),
   );
 
-const Bool = v.pipe(
-  v.union([v.literal("true"), v.literal("false")]),
-  v.transform((value) => value === "true"),
-);
-
 const Env = v.object({
   BOT_CLIENT_ID: ID,
   BOT_DEVELOPER_GUILD_IDS: SpaceSeparatedArray(ID),
@@ -26,7 +21,5 @@ const Env = v.object({
   DATABASE_URL: v.pipe(v.string(), v.url()),
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),
 });
-
-console.log(process.env);
 
 export default v.parse(Env, process.env);
