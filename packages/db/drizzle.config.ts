@@ -1,8 +1,6 @@
 import env from "@hashira/env";
 import type { Config } from "drizzle-kit";
 
-console.log(env);
-
 export default {
   schema: "./src/schema/*",
   out: "./drizzle/",

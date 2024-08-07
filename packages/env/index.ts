@@ -27,4 +27,6 @@ const Env = v.object({
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),
 });
 
+console.log(process.env);
+
 export default v.parse(Env, process.env);
