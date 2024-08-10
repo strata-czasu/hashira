@@ -6,6 +6,7 @@ import type { Duration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { formatBanReason, sendVerificationFailedMessage } from "./moderation/util";
 import { discordTry } from "./util/discordTry";
+import { formatDuration } from "./util/duration";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 // TODO: how to enable migrations of this data?
@@ -165,7 +166,9 @@ export const database = new Hashira({ name: "database" })
             moderator,
             `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
               verification.userId,
-            )}) [${inlineCode(verificationId.toString())}] trwa już ${elapsed}. Pozostało ${remaining}. Nie zapomnij o niej!`,
+            )}) [${inlineCode(verificationId.toString())}] trwa już ${formatDuration(
+              elapsed,
+            )}. Pozostało ${formatDuration(remaining)}. Nie zapomnij o niej!`,
           );
         },
       ),
