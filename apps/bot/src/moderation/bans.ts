@@ -7,7 +7,7 @@ import {
   italic,
   userMention,
 } from "discord.js";
-import { STRATA_BAN_APPEAL_URL, GUILD_IDS } from "../specializedConstants";
+import { GUILD_IDS, STRATA_BAN_APPEAL_URL } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -63,7 +63,7 @@ export const bans = new Hashira({ name: "bans" })
           }) nałożył Ci karę bana. Powodem Twojego bana jest ${italic(
             reason,
           )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
-            BAN_APPEAL_URL,
+            STRATA_BAN_APPEAL_URL,
           )}.`,
         );
         const banReason = formatBanReason(reason, itx.user, itx.createdAt);
