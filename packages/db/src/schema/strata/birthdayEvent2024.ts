@@ -21,6 +21,7 @@ export const birthdayEvent2024Stage = strataPgTable(
     outputRequirementsValid: text("output_requirements_valid").notNull(),
     outputRequirementsInvalid: text("output_requirements_invalid"),
     buttons: text("buttons").array().notNull().default(sql`'{}'::text[]`),
+    lockedBy: integer("locked_by").array().notNull().default(sql`'{}'::int[]`),
   },
   (table) => {
     return {

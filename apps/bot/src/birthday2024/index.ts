@@ -109,7 +109,13 @@ const handleStageInput = async (
   const lastStagesIds = lastFinishedStages.map((stage) => stage.stageId);
 
   if (lastStagesIds.includes(mentionedStage.id)) {
-    return await reply({ content: "Już rozwiązałeś to zadanie!" });
+    return await reply({ content: "Już rozwiązałxś ten etap!" });
+  }
+
+  const isLocked = lastStagesIds.some((id) => mentionedStage.lockedBy.includes(id));
+
+  if (isLocked) {
+    return await reply({ content: "Ten etap jest zablokowany przez twój inny wybór" });
   }
 
   if (

@@ -1,0 +1,1 @@
+ALTER TABLE "strata_birthday_event_stage_2024" ADD COLUMN "locked_by" integer[] DEFAULT '{}'::int[] NOT NULL;
