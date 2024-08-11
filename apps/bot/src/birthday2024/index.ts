@@ -13,7 +13,7 @@ import {
   inlineCode,
   userMention,
 } from "discord.js";
-import { intersection } from "es-toolkit";
+import { intersection, randomInt } from "es-toolkit";
 import { base } from "../base";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
@@ -59,9 +59,11 @@ const readComponents = (
       throw new Error("Invalid button format");
     }
 
+    const randomEnding = randomInt(1000, 9999);
+
     actionRow.addComponents(
       new ButtonBuilder()
-        .setCustomId(customId)
+        .setCustomId(`${customId}_${randomEnding}`)
         .setLabel(label)
         .setStyle(ButtonStyle.Primary),
     );
@@ -388,8 +390,12 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isButton()) return;
 
+      const customId = interaction.customId.split("_")[0];
+
+      if (!customId) return;
+
       const matchingStage = await db.query.birthdayEvent2024Stage.findFirst({
-        where: eq(schema.birthdayEvent2024Stage.keyword, interaction.customId),
+        where: eq(schema.birthdayEvent2024Stage.keyword, customId),
       });
 
       if (!matchingStage) return;
