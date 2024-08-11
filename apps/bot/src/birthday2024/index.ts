@@ -277,7 +277,13 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 ...(outputRequirementsInvalid ? { outputRequirementsInvalid } : {}),
                 ...(requiredStageId ? { requiredStageId } : {}),
                 ...(buttons ? { buttons: buttons.split("|") } : {}),
-                ...(lockedBy ? { lockedBy: lockedBy.split("|").map(Number) } : {}),
+                ...(lockedBy
+                  ? {
+                      lockedBy: lockedBy
+                        .split("|")
+                        .map((it) => Number.parseInt(it, 10)),
+                    }
+                  : {}),
               };
 
               if (Object.keys(updateData).length === 0) {
