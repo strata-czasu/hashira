@@ -13,6 +13,7 @@ import {
   inlineCode,
   userMention,
 } from "discord.js";
+import { intersection } from "es-toolkit";
 import { base } from "../base";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
@@ -112,7 +113,7 @@ const handleStageInput = async (
     return await reply({ content: "Już rozwiązałxś ten etap!" });
   }
 
-  const isLocked = lastStagesIds.some((id) => mentionedStage.lockedBy.includes(id));
+  const isLocked = intersection(mentionedStage.lockedBy, lastStagesIds).length > 0;
 
   if (isLocked) {
     return await reply({ content: "Ten etap jest zablokowany przez twój inny wybór" });
