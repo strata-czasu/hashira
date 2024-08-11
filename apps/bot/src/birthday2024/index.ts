@@ -208,6 +208,12 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 .$dynamic(),
             });
 
+            const extractButtons = (
+              row: typeof schema.birthdayEvent2024Stage.$inferSelect,
+            ) => {
+              return row.buttons.map((button) => button.split(":")[1]);
+            };
+
             const formatStage = (
               row: typeof schema.birthdayEvent2024Stage.$inferSelect,
             ) => {
@@ -216,7 +222,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 `Wiadomość udanej próby: ${row.outputRequirementsValid}`,
                 `Wiadomość nieudanej próby: ${row.outputRequirementsInvalid ?? "Brak"}`,
                 `Wymagany etap: ${row.requiredStageId ?? "Brak"}`,
-                `Przyciski: ${row.buttons.length > 0 ? row.buttons.join(", ") : "Brak"}`,
+                `Przyciski: ${row.buttons.length > 0 ? extractButtons(row) : "Brak"}`,
                 `Zablokowane przez: ${row.lockedBy.length > 0 ? row.lockedBy.join(", ") : "Brak"}`,
               ].join("\n");
             };
