@@ -216,6 +216,8 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 `Wiadomość udanej próby: ${row.outputRequirementsValid}`,
                 `Wiadomość nieudanej próby: ${row.outputRequirementsInvalid ?? "Brak"}`,
                 `Wymagany etap: ${row.requiredStageId ?? "Brak"}`,
+                `Przyciski: ${row.buttons.length > 0 ? row.buttons.join(", ") : "Brak"}`,
+                `Zablokowane przez: ${row.lockedBy.length > 0 ? row.lockedBy.join(", ") : "Brak"}`,
               ].join("\n");
             };
 
