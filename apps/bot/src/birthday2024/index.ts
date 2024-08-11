@@ -159,7 +159,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           .addString("buttons", (option) =>
             option
               .setRequired(false)
-              .setDescription("Przyciski w formacie LABEL:ID, oddzielone przecinkami"),
+              .setDescription("Przyciski w formacie LABEL:ID, oddzielone `|`"),
           )
           .handle(
             async (
@@ -180,7 +180,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                   outputRequirementsValid,
                   outputRequirementsInvalid,
                   requiredStageId,
-                  buttons: buttons ? buttons.split(",") : [],
+                  buttons: buttons ? buttons.split("|") : [],
                 })
                 .returning();
 
@@ -250,14 +250,12 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           .addString("buttons", (option) =>
             option
               .setRequired(false)
-              .setDescription("Przyciski w formacie LABEL:ID, oddzielone przecinkami"),
+              .setDescription("Przyciski w formacie LABEL:ID, oddzielone `|`"),
           )
           .addString("locked-by", (option) =>
             option
               .setRequired(false)
-              .setDescription(
-                "ID etapów, które blokują ten etap (oddzielone przecinkami)",
-              ),
+              .setDescription("ID etapów, które blokują ten etap (oddzielone `|`)"),
           )
           .handle(
             async (
@@ -278,8 +276,8 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 ...(outputRequirementsValid ? { outputRequirementsValid } : {}),
                 ...(outputRequirementsInvalid ? { outputRequirementsInvalid } : {}),
                 ...(requiredStageId ? { requiredStageId } : {}),
-                ...(buttons ? { buttons: buttons.split(",") } : {}),
-                ...(lockedBy ? { lockedBy: lockedBy.split(",").map(Number) } : {}),
+                ...(buttons ? { buttons: buttons.split("|") } : {}),
+                ...(lockedBy ? { lockedBy: lockedBy.split("|").map(Number) } : {}),
               };
 
               if (Object.keys(updateData).length === 0) {
