@@ -200,6 +200,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           .setDescription("Lista etapów urodzin 2024")
           .handle(async ({ db }, _, itx) => {
             const paginator = new DatabasePaginator({
+              pageSize: 5,
               orderBy: [schema.birthdayEvent2024Stage.id],
               select: db.select().from(schema.birthdayEvent2024Stage).$dynamic(),
               count: db
