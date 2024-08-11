@@ -1,10 +1,7 @@
+import type { Prettify } from "@hashira/core";
 import { and, eq, lte, sql } from "drizzle-orm";
 import type { Transaction, db } from ".";
 import { type TaskDataValue, task } from "./schema";
-
-type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
 
 export async function getPendingTask<T extends Transaction>(tx: T) {
   return await tx

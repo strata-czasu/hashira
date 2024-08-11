@@ -1,11 +1,8 @@
+import type { Prettify } from "@hashira/core";
 import type { Client, EmbedBuilder, TextBasedChannel } from "discord.js";
 
 // TODO)) Set correct channel ID
 const LOG_CHANNEL_ID = "464484064842219531" as const;
-
-type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
 
 type LogMessageData = { [key: string]: unknown };
 type LogMessageType = { [key: string]: LogMessageData };
