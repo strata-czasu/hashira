@@ -76,15 +76,14 @@ const completeStage = async (
   authorId: string,
   reply: (options: BaseMessageOptions) => Promise<void>,
 ) => {
-  await database.insert(schema.birthdayEvent2024StageCompletion).values({
-    userId: authorId,
-    stageId: stage.id,
-  });
-
   const content = runReplacers(stage.outputRequirementsValid, { userId: authorId });
   const components = readComponents(stage);
 
   await reply({ content, components });
+  await database.insert(schema.birthdayEvent2024StageCompletion).values({
+    userId: authorId,
+    stageId: stage.id,
+  });
 };
 
 const handleStageInput = async (
