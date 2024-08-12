@@ -3,14 +3,14 @@ import { serial, text } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild } from "./guild";
 
-export const guildSettings = pgTable("guild_settings", {
+export const guildSettings = pgTable("guildSettings", {
   id: serial("id").primaryKey(),
-  guildId: text("guild_id")
+  guildId: text("guildId")
     .notNull()
     .unique()
     .references(() => guild.id),
-  muteRoleId: text("mute_role_id"),
-  plus18RoleId: text("plus18_role_id"),
+  muteRoleId: text("muteRoleId"),
+  plus18RoleId: text("plus18RoleId"),
 });
 
 export const guildSettingsRelations = relations(guildSettings, ({ one }) => ({

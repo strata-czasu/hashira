@@ -11,17 +11,17 @@ import { user } from "..";
 import { strataPgTable } from "../../pgtable";
 
 export const birthdayEvent2024Stage = strataPgTable(
-  "birthday_event_stage_2024",
+  "birthdayEventStage2024",
   {
     id: serial("id").primaryKey(),
-    requiredStageId: integer("required_stage_id").references(
+    requiredStageId: integer("requiredStageId").references(
       (): AnyPgColumn => birthdayEvent2024Stage.id,
     ),
     keyword: text("keyword").notNull(),
-    outputRequirementsValid: text("output_requirements_valid").notNull(),
-    outputRequirementsInvalid: text("output_requirements_invalid"),
+    outputRequirementsValid: text("outputRequirementsValid").notNull(),
+    outputRequirementsInvalid: text("outputRequirementsInvalid"),
     buttons: text("buttons").array().notNull().default(sql`'{}'::text[]`),
-    lockedBy: integer("locked_by").array().notNull().default(sql`'{}'::int[]`),
+    lockedBy: integer("lockedBy").array().notNull().default(sql`'{}'::int[]`),
   },
   (table) => {
     return {
@@ -34,14 +34,14 @@ export const birthdayEvent2024Stage = strataPgTable(
 );
 
 export const birthdayEvent2024StageCompletion = strataPgTable(
-  "birthday_event_stage_2024_completion",
+  "birthdayEventStage2024Completion",
   {
     id: serial("id").primaryKey(),
     userId: text("userId")
       .notNull()
       .references(() => user.id),
     timestamp: timestamp("timestamp").notNull().defaultNow(),
-    stageId: integer("stage_id")
+    stageId: integer("stageId")
       .notNull()
       .references(() => birthdayEvent2024Stage.id),
   },

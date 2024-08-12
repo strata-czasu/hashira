@@ -4,13 +4,13 @@ import { pgTable } from "../pgtable";
 import { guild } from "./guild";
 
 export const autoRole = pgTable(
-  "auto_role",
+  "autoRole",
   {
     id: serial("id").primaryKey(),
-    guildId: text("guild_id")
+    guildId: text("guildId")
       .notNull()
       .references(() => guild.id),
-    roleId: text("role_id").notNull(),
+    roleId: text("roleId").notNull(),
     timestamp: timestamp("timestamp").defaultNow().notNull(),
   },
   (t) => ({

@@ -3,7 +3,7 @@ import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { pgTable } from "../pgtable";
 import { guild, user } from "./";
 
-export const emojiUsage = pgTable("emoji_usage", {
+export const emojiUsage = pgTable("emojiUsage", {
   id: serial("id").primaryKey(),
   guildId: text("guildId")
     .notNull()

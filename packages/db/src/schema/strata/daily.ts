@@ -3,7 +3,7 @@ import { serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild, user } from "..";
 import { strataPgTable } from "../../pgtable";
 
-export const dailyPointsRedeems = strataPgTable("daily_points_redeems", {
+export const dailyPointsRedeems = strataPgTable("dailyPointsRedeems", {
   id: serial("id").primaryKey(),
   guildId: text("guildId")
     .notNull()

@@ -18,16 +18,16 @@ export const verificationStatus = pgEnum("verification_status", [
 
 export const verification = pgTable("verification", {
   id: serial("id").primaryKey(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  acceptedAt: timestamp("accepted_at"),
-  rejectedAt: timestamp("rejected_at"),
-  guildId: text("guild_id")
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  rejectedAt: timestamp("rejectedAt"),
+  guildId: text("guildId")
     .notNull()
     .references(() => guild.id),
-  userId: text("user_id")
+  userId: text("userId")
     .notNull()
     .references(() => user.id),
-  moderatorId: text("moderator_id")
+  moderatorId: text("moderatorId")
     .notNull()
     .references(() => user.id),
   type: verificationType("type").notNull(),

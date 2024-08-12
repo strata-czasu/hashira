@@ -8,20 +8,20 @@ export const warn = pgTable(
   "warn",
   {
     id: serial("id").primaryKey(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    editedAt: timestamp("edited_at").$onUpdate(() => new Date()),
-    deletedAt: timestamp("deleted_at"),
-    guildId: text("guild_id")
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    editedAt: timestamp("editedAt").$onUpdate(() => new Date()),
+    deletedAt: timestamp("deletedAt"),
+    guildId: text("guildId")
       .notNull()
       .references(() => guild.id),
-    userId: text("user_id")
+    userId: text("userId")
       .notNull()
       .references(() => user.id),
-    moderatorId: text("moderator_id")
+    moderatorId: text("moderatorId")
       .notNull()
       .references(() => user.id),
     reason: text("reason").notNull(),
-    deleteReason: text("delete_reason"),
+    deleteReason: text("deleteReason"),
   },
   (table) => ({
     userIdx: index().on(table.userId),
@@ -49,21 +49,21 @@ export const mute = pgTable(
   "mute",
   {
     id: serial("id").primaryKey(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    editedAt: timestamp("edited_at").$onUpdate(() => new Date()),
-    deletedAt: timestamp("deleted_at"),
-    guildId: text("guild_id")
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    editedAt: timestamp("editedAt").$onUpdate(() => new Date()),
+    deletedAt: timestamp("deletedAt"),
+    guildId: text("guildId")
       .notNull()
       .references(() => guild.id),
-    userId: text("user_id")
+    userId: text("userId")
       .notNull()
       .references(() => user.id),
-    moderatorId: text("moderator_id")
+    moderatorId: text("moderatorId")
       .notNull()
       .references(() => user.id),
     reason: text("reason").notNull(),
-    endsAt: timestamp("ends_at").notNull(),
-    deleteReason: text("delete_reason"),
+    endsAt: timestamp("endsAt").notNull(),
+    deleteReason: text("deleteReason"),
   },
   (table) => ({
     userIdx: index().on(table.userId),

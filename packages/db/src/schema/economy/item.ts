@@ -15,7 +15,7 @@ export const item = pgTable("item", {
     .references(() => user.id),
 });
 
-export const shopItem = pgTable("shop_item", {
+export const shopItem = pgTable("shopItem", {
   id: serial("id").primaryKey(),
   itemId: integer("itemId")
     .notNull()
@@ -29,7 +29,7 @@ export const shopItem = pgTable("shop_item", {
     .references(() => user.id),
 });
 
-export const inventoryItem = pgTable("inventory_item", {
+export const inventoryItem = pgTable("inventoryItem", {
   id: serial("id").primaryKey(),
   itemId: integer("itemId")
     .notNull()

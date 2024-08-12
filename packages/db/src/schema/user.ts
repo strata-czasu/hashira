@@ -14,11 +14,11 @@ export const verificationLevel = pgEnum("verification_level", [
 
 export const user = pgTable("users", {
   id: text("id").primaryKey(),
-  verificationLevel: verificationLevel("verification_level"),
-  marriedTo: text("married_to")
+  verificationLevel: verificationLevel("verificationLevel"),
+  marriedTo: text("marriedTo")
     .references((): AnyPgColumn => user.id)
     .default(sql`null`),
-  marriedAt: timestamp("married_at"),
+  marriedAt: timestamp("marriedAt"),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

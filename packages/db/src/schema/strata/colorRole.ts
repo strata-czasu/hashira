@@ -3,7 +3,7 @@ import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild, user } from "..";
 import { strataPgTable } from "../../pgtable";
 
-export const colorRole = strataPgTable("color_role", {
+export const colorRole = strataPgTable("colorRole", {
   id: serial("id").primaryKey(),
   guildId: text("guildId")
     .notNull()

@@ -4,7 +4,7 @@ import { pgTable } from "../pgtable";
 import { guild } from "./guild";
 import { user } from "./user";
 
-export const userTextActivity = pgTable("user_text_activity", {
+export const userTextActivity = pgTable("userTextActivity", {
   id: serial("id").primaryKey(),
   userId: text("userId")
     .references(() => user.id)
