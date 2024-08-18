@@ -53,7 +53,7 @@ export const inventory = new Hashira({ name: "inventory" })
             const paginatedView = new PaginatedView(
               paginator,
               `Ekwipunek ${user.tag}`,
-              ({ inventory_item: { id }, item }) => `- ${item.name} [${id}]`,
+              ({ inventoryItem: { id }, item }) => `- ${item.name} [${id}]`,
               true,
             );
             await paginatedView.render(itx);

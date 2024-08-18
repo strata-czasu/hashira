@@ -51,7 +51,7 @@ export const shop = new Hashira({ name: "shop" })
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ shop_item: { id, price }, item: { name, description } }) =>
+              ({ shopItem: { id, price }, item: { name, description } }) =>
                 `### ${name} - ${formatAmount(price as number)} [${id}]\n${description}`,
               true,
             );

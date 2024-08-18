@@ -1,8 +1,8 @@
 import type { TablesRelationalConfig } from "drizzle-orm";
-import type { PgTransaction, QueryResultHKT } from "drizzle-orm/pg-core";
+import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 
 export type Transaction = PgTransaction<
-  QueryResultHKT,
+  PgQueryResultHKT,
   Record<string, unknown>,
   TablesRelationalConfig
 >;
