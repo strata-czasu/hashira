@@ -3,7 +3,8 @@
   "extends": ["@tsconfig/strictest/tsconfig", "@tsconfig/bun/tsconfig"],
   "compilerOptions": {
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "noEmit": true
   },
   "exclude": ["node_modules"]
 }
