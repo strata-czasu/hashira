@@ -37,6 +37,8 @@ jobs:
         run: bunx biome lint .
       - name: Check Formatting
         run: bunx biome format .
+      - name: Check Types
+        run: bunx tsc --project apps/bot/tsconfig.json
       - name: Check migrations
         run: bun check-migrations
       - name: Run tests
