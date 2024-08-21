@@ -1,6 +1,5 @@
 import { isNull, relations } from "drizzle-orm";
-import { index, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import { index, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild } from "./guild";
 import { user } from "./user";
 

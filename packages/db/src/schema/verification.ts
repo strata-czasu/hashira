@@ -1,5 +1,4 @@
-import { pgEnum, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import { pgEnum, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild } from "./guild";
 import { user } from "./user";
 

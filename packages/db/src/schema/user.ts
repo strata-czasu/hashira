@@ -1,6 +1,11 @@
 import { relations, sql } from "drizzle-orm";
-import { type AnyPgColumn, pgEnum, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import {
+  type AnyPgColumn,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { currency } from "./economy";
 import { wallet } from "./economy/wallet";
 import { mute, warn } from "./moderation";

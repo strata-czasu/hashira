@@ -1,9 +1,8 @@
 import { relations } from "drizzle-orm";
-import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild, user } from "..";
-import { strataPgTable } from "../../pgtable";
 
-export const colorRole = strataPgTable("colorRole", {
+export const colorRole = pgTable("colorRole", {
   id: serial("id").primaryKey(),
   guildId: text("guildId")
     .notNull()

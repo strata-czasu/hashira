@@ -1,6 +1,5 @@
 import { relations } from "drizzle-orm";
-import { serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { guild, user } from "./";
 
 export const emojiUsage = pgTable("emojiUsage", {

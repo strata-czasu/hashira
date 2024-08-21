@@ -1,6 +1,5 @@
 import { relations } from "drizzle-orm";
-import { text } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import { pgTable, text } from "drizzle-orm/pg-core";
 import { autoRole } from "./autorole";
 import { guildSettings } from "./guildSettings";
 

@@ -1,6 +1,5 @@
 import { relations } from "drizzle-orm";
-import { integer, pgEnum, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../../pgtable";
+import { integer, pgEnum, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../user";
 import { wallet } from "./wallet";
 

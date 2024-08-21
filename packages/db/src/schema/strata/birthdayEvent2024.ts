@@ -3,14 +3,14 @@ import {
   type AnyPgColumn,
   foreignKey,
   integer,
+  pgTable,
   serial,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
 import { user } from "..";
-import { strataPgTable } from "../../pgtable";
 
-export const birthdayEvent2024Stage = strataPgTable(
+export const birthdayEvent2024Stage = pgTable(
   "birthdayEventStage2024",
   {
     id: serial("id").primaryKey(),
@@ -33,7 +33,7 @@ export const birthdayEvent2024Stage = strataPgTable(
   },
 );
 
-export const birthdayEvent2024StageCompletion = strataPgTable(
+export const birthdayEvent2024StageCompletion = pgTable(
   "birthdayEventStage2024Completion",
   {
     id: serial("id").primaryKey(),

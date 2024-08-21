@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
-import { jsonb, pgEnum, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../pgtable";
+import { jsonb, pgEnum, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const statusEnum = pgEnum("status", [
   "pending",

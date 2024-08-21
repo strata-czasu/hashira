@@ -1,8 +1,6 @@
-import { integer, serial, text, timestamp } from "drizzle-orm/pg-core";
-import { pgTable } from "../../pgtable";
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../user";
 
-// TODO)) Create migrations!!!
 export const item = pgTable("item", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
