@@ -25,6 +25,6 @@ RUN bun install --production
 
 COPY --link . .
 
-RUN bunx prisma generate
+RUN bun prisma-generate
 
 CMD ["bun", "start:prod"]
