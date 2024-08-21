@@ -11,27 +11,33 @@
   },
   "type": "module",
   "scripts": {
-    "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate",
-    "check-migrations": "bun run ./check-migrations",
+    "drizzle-generate": "drizzle-kit generate",
+    "drizzle-migrate": "drizzle-kit migrate",
+    "drizzle-check-migrations": "bun run ./check-migrations",
     "drizzle-studio": "drizzle-kit studio",
     "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
-    "push": "drizzle-kit push",
-    "drop": "drizzle-kit drop",
+    "drizzle-push": "drizzle-kit push",
+    "drizzle-drop": "drizzle-kit drop",
+    "prisma-studio": "prisma studio",
+    "prisma-generate": "prisma generate",
+    "prisma-migrate": "prisma migrate dev",
+    "prisma-migrate-create": "prisma migrate create",
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "*",
     "@faker-js/faker": "^8.4.1",
-    "@hashira/tsconfig": "workspace:*"
+    "@hashira/tsconfig": "workspace:*",
+    "@types/bun": "latest",
+    "prisma": "^5.18.0",
+    "typescript": "*"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "drizzle-orm": "^0.32.1",
-    "postgres": "^3.4.4",
+    "@prisma/client": "^5.18.0",
     "drizzle-kit": "^0.23.1",
-    "pg": "^8.12.0"
+    "drizzle-orm": "^0.32.1",
+    "pg": "^8.12.0",
+    "postgres": "^3.4.4"
   }
 }

@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { db, schema } from "@hashira/db";
+import { db, prisma, schema } from "@hashira/db";
 import { and, eq } from "@hashira/db/drizzle";
 import { MessageQueue } from "@hashira/db/tasks";
 import type { Duration } from "date-fns";
@@ -30,6 +30,7 @@ type VerificationReminderData = {
 
 export const database = new Hashira({ name: "database" })
   .const("db", db)
+  .const("prisma", prisma)
   .const((ctx) => ({
     ...ctx,
     messageQueue: new MessageQueue(db)
