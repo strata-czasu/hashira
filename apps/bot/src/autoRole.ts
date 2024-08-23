@@ -7,11 +7,11 @@ import { base } from "./base";
 
 export const autoRole = new Hashira({ name: "auto-role" })
   .use(base)
-  .handle("guildMemberAdd", async ({ db }, member) => {
-    const autoRoles = await db
-      .select({ roleId: schema.autoRole.roleId })
-      .from(schema.autoRole)
-      .where(eq(schema.autoRole.guildId, member.guild.id));
+  .handle("guildMemberAdd", async ({ prisma }, member) => {
+    const autoRoles = await prisma.$drizzle
+      .select({ roleId: schema.AutoRole.roleId })
+      .from(schema.AutoRole)
+      .where(eq(schema.AutoRole.guildId, member.guild.id));
 
     // TODO: This is a workaround for a race condition where multiple bots try to add roles to a member
     await Bun.sleep(1000);
@@ -34,9 +34,9 @@ export const autoRole = new Hashira({ name: "auto-role" })
               .setDescription("Role that will be added to new users")
               .setRequired(true),
           )
-          .handle(async ({ db }, { role }, itx) => {
-            const added = await db
-              .insert(schema.autoRole)
+          .handle(async ({ prisma }, { role }, itx) => {
+            const added = await prisma.$drizzle
+              .insert(schema.AutoRole)
               .values({ guildId: role.guild.id, roleId: role.id })
               .onConflictDoNothing()
               .returning();
@@ -59,10 +59,10 @@ export const autoRole = new Hashira({ name: "auto-role" })
           .addRole("role", (role) =>
             role.setDescription("Role to remove from autorole list").setRequired(true),
           )
-          .handle(async ({ db }, { role }, itx) => {
-            const removed = await db
-              .delete(schema.autoRole)
-              .where(eq(schema.autoRole.roleId, role.id))
+          .handle(async ({ prisma }, { role }, itx) => {
+            const removed = await prisma.$drizzle
+              .delete(schema.AutoRole)
+              .where(eq(schema.AutoRole.roleId, role.id))
               .returning();
             if (removed.length === 0) {
               await itx.reply({
@@ -78,29 +78,31 @@ export const autoRole = new Hashira({ name: "auto-role" })
           }),
       )
       .addCommand("list", (command) =>
-        command.setDescription("List all autoroles").handle(async ({ db }, _, itx) => {
-          if (!itx.guildId) return;
+        command
+          .setDescription("List all autoroles")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.guildId) return;
 
-          const paginate = new DatabasePaginator({
-            orderBy: schema.autoRole.roleId,
-            ordering: PaginatorOrder.ASC,
-            select: db
-              .select({ roleId: schema.autoRole.roleId })
-              .from(schema.autoRole)
-              .where(eq(schema.autoRole.guildId, itx.guildId))
-              .$dynamic(),
-            count: db
-              .select({ count: count() })
-              .from(schema.autoRole)
-              .where(eq(schema.autoRole.guildId, itx.guildId))
-              .$dynamic(),
-          });
-          const paginatedView = new PaginatedView(
-            paginate,
-            "Auto roles",
-            (item, idx) => `${idx}. <@&${item.roleId}>`,
-          );
-          await paginatedView.render(itx);
-        }),
+            const paginate = new DatabasePaginator({
+              orderBy: schema.AutoRole.roleId,
+              ordering: PaginatorOrder.ASC,
+              select: prisma.$drizzle
+                .select({ roleId: schema.AutoRole.roleId })
+                .from(schema.AutoRole)
+                .where(eq(schema.AutoRole.guildId, itx.guildId))
+                .$dynamic(),
+              count: prisma.$drizzle
+                .select({ count: count() })
+                .from(schema.AutoRole)
+                .where(eq(schema.AutoRole.guildId, itx.guildId))
+                .$dynamic(),
+            });
+            const paginatedView = new PaginatedView(
+              paginate,
+              "Auto roles",
+              (item, idx) => `${idx}. <@&${item.roleId}>`,
+            );
+            await paginatedView.render(itx);
+          }),
       ),
   );

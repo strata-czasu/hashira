@@ -1,5 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
+import { schema } from "@hashira/db";
 import {
   and,
   between,
@@ -8,7 +9,6 @@ import {
   eq,
   notInArray,
 } from "@hashira/db/drizzle";
-import { emojiUsage } from "@hashira/db/schema";
 import {
   AttachmentBuilder,
   type GuildEmoji,
@@ -50,7 +50,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
     const guildEmojis = parseEmojis(message.guild.emojis, message.content);
     if (guildEmojis.length === 0) return;
 
-    await db.insert(emojiUsage).values(
+    await db.insert(schema.EmojiUsage).values(
       guildEmojis.map((emoji) => ({
         userId: message.author.id,
         emojiId: emoji.id,
@@ -80,21 +80,21 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
             const before = parseDate(rawBefore, "end", () => new Date());
 
             const where = and(
-              eq(emojiUsage.userId, user.id),
-              between(emojiUsage.timestamp, after, before),
+              eq(schema.EmojiUsage.userId, user.id),
+              between(schema.EmojiUsage.timestamp, after, before),
             );
 
             const paginate = new DatabasePaginator({
-              orderBy: [count(), emojiUsage.emojiId],
+              orderBy: [count(), schema.EmojiUsage.emojiId],
               select: db
-                .select({ emojiId: emojiUsage.emojiId, count: count() })
-                .from(emojiUsage)
+                .select({ emojiId: schema.EmojiUsage.emojiId, count: count() })
+                .from(schema.EmojiUsage)
                 .where(where)
-                .groupBy(emojiUsage.emojiId)
+                .groupBy(schema.EmojiUsage.emojiId)
                 .$dynamic(),
               count: db
-                .select({ count: countDistinct(emojiUsage.emojiId) })
-                .from(emojiUsage)
+                .select({ count: countDistinct(schema.EmojiUsage.emojiId) })
+                .from(schema.EmojiUsage)
                 .where(where)
                 .$dynamic(),
             });
@@ -144,21 +144,21 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               const before = parseDate(rawBefore, "end", () => new Date());
 
               const where = and(
-                eq(emojiUsage.emojiId, emoji.id),
-                between(emojiUsage.timestamp, after, before),
+                eq(schema.EmojiUsage.emojiId, emoji.id),
+                between(schema.EmojiUsage.timestamp, after, before),
               );
 
               const paginate = new DatabasePaginator({
-                orderBy: [count(), emojiUsage.userId],
+                orderBy: [count(), schema.EmojiUsage.userId],
                 select: db
-                  .select({ userId: emojiUsage.userId, count: count() })
-                  .from(emojiUsage)
+                  .select({ userId: schema.EmojiUsage.userId, count: count() })
+                  .from(schema.EmojiUsage)
                   .where(where)
-                  .groupBy(emojiUsage.userId)
+                  .groupBy(schema.EmojiUsage.userId)
                   .$dynamic(),
                 count: db
-                  .select({ count: countDistinct(emojiUsage.userId) })
-                  .from(emojiUsage)
+                  .select({ count: countDistinct(schema.EmojiUsage.userId) })
+                  .from(schema.EmojiUsage)
                   .where(where)
                   .$dynamic(),
               });
@@ -189,21 +189,21 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
             const after = parseDate(rawAfter, "start", () => new Date(0));
             const before = parseDate(rawBefore, "end", () => new Date());
             const where = and(
-              eq(emojiUsage.guildId, itx.guild.id),
-              between(emojiUsage.timestamp, after, before),
+              eq(schema.EmojiUsage.guildId, itx.guild.id),
+              between(schema.EmojiUsage.timestamp, after, before),
             );
 
             const paginate = new DatabasePaginator({
-              orderBy: [count(), emojiUsage.emojiId],
+              orderBy: [count(), schema.EmojiUsage.emojiId],
               select: db
-                .select({ emojiId: emojiUsage.emojiId, count: count() })
-                .from(emojiUsage)
+                .select({ emojiId: schema.EmojiUsage.emojiId, count: count() })
+                .from(schema.EmojiUsage)
                 .where(where)
-                .groupBy(emojiUsage.emojiId)
+                .groupBy(schema.EmojiUsage.emojiId)
                 .$dynamic(),
               count: db
-                .select({ count: countDistinct(emojiUsage.emojiId) })
-                .from(emojiUsage)
+                .select({ count: countDistinct(schema.EmojiUsage.emojiId) })
+                .from(schema.EmojiUsage)
                 .where(where)
                 .$dynamic(),
             });
@@ -244,12 +244,14 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
             const guildEmojis = itx.guild.emojis.cache;
             const emojiIds = guildEmojis.map((emoji) => emoji.id);
 
-            db.delete(emojiUsage).where(
-              and(
-                eq(emojiUsage.guildId, itx.guild.id),
-                notInArray(emojiUsage.emojiId, emojiIds),
-              ),
-            );
+            await db
+              .delete(schema.EmojiUsage)
+              .where(
+                and(
+                  eq(schema.EmojiUsage.guildId, itx.guild.id),
+                  notInArray(schema.EmojiUsage.emojiId, emojiIds),
+                ),
+              );
 
             await itx.reply("Pruned removed emojis");
           }),
@@ -272,15 +274,15 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
             const guildEmojis = await itx.guild.emojis.fetch();
 
             const emojiUsages = await db
-              .selectDistinct({ emojiId: emojiUsage.emojiId })
-              .from(emojiUsage)
+              .selectDistinct({ emojiId: schema.EmojiUsage.emojiId })
+              .from(schema.EmojiUsage)
               .where(
                 and(
-                  eq(emojiUsage.guildId, itx.guild.id),
-                  between(emojiUsage.timestamp, after, before),
+                  eq(schema.EmojiUsage.guildId, itx.guild.id),
+                  between(schema.EmojiUsage.timestamp, after, before),
                 ),
               )
-              .orderBy(emojiUsage.emojiId);
+              .orderBy(schema.EmojiUsage.emojiId);
 
             const usedEmojiIds = emojiUsages.map((usage) => usage.emojiId);
             const unusedEmojis = guildEmojis.filter(

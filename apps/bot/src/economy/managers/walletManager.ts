@@ -1,5 +1,4 @@
-import { type db, schema } from "@hashira/db";
-import { and, eq, inArray } from "@hashira/db/drizzle";
+import type { ExtendedPrismaClient, Prisma, PrismaTransaction } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { WalletCreationError, WalletNotFoundError } from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
@@ -12,66 +11,95 @@ const getDefaultWalletName = (guildId: string) => {
 };
 
 type CreateDefaultWalletsOptions = {
-  db: typeof db;
+  prisma: PrismaTransaction;
   currencyId: number;
   guildId: string;
   userIds: string[];
 };
 
 const createDefaultWallets = async ({
-  db,
+  prisma,
   currencyId,
   guildId,
   userIds,
 }: CreateDefaultWalletsOptions) => {
-  const values = userIds.map((userId) => ({
-    name: getDefaultWalletName(guildId),
-    userId,
-    guildId,
-    currencyId,
-    default: true,
-  }));
-
-  const wallets = await db.insert(schema.wallet).values(values).returning();
-
-  const usersWithoutWallets = userIds.filter(
-    (userId) => !wallets.some((wallet) => wallet.userId === userId),
+  const values = userIds.map(
+    (userId) =>
+      ({
+        name: getDefaultWalletName(guildId),
+        userId,
+        guildId,
+        currencyId,
+        default: true,
+      }) satisfies Prisma.WalletCreateManyInput,
   );
 
-  if (wallets.length !== userIds.length)
+  const returnedUserIds = await prisma.wallet.createManyAndReturn({ data: values });
+
+  const usersWithoutWallets = userIds.filter(
+    (userId) => !returnedUserIds.some((wallet) => wallet.userId === userId),
+  );
+
+  if (returnedUserIds.length !== userIds.length)
     throw new WalletCreationError(usersWithoutWallets);
 
-  return wallets;
+  return returnedUserIds;
+};
+
+type CreateDefaultWalletOptions = {
+  prisma: PrismaTransaction;
+  currencyId: number;
+  guildId: string;
+  userId: string;
+};
+
+const createDefaultWallet = async ({
+  prisma,
+  currencyId,
+  guildId,
+  userId,
+}: CreateDefaultWalletOptions) => {
+  const walletName = getDefaultWalletName(guildId);
+
+  return await prisma.wallet.create({
+    data: {
+      name: walletName,
+      userId,
+      guildId,
+      currencyId,
+      default: true,
+    },
+  });
 };
 
 type GetDefaultWalletOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   userId: string;
   guildId: string;
 } & GetCurrencyConditionOptions;
 
 export const getDefaultWallet = async ({
-  db,
+  prisma,
   userId,
   guildId,
   ...currencyOptions
 }: GetDefaultWalletOptions) => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db, guildId, ...currencyOptions });
+  return await prisma.$transaction(async (tx) => {
+    const currency = await getCurrency({ prisma: prisma, guildId, ...currencyOptions });
 
-    const wallet = await tx.query.wallet.findFirst({
-      where: and(
-        eq(schema.wallet.userId, userId),
-        eq(schema.wallet.guildId, guildId),
-        eq(schema.wallet.default, true),
-        eq(schema.wallet.currencyId, currency.id),
-      ),
+    const wallet = await tx.wallet.findFirst({
+      where: {
+        userId,
+        guildId,
+        default: true,
+        currencyId: currency.id,
+      },
     });
 
     if (wallet) return wallet;
 
     const [defaultWallet] = await createDefaultWallets({
-      db: tx,
+      prisma: tx,
       currencyId: currency.id,
       guildId,
       userIds: [userId],
@@ -84,84 +112,83 @@ export const getDefaultWallet = async ({
 };
 
 type GetWalletOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   userId: string;
   guildId: string;
   walletName?: string | undefined;
 } & GetCurrencyConditionOptions;
 
 export const getWallet = async ({
-  db,
+  prisma,
   userId,
   guildId,
   walletName,
   ...currencyOptions
-}: GetWalletOptions): Promise<typeof schema.wallet.$inferSelect> => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+}: GetWalletOptions) => {
+  return await prisma.$transaction(async (tx) => {
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
+    const walletCondition = walletName ? { name: walletName } : { default: true };
 
-    const walletCondition = walletName
-      ? eq(schema.wallet.name, walletName)
-      : eq(schema.wallet.default, true);
-
-    const wallet = await tx.query.wallet.findFirst({
-      where: and(
-        eq(schema.wallet.userId, userId),
-        eq(schema.wallet.guildId, guildId),
-        eq(schema.wallet.currencyId, currency.id),
-        walletCondition,
-      ),
+    const wallet = await tx.wallet.findFirst({
+      where: {
+        userId,
+        guildId,
+        currencyId: currency.id,
+        ...walletCondition,
+      },
     });
 
-    if (!wallet) {
-      if (walletName) throw new WalletNotFoundError(walletName);
+    if (wallet) return wallet;
 
-      const [wallet] = await createDefaultWallets({
-        db: tx,
-        currencyId: currency.id,
-        guildId,
-        userIds: [userId],
-      });
-      if (!wallet) throw new WalletCreationError([userId]);
+    if (walletName) throw new WalletNotFoundError(walletName);
 
-      return wallet;
-    }
+    const defaultWallet = await createDefaultWallet({
+      prisma: tx,
+      currencyId: currency.id,
+      guildId,
+      userId: userId,
+    });
 
-    return wallet;
+    if (!defaultWallet) throw new WalletCreationError([userId]);
+
+    return defaultWallet;
   });
 };
 
 type GetDefaultWalletsOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   userIds: string[];
   guildId: string;
 } & GetCurrencyConditionOptions;
 
 export const getDefaultWallets = async ({
-  db,
+  prisma,
   userIds,
   guildId,
   ...currencyOptions
-}: GetDefaultWalletsOptions): Promise<(typeof schema.wallet.$inferSelect)[]> => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+}: GetDefaultWalletsOptions) => {
+  return await prisma.$transaction(async (tx) => {
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
-    const wallets = await tx.query.wallet.findMany({
-      where: and(
-        inArray(schema.wallet.userId, userIds),
-        eq(schema.wallet.guildId, guildId),
-        eq(schema.wallet.currencyId, currency.id),
-        eq(schema.wallet.default, true),
-      ),
+    const wallets = await tx.wallet.findMany({
+      where: {
+        userId: { in: userIds },
+        guildId,
+        currencyId: currency.id,
+        default: true,
+      },
     });
+
+    if (wallets.length === userIds.length) return wallets;
 
     const missingWallets = userIds.filter(
       (userId) => !wallets.some((wallet) => wallet.userId === userId),
     );
 
     if (missingWallets.length === 0) return wallets;
+
     const createdDefaultWallets = await createDefaultWallets({
-      db: tx,
+      prisma: tx,
       currencyId: currency.id,
       guildId,
       userIds: missingWallets,

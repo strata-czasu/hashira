@@ -68,7 +68,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         await ensureUsersExist(db, [itx.user.id, targetUser.id]);
 
         const invokerMarriage = await db.query.user.findFirst({
-          where: eq(schema.user.id, itx.user.id),
+          where: eq(schema.User.id, itx.user.id),
           columns: { marriedTo: true },
         });
 
@@ -91,7 +91,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         const totalAmount = Math.floor(amount * (1 + streakBonus));
 
         await addBalance({
-          db,
+          prisma: db,
           currencySymbol: STRATA_CZASU_CURRENCY.symbol,
           reason: "Daily",
           guildId: itx.guildId,

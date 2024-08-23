@@ -1,17 +1,17 @@
-import { connection, db, schema } from "@hashira/db";
+import { prisma, schema } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY, USER_IDS } from "./src/specializedConstants";
 import { ensureUserExists } from "./src/util/ensureUsersExist";
 
 const isProduction = process.argv.includes("--production");
 
 const createGuild = (guildId: string) =>
-  db.insert(schema.guild).values({ id: guildId }).onConflictDoNothing();
+  prisma.$drizzle.insert(schema.Guild).values({ id: guildId }).onConflictDoNothing();
 
 const createDefaultStrataCzasuCurrency = async (guildId: string) => {
   await createGuild(guildId);
-  await ensureUserExists(db, USER_IDS.Defous);
-  await db
-    .insert(schema.currency)
+  await ensureUserExists(prisma, USER_IDS.Defous);
+  await prisma.$drizzle
+    .insert(schema.Currency)
     .values({
       guildId,
       name: STRATA_CZASU_CURRENCY.name,
@@ -32,4 +32,4 @@ if (isProduction) {
 
 console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);
 
-await connection.end();
+await prisma.$disconnect();

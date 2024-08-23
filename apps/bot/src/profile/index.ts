@@ -1,6 +1,4 @@
 import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
 import { EmbedBuilder, TimestampStyles, time, userMention } from "discord.js";
 import { base } from "../base";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -14,14 +12,18 @@ export const profile = new Hashira({ name: "profile" })
       .setDescription("Wyświetl profil")
       .setDMPermission(false)
       .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(false))
-      .handle(async ({ db }, { user: rawUser }, itx) => {
+      .handle(async ({ prisma }, { user: rawUser }, itx) => {
         if (!itx.inCachedGuild()) return;
 
         const user = rawUser ?? itx.user;
-        await ensureUserExists(db, user.id);
-        const dbUser = await db.query.user.findFirst({
-          where: eq(schema.user.id, user.id),
+        await ensureUserExists(prisma, user.id);
+
+        const dbUser = await prisma.user.findFirst({
+          where: {
+            id: user.id,
+          },
         });
+
         if (!dbUser) return;
 
         const embed = new EmbedBuilder()

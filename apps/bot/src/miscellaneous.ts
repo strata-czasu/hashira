@@ -114,15 +114,15 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           const paginator = new DatabasePaginator({
             select: db
               .select()
-              .from(schema.task)
-              .where(eq(schema.task.status, "pending"))
+              .from(schema.Task)
+              .where(eq(schema.Task.status, "pending"))
               .$dynamic(),
             count: db
               .select({ count: count() })
-              .from(schema.task)
-              .where(eq(schema.task.status, "pending"))
+              .from(schema.Task)
+              .where(eq(schema.Task.status, "pending"))
               .$dynamic(),
-            orderBy: schema.task.createdAt,
+            orderBy: schema.Task.createdAt,
           });
 
           const formatTask = ({
@@ -131,7 +131,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             createdAt,
             handleAfter,
             identifier,
-          }: typeof schema.task.$inferSelect) => {
+          }: typeof schema.Task.$inferSelect) => {
             const lines = [
               heading(`Task ${id}`, HeadingLevel.Three),
               `Created at: ${time(createdAt)}`,
@@ -284,7 +284,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             const members = [...role.members.keys()];
 
             await addBalances({
-              db,
+              prisma: db,
               fromUserId: itx.user.id,
               guildId: itx.guildId,
               toUserIds: members,

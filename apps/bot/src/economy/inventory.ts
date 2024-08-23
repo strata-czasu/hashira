@@ -1,5 +1,5 @@
 import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
+import { DatabasePaginator, type PrismaTransaction, schema } from "@hashira/db";
 import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
@@ -7,15 +7,8 @@ import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { getItem } from "./util";
 
-const getInventoryItem = async (tx: Transaction, id: number) => {
-  const [inventoryItem] = await tx
-    .select()
-    .from(schema.inventoryItem)
-    .where(
-      and(eq(schema.inventoryItem.id, id), isNull(schema.inventoryItem.deletedAt)),
-    );
-  return inventoryItem;
-};
+const getInventoryItem = async (tx: PrismaTransaction, id: number) =>
+  tx.inventoryItem.findFirst({ where: { id, deletedAt: null } });
 
 export const inventory = new Hashira({ name: "inventory" })
   .use(base)
@@ -27,26 +20,26 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Wyświetl ekwipunek użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ db }, { user }, itx) => {
+          .handle(async ({ prisma }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             // TODO)) Group items by type instead of listing all
             const where = and(
-              eq(schema.inventoryItem.userId, user.id),
-              isNull(schema.inventoryItem.deletedAt),
+              eq(schema.InventoryItem.userId, user.id),
+              isNull(schema.InventoryItem.deletedAt),
             );
             const paginator = new DatabasePaginator({
-              orderBy: [schema.inventoryItem.createdAt],
-              select: db
+              orderBy: [schema.InventoryItem.createdAt],
+              select: prisma.$drizzle
                 .select()
-                .from(schema.inventoryItem)
-                .innerJoin(schema.item, eq(schema.inventoryItem.itemId, schema.item.id))
+                .from(schema.InventoryItem)
+                .innerJoin(schema.Item, eq(schema.InventoryItem.itemId, schema.Item.id))
                 .where(where)
                 .$dynamic(),
-              count: db
-                .select({ count: count(schema.inventoryItem) })
-                .from(schema.inventoryItem)
+              count: prisma.$drizzle
+                .select({ count: count(schema.InventoryItem) })
+                .from(schema.InventoryItem)
                 .where(where)
                 .$dynamic(),
             });
@@ -65,7 +58,11 @@ export const inventory = new Hashira({ name: "inventory" })
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w ekwipunku"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .handle(
-            async ({ db, lock }, { id: inventoryItemId, user: targetUser }, itx) => {
+            async (
+              { prisma, lock },
+              { id: inventoryItemId, user: targetUser },
+              itx,
+            ) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -77,7 +74,7 @@ export const inventory = new Hashira({ name: "inventory" })
                 return;
               }
 
-              await ensureUsersExist(db, [targetUser, itx.user]);
+              await ensureUsersExist(prisma, [targetUser, itx.user]);
               // TODO)) Nicer confirmation message with item name
               const dialog = new ConfirmationDialog(
                 `Czy na pewno chcesz przekazać ${inlineCode(
@@ -86,35 +83,38 @@ export const inventory = new Hashira({ name: "inventory" })
                 "Tak",
                 "Nie",
                 async () => {
-                  const inventoryItem = await db.transaction(async (tx) => {
-                    const [inventoryItem] = await tx
-                      .select()
-                      .from(schema.inventoryItem)
-                      .innerJoin(
-                        schema.item,
-                        eq(schema.inventoryItem.itemId, schema.item.id),
-                      )
-                      .where(
-                        and(
-                          eq(schema.inventoryItem.id, inventoryItemId),
-                          eq(schema.inventoryItem.userId, itx.user.id),
-                          isNull(schema.inventoryItem.deletedAt),
-                        ),
-                      );
-                    if (!inventoryItem) {
-                      await errorFollowUp(
-                        itx,
-                        "Nie znaleziono przedmiotu o podanym ID",
-                      );
-                      return null;
-                    }
+                  //  TODO: Use transaction from prisma
+                  const inventoryItem = await prisma.$drizzle.transaction(
+                    async (tx) => {
+                      const [inventoryItem] = await tx
+                        .select()
+                        .from(schema.InventoryItem)
+                        .innerJoin(
+                          schema.Item,
+                          eq(schema.InventoryItem.itemId, schema.Item.id),
+                        )
+                        .where(
+                          and(
+                            eq(schema.InventoryItem.id, inventoryItemId),
+                            eq(schema.InventoryItem.userId, itx.user.id),
+                            isNull(schema.InventoryItem.deletedAt),
+                          ),
+                        );
+                      if (!inventoryItem) {
+                        await errorFollowUp(
+                          itx,
+                          "Nie znaleziono przedmiotu o podanym ID",
+                        );
+                        return null;
+                      }
 
-                    await tx
-                      .update(schema.inventoryItem)
-                      .set({ userId: targetUser.id })
-                      .where(and(eq(schema.inventoryItem.id, inventoryItemId)));
-                    return inventoryItem;
-                  });
+                      await tx
+                        .update(schema.InventoryItem)
+                        .set({ userId: targetUser.id })
+                        .where(and(eq(schema.InventoryItem.id, inventoryItemId)));
+                      return inventoryItem;
+                    },
+                  );
                   if (!inventoryItem) return;
                   await itx.editReply({
                     content: `Przekazano ${bold(inventoryItem.item.name)} dla ${bold(
@@ -155,20 +155,23 @@ export const inventory = new Hashira({ name: "inventory" })
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ db }, { id: itemId, user }, itx) => {
+          .handle(async ({ prisma }, { id: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(db, user);
-            const added = await db.transaction(async (tx) => {
+            await ensureUserExists(prisma, user);
+            const added = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, itemId);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx.insert(schema.inventoryItem).values({
-                itemId,
-                userId: user.id,
+
+              await tx.inventoryItem.create({
+                data: {
+                  itemId,
+                  userId: user.id,
+                },
               });
               return true;
             });
@@ -185,26 +188,22 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w ekwipunku"))
-          .handle(async ({ db }, { id: inventoryItemId }, itx) => {
+          .handle(async ({ prisma }, { id: inventoryItemId }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const removed = await db.transaction(async (tx) => {
+            const removed = await prisma.$transaction(async (tx) => {
               const inventoryItem = await getInventoryItem(tx, inventoryItemId);
               if (!inventoryItem) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx
-                .update(schema.inventoryItem)
-                .set({ deletedAt: itx.createdAt })
-                .where(
-                  and(
-                    eq(schema.inventoryItem.id, inventoryItemId),
-                    isNull(schema.inventoryItem.deletedAt),
-                  ),
-                )
-                .returning();
+
+              await tx.inventoryItem.update({
+                where: { id: inventoryItemId, deletedAt: null },
+                data: { deletedAt: itx.createdAt },
+              });
+
               return true;
             });
             if (!removed) return;

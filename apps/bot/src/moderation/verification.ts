@@ -38,7 +38,7 @@ const get16PlusVerificationEnd = (createdAt: Date) => {
   return add(createdAt, VERIFICATION_DURATION);
 };
 
-type VerificationLevel = typeof schema.user.$inferSelect.verificationLevel;
+type VerificationLevel = typeof schema.User.$inferSelect.verificationLevel;
 const satisfiesVerificationLevel = (
   level: VerificationLevel,
   target: VerificationLevel,
@@ -74,7 +74,7 @@ const getActive16PlusVerification = async (
 
 const get18PlusRoleId = async (db: BaseContext["db"], guildId: string) => {
   const settings = await db.query.guildSettings.findFirst({
-    where: eq(schema.guildSettings.guildId, guildId),
+    where: eq(schema.GuildSettings.guildId, guildId),
   });
   if (!settings) return null;
   return settings.plus18RoleId;
@@ -108,7 +108,7 @@ export const verification = new Hashira({ name: "verification" })
 
             await ensureUsersExist(db, [user, itx.user]);
             const dbUser = await db.query.user.findFirst({
-              where: eq(schema.user.id, user.id),
+              where: eq(schema.User.id, user.id),
             });
             if (!dbUser) return;
 
@@ -275,7 +275,7 @@ export const verification = new Hashira({ name: "verification" })
 
             await ensureUsersExist(db, [user, itx.user]);
             const dbUser = await db.query.user.findFirst({
-              where: eq(schema.user.id, user.id),
+              where: eq(schema.User.id, user.id),
             });
             if (!dbUser) return;
 
@@ -337,9 +337,9 @@ export const verification = new Hashira({ name: "verification" })
               }
 
               await tx
-                .update(schema.user)
+                .update(schema.User)
                 .set({ verificationLevel: verificationType })
-                .where(eq(schema.user.id, user.id));
+                .where(eq(schema.User.id, user.id));
               return active16PlusVerification;
             });
 
@@ -459,7 +459,7 @@ export const verification = new Hashira({ name: "verification" })
 
             await ensureUsersExist(db, [user, itx.user]);
             const dbUser = await db.query.user.findFirst({
-              where: eq(schema.user.id, user.id),
+              where: eq(schema.User.id, user.id),
             });
             if (!dbUser) return;
 
@@ -539,7 +539,7 @@ export const verification = new Hashira({ name: "verification" })
 
         await ensureUserExists(db, user);
         const dbUser = await db.query.user.findFirst({
-          where: eq(schema.user.id, user.id),
+          where: eq(schema.User.id, user.id),
         });
         if (!dbUser) return;
 

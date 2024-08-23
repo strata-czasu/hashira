@@ -7,7 +7,8 @@
     "./migrate": "./src/migrate.ts",
     "./tasks": "./src/tasks.ts",
     "./drizzle": "./src/drizzle.ts",
-    "./drizzle/pgCore": "./src/pgCore.ts"
+    "./drizzle/pgCore": "./src/pgCore.ts",
+    "./transaction": "./src/transaction.ts"
   },
   "type": "module",
   "scripts": {
@@ -29,6 +30,7 @@
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
     "drizzle-orm": "^0.33.0",
+    "date-fns": "^3.6.0",
     "pg": "^8.12.0",
     "postgres": "^3.4.4"
   }
