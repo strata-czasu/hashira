@@ -13,7 +13,6 @@
   "scripts": {
     "drizzle-generate": "drizzle-kit generate",
     "drizzle-migrate": "drizzle-kit migrate",
-    "drizzle-check-migrations": "bun run ./check-migrations",
     "drizzle-studio": "drizzle-kit studio",
     "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
     "drizzle-push": "drizzle-kit push",
@@ -22,6 +21,7 @@
     "prisma-generate": "prisma generate",
     "prisma-migrate": "prisma migrate dev",
     "prisma-migrate-create": "prisma migrate create",
+    "prisma-check-migrations": "prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema.prisma --to-schema-datasource ./prisma/schema.prisma",
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {

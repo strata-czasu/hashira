@@ -40,7 +40,7 @@ jobs:
       - name: Check Types
         run: bunx tsc --project apps/bot/tsconfig.json
       - name: Check migrations
-        run: bun check-migrations
+        run: bun prisma-check-migrations
       - name: Run tests
         # FIXME: This is a workaround for the issue with `bun test`
         #        There's some issue with using and/or migrating the DB
