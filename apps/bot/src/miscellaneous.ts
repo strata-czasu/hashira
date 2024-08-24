@@ -79,108 +79,122 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           }),
       )
       .addCommand("last-mutes", (command) =>
-        command.setDescription("Get the last mutes").handle(async ({ db }, _, itx) => {
-          if (!itx.inCachedGuild()) return;
+        command
+          .setDescription("Get the last mutes")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-          const muteWheres = eq(schema.mute.guildId, itx.guildId);
+            const muteWheres = eq(schema.Mute.guildId, itx.guildId);
 
-          const paginate = new DatabasePaginator({
-            orderBy: schema.mute.createdAt,
-            ordering: PaginatorOrder.DESC,
-            select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
-            count: db
-              .select({ count: count() })
-              .from(schema.mute)
-              .where(muteWheres)
-              .$dynamic(),
-          });
+            const paginate = new DatabasePaginator({
+              orderBy: schema.Mute.createdAt,
+              ordering: PaginatorOrder.DESC,
+              select: prisma.$drizzle
+                .select()
+                .from(schema.Mute)
+                .where(muteWheres)
+                .$dynamic(),
+              count: prisma.$drizzle
+                .select({ count: count() })
+                .from(schema.Mute)
+                .where(muteWheres)
+                .$dynamic(),
+            });
 
-          const formatMute = createFormatMuteInList({ includeUser: true });
+            const formatMute = createFormatMuteInList({ includeUser: true });
 
-          const paginatedView = new PaginatedView(
-            paginate,
-            "Ostatnie wyciszenia",
-            formatMute,
-            true,
-          );
+            const paginatedView = new PaginatedView(
+              paginate,
+              "Ostatnie wyciszenia",
+              formatMute,
+              true,
+            );
 
-          await paginatedView.render(itx);
-        }),
+            await paginatedView.render(itx);
+          }),
       )
       .addCommand("show-pending-tasks", (command) =>
-        command.setDescription("Show pending tasks").handle(async ({ db }, _, itx) => {
-          if (!itx.inCachedGuild()) return;
+        command
+          .setDescription("Show pending tasks")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-          const paginator = new DatabasePaginator({
-            select: db
-              .select()
-              .from(schema.Task)
-              .where(eq(schema.Task.status, "pending"))
-              .$dynamic(),
-            count: db
-              .select({ count: count() })
-              .from(schema.Task)
-              .where(eq(schema.Task.status, "pending"))
-              .$dynamic(),
-            orderBy: schema.Task.createdAt,
-          });
+            const paginator = new DatabasePaginator({
+              select: prisma.$drizzle
+                .select()
+                .from(schema.Task)
+                .where(eq(schema.Task.status, "pending"))
+                .$dynamic(),
+              count: prisma.$drizzle
+                .select({ count: count() })
+                .from(schema.Task)
+                .where(eq(schema.Task.status, "pending"))
+                .$dynamic(),
+              orderBy: schema.Task.createdAt,
+            });
 
-          const formatTask = ({
-            id,
-            data,
-            createdAt,
-            handleAfter,
-            identifier,
-          }: typeof schema.Task.$inferSelect) => {
-            const lines = [
-              heading(`Task ${id}`, HeadingLevel.Three),
-              `Created at: ${time(createdAt)}`,
-              `Handle after: ${time(handleAfter)}`,
-              `Identifier: ${identifier}`,
-              `Data: ${inlineCode(JSON.stringify(data))}`,
-            ];
+            const formatTask = ({
+              id,
+              data,
+              createdAt,
+              handleAfter,
+              identifier,
+            }: typeof schema.Task.$inferSelect) => {
+              const lines = [
+                heading(`Task ${id}`, HeadingLevel.Three),
+                `Created at: ${time(createdAt)}`,
+                `Handle after: ${time(handleAfter)}`,
+                `Identifier: ${identifier}`,
+                `Data: ${inlineCode(JSON.stringify(data))}`,
+              ];
 
-            return lines.join("\n");
-          };
+              return lines.join("\n");
+            };
 
-          const paginatedView = new PaginatedView(
-            paginator,
-            "Pending tasks",
-            formatTask,
-            true,
-          );
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Pending tasks",
+              formatTask,
+              true,
+            );
 
-          await paginatedView.render(itx);
-        }),
+            await paginatedView.render(itx);
+          }),
       )
       .addCommand("last-warns", (command) =>
-        command.setDescription("Get the last warns").handle(async ({ db }, _, itx) => {
-          if (!itx.inCachedGuild()) return;
+        command
+          .setDescription("Get the last warns")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-          const warnWheres = eq(schema.warn.guildId, itx.guildId);
+            const warnWheres = eq(schema.Warn.guildId, itx.guildId);
 
-          const paginate = new DatabasePaginator({
-            orderBy: schema.warn.createdAt,
-            ordering: PaginatorOrder.DESC,
-            select: db.select().from(schema.warn).where(warnWheres).$dynamic(),
-            count: db
-              .select({ count: count() })
-              .from(schema.warn)
-              .where(warnWheres)
-              .$dynamic(),
-          });
+            const paginate = new DatabasePaginator({
+              orderBy: schema.Warn.createdAt,
+              ordering: PaginatorOrder.DESC,
+              select: prisma.$drizzle
+                .select()
+                .from(schema.Warn)
+                .where(warnWheres)
+                .$dynamic(),
+              count: prisma.$drizzle
+                .select({ count: count() })
+                .from(schema.Warn)
+                .where(warnWheres)
+                .$dynamic(),
+            });
 
-          const formatWarn = createWarnFormat({ includeUser: true });
+            const formatWarn = createWarnFormat({ includeUser: true });
 
-          const paginatedView = new PaginatedView(
-            paginate,
-            "Ostatnie ostrzeżenia",
-            formatWarn,
-            true,
-          );
+            const paginatedView = new PaginatedView(
+              paginate,
+              "Ostatnie ostrzeżenia",
+              formatWarn,
+              true,
+            );
 
-          await paginatedView.render(itx);
-        }),
+            await paginatedView.render(itx);
+          }),
       )
       .addCommand("last-added-channels", (command) =>
         command
@@ -260,14 +274,14 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           }),
       )
       .addCommand("clean-balances", (command) =>
-        command.setDescription("Clean balances").handle(async ({ db }, _, itx) => {
+        command.setDescription("Clean balances").handle(async ({ prisma }, _, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
 
-          await db
-            .update(schema.wallet)
-            .set({ balance: 0 })
-            .where(eq(schema.wallet.guildId, itx.guildId));
+          await prisma.wallet.updateMany({
+            where: { guildId: itx.guildId },
+            data: { balance: 0 },
+          });
 
           await itx.editReply("Balances cleaned");
         }),
@@ -277,14 +291,14 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .setDescription("Add balance to role")
           .addRole("role", (role) => role.setDescription("Role"))
           .addInteger("amount", (amount) => amount.setDescription("Amount"))
-          .handle(async ({ db }, { role, amount }, itx) => {
+          .handle(async ({ prisma }, { role, amount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const members = [...role.members.keys()];
 
             await addBalances({
-              prisma: db,
+              prisma,
               fromUserId: itx.user.id,
               guildId: itx.guildId,
               toUserIds: members,
