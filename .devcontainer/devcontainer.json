@@ -14,7 +14,8 @@
         "biomejs.biome",
         "GitHub.copilot",
         "GitHub.copilot-chat",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "Prisma.prisma"
       ]
     }
   }
