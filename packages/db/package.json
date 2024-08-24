@@ -35,8 +35,8 @@
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
-    "drizzle-kit": "^0.23.1",
-    "drizzle-orm": "^0.32.1",
+    "drizzle-kit": "^0.24.1",
+    "drizzle-orm": "^0.33.0",
     "pg": "^8.12.0",
     "postgres": "^3.4.4"
   }
