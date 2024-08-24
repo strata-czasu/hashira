@@ -3,6 +3,9 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli": {}
+  },
   "customizations": {
     "vscode": {
       "extensions": [
