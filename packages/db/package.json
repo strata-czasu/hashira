@@ -7,7 +7,8 @@
     "./migrate": "./src/migrate.ts",
     "./tasks": "./src/tasks.ts",
     "./drizzle": "./src/drizzle.ts",
-    "./drizzle/pgCore": "./src/pgCore.ts"
+    "./drizzle/pgCore": "./src/pgCore.ts",
+    "./transaction": "./src/transaction.ts"
   },
   "type": "module",
   "scripts": {
@@ -15,7 +16,7 @@
     "prisma-generate": "prisma generate",
     "prisma-migrate": "prisma migrate dev",
     "prisma-migrate-create": "prisma migrate create",
-    "prisma-check-migrations": "prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema.prisma --to-schema-datasource ./prisma/schema.prisma",
+    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema.prisma --to-schema-datasource ./prisma/schema.prisma",
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
     "drizzle-orm": "^0.33.0",
+    "date-fns": "^3.6.0",
     "pg": "^8.12.0",
     "postgres": "^3.4.4"
   }

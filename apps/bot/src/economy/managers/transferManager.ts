@@ -1,5 +1,5 @@
-import { type db, schema } from "@hashira/db";
-import { eq, sql } from "@hashira/db/drizzle";
+import type { ExtendedPrismaClient } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import {
   InsufficientBalanceError,
   InvalidAmountError,
@@ -10,7 +10,7 @@ import { getCurrency } from "./currencyManager";
 import { getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
 
 type AddBalanceOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   fromUserId?: string | null;
   toUserId: string;
   guildId: string;
@@ -20,7 +20,7 @@ type AddBalanceOptions = {
 } & GetCurrencyConditionOptions;
 
 export const addBalance = async ({
-  db,
+  prisma,
   fromUserId = null,
   toUserId,
   guildId,
@@ -29,35 +29,37 @@ export const addBalance = async ({
   walletName,
   ...currencyOptions
 }: AddBalanceOptions) => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+  return await prisma.$transaction(async (tx) => {
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallet = await getWallet({
-      db,
+      prisma,
       userId: toUserId,
       guildId,
       walletName,
       currencyId: currency.id,
     });
 
-    await tx
-      .update(schema.wallet)
-      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-      .where(eq(schema.wallet.id, wallet.id));
-
-    await tx.insert(schema.transaction).values({
-      walletId: wallet.id,
-      relatedUserId: fromUserId,
-      amount,
-      reason,
-      entryType: amount > 0 ? "credit" : "debit",
-      transactionType: "add",
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        balance: { increment: amount },
+        transactions: {
+          create: {
+            relatedUserId: fromUserId,
+            amount,
+            reason,
+            entryType: amount > 0 ? "credit" : "debit",
+            transactionType: "add",
+          },
+        },
+      },
     });
   });
 };
 
 type AddBalancesOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   fromUserId?: string | null;
   toUserIds: string[];
   guildId: string;
@@ -66,7 +68,7 @@ type AddBalancesOptions = {
 } & GetCurrencyConditionOptions;
 
 export const addBalances = async ({
-  db,
+  prisma,
   fromUserId = null,
   toUserIds,
   guildId,
@@ -74,38 +76,38 @@ export const addBalances = async ({
   reason,
   ...currencyOptions
 }: AddBalancesOptions) => {
-  return await db.transaction(async (tx) => {
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+  return await prisma.$transaction(async (tx) => {
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallets = await getDefaultWallets({
-      db: tx,
+      prisma: nestedTransaction(tx),
       userIds: toUserIds,
       guildId,
       currencyId: currency.id,
     });
 
-    await Promise.all(
-      wallets.map(async (wallet) => {
-        await tx
-          .update(schema.wallet)
-          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-          .where(eq(schema.wallet.id, wallet.id));
+    const walletIds = wallets.map((wallet) => wallet.id);
 
-        await tx.insert(schema.transaction).values({
-          walletId: wallet.id,
-          relatedUserId: fromUserId,
-          amount,
-          reason,
-          entryType: amount > 0 ? "credit" : "debit",
-          transactionType: "add",
-        });
-      }),
-    );
+    await tx.wallet.updateMany({
+      data: { balance: { increment: amount } },
+      where: { id: { in: walletIds } },
+    });
+
+    await tx.transaction.createMany({
+      data: wallets.map((wallet) => ({
+        walletId: wallet.id,
+        relatedUserId: fromUserId,
+        amount,
+        reason,
+        entryType: amount > 0 ? "credit" : "debit",
+        transactionType: "add",
+      })),
+    });
   });
 };
 
 type TransferBalanceOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   fromUserId: string;
   toUserId: string;
   guildId: string;
@@ -116,7 +118,7 @@ type TransferBalanceOptions = {
 } & GetCurrencyConditionOptions;
 
 export const transferBalance = async ({
-  db,
+  prisma,
   fromUserId,
   toUserId,
   guildId,
@@ -126,13 +128,13 @@ export const transferBalance = async ({
   toWalletName,
   ...currencyOptions
 }: TransferBalanceOptions) => {
-  return await db.transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     if (amount <= 0) throw new InvalidAmountError();
 
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getWallet({
-      db,
+      prisma,
       userId: fromUserId,
       guildId,
       walletName: fromWalletName,
@@ -142,7 +144,7 @@ export const transferBalance = async ({
     if (fromWallet.balance < amount) throw new InsufficientBalanceError();
 
     const toWallet = await getWallet({
-      db,
+      prisma,
       userId: toUserId,
       guildId,
       walletName: toWalletName,
@@ -151,40 +153,44 @@ export const transferBalance = async ({
 
     if (fromWallet.id === toWallet.id) throw new SelfTransferError();
 
-    await tx
-      .update(schema.wallet)
-      .set({ balance: sql`${schema.wallet.balance} - ${amount}` })
-      .where(eq(schema.wallet.id, fromWallet.id));
-
-    await tx
-      .update(schema.wallet)
-      .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-      .where(eq(schema.wallet.id, toWallet.id));
-
-    await tx.insert(schema.transaction).values({
-      relatedUserId: toUserId,
-      relatedWalletId: toWallet.id,
-      walletId: fromWallet.id,
-      amount,
-      reason,
-      entryType: "debit",
-      transactionType: "transfer",
+    await tx.wallet.update({
+      where: { id: fromWallet.id },
+      data: {
+        balance: { decrement: amount },
+        transactions: {
+          create: {
+            relatedUserId: toUserId,
+            relatedWalletId: toWallet.id,
+            amount,
+            reason,
+            entryType: "debit",
+            transactionType: "transfer",
+          },
+        },
+      },
     });
 
-    await tx.insert(schema.transaction).values({
-      relatedUserId: fromUserId,
-      relatedWalletId: fromWallet.id,
-      walletId: toWallet.id,
-      amount,
-      reason,
-      entryType: "credit",
-      transactionType: "transfer",
+    await tx.wallet.update({
+      where: { id: toWallet.id },
+      data: {
+        balance: { increment: amount },
+        transactions: {
+          create: {
+            relatedUserId: fromUserId,
+            relatedWalletId: fromWallet.id,
+            amount,
+            reason,
+            entryType: "credit",
+            transactionType: "transfer",
+          },
+        },
+      },
     });
   });
 };
 
 type TransferBalancesOptions = {
-  db: typeof db;
+  prisma: ExtendedPrismaClient;
   fromUserId: string;
   toUserIds: string[];
   guildId: string;
@@ -193,7 +199,7 @@ type TransferBalancesOptions = {
 } & GetCurrencyConditionOptions;
 
 export const transferBalances = async ({
-  db,
+  prisma,
   fromUserId,
   toUserIds,
   guildId,
@@ -201,13 +207,13 @@ export const transferBalances = async ({
   reason,
   ...currencyOptions
 }: TransferBalancesOptions) => {
-  return await db.transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     if (amount <= 0) throw new InvalidAmountError();
 
-    const currency = await getCurrency({ db: tx, guildId, ...currencyOptions });
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getDefaultWallet({
-      db: tx,
+      prisma: nestedTransaction(tx),
       userId: fromUserId,
       guildId,
       currencySymbol: currency.symbol,
@@ -220,44 +226,44 @@ export const transferBalances = async ({
     if (fromWallet.balance < sum) throw new InsufficientBalanceError();
 
     const wallets = await getDefaultWallets({
-      db: tx,
+      prisma: nestedTransaction(tx),
       userIds: uniqueToUserIds,
       guildId,
       currencyId: currency.id,
     });
 
-    await tx
-      .update(schema.wallet)
-      .set({ balance: sql`${schema.wallet.balance} - ${sum}` })
-      .where(eq(schema.wallet.id, fromWallet.id));
-
-    await tx.insert(schema.transaction).values({
-      walletId: fromWallet.id,
-      relatedUserId: null,
-      relatedWalletId: null,
-      amount: sum,
-      reason,
-      entryType: "debit",
-      transactionType: "transfer",
+    await tx.wallet.update({
+      where: { id: fromWallet.id },
+      data: {
+        balance: { decrement: sum },
+        transactions: {
+          create: {
+            relatedUserId: null,
+            relatedWalletId: null,
+            amount: sum,
+            reason,
+            entryType: "debit",
+            transactionType: "transfer",
+          },
+        },
+      },
     });
 
-    await Promise.all(
-      wallets.map(async (wallet) => {
-        await tx
-          .update(schema.wallet)
-          .set({ balance: sql`${schema.wallet.balance} + ${amount}` })
-          .where(eq(schema.wallet.id, wallet.id));
+    await tx.wallet.updateMany({
+      data: { balance: { increment: amount } },
+      where: { id: { in: wallets.map((wallet) => wallet.id) } },
+    });
 
-        await tx.insert(schema.transaction).values({
-          walletId: wallet.id,
-          relatedUserId: fromUserId,
-          relatedWalletId: fromWallet.id,
-          amount,
-          reason,
-          entryType: "credit",
-          transactionType: "transfer",
-        });
-      }),
-    );
+    await tx.transaction.createMany({
+      data: wallets.map((wallet) => ({
+        walletId: wallet.id,
+        relatedUserId: fromUserId,
+        relatedWalletId: fromWallet.id,
+        amount,
+        reason,
+        entryType: "credit",
+        transactionType: "transfer",
+      })),
+    });
   });
 };

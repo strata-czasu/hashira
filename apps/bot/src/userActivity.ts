@@ -1,5 +1,4 @@
 import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
 import { ChannelType, SnowflakeUtil } from "discord.js";
 import { base } from "./base";
 import { ensureUserExists } from "./util/ensureUsersExist";
@@ -33,7 +32,7 @@ export const userActivity = new Hashira({ name: "user-activity" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               { channel: rawChannel, before: rawBefore, limit: rawLimit },
               itx,
             ) => {
@@ -75,26 +74,25 @@ export const userActivity = new Hashira({ name: "user-activity" })
                   }% done. Last message: ${messages.last()?.url}`,
                 });
 
-                await db.insert(schema.user).values(userData).onConflictDoNothing();
-                await db.insert(schema.userTextActivity).values(messageData);
+                await prisma.$transaction([
+                  prisma.user.createMany({ data: userData, skipDuplicates: true }),
+                  prisma.userTextActivity.createMany({ data: messageData }),
+                ]);
               }
             },
           ),
       ),
   )
-  .handle("guildMessageCreate", async ({ db }, message) => {
-    await db
-      .insert(schema.guild)
-      .values({ id: message.guild.id })
-      .onConflictDoNothing();
+  .handle("guildMessageCreate", async ({ prisma }, message) => {
+    await ensureUserExists(prisma, message.author);
 
-    await ensureUserExists(db, message.author);
-
-    await db.insert(schema.userTextActivity).values({
-      userId: message.author.id,
-      guildId: message.guild.id,
-      messageId: message.id,
-      channelId: message.channel.id,
-      timestamp: message.createdAt,
+    await prisma.userTextActivity.create({
+      data: {
+        userId: message.author.id,
+        guildId: message.guild.id,
+        messageId: message.id,
+        channelId: message.channel.id,
+        timestamp: message.createdAt,
+      },
     });
   });

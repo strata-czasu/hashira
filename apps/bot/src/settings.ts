@@ -1,6 +1,4 @@
 import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
 import { PermissionFlagsBits, roleMention } from "discord.js";
 import { base } from "./base";
 
@@ -20,13 +18,14 @@ export const settings = new Hashira({ name: "settings" })
           .addRole("role", (role) =>
             role.setDescription("Rola, która ma być nadawana wyciszonym użytkownikom"),
           )
-          .handle(async ({ db }, { role }, itx) => {
+          .handle(async ({ prisma }, { role }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            await db
-              .update(schema.guildSettings)
-              .set({ muteRoleId: role.id })
-              .where(eq(schema.guildSettings.guildId, itx.guildId));
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { muteRoleId: role.id },
+            });
+
             // TODO: Update the role on currently muted users
             await itx.reply({
               content: `Rola do wyciszeń została ustawiona na ${roleMention(role.id)}`,
@@ -40,13 +39,14 @@ export const settings = new Hashira({ name: "settings" })
           .addRole("role", (role) =>
             role.setDescription("Rola, która ma być nadawana po weryfikacji 18+"),
           )
-          .handle(async ({ db }, { role }, itx) => {
+          .handle(async ({ prisma }, { role }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            await db
-              .update(schema.guildSettings)
-              .set({ plus18RoleId: role.id })
-              .where(eq(schema.guildSettings.guildId, itx.guildId));
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { plus18RoleId: role.id },
+            });
+
             await itx.reply({
               content: `Rola 18+ została ustawiona na ${roleMention(role.id)}`,
               ephemeral: true,
@@ -56,12 +56,13 @@ export const settings = new Hashira({ name: "settings" })
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl ustawienia serwera")
-          .handle(async ({ db }, _, itx) => {
+          .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const settings = await db.query.guildSettings.findFirst({
-              where: eq(schema.guildSettings.guildId, itx.guildId),
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId: itx.guildId },
             });
+
             if (!settings) throw new Error("Guild settings not found");
 
             await itx.reply({

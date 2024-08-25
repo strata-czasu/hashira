@@ -1,27 +1,27 @@
-import { and, eq, lte, sql } from "drizzle-orm";
-import type { Transaction, db } from ".";
-import { type TaskDataValue, task } from "./schema";
+import { addSeconds } from "date-fns";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  type ExtendedPrismaClient,
+  type PrismaTransaction,
+  type Task,
+  schema,
+} from ".";
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export async function getPendingTask<T extends Transaction>(tx: T) {
-  return await tx
-    .select()
-    .from(task)
-    .where(and(eq(task.status, "pending"), lte(task.handleAfter, sql`now()`)))
-    .for("update", { skipLocked: true })
-    .limit(1);
+export async function getPendingTask(tx: PrismaTransaction) {
+  return await tx.$queryRaw<
+    Task[]
+  >`SELECT * FROM "task" WHERE "status" = 'pending' AND "handleAfter" <= now() FOR UPDATE SKIP LOCKED LIMIT 1`;
 }
 
-export async function finishTask<T extends Transaction>(tx: T, id: number) {
-  await tx.update(task).set({ status: "completed" }).where(eq(task.id, id));
-}
+const finishTask = (tx: PrismaTransaction, id: number) =>
+  tx.task.update({ where: { id }, data: { status: "completed" } });
 
-export async function failTask<T extends Transaction>(tx: T, id: number) {
-  await tx.update(task).set({ status: "failed" }).where(eq(task.id, id));
-}
+const failTask = (tx: PrismaTransaction, id: number) =>
+  tx.task.update({ where: { id }, data: { status: "failed" } });
 
 interface TaskData {
   type: string;
@@ -43,6 +43,13 @@ type Handler<T, U extends Record<string, unknown>> = (
   data: T,
 ) => Promise<void>;
 
+type TaskDataValue =
+  | string
+  | number
+  | boolean
+  | { [x: string]: TaskDataValue }
+  | TaskDataValue[];
+
 type Handle = { [key: string]: TaskDataValue };
 
 const initHandleTypes = {};
@@ -52,12 +59,12 @@ export class MessageQueue<
   const Args extends Record<string, unknown> = typeof initHandleTypes,
 > {
   #handlers: Map<string, Handler<unknown, Record<string, unknown>>> = new Map();
-  #db: typeof db;
+  #prisma: ExtendedPrismaClient;
   #interval: number;
   #running = false;
 
-  constructor(database: typeof db, interval = 1000) {
-    this.#db = database;
+  constructor(prisma: ExtendedPrismaClient, interval = 1000) {
+    this.#prisma = prisma;
     this.#interval = interval;
   }
 
@@ -93,16 +100,14 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    const handleAfter = delay
-      ? sql`now() + make_interval(secs => ${delay})`
-      : sql`now()`;
+    const handleAfter = delay ? addSeconds(new Date(), delay) : new Date();
 
-    // FIXME: This is a workaround for a bug in drizzle-orm inserting jsonb values as strings
-    // https://github.com/drizzle-team/drizzle-orm/issues/724#issuecomment-1650670298
-    await this.#db.insert(task).values({
-      data: sql`${{ type, data }}::jsonb`,
-      handleAfter,
-      ...(identifier ? { identifier } : {}),
+    await this.#prisma.task.create({
+      data: {
+        data: { type, data },
+        handleAfter,
+        ...(identifier ? { identifier } : {}),
+      },
     });
   }
 
@@ -110,12 +115,15 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    await this.#db.transaction(async (tx) => {
-      await tx
-        .update(task)
+    await this.#prisma.$transaction(async (tx) => {
+      await tx.$drizzle
+        .update(schema.Task)
         .set({ status: "cancelled" })
         .where(
-          and(eq(sql`${task.data}->>'type'`, type), eq(task.identifier, identifier)),
+          and(
+            eq(sql`${schema.Task.data}->>'type'`, type),
+            eq(schema.Task.identifier, identifier),
+          ),
         );
     });
   }
@@ -135,17 +143,17 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    const handleAfter = sql`${task.createdAt} + make_interval(secs => ${delay})`;
+    const handleAfter = sql`${schema.Task.createdAt} + make_interval(secs => ${delay})`;
 
-    await this.#db.transaction(async (tx) => {
-      await tx
-        .update(task)
+    await this.#prisma.$transaction(async (tx) => {
+      await tx.$drizzle
+        .update(schema.Task)
         .set({ handleAfter })
         .where(
           and(
-            eq(sql`${task.data}->>'type'`, type),
-            eq(task.identifier, identifier),
-            eq(task.status, "pending"),
+            eq(sql`${schema.Task.data}->>'type'`, type),
+            eq(schema.Task.identifier, identifier),
+            eq(schema.Task.status, "pending"),
           ),
         );
     });
@@ -169,12 +177,15 @@ export class MessageQueue<
 
   private async innerConsumeLoop(props: Args) {
     try {
-      await this.#db.transaction(async (tx) => {
+      await this.#prisma.$transaction(async (tx) => {
         const [task] = await getPendingTask(tx);
         if (!task) return;
 
         const handled = await this.handleTask(props, task.data);
-        if (!handled) return await failTask(tx, task.id);
+        if (!handled) {
+          await failTask(tx, task.id);
+          return;
+        }
 
         await finishTask(tx, task.id);
       });

@@ -2,6 +2,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator json {
+  provider = "prisma-json-types-generator"
+}
+
+generator drizzle {
+  provider = "drizzle-prisma-generator"
+  output   = "../src/drizzle" // Where to put generated Drizle tables
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

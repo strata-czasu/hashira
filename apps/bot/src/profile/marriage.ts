@@ -1,6 +1,4 @@
 import { ConfirmationDialog, Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
 import { userMention } from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
@@ -13,15 +11,18 @@ export const marriage = new Hashira({ name: "marriage" })
       .setDescription("Oświadcz się komuś")
       .setDMPermission(false)
       .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .handle(async ({ db, lock }, { user: { id: targetUserId } }, itx) => {
+      .handle(async ({ prisma, lock }, { user: { id: targetUserId } }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
 
-        await ensureUsersExist(db, [itx.user.id, targetUserId]);
+        await ensureUsersExist(prisma, [itx.user.id, targetUserId]);
 
-        const user = await db.query.user.findFirst({
-          where: eq(schema.user.id, itx.user.id),
+        const user = await prisma.user.findFirst({
+          where: {
+            id: itx.user.id,
+          },
         });
+
         if (!user) return;
         if (user.marriedTo) {
           return await errorFollowUp(
@@ -34,9 +35,12 @@ export const marriage = new Hashira({ name: "marriage" })
           return await errorFollowUp(itx, "Nie możesz oświadczyć się samemu sobie!");
         }
 
-        const targetUser = await db.query.user.findFirst({
-          where: eq(schema.user.id, targetUserId),
+        const targetUser = await prisma.user.findFirst({
+          where: {
+            id: targetUserId,
+          },
         });
+
         if (!targetUser) return;
         if (targetUser.marriedTo) {
           return await errorFollowUp(
@@ -55,16 +59,17 @@ export const marriage = new Hashira({ name: "marriage" })
           "Tak",
           "Nie",
           async () => {
-            await db.transaction(async (tx) => {
-              await tx
-                .update(schema.user)
-                .set({ marriedTo: targetUser.id, marriedAt: itx.createdAt })
-                .where(eq(schema.user.id, user.id));
-              await tx
-                .update(schema.user)
-                .set({ marriedTo: user.id, marriedAt: itx.createdAt })
-                .where(eq(schema.user.id, targetUser.id));
-            });
+            await prisma.$transaction([
+              prisma.user.update({
+                where: { id: user.id },
+                data: { marriedTo: targetUser.id, marriedAt: itx.createdAt },
+              }),
+              prisma.user.update({
+                where: { id: targetUser.id },
+                data: { marriedTo: user.id, marriedAt: itx.createdAt },
+              }),
+            ]);
+
             await itx.editReply({
               content: `Gratulacje! ${userMention(itx.user.id)} i ${userMention(
                 targetUser.id,
@@ -103,22 +108,22 @@ export const marriage = new Hashira({ name: "marriage" })
     command
       .setDescription("Rozwiedź się")
       .setDMPermission(false)
-      .handle(async ({ db }, _, itx) => {
+      .handle(async ({ prisma }, _, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
 
-        await ensureUserExists(db, itx.user.id);
+        await ensureUserExists(prisma, itx.user.id);
 
-        const user = await db.query.user.findFirst({
-          where: eq(schema.user.id, itx.user.id),
+        const user = await prisma.user.findFirst({
+          where: { id: itx.user.id },
         });
         if (!user) return;
         if (!user.marriedTo) {
           return await errorFollowUp(itx, "Nie jesteś w związku!");
         }
 
-        const targetUser = await db.query.user.findFirst({
-          where: eq(schema.user.id, user.marriedTo),
+        const targetUser = await prisma.user.findFirst({
+          where: { id: user.marriedTo },
         });
         if (!targetUser) return;
 
@@ -129,16 +134,17 @@ export const marriage = new Hashira({ name: "marriage" })
           "Tak",
           "Nie",
           async () => {
-            await db.transaction(async (tx) => {
-              await tx
-                .update(schema.user)
-                .set({ marriedTo: null, marriedAt: null })
-                .where(eq(schema.user.id, user.id));
-              await tx
-                .update(schema.user)
-                .set({ marriedTo: null, marriedAt: null })
-                .where(eq(schema.user.id, targetUser.id));
-            });
+            await prisma.$transaction([
+              prisma.user.update({
+                where: { id: user.id },
+                data: { marriedTo: null, marriedAt: null },
+              }),
+              prisma.user.update({
+                where: { id: targetUser.id },
+                data: { marriedTo: null, marriedAt: null },
+              }),
+            ]);
+
             await itx.editReply({
               content: `${userMention(itx.user.id)} i ${userMention(
                 targetUser.id,

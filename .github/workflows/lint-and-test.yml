@@ -1,11 +1,11 @@
 name: Lint and Test
 
-on: [push, pull_request]
+on: [push]
 
 env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
   DATABASE_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
   # Dummy variables
-  DATABASE_URL: postgres://dummy
   BOT_CLIENT_ID: "000000000000000000"
   BOT_DEVELOPER_GUILD_IDS: "000000000000000000"
   BOT_TOKEN: dummy
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.1.10
+          bun-version: 1.1.26
       - run: bun install
       - name: Run Linting
         run: bunx biome lint .

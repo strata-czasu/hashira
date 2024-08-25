@@ -1,6 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { type db, schema } from "@hashira/db";
-import { desc, eq } from "@hashira/db/drizzle";
+import type { ExtendedPrismaClient } from "@hashira/db";
 import { isSameDay, subDays } from "date-fns";
 import { bold, userMention } from "discord.js";
 import { randomInt } from "es-toolkit";
@@ -23,12 +22,15 @@ const calculateDailyAmount = (marriageBonus: boolean, targetNotSelf: boolean) =>
   return randomInt(30, 100);
 };
 
-const calculateDailyStreak = async (database: typeof db, userId: string) => {
-  const redeems = await database
-    .select({ timestamp: schema.dailyPointsRedeems.timestamp })
-    .from(schema.dailyPointsRedeems)
-    .where(eq(schema.dailyPointsRedeems.userId, userId))
-    .orderBy(desc(schema.dailyPointsRedeems.timestamp));
+const calculateDailyStreak = async (
+  prisma: ExtendedPrismaClient,
+  userId: string,
+  guildId: string,
+) => {
+  const redeems = await prisma.dailyPointsRedeems.findMany({
+    where: { userId, guildId },
+    orderBy: { timestamp: "desc" },
+  });
 
   let streak = 0;
   let lastTimestamp = new Date();
@@ -60,19 +62,23 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           .setDescription("Użytkownik, któremu chcesz przekazać punkty")
           .setRequired(false),
       )
-      .handle(async ({ db }, { użytkownik: user }, itx) => {
+      .handle(async ({ prisma }, { użytkownik: user }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
 
         const targetUser = user ?? itx.user;
-        await ensureUsersExist(db, [itx.user.id, targetUser.id]);
+        await ensureUsersExist(prisma, [itx.user.id, targetUser.id]);
 
-        const invokerMarriage = await db.query.user.findFirst({
-          where: eq(schema.user.id, itx.user.id),
-          columns: { marriedTo: true },
+        const invokerMarriage = await prisma.user.findFirst({
+          where: { id: itx.user.id },
+          select: { marriedTo: true },
         });
 
-        const dailyStreak = await calculateDailyStreak(db, itx.user.id);
+        const dailyStreak = await calculateDailyStreak(
+          prisma,
+          itx.user.id,
+          itx.guildId,
+        );
 
         if (dailyStreak === -1) {
           await itx.editReply("Twoje dzisiejsze punkty zostały już odebrane!");
@@ -91,7 +97,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         const totalAmount = Math.floor(amount * (1 + streakBonus));
 
         await addBalance({
-          db,
+          prisma,
           currencySymbol: STRATA_CZASU_CURRENCY.symbol,
           reason: "Daily",
           guildId: itx.guildId,
@@ -99,9 +105,8 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           amount: totalAmount,
         });
 
-        await db.insert(schema.dailyPointsRedeems).values({
-          userId: itx.user.id,
-          guildId: itx.guildId,
+        await prisma.dailyPointsRedeems.create({
+          data: { userId: itx.user.id, guildId: itx.guildId },
         });
 
         const giveOrReceive = shouldApplyTargetNotSelf
