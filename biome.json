@@ -16,8 +16,5 @@
     "lineWidth": 88,
     "enabled": true,
     "indentStyle": "space"
-  },
-  "files": {
-    "ignore": ["packages/db/drizzle/"]
   }
 }

@@ -4,9 +4,7 @@ import {
   type ExtendedPrismaClient,
   type PrismaTransaction,
   type Warn,
-  schema,
 } from "@hashira/db";
-import { and, count, eq, isNull } from "@hashira/db/drizzle";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   HeadingLevel,
@@ -67,22 +65,18 @@ const getUserWarnsPaginatedView = (
   guildId: string,
   deleted: boolean | null,
 ) => {
-  const warnWheres = and(
-    eq(schema.Warn.guildId, guildId),
-    eq(schema.Warn.userId, user.id),
-    deleted ? undefined : isNull(schema.Warn.deletedAt),
+  const where = {
+    guildId,
+    userId: user.id,
+    ...(deleted ? {} : { deletedAt: null }),
+  };
+
+  const paginate = new DatabasePaginator(
+    (props, createdAt) =>
+      prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
+    () => prisma.warn.count({ where }),
+    { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
   );
-  const paginate = new DatabasePaginator({
-    orderBy: schema.Warn.createdAt,
-    ordering: PaginatorOrder.DESC,
-    pageSize: 5,
-    select: prisma.$drizzle.select().from(schema.Warn).where(warnWheres).$dynamic(),
-    count: prisma.$drizzle
-      .select({ count: count() })
-      .from(schema.Warn)
-      .where(warnWheres)
-      .$dynamic(),
-  });
 
   const formatWarn = createWarnFormat({ includeUser: false });
 
