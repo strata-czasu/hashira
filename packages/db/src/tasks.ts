@@ -1,11 +1,5 @@
 import { addSeconds } from "date-fns";
-import { and, eq, sql } from "drizzle-orm";
-import {
-  type ExtendedPrismaClient,
-  type PrismaTransaction,
-  type Task,
-  schema,
-} from ".";
+import type { ExtendedPrismaClient, PrismaTransaction, Task } from ".";
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
@@ -116,15 +110,20 @@ export class MessageQueue<
     if (typeof type !== "string") throw new Error("Type must be a string");
 
     await this.#prisma.$transaction(async (tx) => {
-      await tx.$drizzle
-        .update(schema.Task)
-        .set({ status: "cancelled" })
-        .where(
-          and(
-            eq(sql`${schema.Task.data}->>'type'`, type),
-            eq(schema.Task.identifier, identifier),
-          ),
-        );
+      const task = await tx.task.findFirst({
+        where: {
+          identifier,
+          status: "pending",
+          data: { path: ["type"], equals: type },
+        },
+      });
+
+      if (!task) throw new Error(`Task not found: ${type} ${identifier}`);
+
+      await tx.task.update({
+        where: { id: task.id },
+        data: { status: "cancelled" },
+      });
     });
   }
 
@@ -143,19 +142,21 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    const handleAfter = sql`${schema.Task.createdAt} + make_interval(secs => ${delay})`;
-
     await this.#prisma.$transaction(async (tx) => {
-      await tx.$drizzle
-        .update(schema.Task)
-        .set({ handleAfter })
-        .where(
-          and(
-            eq(sql`${schema.Task.data}->>'type'`, type),
-            eq(schema.Task.identifier, identifier),
-            eq(schema.Task.status, "pending"),
-          ),
-        );
+      const task = await tx.task.findFirst({
+        where: {
+          identifier,
+          status: "pending",
+          data: { path: ["type"], equals: type },
+        },
+      });
+
+      if (!task) throw new Error(`Task not found: ${type} ${identifier}`);
+      const handleAfter = addSeconds(task.createdAt, delay);
+      await tx.task.update({
+        where: { id: task.id },
+        data: { handleAfter },
+      });
     });
   }
 
