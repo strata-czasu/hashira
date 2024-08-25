@@ -106,7 +106,8 @@ export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
     const result = await this.qb.execute();
 
     if (this.isCountUnknown && result.length < this.#pageSize) {
-      this.#count = this.currentOffset + result.length;
+      // TODO: Drizzle generator lies and returns bigint instead of number for count :)
+      this.#count = this.currentOffset + Number(result.length);
       this.#page--;
     }
 
