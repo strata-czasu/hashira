@@ -20,14 +20,14 @@
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
-    "@faker-js/faker": "^8.4.1",
-    "drizzle-prisma-generator": "^0.1.7",
-    "prisma": "^5.18.0"
+    "@faker-js/faker": "^8.4.1"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
+    "drizzle-prisma-generator": "^0.1.7",
+    "prisma": "^5.18.0",
     "drizzle-orm": "^0.33.0",
     "date-fns": "^3.6.0",
     "pg": "^8.12.0",
