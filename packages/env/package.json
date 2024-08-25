@@ -1,10 +1,6 @@
 {
   "name": "@hashira/env",
   "module": "index.ts",
-  "devDependencies": {
-    "typescript": "*",
-    "@hashira/tsconfig": "workspace:*"
-  },
   "type": "module",
   "dependencies": {
     "valibot": "^0.39.0"

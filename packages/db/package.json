@@ -11,12 +11,6 @@
   },
   "type": "module",
   "scripts": {
-    "drizzle-generate": "drizzle-kit generate",
-    "drizzle-migrate": "drizzle-kit migrate",
-    "drizzle-studio": "drizzle-kit studio",
-    "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
-    "drizzle-push": "drizzle-kit push",
-    "drizzle-drop": "drizzle-kit drop",
     "prisma-studio": "prisma studio",
     "prisma-generate": "prisma generate",
     "prisma-migrate": "prisma migrate dev",
@@ -26,16 +20,14 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
-    "@hashira/tsconfig": "workspace:*",
-    "@types/bun": "latest",
+    "drizzle-prisma-generator": "^0.1.7",
     "prisma": "^5.18.0",
-    "typescript": "*"
+    "prisma-json-types-generator": "^3.0.4"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
-    "drizzle-kit": "^0.24.1",
     "drizzle-orm": "^0.33.0",
     "pg": "^8.12.0",
     "postgres": "^3.4.4"

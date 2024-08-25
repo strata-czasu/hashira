@@ -18,10 +18,5 @@
     "discord.js": "^14.15.3",
     "ts-pattern": "5.3.1",
     "es-toolkit": "^1.16.0"
-  },
-  "devDependencies": {
-    "typescript": "*",
-    "@types/bun": "latest",
-    "@hashira/tsconfig": "workspace:*"
   }
 }
