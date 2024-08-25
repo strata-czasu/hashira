@@ -9,6 +9,9 @@
     "typescript": "^5.5.4",
     "@hashira/tsconfig": "workspace:*"
   },
+  "dependencies": {
+    "drizzle-prisma-generator": "^0.1.7"
+  },
   "scripts": {
     "fix": "biome check --write",
     "start": "bun run --cwd apps/bot start",
