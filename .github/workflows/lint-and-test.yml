@@ -3,9 +3,9 @@ name: Lint and Test
 on: [push, pull_request]
 
 env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
   DATABASE_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
   # Dummy variables
-  DATABASE_URL: postgres://dummy
   BOT_CLIENT_ID: "000000000000000000"
   BOT_DEVELOPER_GUILD_IDS: "000000000000000000"
   BOT_TOKEN: dummy
