@@ -63,7 +63,8 @@ export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
   private async fetchCount() {
     if (!this.isCountUnknown || !this.#countQb) return;
     const [row] = await this.#countQb.execute();
-    if (row) this.#count = row.count;
+    // TODO: Drizzle generator lies and returns bigint instead of number for count :)
+    if (row) this.#count = Number(row.count);
     else this.#count = 0;
   }
 
