@@ -8,10 +8,9 @@ import { base } from "./base";
 export const autoRole = new Hashira({ name: "auto-role" })
   .use(base)
   .handle("guildMemberAdd", async ({ prisma }, member) => {
-    const autoRoles = await prisma.$drizzle
-      .select({ roleId: schema.AutoRole.roleId })
-      .from(schema.AutoRole)
-      .where(eq(schema.AutoRole.guildId, member.guild.id));
+    const autoRoles = await prisma.autoRole.findMany({
+      where: { guildId: member.guild.id },
+    });
 
     // TODO: This is a workaround for a race condition where multiple bots try to add roles to a member
     await Bun.sleep(1000);
@@ -35,11 +34,11 @@ export const autoRole = new Hashira({ name: "auto-role" })
               .setRequired(true),
           )
           .handle(async ({ prisma }, { role }, itx) => {
-            const added = await prisma.$drizzle
-              .insert(schema.AutoRole)
-              .values({ guildId: role.guild.id, roleId: role.id })
-              .onConflictDoNothing()
-              .returning();
+            const added = await prisma.autoRole.createManyAndReturn({
+              data: { guildId: role.guild.id, roleId: role.id },
+              skipDuplicates: true,
+            });
+
             if (added.length === 0) {
               await itx.reply({
                 content: `${role.name} is already in the autorole list`,

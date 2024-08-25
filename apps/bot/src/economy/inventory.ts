@@ -84,37 +84,27 @@ export const inventory = new Hashira({ name: "inventory" })
                 "Nie",
                 async () => {
                   //  TODO: Use transaction from prisma
-                  const inventoryItem = await prisma.$drizzle.transaction(
-                    async (tx) => {
-                      const [inventoryItem] = await tx
-                        .select()
-                        .from(schema.InventoryItem)
-                        .innerJoin(
-                          schema.Item,
-                          eq(schema.InventoryItem.itemId, schema.Item.id),
-                        )
-                        .where(
-                          and(
-                            eq(schema.InventoryItem.id, inventoryItemId),
-                            eq(schema.InventoryItem.userId, itx.user.id),
-                            isNull(schema.InventoryItem.deletedAt),
-                          ),
-                        );
-                      if (!inventoryItem) {
-                        await errorFollowUp(
-                          itx,
-                          "Nie znaleziono przedmiotu o podanym ID",
-                        );
-                        return null;
-                      }
+                  const inventoryItem = await prisma.$transaction(async (tx) => {
+                    const inventoryItem = await tx.inventoryItem.findFirst({
+                      where: { id: inventoryItemId, deletedAt: null },
+                      include: { item: true },
+                    });
 
-                      await tx
-                        .update(schema.InventoryItem)
-                        .set({ userId: targetUser.id })
-                        .where(and(eq(schema.InventoryItem.id, inventoryItemId)));
-                      return inventoryItem;
-                    },
-                  );
+                    if (!inventoryItem) {
+                      await errorFollowUp(
+                        itx,
+                        "Nie znaleziono przedmiotu o podanym ID",
+                      );
+                      return null;
+                    }
+
+                    await tx.inventoryItem.update({
+                      where: { id: inventoryItemId },
+                      data: { deletedAt: itx.createdAt },
+                    });
+
+                    return inventoryItem;
+                  });
                   if (!inventoryItem) return;
                   await itx.editReply({
                     content: `Przekazano ${bold(inventoryItem.item.name)} dla ${bold(

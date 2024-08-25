@@ -1,3 +1,4 @@
+import { addSeconds } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
 import {
   type ExtendedPrismaClient,
@@ -12,7 +13,7 @@ type Prettify<T> = {
 
 export async function getPendingTask(tx: PrismaTransaction) {
   return await tx.$queryRaw<
-    [Task]
+    Task[]
   >`SELECT * FROM "task" WHERE "status" = 'pending' AND "handleAfter" <= now() FOR UPDATE SKIP LOCKED LIMIT 1`;
 }
 
@@ -99,16 +100,14 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    const handleAfter = delay
-      ? sql`now() + make_interval(secs => ${delay})`
-      : sql`now()`;
+    const handleAfter = delay ? addSeconds(new Date(), delay) : new Date();
 
-    // FIXME: This is a workaround for a bug in drizzle-orm inserting jsonb values as strings
-    // https://github.com/drizzle-team/drizzle-orm/issues/724#issuecomment-1650670298
-    await this.#prisma.$drizzle.insert(schema.Task).values({
-      data: sql`${{ type, data }}::jsonb`,
-      handleAfter,
-      ...(identifier ? { identifier } : {}),
+    await this.#prisma.task.create({
+      data: {
+        data: { type, data },
+        handleAfter,
+        ...(identifier ? { identifier } : {}),
+      },
     });
   }
 
