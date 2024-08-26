@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     ports:
-      - 4983:4983  # drizzle kit studio
+      - 5555:5555  # prisma studio
 
   db:
     image: postgres:latest

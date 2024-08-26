@@ -4,9 +4,9 @@ import {
   type ExtendedPrismaClient,
   type PrismaTransaction,
   VerificationLevel,
-  schema,
+  VerificationStatus,
+  VerificationType,
 } from "@hashira/db";
-import { and, count, eq } from "@hashira/db/drizzle";
 import { PaginatorOrder } from "@hashira/paginate";
 import { type Duration, add } from "date-fns";
 import {
@@ -212,31 +212,22 @@ export const verification = new Hashira({ name: "verification" })
           .setDescription("Sprawdź aktywne weryfikacje")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
+            const where = {
+              guildId: itx.guildId,
+              type: VerificationType.plus16,
+              status: VerificationStatus.in_progress,
+            };
 
-            const wheres = and(
-              eq(schema.Verification.guildId, itx.guildId),
-              eq(schema.Verification.type, "16_plus"),
-              eq(schema.Verification.status, "in_progress"),
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.verification.findMany({
+                  where,
+                  ...props,
+                  orderBy: { createdAt },
+                }),
+              () => prisma.verification.count({ where }),
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
             );
-            const paginate = new DatabasePaginator({
-              orderBy: schema.Verification.createdAt,
-              ordering: PaginatorOrder.DESC,
-              select: prisma.$drizzle
-                .select({
-                  id: schema.Verification.id,
-                  createdAt: schema.Verification.createdAt,
-                  userId: schema.Verification.userId,
-                  moderatorId: schema.Verification.moderatorId,
-                })
-                .from(schema.Verification)
-                .where(wheres)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.Verification)
-                .where(wheres)
-                .$dynamic(),
-            });
 
             const paginatedView = new PaginatedView(
               paginate,

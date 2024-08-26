@@ -1,6 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { countDistinct, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type Item } from "@hashira/db";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
@@ -8,7 +7,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { formatBalance } from "./strata/strataCurrency";
 import { getItem } from "./util";
 
-const formatItem = ({ name, id }: typeof schema.Item.$inferSelect) =>
+const formatItem = ({ name, id }: Item) =>
   `${bold(name)} [${inlineCode(id.toString())}]`;
 
 export const items = new Hashira({ name: "items" })
@@ -25,20 +24,13 @@ export const items = new Hashira({ name: "items" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = isNull(schema.Item.deletedAt);
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.Item.createdAt],
-              select: prisma.$drizzle
-                .select()
-                .from(schema.Item)
-                .where(where)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: countDistinct(schema.Item.id) })
-                .from(schema.Item)
-                .where(where)
-                .$dynamic(),
-            });
+            const where = { deletedAt: null };
+
+            const paginator = new DatabasePaginator(
+              (props) => prisma.item.findMany({ where, ...props }),
+              () => prisma.item.count({ where }),
+            );
+
             const paginatedView = new PaginatedView(
               paginator,
               "Przedmioty",

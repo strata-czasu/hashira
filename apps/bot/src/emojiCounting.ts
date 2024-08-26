@@ -1,7 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { schema } from "@hashira/db";
-import { and, between, count, countDistinct, eq } from "@hashira/db/drizzle";
 import {
   AttachmentBuilder,
   type GuildEmoji,
@@ -73,30 +71,33 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               const after = parseDate(rawAfter, "start", () => new Date(0));
               const before = parseDate(rawBefore, "end", () => new Date());
 
-              const where = and(
-                eq(schema.EmojiUsage.userId, user.id),
-                between(schema.EmojiUsage.timestamp, after, before),
-              );
+              const where = {
+                userId: user.id,
+                timestamp: { gte: after, lte: before },
+              };
 
-              const paginate = new DatabasePaginator({
-                orderBy: [count(), schema.EmojiUsage.emojiId],
-                select: prisma.$drizzle
-                  .select({ emojiId: schema.EmojiUsage.emojiId, count: count() })
-                  .from(schema.EmojiUsage)
-                  .where(where)
-                  .groupBy(schema.EmojiUsage.emojiId)
-                  .$dynamic(),
-                count: prisma.$drizzle
-                  .select({ count: countDistinct(schema.EmojiUsage.emojiId) })
-                  .from(schema.EmojiUsage)
-                  .where(where)
-                  .$dynamic(),
-              });
+              const paginate = new DatabasePaginator(
+                (props, ordering) =>
+                  prisma.emojiUsage.groupBy({
+                    ...props,
+                    by: "emojiId",
+                    where,
+                    _count: true,
+                    orderBy: [{ _count: { emojiId: ordering } }, { emojiId: ordering }],
+                  }),
+                async () => {
+                  const count = await prisma.emojiUsage.groupBy({
+                    by: "emojiId",
+                    where,
+                  });
+                  return count.length;
+                },
+              );
 
               const paginator = new PaginatedView(
                 paginate,
                 `Emoji stats for <@${user.id}>`,
-                (item, idx) => `${idx}. ${item.emojiId} - ${item.count}`,
+                (item, idx) => `${idx}. ${item.emojiId} - ${item._count}`,
                 true,
               );
 
@@ -138,30 +139,33 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               const after = parseDate(rawAfter, "start", () => new Date(0));
               const before = parseDate(rawBefore, "end", () => new Date());
 
-              const where = and(
-                eq(schema.EmojiUsage.emojiId, emoji.id),
-                between(schema.EmojiUsage.timestamp, after, before),
-              );
+              const where = {
+                emojiId: emoji.id,
+                timestamp: { gte: after, lte: before },
+              };
 
-              const paginate = new DatabasePaginator({
-                orderBy: [count(), schema.EmojiUsage.userId],
-                select: prisma.$drizzle
-                  .select({ userId: schema.EmojiUsage.userId, count: count() })
-                  .from(schema.EmojiUsage)
-                  .where(where)
-                  .groupBy(schema.EmojiUsage.userId)
-                  .$dynamic(),
-                count: prisma.$drizzle
-                  .select({ count: countDistinct(schema.EmojiUsage.userId) })
-                  .from(schema.EmojiUsage)
-                  .where(where)
-                  .$dynamic(),
-              });
+              const paginate = new DatabasePaginator(
+                (props, ordering) =>
+                  prisma.emojiUsage.groupBy({
+                    ...props,
+                    by: "userId",
+                    where,
+                    _count: true,
+                    orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                  }),
+                async () => {
+                  const count = await prisma.emojiUsage.groupBy({
+                    by: "userId",
+                    where,
+                  });
+                  return count.length;
+                },
+              );
 
               const paginator = new PaginatedView(
                 paginate,
                 `Emoji stats for ${emoji.name}`,
-                (item, idx) => `${idx}. <@${item.userId}> - ${item.count}`,
+                (item, idx) => `${idx}. <@${item.userId}> - ${item._count}`,
                 true,
               );
 
@@ -183,25 +187,29 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
 
             const after = parseDate(rawAfter, "start", () => new Date(0));
             const before = parseDate(rawBefore, "end", () => new Date());
-            const where = and(
-              eq(schema.EmojiUsage.guildId, itx.guild.id),
-              between(schema.EmojiUsage.timestamp, after, before),
-            );
 
-            const paginate = new DatabasePaginator({
-              orderBy: [count(), schema.EmojiUsage.emojiId],
-              select: prisma.$drizzle
-                .select({ emojiId: schema.EmojiUsage.emojiId, count: count() })
-                .from(schema.EmojiUsage)
-                .where(where)
-                .groupBy(schema.EmojiUsage.emojiId)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: countDistinct(schema.EmojiUsage.emojiId) })
-                .from(schema.EmojiUsage)
-                .where(where)
-                .$dynamic(),
-            });
+            const where = {
+              guildId: itx.guild.id,
+              timestamp: { gte: after, lte: before },
+            };
+
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.emojiUsage.groupBy({
+                  ...props,
+                  by: "emojiId",
+                  where,
+                  _count: true,
+                  orderBy: [{ _count: { emojiId: ordering } }, { emojiId: ordering }],
+                }),
+              async () => {
+                const count = await prisma.emojiUsage.groupBy({
+                  by: "emojiId",
+                  where,
+                });
+                return count.length;
+              },
+            );
 
             const paginator = new PaginatedView(
               paginate,
@@ -213,7 +221,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
                   () => "unknown emoji",
                 );
 
-                return `${idx}. ${emoji} - ${item.count}`;
+                return `${idx}. ${emoji} - ${item._count}`;
               },
               true,
             );

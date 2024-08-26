@@ -1,6 +1,5 @@
 import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type PrismaTransaction, schema } from "@hashira/db";
-import { and, count, eq, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type PrismaTransaction } from "@hashira/db";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
@@ -25,28 +24,22 @@ export const inventory = new Hashira({ name: "inventory" })
             await itx.deferReply();
 
             // TODO)) Group items by type instead of listing all
-            const where = and(
-              eq(schema.InventoryItem.userId, user.id),
-              isNull(schema.InventoryItem.deletedAt),
+            const where = { userId: user.id, deletedAt: null };
+
+            const paginator = new DatabasePaginator(
+              (props) =>
+                prisma.inventoryItem.findMany({
+                  where,
+                  include: { item: true },
+                  ...props,
+                }),
+              () => prisma.inventoryItem.count({ where }),
             );
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.InventoryItem.createdAt],
-              select: prisma.$drizzle
-                .select()
-                .from(schema.InventoryItem)
-                .innerJoin(schema.Item, eq(schema.InventoryItem.itemId, schema.Item.id))
-                .where(where)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count(schema.InventoryItem) })
-                .from(schema.InventoryItem)
-                .where(where)
-                .$dynamic(),
-            });
+
             const paginatedView = new PaginatedView(
               paginator,
               `Ekwipunek ${user.tag}`,
-              ({ inventoryItem: { id }, item }) => `- ${item.name} [${id}]`,
+              ({ id, item }) => `- ${item.name} [${id}]`,
               true,
             );
             await paginatedView.render(itx);

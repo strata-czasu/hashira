@@ -1,12 +1,4 @@
-import type { TablesRelationalConfig } from "drizzle-orm";
-import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import type { ExtendedPrismaClient, PrismaTransaction } from ".";
-
-export type Transaction = PgTransaction<
-  PgQueryResultHKT,
-  Record<string, unknown>,
-  TablesRelationalConfig
->;
 
 type TransactionFn = Parameters<ExtendedPrismaClient["$transaction"]>[0];
 

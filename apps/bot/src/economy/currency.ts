@@ -1,11 +1,10 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { and, count, eq } from "@hashira/db/drizzle";
+import { type Currency, DatabasePaginator } from "@hashira/db";
 import { PermissionFlagsBits, TimestampStyles, time } from "discord.js";
 import { base } from "../base";
 
 const formatCurrency = (
-  { name, symbol, createdAt, createdBy }: typeof schema.Currency.$inferSelect,
+  { name, symbol, createdAt, createdBy }: Currency,
   showOwner = false,
 ) => {
   const formattedTime = time(createdAt, TimestampStyles.LongDateTime);
@@ -68,23 +67,17 @@ export const currency = new Hashira({ name: "currency" })
                 const userId = user?.id ?? itx.user.id;
                 const guildId = itx.guildId;
 
-                const where = and(
-                  eq(schema.Currency.createdBy, userId),
-                  eq(schema.Currency.guildId, guildId),
-                );
+                const where = { createdBy: userId, guildId };
 
-                const paginate = new DatabasePaginator({
-                  orderBy: schema.Currency.createdAt,
-                  select: prisma.$drizzle
-                    .select()
-                    .from(schema.Currency)
-                    .where(where)
-                    .$dynamic(),
-                  count: prisma.$drizzle
-                    .select({ count: count() })
-                    .from(schema.Currency)
-                    .$dynamic(),
-                });
+                const paginate = new DatabasePaginator(
+                  (props, createdAt) =>
+                    prisma.currency.findMany({
+                      ...props,
+                      where,
+                      orderBy: { createdAt },
+                    }),
+                  () => prisma.currency.count({ where }),
+                );
 
                 const paginator = new PaginatedView(
                   paginate,
@@ -101,20 +94,17 @@ export const currency = new Hashira({ name: "currency" })
               .handle(async ({ prisma }, _, itx) => {
                 if (!itx.inCachedGuild()) return;
 
-                const where = eq(schema.Currency.guildId, itx.guildId);
+                const where = { guildId: itx.guildId };
 
-                const paginate = new DatabasePaginator({
-                  orderBy: schema.Currency.createdAt,
-                  select: prisma.$drizzle
-                    .select()
-                    .from(schema.Currency)
-                    .where(where)
-                    .$dynamic(),
-                  count: prisma.$drizzle
-                    .select({ count: count() })
-                    .from(schema.Currency)
-                    .$dynamic(),
-                });
+                const paginate = new DatabasePaginator(
+                  (props, createdAt) =>
+                    prisma.currency.findMany({
+                      ...props,
+                      where,
+                      orderBy: { createdAt },
+                    }),
+                  () => prisma.currency.count({ where }),
+                );
 
                 const paginator = new PaginatedView(
                   paginate,

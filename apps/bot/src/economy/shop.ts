@@ -1,6 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Prisma, schema } from "@hashira/db";
-import { and, countDistinct, eq, isNotNull, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
@@ -31,28 +30,20 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = and(
-              isNotNull(schema.ShopItem.price),
-              isNull(schema.ShopItem.deletedAt),
+            const paginator = new DatabasePaginator(
+              (props, price) =>
+                prisma.shopItem.findMany({
+                  ...props,
+                  orderBy: { price },
+                  include: { item: true },
+                }),
+              () => prisma.shopItem.count(),
             );
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.ShopItem.price],
-              select: prisma.$drizzle
-                .select()
-                .from(schema.ShopItem)
-                .innerJoin(schema.Item, eq(schema.ShopItem.itemId, schema.Item.id))
-                .where(where)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: countDistinct(schema.ShopItem.id) })
-                .from(schema.ShopItem)
-                .where(where)
-                .$dynamic(),
-            });
+
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ shopItem: { id, price }, item: { name, description } }) =>
+              ({ id, price, item: { name, description } }) =>
                 `### ${name} - ${formatAmount(price as number)} [${id}]\n${description}`,
               true,
             );

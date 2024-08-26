@@ -1,7 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { count, eq } from "@hashira/db/drizzle";
-import { PaginatorOrder } from "@hashira/paginate";
+import { DatabasePaginator } from "@hashira/db";
 import { PermissionFlagsBits } from "discord.js";
 import { base } from "./base";
 
@@ -59,11 +57,10 @@ export const autoRole = new Hashira({ name: "auto-role" })
             role.setDescription("Role to remove from autorole list").setRequired(true),
           )
           .handle(async ({ prisma }, { role }, itx) => {
-            const removed = await prisma.$drizzle
-              .delete(schema.AutoRole)
-              .where(eq(schema.AutoRole.roleId, role.id))
-              .returning();
-            if (removed.length === 0) {
+            const removed = await prisma.autoRole.deleteMany({
+              where: { roleId: role.id },
+            });
+            if (removed.count === 0) {
               await itx.reply({
                 content: `${role.name} is not in the autorole list`,
                 ephemeral: true,
@@ -81,21 +78,14 @@ export const autoRole = new Hashira({ name: "auto-role" })
           .setDescription("List all autoroles")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.guildId) return;
+            const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator({
-              orderBy: schema.AutoRole.roleId,
-              ordering: PaginatorOrder.ASC,
-              select: prisma.$drizzle
-                .select({ roleId: schema.AutoRole.roleId })
-                .from(schema.AutoRole)
-                .where(eq(schema.AutoRole.guildId, itx.guildId))
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.AutoRole)
-                .where(eq(schema.AutoRole.guildId, itx.guildId))
-                .$dynamic(),
-            });
+            const paginate = new DatabasePaginator(
+              (props, roleId) =>
+                prisma.autoRole.findMany({ ...props, where, orderBy: { roleId } }),
+              () => prisma.autoRole.count({ where }),
+            );
+
             const paginatedView = new PaginatedView(
               paginate,
               "Auto roles",

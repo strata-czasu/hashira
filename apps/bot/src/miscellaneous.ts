@@ -1,6 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { count, eq } from "@hashira/db/drizzle";
+import { DatabasePaginator, type Task } from "@hashira/db";
 import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   AttachmentBuilder,
@@ -84,22 +83,14 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const muteWheres = eq(schema.Mute.guildId, itx.guildId);
+            const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator({
-              orderBy: schema.Mute.createdAt,
-              ordering: PaginatorOrder.DESC,
-              select: prisma.$drizzle
-                .select()
-                .from(schema.Mute)
-                .where(muteWheres)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.Mute)
-                .where(muteWheres)
-                .$dynamic(),
-            });
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+              () => prisma.mute.count({ where }),
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+            );
 
             const formatMute = createFormatMuteInList({ includeUser: true });
 
@@ -119,19 +110,13 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const paginator = new DatabasePaginator({
-              select: prisma.$drizzle
-                .select()
-                .from(schema.Task)
-                .where(eq(schema.Task.status, "pending"))
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.Task)
-                .where(eq(schema.Task.status, "pending"))
-                .$dynamic(),
-              orderBy: schema.Task.createdAt,
-            });
+            const where = { status: "pending" } as const;
+
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.task.findMany({ where, ...props, orderBy: { createdAt } }),
+              () => prisma.task.count({ where }),
+            );
 
             const formatTask = ({
               id,
@@ -139,7 +124,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               createdAt,
               handleAfter,
               identifier,
-            }: typeof schema.Task.$inferSelect) => {
+            }: Task) => {
               const lines = [
                 heading(`Task ${id}`, HeadingLevel.Three),
                 `Created at: ${time(createdAt)}`,
@@ -152,7 +137,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             };
 
             const paginatedView = new PaginatedView(
-              paginator,
+              paginate,
               "Pending tasks",
               formatTask,
               true,
@@ -167,22 +152,14 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const warnWheres = eq(schema.Warn.guildId, itx.guildId);
+            const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator({
-              orderBy: schema.Warn.createdAt,
-              ordering: PaginatorOrder.DESC,
-              select: prisma.$drizzle
-                .select()
-                .from(schema.Warn)
-                .where(warnWheres)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.Warn)
-                .where(warnWheres)
-                .$dynamic(),
-            });
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
+              () => prisma.warn.count({ where }),
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+            );
 
             const formatWarn = createWarnFormat({ includeUser: true });
 

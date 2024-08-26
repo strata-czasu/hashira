@@ -3,9 +3,7 @@ import {
   type BirthdayEventStage2024,
   DatabasePaginator,
   type ExtendedPrismaClient,
-  schema,
 } from "@hashira/db";
-import { count } from "@hashira/db/drizzle";
 import {
   ActionRowBuilder,
   type BaseMessageOptions,
@@ -197,18 +195,12 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
         command
           .setDescription("Lista etapów urodzin 2024")
           .handle(async ({ prisma }, _, itx) => {
-            const paginator = new DatabasePaginator({
-              pageSize: 5,
-              orderBy: [schema.BirthdayEventStage2024.id],
-              select: prisma.$drizzle
-                .select()
-                .from(schema.BirthdayEventStage2024)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.BirthdayEventStage2024)
-                .$dynamic(),
-            });
+            const paginator = new DatabasePaginator(
+              (props, id) =>
+                prisma.birthdayEventStage2024.findMany({ ...props, orderBy: { id } }),
+              () => prisma.birthdayEventStage2024.count(),
+              { pageSize: 5 },
+            );
 
             const extractButtons = (row: BirthdayEventStage2024) => {
               return row.buttons.map((button) => button.split(":")[1]);
@@ -342,9 +334,10 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           )
           .handle(async ({ prisma }, { message, "stage-id": stageId }, itx) => {
             await itx.deferReply();
-            const where = stageId ? { stageId } : {};
+            const where = { ...(stageId ? { stageId } : {}) };
+
             const participants = await prisma.birthdayEventStage2024Completion.findMany(
-              { ...where, distinct: ["userId"] },
+              { where, distinct: "userId" },
             );
 
             const sendDmPromises = participants.map(async ({ userId }) => {

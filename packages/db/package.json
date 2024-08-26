@@ -4,10 +4,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./migrate": "./src/migrate.ts",
     "./tasks": "./src/tasks.ts",
-    "./drizzle": "./src/drizzle.ts",
-    "./drizzle/pgCore": "./src/pgCore.ts",
     "./transaction": "./src/transaction.ts"
   },
   "type": "module",
@@ -26,9 +23,7 @@
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.18.0",
-    "drizzle-prisma-generator": "^0.1.7",
     "prisma": "^5.18.0",
-    "drizzle-orm": "^0.33.0",
     "date-fns": "^3.6.0",
     "pg": "^8.12.0",
     "postgres": "^3.4.4"

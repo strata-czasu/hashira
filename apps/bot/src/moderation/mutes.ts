@@ -4,9 +4,7 @@ import {
   type ExtendedPrismaClient,
   type Mute,
   type PrismaTransaction,
-  schema,
 } from "@hashira/db";
-import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
 import { PaginatorOrder } from "@hashira/paginate";
 import { add, intervalToDuration } from "date-fns";
 import {
@@ -40,7 +38,7 @@ import { applyMute, formatUserWithId, getMuteRoleId } from "./util";
 
 type Context = ExtractContext<typeof base>;
 
-const formatMuteLength = (mute: typeof schema.Mute.$inferSelect) => {
+const formatMuteLength = (mute: Mute) => {
   const { createdAt, endsAt } = mute;
   const duration = intervalToDuration({ start: createdAt, end: endsAt });
   const durationParts = [];
@@ -92,22 +90,18 @@ const getUserMutesPaginatedView = (
   guildId: string,
   deleted: boolean | null,
 ) => {
-  const muteWheres = and(
-    eq(schema.Mute.guildId, guildId),
-    eq(schema.Mute.userId, user.id),
-    deleted ? undefined : isNull(schema.Mute.deletedAt),
+  const where = {
+    guildId,
+    userId: user.id,
+    ...(deleted ? {} : { deletedAt: null }),
+  };
+
+  const paginate = new DatabasePaginator(
+    (props, createdAt) =>
+      prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+    () => prisma.mute.count({ where }),
+    { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
   );
-  const paginate = new DatabasePaginator({
-    orderBy: schema.Mute.createdAt,
-    ordering: PaginatorOrder.DESC,
-    pageSize: 5,
-    select: prisma.$drizzle.select().from(schema.Mute).where(muteWheres).$dynamic(),
-    count: prisma.$drizzle
-      .select({ count: count() })
-      .from(schema.Mute)
-      .where(muteWheres)
-      .$dynamic(),
-  });
 
   const formatMuteInList = createFormatMuteInList({ includeUser: false });
 
@@ -459,33 +453,18 @@ export const mutes = new Hashira({ name: "mutes" })
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const muteWheres = and(
-              eq(schema.Mute.guildId, itx.guildId),
-              isNull(schema.Mute.deletedAt),
-              gte(schema.Mute.endsAt, itx.createdAt),
+            const where = {
+              guildId: itx.guildId,
+              deletedAt: null,
+              endsAt: { gte: itx.createdAt },
+            };
+
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+              () => prisma.mute.count({ where }),
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
             );
-            const paginate = new DatabasePaginator({
-              orderBy: schema.Mute.createdAt,
-              ordering: PaginatorOrder.DESC,
-              pageSize: 5,
-              select: prisma.$drizzle
-                .select({
-                  id: schema.Mute.id,
-                  createdAt: schema.Mute.createdAt,
-                  reason: schema.Mute.reason,
-                  userId: schema.Mute.userId,
-                  moderatorId: schema.Mute.moderatorId,
-                  endsAt: schema.Mute.endsAt,
-                })
-                .from(schema.Mute)
-                .where(muteWheres)
-                .$dynamic(),
-              count: prisma.$drizzle
-                .select({ count: count() })
-                .from(schema.Mute)
-                .where(muteWheres)
-                .$dynamic(),
-            });
 
             const paginatedView = new PaginatedView(
               paginate,
