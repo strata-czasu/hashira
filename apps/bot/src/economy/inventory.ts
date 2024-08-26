@@ -23,6 +23,7 @@ export const inventory = new Hashira({ name: "inventory" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            // TODO)) Group items by type instead of listing all
             const where = { userId: user.id, deletedAt: null };
 
             const paginator = new DatabasePaginator(
