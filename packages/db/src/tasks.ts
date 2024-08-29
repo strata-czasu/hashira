@@ -48,6 +48,10 @@ type Handle = { [key: string]: TaskDataValue };
 
 const initHandleTypes = {};
 
+type TaskFindOptions = {
+  throwIfNotFound?: boolean;
+};
+
 export class MessageQueue<
   const HandleTypes extends Handle = typeof initHandleTypes,
   const Args extends Record<string, unknown> = typeof initHandleTypes,
@@ -105,7 +109,11 @@ export class MessageQueue<
     });
   }
 
-  async cancel<T extends keyof HandleTypes>(type: T, identifier: string) {
+  async cancel<T extends keyof HandleTypes>(
+    type: T,
+    identifier: string,
+    options?: TaskFindOptions,
+  ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
@@ -118,7 +126,13 @@ export class MessageQueue<
         },
       });
 
-      if (!task) throw new Error(`Task not found: ${type} ${identifier}`);
+      if (!task) {
+        if (options?.throwIfNotFound)
+          throw new Error(
+            `Task not found for identifier ${identifier} for type ${type}`,
+          );
+        return;
+      }
 
       await tx.task.update({
         where: { id: task.id },
@@ -138,6 +152,7 @@ export class MessageQueue<
     type: T,
     identifier: string,
     delay: number,
+    options?: TaskFindOptions,
   ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
@@ -151,7 +166,14 @@ export class MessageQueue<
         },
       });
 
-      if (!task) throw new Error(`Task not found: ${type} ${identifier}`);
+      if (!task) {
+        if (options?.throwIfNotFound)
+          throw new Error(
+            `Task not found for identifier ${identifier} for type ${type}`,
+          );
+        return;
+      }
+
       const handleAfter = addSeconds(task.createdAt, delay);
       await tx.task.update({
         where: { id: task.id },
