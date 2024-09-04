@@ -45,9 +45,11 @@ export const bot = new Hashira({ name: "bot" })
     console.log("Bot is ready");
   });
 
+process.on("beforeExit", async (code) => {
+  console.log("Exiting with code", code);
+});
+
 if (import.meta.main) {
-  // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
-  // get any signals, so we need to figure out how to handle this!
   try {
     await bot.start(env.BOT_TOKEN);
   } catch (e) {
