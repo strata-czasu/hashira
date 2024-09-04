@@ -1,6 +1,7 @@
 export const GUILD_IDS = {
   Piwnica: "342022299957854220",
   StrataCzasu: "211261411119202305",
+  StrataCzasuSupportTeam: "1198978337150881812",
   Homik: "1110671571384803350",
 } as const;
 
