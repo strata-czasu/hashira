@@ -37,6 +37,14 @@ const getLogMessageEmbed = (author: User | GuildMember, timestamp: Date) => {
     .setTimestamp(timestamp);
 };
 
+const getMessageUpdateLogContent = (message: GuildMessage) => {
+  let content = message.content;
+  if (message.attachments.size > 0) {
+    content += `\n\n**Załączniki**\n${message.attachments.map((a) => `- ${a.proxyURL}`).join("\n")}`;
+  }
+  return content;
+};
+
 export const base = new Hashira({ name: "base" })
   .use(database)
   .addExceptionHandler("default", (e) => {
@@ -57,7 +65,17 @@ export const base = new Hashira({ name: "base" })
               }`,
             )
             .setColor("Red");
-          // TODO)) Add attachments
+
+          if (message.attachments.size > 0) {
+            const fieldName = message.attachments.size > 1 ? "Załączniki" : "Załącznik";
+            embed.addFields([
+              {
+                name: fieldName,
+                value: message.attachments.map((a) => `- ${a.proxyURL}`).join("\n"),
+              },
+            ]);
+          }
+
           return embed;
         },
       )
@@ -66,14 +84,21 @@ export const base = new Hashira({ name: "base" })
         async ({ timestamp }, { oldMessage, newMessage }: MessageEditData) => {
           const embed = getLogMessageEmbed(newMessage.author, timestamp)
             .setDescription(
-              `### Wiadomość edytowana na #${channelMention(
-                oldMessage.channelId,
-              )}\n**Stara treść**\n${oldMessage.content}\n\n**Nowa treść**\n${
-                newMessage.content
-              }`,
+              `### Wiadomość edytowana na #${channelMention(oldMessage.channelId)}`,
             )
             .setColor("Yellow");
-          // TODO)) Add attachments
+
+          embed.addFields([
+            {
+              name: "Stara wiadomość",
+              value: getMessageUpdateLogContent(oldMessage),
+            },
+            {
+              name: "Nowa wiadomość",
+              value: getMessageUpdateLogContent(newMessage),
+            },
+          ]);
+
           return embed;
         },
       )
