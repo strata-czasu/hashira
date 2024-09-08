@@ -4,34 +4,28 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./migrate": "./src/migrate.ts",
     "./tasks": "./src/tasks.ts",
-    "./drizzle": "./src/drizzle.ts",
-    "./drizzle/pgCore": "./src/pgCore.ts"
+    "./transaction": "./src/transaction.ts"
   },
   "type": "module",
   "scripts": {
-    "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate",
-    "check-migrations": "bun run ./check-migrations",
-    "drizzle-studio": "drizzle-kit studio",
-    "drizzle-studio:test": "drizzle-kit studio --config drizzle.config.test.ts --port 4984",
-    "push": "drizzle-kit push",
-    "drop": "drizzle-kit drop",
+    "prisma-studio": "prisma studio",
+    "prisma-generate": "prisma generate",
+    "prisma-migrate": "prisma migrate dev",
+    "prisma-migrate-create": "prisma migrate create",
+    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema.prisma --to-schema-datasource ./prisma/schema.prisma",
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "*",
-    "@faker-js/faker": "^8.4.1",
-    "@hashira/tsconfig": "workspace:*"
+    "@faker-js/faker": "^8.4.1"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "drizzle-orm": "^0.32.1",
-    "postgres": "^3.4.4",
-    "drizzle-kit": "^0.23.1",
-    "pg": "^8.12.0"
+    "@prisma/client": "^5.18.0",
+    "prisma": "^5.18.0",
+    "date-fns": "^3.6.0",
+    "pg": "^8.12.0",
+    "postgres": "^3.4.4"
   }
 }

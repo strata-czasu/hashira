@@ -1,21 +1,13 @@
 import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
-import { and, count, eq, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type PrismaTransaction } from "@hashira/db";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { getItem } from "./util";
 
-const getInventoryItem = async (tx: Transaction, id: number) => {
-  const [inventoryItem] = await tx
-    .select()
-    .from(schema.inventoryItem)
-    .where(
-      and(eq(schema.inventoryItem.id, id), isNull(schema.inventoryItem.deletedAt)),
-    );
-  return inventoryItem;
-};
+const getInventoryItem = async (tx: PrismaTransaction, id: number) =>
+  tx.inventoryItem.findFirst({ where: { id, deletedAt: null } });
 
 export const inventory = new Hashira({ name: "inventory" })
   .use(base)
@@ -27,33 +19,27 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Wyświetl ekwipunek użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ db }, { user }, itx) => {
+          .handle(async ({ prisma }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             // TODO)) Group items by type instead of listing all
-            const where = and(
-              eq(schema.inventoryItem.userId, user.id),
-              isNull(schema.inventoryItem.deletedAt),
+            const where = { userId: user.id, deletedAt: null };
+
+            const paginator = new DatabasePaginator(
+              (props) =>
+                prisma.inventoryItem.findMany({
+                  where,
+                  include: { item: true },
+                  ...props,
+                }),
+              () => prisma.inventoryItem.count({ where }),
             );
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.inventoryItem.createdAt],
-              select: db
-                .select()
-                .from(schema.inventoryItem)
-                .innerJoin(schema.item, eq(schema.inventoryItem.itemId, schema.item.id))
-                .where(where)
-                .$dynamic(),
-              count: db
-                .select({ count: count(schema.inventoryItem) })
-                .from(schema.inventoryItem)
-                .where(where)
-                .$dynamic(),
-            });
+
             const paginatedView = new PaginatedView(
               paginator,
               `Ekwipunek ${user.tag}`,
-              ({ inventory_item: { id }, item }) => `- ${item.name} [${id}]`,
+              ({ id, item }) => `- ${item.name} [${id}]`,
               true,
             );
             await paginatedView.render(itx);
@@ -65,7 +51,11 @@ export const inventory = new Hashira({ name: "inventory" })
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w ekwipunku"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .handle(
-            async ({ db, lock }, { id: inventoryItemId, user: targetUser }, itx) => {
+            async (
+              { prisma, lock },
+              { id: inventoryItemId, user: targetUser },
+              itx,
+            ) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -77,7 +67,7 @@ export const inventory = new Hashira({ name: "inventory" })
                 return;
               }
 
-              await ensureUsersExist(db, [targetUser, itx.user]);
+              await ensureUsersExist(prisma, [targetUser, itx.user]);
               // TODO)) Nicer confirmation message with item name
               const dialog = new ConfirmationDialog(
                 `Czy na pewno chcesz przekazać ${inlineCode(
@@ -86,21 +76,13 @@ export const inventory = new Hashira({ name: "inventory" })
                 "Tak",
                 "Nie",
                 async () => {
-                  const inventoryItem = await db.transaction(async (tx) => {
-                    const [inventoryItem] = await tx
-                      .select()
-                      .from(schema.inventoryItem)
-                      .innerJoin(
-                        schema.item,
-                        eq(schema.inventoryItem.itemId, schema.item.id),
-                      )
-                      .where(
-                        and(
-                          eq(schema.inventoryItem.id, inventoryItemId),
-                          eq(schema.inventoryItem.userId, itx.user.id),
-                          isNull(schema.inventoryItem.deletedAt),
-                        ),
-                      );
+                  //  TODO: Use transaction from prisma
+                  const inventoryItem = await prisma.$transaction(async (tx) => {
+                    const inventoryItem = await tx.inventoryItem.findFirst({
+                      where: { id: inventoryItemId, deletedAt: null },
+                      include: { item: true },
+                    });
+
                     if (!inventoryItem) {
                       await errorFollowUp(
                         itx,
@@ -109,10 +91,11 @@ export const inventory = new Hashira({ name: "inventory" })
                       return null;
                     }
 
-                    await tx
-                      .update(schema.inventoryItem)
-                      .set({ userId: targetUser.id })
-                      .where(and(eq(schema.inventoryItem.id, inventoryItemId)));
+                    await tx.inventoryItem.update({
+                      where: { id: inventoryItemId },
+                      data: { deletedAt: itx.createdAt },
+                    });
+
                     return inventoryItem;
                   });
                   if (!inventoryItem) return;
@@ -155,20 +138,23 @@ export const inventory = new Hashira({ name: "inventory" })
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ db }, { id: itemId, user }, itx) => {
+          .handle(async ({ prisma }, { id: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(db, user);
-            const added = await db.transaction(async (tx) => {
+            await ensureUserExists(prisma, user);
+            const added = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, itemId);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx.insert(schema.inventoryItem).values({
-                itemId,
-                userId: user.id,
+
+              await tx.inventoryItem.create({
+                data: {
+                  itemId,
+                  userId: user.id,
+                },
               });
               return true;
             });
@@ -185,26 +171,22 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w ekwipunku"))
-          .handle(async ({ db }, { id: inventoryItemId }, itx) => {
+          .handle(async ({ prisma }, { id: inventoryItemId }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const removed = await db.transaction(async (tx) => {
+            const removed = await prisma.$transaction(async (tx) => {
               const inventoryItem = await getInventoryItem(tx, inventoryItemId);
               if (!inventoryItem) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx
-                .update(schema.inventoryItem)
-                .set({ deletedAt: itx.createdAt })
-                .where(
-                  and(
-                    eq(schema.inventoryItem.id, inventoryItemId),
-                    isNull(schema.inventoryItem.deletedAt),
-                  ),
-                )
-                .returning();
+
+              await tx.inventoryItem.update({
+                where: { id: inventoryItemId, deletedAt: null },
+                data: { deletedAt: itx.createdAt },
+              });
+
               return true;
             });
             if (!removed) return;

@@ -1,6 +1,6 @@
 export enum PaginatorOrder {
-  ASC = "ASC",
-  DESC = "DESC",
+  ASC = "asc",
+  DESC = "desc",
 }
 
 export interface Paginator<T> {

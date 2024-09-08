@@ -1,6 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { db, schema } from "@hashira/db";
-import { and, eq } from "@hashira/db/drizzle";
+import { VerificationStatus, prisma } from "@hashira/db";
 import { MessageQueue } from "@hashira/db/tasks";
 import type { Duration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
@@ -29,147 +28,150 @@ type VerificationReminderData = {
 };
 
 export const database = new Hashira({ name: "database" })
-  .const("db", db)
-  .const((ctx) => ({
-    ...ctx,
-    messageQueue: new MessageQueue(db)
-      .addArg<"client", Client>()
-      .addHandler(
-        "muteEnd",
-        async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
-          // Don't remove the mute role if the user has a verification in progress
-          const verificationInProgress = await db.query.verification.findFirst({
-            where: and(
-              eq(schema.verification.userId, userId),
-              eq(schema.verification.guildId, guildId),
-              eq(schema.verification.status, "in_progress"),
-            ),
-          });
-          if (verificationInProgress) return;
+  .const("prisma", prisma)
+  .const((ctx) => {
+    const prisma = ctx.prisma;
+    return {
+      ...ctx,
+      messageQueue: new MessageQueue(ctx.prisma)
+        .addArg<"client", Client>()
+        .addHandler(
+          "muteEnd",
+          async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
+            // Don't remove the mute role if the user has a verification in progress
+            const verificationInProgress = await prisma.verification.findFirst({
+              where: { userId, guildId, status: VerificationStatus.in_progress },
+            });
 
-          const settings = await ctx.db.query.guildSettings.findFirst({
-            where: eq(schema.guildSettings.guildId, guildId),
-          });
-          if (!settings || !settings.muteRoleId) return;
-          const muteRoleId = settings.muteRoleId;
+            if (verificationInProgress) return;
 
-          const guild = await discordTry(
-            async () => client.guilds.fetch(guildId),
-            [RESTJSONErrorCodes.UnknownGuild],
-            async () => null,
-          );
-          if (!guild) return;
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
 
-          const member = await discordTry(
-            async () => guild.members.fetch(userId),
-            [RESTJSONErrorCodes.UnknownMember],
-            async () => null,
-          );
-          if (!member) return;
+            if (!settings || !settings.muteRoleId) return;
+            const muteRoleId = settings.muteRoleId;
 
-          await discordTry(
-            async () => {
-              await member.roles.remove(muteRoleId, `Koniec wyciszenia [${muteId}]`);
-            },
-            [RESTJSONErrorCodes.MissingPermissions],
-            async () => {
-              console.warn(
-                `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
-              );
-            },
-          );
+            const guild = await discordTry(
+              async () => client.guilds.fetch(guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              async () => null,
+            );
+            if (!guild) return;
 
-          // NOTE: We could mention the user on the server if sending the DM fails
-          await sendDirectMessage(
-            member.user,
-            `To znowu ja ${userMention(
-              member.id,
-            )}. Dostałem informację, że Twoje wyciszenie dobiegło końca. Do zobaczenia na czatach!`,
-          );
-        },
-      )
-      .addHandler(
-        "verificationEnd",
-        async ({ client }, { verificationId }: VerificationEndData) => {
-          const verification = await db.query.verification.findFirst({
-            where: eq(schema.verification.id, verificationId),
-          });
-          if (!verification) return;
+            const member = await discordTry(
+              async () => guild.members.fetch(userId),
+              [RESTJSONErrorCodes.UnknownMember],
+              async () => null,
+            );
+            if (!member) return;
 
-          const moderator = await discordTry(
-            async () => client.users.fetch(verification.moderatorId),
-            [RESTJSONErrorCodes.UnknownMember],
-            async () => null,
-          );
-          if (!moderator) return;
+            await discordTry(
+              async () => {
+                await member.roles.remove(muteRoleId, `Koniec wyciszenia [${muteId}]`);
+              },
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => {
+                console.warn(
+                  `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
+                );
+              },
+            );
 
-          // Automatically reject the verification and ban the user
-          const rejectedAt = new Date();
-          await db
-            .update(schema.verification)
-            .set({ status: "rejected", rejectedAt })
-            .where(eq(schema.verification.id, verificationId));
+            // NOTE: We could mention the user on the server if sending the DM fails
+            await sendDirectMessage(
+              member.user,
+              `To znowu ja ${userMention(
+                member.id,
+              )}. Dostałem informację, że Twoje wyciszenie dobiegło końca. Do zobaczenia na czatach!`,
+            );
+          },
+        )
+        .addHandler(
+          "verificationEnd",
+          async ({ client }, { verificationId }: VerificationEndData) => {
+            const verification = await prisma.verification.findFirst({
+              where: { id: verificationId },
+            });
+            if (!verification) return;
 
-          const user = await client.users.fetch(verification.userId);
-          const guild = await client.guilds.fetch(verification.guildId);
-          const sentMessage = await sendVerificationFailedMessage(user);
-          const banned = await discordTry(
-            async () => {
-              const reason = formatBanReason(
-                `Nieudana weryfikacja 16+ [${verificationId}]`,
-                moderator,
-                rejectedAt,
-              );
-              await guild.bans.create(user, { reason });
-              return true;
-            },
-            [RESTJSONErrorCodes.MissingPermissions],
-            () => false,
-          );
+            const moderator = await discordTry(
+              async () => client.users.fetch(verification.moderatorId),
+              [RESTJSONErrorCodes.UnknownMember],
+              async () => null,
+            );
+            if (!moderator) return;
 
-          // Notify the moderator about the verification end
-          let directMessageContent = `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
-            verification.userId,
-          )}) [${inlineCode(verificationId.toString())}] dobiegła końca.`;
-          if (banned) {
-            directMessageContent += " Użytkownik został zbanowany.";
-          } else {
-            directMessageContent +=
-              " Nie udało się zbanować użytkownika. Sprawdź permisje i zbanuj go ręcznie.";
-          }
-          if (!sentMessage) {
-            directMessageContent +=
-              " Nie udało się powiadomić użytkownika o nieudanej weryfikacji.";
-          }
-          await sendDirectMessage(moderator, directMessageContent);
-        },
-      )
-      .addHandler(
-        "verificationReminder",
-        async (
-          { client },
-          { verificationId, elapsed, remaining }: VerificationReminderData,
-        ) => {
-          const verification = await db.query.verification.findFirst({
-            where: eq(schema.verification.id, verificationId),
-          });
-          if (!verification) return;
+            // Automatically reject the verification and ban the user
+            const rejectedAt = new Date();
 
-          const moderator = await discordTry(
-            async () => client.users.fetch(verification.moderatorId),
-            [RESTJSONErrorCodes.UnknownMember],
-            async () => null,
-          );
-          if (!moderator) return;
+            await prisma.verification.update({
+              where: { id: verificationId },
+              data: { status: VerificationStatus.rejected, rejectedAt },
+            });
 
-          await sendDirectMessage(
-            moderator,
-            `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
+            const user = await client.users.fetch(verification.userId);
+            const guild = await client.guilds.fetch(verification.guildId);
+            const sentMessage = await sendVerificationFailedMessage(user);
+            const banned = await discordTry(
+              async () => {
+                const reason = formatBanReason(
+                  `Nieudana weryfikacja 16+ [${verificationId}]`,
+                  moderator,
+                  rejectedAt,
+                );
+                await guild.bans.create(user, { reason });
+                return true;
+              },
+              [RESTJSONErrorCodes.MissingPermissions],
+              () => false,
+            );
+
+            // Notify the moderator about the verification end
+            let directMessageContent = `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
               verification.userId,
-            )}) [${inlineCode(verificationId.toString())}] trwa już ${formatDuration(
-              elapsed,
-            )}. Pozostało ${formatDuration(remaining)}. Nie zapomnij o niej!`,
-          );
-        },
-      ),
-  }));
+            )}) [${inlineCode(verificationId.toString())}] dobiegła końca.`;
+            if (banned) {
+              directMessageContent += " Użytkownik został zbanowany.";
+            } else {
+              directMessageContent +=
+                " Nie udało się zbanować użytkownika. Sprawdź permisje i zbanuj go ręcznie.";
+            }
+            if (!sentMessage) {
+              directMessageContent +=
+                " Nie udało się powiadomić użytkownika o nieudanej weryfikacji.";
+            }
+            await sendDirectMessage(moderator, directMessageContent);
+          },
+        )
+        .addHandler(
+          "verificationReminder",
+          async (
+            { client },
+            { verificationId, elapsed, remaining }: VerificationReminderData,
+          ) => {
+            const verification = await prisma.verification.findFirst({
+              where: { id: verificationId, status: VerificationStatus.in_progress },
+            });
+
+            if (!verification) return;
+
+            const moderator = await discordTry(
+              async () => client.users.fetch(verification.moderatorId),
+              [RESTJSONErrorCodes.UnknownMember],
+              async () => null,
+            );
+            if (!moderator) return;
+
+            await sendDirectMessage(
+              moderator,
+              `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
+                verification.userId,
+              )}) [${inlineCode(verificationId.toString())}] trwa już ${formatDuration(
+                elapsed,
+              )}. Pozostało ${formatDuration(remaining)}. Nie zapomnij o niej!`,
+            );
+          },
+        ),
+    };
+  });

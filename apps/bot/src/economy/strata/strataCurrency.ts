@@ -33,15 +33,15 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               .setDescription("Użytkownik, którego punkty chcesz sprawdzić")
               .setRequired(false),
           )
-          .handle(async ({ db }, { użytkownik: user }, itx) => {
+          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const userId = user?.id ?? itx.user.id;
 
-            await ensureUserExists(db, userId);
+            await ensureUserExists(prisma, userId);
 
             const wallet = await getDefaultWallet({
-              db,
+              prisma,
               userId,
               guildId: itx.guildId,
               currencySymbol: STRATA_CZASU_CURRENCY.symbol,
@@ -70,7 +70,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               { ilość: amount, użytkownicy: rawMembers, powód: reason },
               itx,
             ) => {
@@ -86,11 +86,11 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 parseUserMentions(rawMembers),
               );
 
-              await ensureUsersExist(db, [...members.keys(), itx.user.id]);
+              await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
 
               try {
                 await addBalances({
-                  db,
+                  prisma,
                   fromUserId: itx.user.id,
                   guildId: itx.guildId,
                   currencySymbol: STRATA_CZASU_CURRENCY.symbol,
@@ -131,7 +131,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               { użytkownicy: rawMembers, ilość: amount, powód: reason },
               itx,
             ) => {
@@ -142,11 +142,11 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 parseUserMentions(rawMembers),
               );
 
-              await ensureUsersExist(db, [...members.keys(), itx.user.id]);
+              await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
 
               try {
                 await transferBalances({
-                  db,
+                  prisma,
                   fromUserId: itx.user.id,
                   guildId: itx.guildId,
                   currencySymbol: STRATA_CZASU_CURRENCY.symbol,

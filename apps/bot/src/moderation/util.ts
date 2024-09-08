@@ -1,6 +1,5 @@
 import type { ExtractContext } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { eq } from "@hashira/db/drizzle";
+import type { ExtendedPrismaClient } from "@hashira/db";
 import { formatDate } from "date-fns";
 import {
   type GuildMember,
@@ -22,10 +21,9 @@ type BaseContext = ExtractContext<typeof base>;
 export const formatUserWithId = (user: User) =>
   `${bold(user.tag)} (${inlineCode(user.id)})`;
 
-export const getMuteRoleId = async (db: BaseContext["db"], guildId: string) => {
-  const settings = await db.query.guildSettings.findFirst({
-    where: eq(schema.guildSettings.guildId, guildId),
-  });
+export const getMuteRoleId = async (prisma: ExtendedPrismaClient, guildId: string) => {
+  const settings = await prisma.guildSettings.findFirst({ where: { guildId } });
+
   if (!settings) return null;
   return settings.muteRoleId;
 };

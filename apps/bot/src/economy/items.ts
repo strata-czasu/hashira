@@ -1,6 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { countDistinct, eq, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type Item } from "@hashira/db";
 import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
@@ -8,7 +7,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { formatBalance } from "./strata/strataCurrency";
 import { getItem } from "./util";
 
-const formatItem = ({ name, id }: typeof schema.item.$inferSelect) =>
+const formatItem = ({ name, id }: Item) =>
   `${bold(name)} [${inlineCode(id.toString())}]`;
 
 export const items = new Hashira({ name: "items" })
@@ -21,20 +20,17 @@ export const items = new Hashira({ name: "items" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów")
-          .handle(async ({ db }, _, itx) => {
+          .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = isNull(schema.item.deletedAt);
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.item.createdAt],
-              select: db.select().from(schema.item).where(where).$dynamic(),
-              count: db
-                .select({ count: countDistinct(schema.item.id) })
-                .from(schema.item)
-                .where(where)
-                .$dynamic(),
-            });
+            const where = { deletedAt: null };
+
+            const paginator = new DatabasePaginator(
+              (props) => prisma.item.findMany({ where, ...props }),
+              () => prisma.item.count({ where }),
+            );
+
             const paginatedView = new PaginatedView(
               paginator,
               "Przedmioty",
@@ -56,25 +52,27 @@ export const items = new Hashira({ name: "items" })
               )
               .setRequired(false),
           )
-          .handle(async ({ db }, { name, description, price }, itx) => {
+          .handle(async ({ prisma }, { name, description, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await db.transaction(async (tx) => {
-              const [item] = await tx
-                .insert(schema.item)
-                .values({
+            const item = await prisma.$transaction(async (tx) => {
+              const item = await tx.item.create({
+                data: {
                   name,
                   description,
                   createdBy: itx.user.id,
-                })
-                .returning();
+                },
+              });
+
               if (!item) return null;
               if (price !== null) {
-                await tx.insert(schema.shopItem).values({
-                  itemId: item.id,
-                  price: price,
-                  createdBy: itx.user.id,
+                await tx.shopItem.create({
+                  data: {
+                    item: { connect: { id: item.id } },
+                    price,
+                    creator: { connect: { id: itx.user.id } },
+                  },
                 });
               }
               return item;
@@ -98,7 +96,7 @@ export const items = new Hashira({ name: "items" })
           .addString("description", (name) =>
             name.setDescription("Nowy opis przedmiotu").setRequired(false),
           )
-          .handle(async ({ db }, { id, name, description }, itx) => {
+          .handle(async ({ prisma }, { id, name, description }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -107,19 +105,20 @@ export const items = new Hashira({ name: "items" })
               return;
             }
 
-            const item = await db.transaction(async (tx) => {
+            const item = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, id);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
               }
-              await tx
-                .update(schema.item)
-                .set({
+
+              await tx.item.update({
+                where: { id },
+                data: {
                   name: name ?? item.name,
                   description: description ?? item.description,
-                })
-                .where(eq(schema.item.id, id));
+                },
+              });
               return item;
             });
             if (!item) return;
@@ -131,24 +130,27 @@ export const items = new Hashira({ name: "items" })
         command
           .setDescription("Usuń przedmiot")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .handle(async ({ db }, { id }, itx) => {
+          .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await db.transaction(async (tx) => {
+            const item = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, id);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
               }
-              await tx
-                .update(schema.item)
-                .set({ deletedAt: itx.createdAt })
-                .where(eq(schema.item.id, id));
-              await tx
-                .update(schema.shopItem)
-                .set({ deletedAt: itx.createdAt })
-                .where(eq(schema.shopItem.itemId, id));
+
+              await tx.item.update({
+                where: { id },
+                data: { deletedAt: itx.createdAt },
+              });
+
+              await tx.shopItem.updateMany({
+                where: { item },
+                data: { deletedAt: itx.createdAt },
+              });
+
               return item;
             });
             if (!item) return;

@@ -1,6 +1,4 @@
-import { Hashira } from "@hashira/core";
-import { schema } from "@hashira/db";
-import { and, eq } from "@hashira/db/drizzle";
+import { ConfirmationDialog, Hashira } from "@hashira/core";
 import { addDays, addMonths, addWeeks, addYears } from "date-fns";
 import {
   type ColorResolvable,
@@ -78,7 +76,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               {
                 nazwa: name,
                 właściciel: owner,
@@ -102,13 +100,15 @@ export const colorRoles = new Hashira({ name: "color-role" })
 
               if (!role) return await errorFollowUp(itx, "Failed to create role");
 
-              await db.insert(schema.colorRole).values({
-                name,
-                ownerId: owner.id,
-                guildId: itx.guildId,
-                expiration,
-                roleId: role.id,
-                slots,
+              await prisma.colorRole.create({
+                data: {
+                  name,
+                  ownerId: owner.id,
+                  guildId: itx.guildId,
+                  expiration,
+                  roleId: role.id,
+                  slots,
+                },
               });
 
               const member = await itx.guild.members.fetch(owner.id);
@@ -135,31 +135,59 @@ export const colorRoles = new Hashira({ name: "color-role" })
             slots.setDescription("Ilość slotów na użytkowników"),
           )
           .handle(
-            async ({ db }, { rola: role, właściciel: owner, sloty: slots }, itx) => {
+            async (
+              { prisma },
+              { rola: role, właściciel: owner, sloty: slots },
+              itx,
+            ) => {
               if (!itx.inCachedGuild()) return;
               if (!itx.memberPermissions.has(PermissionFlagsBits.ManageRoles)) return;
 
               await itx.deferReply();
 
-              const colorRole = await db.query.colorRole.findFirst({
-                where: and(eq(schema.colorRole.roleId, role.id)),
+              const colorRole = await prisma.colorRole.findFirst({
+                where: {
+                  ownerId: owner.id,
+                  guildId: itx.guildId,
+                },
               });
 
               if (colorRole) {
-                return await errorFollowUp(itx, "Kolor już jest przypisany");
+                const confirmation = new ConfirmationDialog(
+                  "Rola jest już przypisana, czy chcesz ją nadpisać?",
+                  "Nadpisz",
+                  "Anuluj",
+                  async () => {
+                    await prisma.colorRole.update({
+                      where: { id: colorRole.id },
+                      data: {
+                        ownerId: owner.id,
+                        slots,
+                      },
+                    });
+
+                    await itx.followUp(`Nadpisano kolor ${role.name} dla ${owner.tag}`);
+                  },
+                  async () => {},
+                  (itx) => itx.user.id === owner.id,
+                );
+
+                await confirmation.render(itx);
+
+                return;
               }
 
-              await db.insert(schema.colorRole).values({
-                name: role.name,
-                ownerId: owner.id,
-                guildId: itx.guildId,
-                roleId: role.id,
-                slots,
+              await prisma.colorRole.create({
+                data: {
+                  name: role.name,
+                  ownerId: owner.id,
+                  guildId: itx.guildId,
+                  roleId: role.id,
+                  slots,
+                },
               });
 
-              const member = await itx.guild.members.fetch(owner.id);
-              await member.roles.add(role.id, "Przypisanie koloru");
-
+              await itx.guild.members.addRole({ user: owner.id, role: role.id });
               await itx.editReply({
                 content: `Dodano kolor ${role.name} dla ${owner.tag}`,
               });
@@ -175,7 +203,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
           .addString("kolor", (color) =>
             color.setDescription("Hex jaki ustawić").setRequired(true),
           )
-          .handle(async ({ db }, { rola: role, kolor: color }, itx) => {
+          .handle(async ({ prisma }, { rola: role, kolor: color }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             await itx.deferReply();
@@ -183,12 +211,12 @@ export const colorRoles = new Hashira({ name: "color-role" })
             const hexColor = getColor(color);
             if (!hexColor) return await errorFollowUp(itx, "Invalid color");
 
-            const colorRole = await db.query.colorRole.findFirst({
-              where: and(
-                eq(schema.colorRole.ownerId, itx.user.id),
-                eq(schema.colorRole.guildId, itx.guildId),
-                eq(schema.colorRole.roleId, role.id),
-              ),
+            const colorRole = await prisma.colorRole.findFirst({
+              where: {
+                ownerId: itx.user.id,
+                guildId: itx.guildId,
+                roleId: role.id,
+              },
             });
 
             if (!colorRole) {

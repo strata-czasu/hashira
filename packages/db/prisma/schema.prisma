@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AutoRole {
+  id        Int      @id(map: "core_auto_role_pkey") @default(autoincrement())
+  guildId   String
+  roleId    String
+  timestamp DateTime @default(now()) @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "autoRole_guildId_guild_id_fk")
+
+  @@unique([guildId, roleId], map: "autoRole_guildId_roleId_unique")
+  @@map("autoRole")
+}
+
+model BirthdayEventStage2024 {
+  id                               Int                                @id(map: "strata_birthday_event_stage_2024_pkey") @default(autoincrement())
+  requiredStageId                  Int?
+  keyword                          String
+  outputRequirementsValid          String
+  outputRequirementsInvalid        String?
+  buttons                          String[]                           @default([])
+  lockedBy                         Int[]                              @default([])
+  birthdayEventStage2024           BirthdayEventStage2024?            @relation("birthdayEventStage2024TobirthdayEventStage2024", fields: [requiredStageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024_requiredStageId_birthdayEventStage2024_i")
+  other_birthdayEventStage2024     BirthdayEventStage2024[]           @relation("birthdayEventStage2024TobirthdayEventStage2024")
+  birthdayEventStage2024Completion BirthdayEventStage2024Completion[]
+
+  @@map("birthdayEventStage2024")
+}
+
+model BirthdayEventStage2024Completion {
+  id                     Int                    @id(map: "strata_birthday_event_stage_2024_completion_pkey") @default(autoincrement())
+  userId                 String
+  timestamp              DateTime               @default(now()) @db.Timestamp(6)
+  stageId                Int
+  birthdayEventStage2024 BirthdayEventStage2024 @relation(fields: [stageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_stageId_birthdayEventStage2024")
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_userId_users_id_fk")
+
+  @@map("birthdayEventStage2024Completion")
+}
+
+model ColorRole {
+  id         Int       @id(map: "strata_color_role_pkey") @default(autoincrement())
+  guildId    String
+  ownerId    String
+  name       String
+  roleId     String
+  expiration DateTime? @db.Timestamp(6)
+  slots      Int
+  guild      Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "colorRole_guildId_guild_id_fk")
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "colorRole_ownerId_users_id_fk")
+
+  @@map("colorRole")
+}
+
+model Currency {
+  id                               Int      @id(map: "core_currency_pkey") @default(autoincrement())
+  name                             String
+  symbol                           String
+  guildId                          String
+  createdBy                        String
+  createdAt                        DateTime @default(now()) @db.Timestamp(6)
+  user                             User     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
+  guild                            Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
+  wallet_wallet_currencyTocurrency Wallet[] @relation("wallet_currencyTocurrency")
+
+  @@unique([guildId, name], map: "currency_guildId_name_unique")
+  @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")
+  @@map("currency")
+}
+
+model DailyPointsRedeems {
+  id        Int      @id(map: "strata_daily_points_redeems_pkey") @default(autoincrement())
+  guildId   String
+  userId    String
+  timestamp DateTime @default(now()) @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "dailyPointsRedeems_guildId_guild_id_fk")
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "dailyPointsRedeems_userId_users_id_fk")
+
+  @@map("dailyPointsRedeems")
+}
+
+model EmojiUsage {
+  id        Int      @id(map: "core_emoji_usage_pkey") @default(autoincrement())
+  guildId   String
+  emojiId   String
+  userId    String
+  timestamp DateTime @default(now()) @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "emojiUsage_guildId_guild_id_fk")
+
+  @@map("emojiUsage")
+}
+
+model Guild {
+  id                 String               @id(map: "core_guild_pkey")
+  autoRole           AutoRole[]
+  colorRole          ColorRole[]
+  currency           Currency[]
+  dailyPointsRedeems DailyPointsRedeems[]
+  emojiUsage         EmojiUsage[]
+  guildSettings      GuildSettings?
+  mute               Mute[]
+  userTextActivity   UserTextActivity[]
+  verification       Verification[]
+  wallet             Wallet[]
+  warn               Warn[]
+
+  @@map("guild")
+}
+
+model GuildSettings {
+  id           Int     @id(map: "core_guild_settings_pkey") @default(autoincrement())
+  guildId      String  @unique(map: "guildSettings_guildId_unique")
+  muteRoleId   String?
+  plus18RoleId String?
+  guild        Guild   @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "guildSettings_guildId_guild_id_fk")
+
+  @@map("guildSettings")
+}
+
+model InventoryItem {
+  id        Int       @id(map: "core_inventory_item_pkey") @default(autoincrement())
+  itemId    Int
+  userId    String
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
+
+  @@map("inventoryItem")
+}
+
+model Item {
+  id            Int             @id(map: "core_item_pkey") @default(autoincrement())
+  name          String
+  description   String?
+  createdAt     DateTime        @default(now()) @db.Timestamp(6)
+  editedAt      DateTime?       @db.Timestamp(6)
+  deletedAt     DateTime?       @db.Timestamp(6)
+  createdBy     String
+  inventoryItem InventoryItem[]
+  creator       User            @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
+  shopItem      ShopItem[]
+
+  @@map("item")
+}
+
+model Mute {
+  id           Int       @id(map: "core_mute_pkey") @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  editedAt     DateTime? @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+  guildId      String
+  userId       String
+  moderatorId  String
+  reason       String
+  endsAt       DateTime  @db.Timestamp(6)
+  deleteReason String?
+  guild        Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_guildId_guild_id_fk")
+  moderator    User      @relation("mute_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_moderatorId_users_id_fk")
+  user         User      @relation("mute_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_userId_users_id_fk")
+
+  @@index([userId], map: "mute_userId_index")
+  @@map("mute")
+}
+
+model ShopItem {
+  id        Int       @id(map: "core_shop_item_pkey") @default(autoincrement())
+  itemId    Int
+  price     Int
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  editedAt  DateTime? @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  createdBy String
+  creator   User      @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_createdBy_users_id_fk")
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_itemId_item_id_fk")
+
+  @@map("shopItem")
+}
+
+model Task {
+  id          Int      @id(map: "core_task_pkey") @default(autoincrement())
+  status      Status   @default(pending)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  handleAfter DateTime @default(now()) @db.Timestamp(6)
+  data        Json
+  identifier  String   @default(dbgenerated("(gen_random_uuid())::text"))
+
+  @@map("task")
+}
+
+model Transaction {
+  id              Int             @id(map: "core_transaction_pkey") @default(autoincrement())
+  walletId        Int             @map("wallet")
+  relatedWalletId Int?            @map("relatedWallet")
+  relatedUserId   String?
+  amount          Int
+  createdAt       DateTime        @default(now()) @db.Timestamp(6)
+  reason          String?
+  transactionType TransactionType
+  entryType       EntryType
+  relatedUser     User?           @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
+  relatedWallet   Wallet?         @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
+  wallet          Wallet          @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
+
+  @@map("transaction")
+}
+
+model UserTextActivity {
+  id        Int      @id(map: "core_user_text_activity_pkey") @default(autoincrement())
+  userId    String
+  guildId   String
+  messageId String
+  channelId String
+  timestamp DateTime @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_guildId_guild_id_fk")
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_userId_users_id_fk")
+
+  @@map("userTextActivity")
+}
+
+model User {
+  id                                String                             @id(map: "core_users_pkey")
+  verificationLevel                 VerificationLevel?
+  marriedTo                         String?
+  marriedAt                         DateTime?                          @db.Timestamp(6)
+  birthdayEventStage2024Completions BirthdayEventStage2024Completion[]
+  colorRoles                        ColorRole[]
+  currencies                        Currency[]
+  dailyPointsRedeems                DailyPointsRedeems[]
+  inventoryItems                    InventoryItem[]
+  createdItems                      Item[]
+  givenMutes                        Mute[]                             @relation("mute_moderatorIdTousers")
+  receivedMutes                     Mute[]                             @relation("mute_userIdTousers")
+  createdShopItems                  ShopItem[]
+  transactions                      Transaction[]
+  userTextActivities                UserTextActivity[]
+  marriedUser                       User?                              @relation("usersTousers", fields: [marriedTo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_marriedTo_users_id_fk")
+  wallets                           Wallet[]
+  givenVerifications                Verification[]                     @relation("verification_moderatorIdTousers")
+  receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
+  givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
+  receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
+
+  // what's this?
+  other_users User[] @relation("usersTousers")
+
+  @@map("users")
+}
+
+model Verification {
+  id          Int                 @id(map: "core_verification_pkey") @default(autoincrement())
+  createdAt   DateTime            @default(now()) @db.Timestamp(6)
+  acceptedAt  DateTime?           @db.Timestamp(6)
+  rejectedAt  DateTime?           @db.Timestamp(6)
+  guildId     String
+  userId      String
+  moderatorId String
+  type        VerificationType
+  status      VerificationStatus? @default(in_progress)
+  guild       Guild               @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_guildId_guild_id_fk")
+  moderator   User                @relation("verification_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_moderatorId_users_id_fk")
+  user        User                @relation("verification_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_userId_users_id_fk")
+
+  @@map("verification")
+}
+
+model Wallet {
+  id                  Int           @id(map: "core_wallet_pkey") @default(autoincrement())
+  name                String
+  userId              String
+  currencyId          Int           @map("currency")
+  default             Boolean       @default(false)
+  createdAt           DateTime      @default(now()) @db.Timestamp(6)
+  guildId             String
+  balance             Int           @default(0)
+  relatedTransactions Transaction[] @relation("transaction_relatedWalletTowallet")
+  transactions        Transaction[] @relation("transaction_walletTowallet")
+  currency            Currency      @relation("wallet_currencyTocurrency", fields: [currencyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_currency_currency_id_fk")
+  guild               Guild         @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_guildId_guild_id_fk")
+  user                User          @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_userId_users_id_fk")
+
+  @@unique([userId, name, guildId], map: "wallet_userId_name_guildId_unique")
+  @@map("wallet")
+}
+
+model Warn {
+  id           Int       @id(map: "core_warn_pkey") @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  editedAt     DateTime? @db.Timestamp(6)
+  guildId      String
+  userId       String
+  moderatorId  String
+  reason       String
+  deletedAt    DateTime? @db.Timestamp(6)
+  deleteReason String?
+  guild        Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_guildId_guild_id_fk")
+  moderator    User      @relation("warn_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_moderatorId_users_id_fk")
+  user         User      @relation("warn_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_userId_users_id_fk")
+
+  @@index([userId], map: "warn_userId_index")
+  @@map("warn")
+}
+
+enum EntryType {
+  debit
+  credit
+
+  @@map("entry_type")
+}
+
+enum Status {
+  pending
+  completed
+  failed
+  cancelled
+
+  @@map("status")
+}
+
+enum TransactionType {
+  transfer
+  add
+
+  @@map("transaction_type")
+}
+
+enum VerificationLevel {
+  plus13 @map("13_plus")
+  plus18 @map("18_plus")
+  plus16 @map("16_plus")
+
+  @@map("verification_level")
+}
+
+enum VerificationStatus {
+  in_progress
+  accepted
+  rejected
+
+  @@map("verification_status")
+}
+
+enum VerificationType {
+  plus13 @map("13_plus")
+  plus18 @map("18_plus")
+  plus16 @map("16_plus")
+
+  @@map("verification_type")
+}

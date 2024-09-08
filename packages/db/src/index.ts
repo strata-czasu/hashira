@@ -1,14 +1,9 @@
-import env from "@hashira/env";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "./schema";
+import { PrismaClient } from "@prisma/client";
+import type { ITXClientDenyList } from "@prisma/client/runtime/library";
 
-export const connection = postgres(env.DATABASE_URL);
+export const prisma = new PrismaClient();
+export type ExtendedPrismaClient = typeof prisma;
+export type PrismaTransaction = Omit<ExtendedPrismaClient, ITXClientDenyList>;
 
-export const db = drizzle(connection, { schema });
-
-export { schema };
-
+export * from "@prisma/client";
 export { DatabasePaginator } from "./paginate";
-export type { CountSelect } from "./paginate";
-export type { Transaction } from "./transaction";

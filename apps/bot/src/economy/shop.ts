@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, schema } from "@hashira/db";
-import { and, countDistinct, eq, isNotNull, isNull } from "@hashira/db/drizzle";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
@@ -26,32 +26,24 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów w sklepie")
-          .handle(async ({ db }, _, itx) => {
+          .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = and(
-              isNotNull(schema.shopItem.price),
-              isNull(schema.shopItem.deletedAt),
+            const paginator = new DatabasePaginator(
+              (props, price) =>
+                prisma.shopItem.findMany({
+                  ...props,
+                  orderBy: { price },
+                  include: { item: true },
+                }),
+              () => prisma.shopItem.count(),
             );
-            const paginator = new DatabasePaginator({
-              orderBy: [schema.shopItem.price],
-              select: db
-                .select()
-                .from(schema.shopItem)
-                .innerJoin(schema.item, eq(schema.shopItem.itemId, schema.item.id))
-                .where(where)
-                .$dynamic(),
-              count: db
-                .select({ count: countDistinct(schema.shopItem.id) })
-                .from(schema.shopItem)
-                .where(where)
-                .$dynamic(),
-            });
+
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ shop_item: { id, price }, item: { name, description } }) =>
+              ({ id, price, item: { name, description } }) =>
                 `### ${name} - ${formatAmount(price as number)} [${id}]\n${description}`,
               true,
             );
@@ -68,15 +60,15 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(1),
           )
-          .handle(async ({ db }, { id, ilość: rawAmount }, itx) => {
+          .handle(async ({ prisma }, { id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(db, itx.user.id);
+            await ensureUserExists(prisma, itx.user.id);
 
             const amount = rawAmount ?? 1;
 
-            const success = await db.transaction(async (tx) => {
+            const success = await prisma.$transaction(async (tx) => {
               const shopItem = await getShopItem(tx, id);
               if (!shopItem) {
                 await errorFollowUp(
@@ -89,7 +81,7 @@ export const shop = new Hashira({ name: "shop" })
               const allItemsPrice = shopItem.price * amount;
 
               const wallet = await getDefaultWallet({
-                db: tx,
+                prisma: nestedTransaction(tx),
                 userId: itx.user.id,
                 guildId: itx.guild.id,
                 currencySymbol: STRATA_CZASU_CURRENCY.symbol,
@@ -105,7 +97,7 @@ export const shop = new Hashira({ name: "shop" })
               }
 
               await addBalance({
-                db: tx,
+                prisma: nestedTransaction(tx),
                 currencySymbol: STRATA_CZASU_CURRENCY.symbol,
                 guildId: itx.guild.id,
                 toUserId: itx.user.id,
@@ -113,11 +105,10 @@ export const shop = new Hashira({ name: "shop" })
                 reason: `Zakup przedmiotu ${shopItem.id}`,
               });
 
-              const items = new Array<typeof schema.inventoryItem.$inferInsert>(
-                amount,
-              ).fill({ itemId: shopItem.itemId, userId: itx.user.id });
-
-              await tx.insert(schema.inventoryItem).values(items);
+              const items = new Array<Prisma.InventoryItemCreateManyInput>(amount).fill(
+                { itemId: shopItem.itemId, userId: itx.user.id },
+              );
+              await tx.inventoryItem.createMany({ data: items });
 
               return true;
             });
@@ -138,26 +129,28 @@ export const shop = new Hashira({ name: "shop" })
           .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
-          .handle(async ({ db }, { id, price }, itx) => {
+          .handle(async ({ prisma }, { id, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await db.transaction(async (tx) => {
+            const item = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, id);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
               }
-              await tx
-                .insert(schema.shopItem)
-                .values({
-                  itemId: item.id,
+
+              await tx.shopItem.create({
+                data: {
+                  itemId: id,
                   price,
                   createdBy: itx.user.id,
-                })
-                .returning();
+                },
+              });
+
               return item;
             });
+
             if (!item) return;
 
             await itx.editReply(`Wystawiono ${item.name} za ${formatAmount(price)}`);
@@ -167,21 +160,22 @@ export const shop = new Hashira({ name: "shop" })
         command
           .setDescription("Usuń przedmiot ze sklepu")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ db }, { id }, itx) => {
+          .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const removed = await db.transaction(async (tx) => {
+            const removed = await prisma.$transaction(async (tx) => {
               const shopItem = await getShopItem(tx, id);
               if (!shopItem) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx
-                .update(schema.shopItem)
-                .set({ deletedAt: itx.createdAt })
-                .where(eq(schema.shopItem.id, id))
-                .returning();
+
+              await tx.shopItem.update({
+                where: { id },
+                data: { deletedAt: itx.createdAt },
+              });
+
               return true;
             });
             if (!removed) return;
@@ -194,21 +188,22 @@ export const shop = new Hashira({ name: "shop" })
           .setDescription("Zmień cenę przedmiotu w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .addInteger("price", (price) => price.setDescription("Nowa cena przedmiotu"))
-          .handle(async ({ db }, { id, price }, itx) => {
+          .handle(async ({ prisma }, { id, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const updated = await db.transaction(async (tx) => {
+            const updated = await prisma.$transaction(async (tx) => {
               const shopItem = await getShopItem(tx, id);
               if (!shopItem) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return false;
               }
-              await tx
-                .update(schema.shopItem)
-                .set({ price, editedAt: itx.createdAt })
-                .where(eq(schema.shopItem.id, id))
-                .returning();
+
+              await tx.shopItem.update({
+                where: { id },
+                data: { price, editedAt: itx.createdAt },
+              });
+
               return true;
             });
             if (!updated) return;

@@ -2,7 +2,7 @@ ARG NODE_VERSION=20
 
 FROM node:${NODE_VERSION}-slim AS base
 
-ARG BUN_VERSION=bun-v1.1.15
+ARG BUN_VERSION=bun-v1.1.26
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update \
@@ -24,5 +24,7 @@ COPY --link tooling/tsconfig/package.json tooling/tsconfig/package.json
 RUN bun install --production
 
 COPY --link . .
+
+RUN bun prisma-generate
 
 CMD ["bun", "start:prod"]

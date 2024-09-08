@@ -1,21 +1,27 @@
-import { type db, schema } from "@hashira/db";
-import { and, eq } from "@hashira/db/drizzle";
+import type { PrismaTransaction } from "@hashira/db";
 import { CurrencyNotFoundError } from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
 
 type GetCurrencyOptions = {
-  db: typeof db;
+  prisma: PrismaTransaction;
   guildId: string;
 } & GetCurrencyConditionOptions;
 
-export const getCurrency = async ({ db, guildId, ...options }: GetCurrencyOptions) => {
+export const getCurrency = async ({
+  prisma,
+  guildId,
+  ...options
+}: GetCurrencyOptions) => {
   const currencyCondition =
     "currencySymbol" in options
-      ? eq(schema.currency.symbol, options.currencySymbol)
-      : eq(schema.currency.id, options.currencyId);
+      ? { symbol: options.currencySymbol }
+      : { id: options.currencyId };
 
-  const currency = await db.query.currency.findFirst({
-    where: and(eq(schema.currency.guildId, guildId), currencyCondition),
+  const currency = await prisma.currency.findFirst({
+    where: {
+      ...currencyCondition,
+      guildId,
+    },
   });
 
   if (!currency) throw new CurrencyNotFoundError();

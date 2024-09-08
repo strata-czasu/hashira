@@ -4,27 +4,5 @@ services:
   app:
     build: .
     restart: unless-stopped
-    depends_on:
-      - db
-    networks:
-      - db
     env_file:
       - .env
-    ports:
-      - 4983:4983  # drizzle kit studio
-
-  db:
-    image: postgres:latest
-    restart: unless-stopped
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - db
-    env_file:
-      - .env
-
-volumes:
-  postgres-data:
-
-networks:
-  db:

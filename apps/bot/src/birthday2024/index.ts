@@ -1,6 +1,9 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type db, schema } from "@hashira/db";
-import { count, desc, eq } from "@hashira/db/drizzle";
+import {
+  type BirthdayEventStage2024,
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+} from "@hashira/db";
 import {
   ActionRowBuilder,
   type BaseMessageOptions,
@@ -47,7 +50,7 @@ const runReplacers = (content: string, ctx: ReplaceCtx) => {
 };
 
 const readComponents = (
-  stage: typeof schema.birthdayEvent2024Stage.$inferSelect,
+  stage: BirthdayEventStage2024,
 ): ActionRowBuilder<ButtonBuilder>[] => {
   if (stage.buttons.length === 0) return [];
 
@@ -73,8 +76,8 @@ const readComponents = (
 };
 
 const completeStage = async (
-  database: typeof db,
-  stage: typeof schema.birthdayEvent2024Stage.$inferSelect,
+  prisma: ExtendedPrismaClient,
+  stage: BirthdayEventStage2024,
   authorId: string,
   reply: (options: BaseMessageOptions) => Promise<void>,
 ) => {
@@ -82,26 +85,25 @@ const completeStage = async (
   const components = readComponents(stage);
 
   await reply({ content, components });
-  await database.insert(schema.birthdayEvent2024StageCompletion).values({
-    userId: authorId,
-    stageId: stage.id,
+
+  await prisma.birthdayEventStage2024Completion.create({
+    data: { userId: authorId, stageId: stage.id },
   });
 };
 
 const handleStageInput = async (
-  database: typeof db,
+  prisma: ExtendedPrismaClient,
   authorId: string,
   content: string,
   reply: (options: BaseMessageOptions) => Promise<void>,
 ) => {
-  const lastFinishedStages =
-    await database.query.birthdayEvent2024StageCompletion.findMany({
-      where: eq(schema.birthdayEvent2024StageCompletion.userId, authorId),
-      orderBy: [desc(schema.birthdayEvent2024StageCompletion.timestamp)],
-    });
+  const lastFinishedStages = await prisma.birthdayEventStage2024Completion.findMany({
+    where: { userId: authorId },
+    orderBy: { timestamp: "desc" },
+  });
 
-  const mentionedStage = await database.query.birthdayEvent2024Stage.findFirst({
-    where: eq(schema.birthdayEvent2024Stage.keyword, content.toLowerCase()),
+  const mentionedStage = await prisma.birthdayEventStage2024.findFirst({
+    where: { keyword: content.toLowerCase() },
   });
 
   if (!mentionedStage) {
@@ -134,7 +136,7 @@ const handleStageInput = async (
     return;
   }
 
-  await completeStage(database, mentionedStage, authorId, reply);
+  await completeStage(prisma, mentionedStage, authorId, reply);
 };
 
 export const birthday2024 = new Hashira({ name: "birthday-2024" })
@@ -165,7 +167,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               {
                 keyword,
                 "output-requirements-valid": outputRequirementsValid,
@@ -175,21 +177,15 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
               },
               itx,
             ) => {
-              const [stage] = await db
-                .insert(schema.birthdayEvent2024Stage)
-                .values({
+              const stage = await prisma.birthdayEventStage2024.create({
+                data: {
                   keyword,
                   outputRequirementsValid,
                   outputRequirementsInvalid,
                   requiredStageId,
                   buttons: buttons ? buttons.split("|") : [],
-                })
-                .returning();
-
-              if (!stage) {
-                await itx.reply("Nie udało się dodać etapu");
-                return;
-              }
+                },
+              });
 
               await itx.reply(`Dodano etap ${inlineCode(stage.id.toString())}`);
             },
@@ -198,26 +194,19 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       .addCommand("list-stages", (command) =>
         command
           .setDescription("Lista etapów urodzin 2024")
-          .handle(async ({ db }, _, itx) => {
-            const paginator = new DatabasePaginator({
-              pageSize: 5,
-              orderBy: [schema.birthdayEvent2024Stage.id],
-              select: db.select().from(schema.birthdayEvent2024Stage).$dynamic(),
-              count: db
-                .select({ count: count() })
-                .from(schema.birthdayEvent2024Stage)
-                .$dynamic(),
-            });
+          .handle(async ({ prisma }, _, itx) => {
+            const paginator = new DatabasePaginator(
+              (props, id) =>
+                prisma.birthdayEventStage2024.findMany({ ...props, orderBy: { id } }),
+              () => prisma.birthdayEventStage2024.count(),
+              { pageSize: 5 },
+            );
 
-            const extractButtons = (
-              row: typeof schema.birthdayEvent2024Stage.$inferSelect,
-            ) => {
+            const extractButtons = (row: BirthdayEventStage2024) => {
               return row.buttons.map((button) => button.split(":")[1]);
             };
 
-            const formatStage = (
-              row: typeof schema.birthdayEvent2024Stage.$inferSelect,
-            ) => {
+            const formatStage = (row: BirthdayEventStage2024) => {
               return [
                 heading(`${row.keyword} (${row.id})`, HeadingLevel.Three),
                 `Wiadomość udanej próby: ${row.outputRequirementsValid}`,
@@ -270,7 +259,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           )
           .handle(
             async (
-              { db },
+              { prisma },
               {
                 id,
                 keyword,
@@ -302,16 +291,10 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 return;
               }
 
-              const [stage] = await db
-                .update(schema.birthdayEvent2024Stage)
-                .set(updateData)
-                .where(eq(schema.birthdayEvent2024Stage.id, id))
-                .returning();
-
-              if (!stage) {
-                await itx.reply("Nie udało się edytować etapu");
-                return;
-              }
+              const stage = await prisma.birthdayEventStage2024.update({
+                where: { id },
+                data: updateData,
+              });
 
               await itx.reply(`Edytowano etap ${inlineCode(stage.id.toString())}`);
             },
@@ -320,8 +303,8 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       .addCommand("mermaid-graph", (command) =>
         command
           .setDescription("Generuje graf etapów urodzin 2024 w formacie Mermaid")
-          .handle(async ({ db }, _, itx) => {
-            const stages = await db.query.birthdayEvent2024Stage.findMany();
+          .handle(async ({ prisma }, _, itx) => {
+            const stages = await prisma.birthdayEventStage2024.findMany();
 
             const nodes = stages.map((stage) => {
               return `  ${stage.id}["${stage.keyword}"]`;
@@ -349,18 +332,13 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
               .setRequired(false)
               .setDescription("ID etapu, który uczestnicy ukończyli"),
           )
-          .handle(async ({ db }, { message, "stage-id": stageId }, itx) => {
+          .handle(async ({ prisma }, { message, "stage-id": stageId }, itx) => {
             await itx.deferReply();
-            const participants = await db
-              .selectDistinct({
-                userId: schema.birthdayEvent2024StageCompletion.userId,
-              })
-              .from(schema.birthdayEvent2024StageCompletion)
-              .where(
-                stageId
-                  ? eq(schema.birthdayEvent2024StageCompletion.stageId, stageId)
-                  : undefined,
-              );
+            const where = { ...(stageId ? { stageId } : {}) };
+
+            const participants = await prisma.birthdayEventStage2024Completion.findMany(
+              { where, distinct: "userId" },
+            );
 
             const sendDmPromises = participants.map(async ({ userId }) => {
               const content = runReplacers(message, { userId });
@@ -387,15 +365,20 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           }),
       ),
   )
-  .handle("messageCreate", async ({ db }, message) => {
+  .handle("messageCreate", async ({ prisma }, message) => {
     if (message.author.bot) return;
     if (message.inGuild()) return;
 
-    await handleStageInput(db, message.author.id, message.content, async (options) => {
-      await message.reply(options);
-    });
+    await handleStageInput(
+      prisma,
+      message.author.id,
+      message.content,
+      async (options) => {
+        await message.reply(options);
+      },
+    );
   })
-  .handle("ready", async ({ db }, client) => {
+  .handle("ready", async ({ prisma }, client) => {
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isButton()) return;
 
@@ -403,14 +386,14 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
 
       if (!customId) return;
 
-      const matchingStage = await db.query.birthdayEvent2024Stage.findFirst({
-        where: eq(schema.birthdayEvent2024Stage.keyword, customId),
+      const matchingStage = await prisma.birthdayEventStage2024.findFirst({
+        where: { keyword: customId },
       });
 
       if (!matchingStage) return;
 
       await handleStageInput(
-        db,
+        prisma,
         interaction.user.id,
         matchingStage.keyword,
         async (options) => {

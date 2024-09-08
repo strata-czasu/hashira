@@ -26,7 +26,11 @@ const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
   return deleteInterval * 3600;
 };
 
-const BAN_FIXUP_GUILDS = [GUILD_IDS.Homik, GUILD_IDS.Piwnica, GUILD_IDS.StrataCzasu];
+const BAN_FIXUP_GUILDS: string[] = [
+  GUILD_IDS.Homik,
+  GUILD_IDS.Piwnica,
+  GUILD_IDS.StrataCzasu,
+];
 
 export const bans = new Hashira({ name: "bans" })
   .command("ban", (command) =>

@@ -4,7 +4,6 @@ import * as Sentry from "@sentry/bun";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
-import { birthday2024 } from "./birthday2024";
 import { dmForwarding } from "./dmForwarding";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
@@ -43,7 +42,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(tasks)
   .use(logging)
   .use(userActivity)
-  .use(birthday2024)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");

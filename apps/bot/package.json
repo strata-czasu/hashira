@@ -13,15 +13,10 @@
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
-    "@sentry/bun": "^8.22.0",
+    "@sentry/bun": "^8.26.0",
     "date-fns": "3.6.0",
     "discord.js": "^14.15.3",
-    "ts-pattern": "5.2.0",
-    "es-toolkit": "^1.13.1"
-  },
-  "devDependencies": {
-    "typescript": "*",
-    "@types/bun": "latest",
-    "@hashira/tsconfig": "workspace:*"
+    "ts-pattern": "5.3.1",
+    "es-toolkit": "^1.16.0"
   }
 }

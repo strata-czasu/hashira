@@ -1,70 +1,40 @@
 import { type Paginator, PaginatorOrder } from "@hashira/paginate";
-import { type SQL, asc, desc } from "drizzle-orm";
-import type { PgColumn, PgSelect } from "drizzle-orm/pg-core";
-import type { JoinNullability } from "drizzle-orm/query-builders/select.types";
+import type { Prisma } from "@prisma/client";
 
-export type CountSelect = PgSelect<
-  string,
-  { count: SQL<number> },
-  "partial",
-  Record<string, JoinNullability>
->;
+type PaginateProps = {
+  skip: number;
+  take: number;
+};
 
-interface DatabasePaginatorConfig<T extends PgSelect, U extends CountSelect> {
-  /**
-   * Query for fetching the count of selected rows
-   */
-  count?: U;
-  /**
-   * Query for fetching the selected rows
-   */
-  select: T;
-  /**
-   * Column or columns to order by
-   */
-  orderBy: (PgColumn | SQL | SQL.Aliased) | (PgColumn | SQL | SQL.Aliased)[];
-  /**
-   * Page number to start from, zero-based
-   * @default 0
-   */
-  page?: number;
-  /**
-   * Default odering direction
-   * @default {PaginatorOrder.ASC}
-   */
-  ordering?: PaginatorOrder;
-  /**
-   * Number of rows per page
-   * @default 10
-   */
+type FindFn<T> = (props: PaginateProps, orderBy: Prisma.SortOrder) => Promise<T[]>;
+type CountFn = () => Promise<number>;
+
+interface DatabasePaginatorOptions {
   pageSize?: number;
+  defaultOrder?: PaginatorOrder;
 }
 
-export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
-  implements Paginator<T["_"]["result"][number]>
-{
-  readonly #qb: T;
-  readonly #orderBy: (PgColumn | SQL | SQL.Aliased)[];
-  readonly #countQb: U | undefined = undefined;
+export class DatabasePaginator<T> implements Paginator<T> {
+  readonly #findFn: FindFn<T>;
+  readonly #countFn: CountFn;
   readonly #pageSize: number = 10;
-  #ordering: PaginatorOrder = PaginatorOrder.ASC;
+  #ordering = PaginatorOrder.ASC;
   #page = 0;
   #count: number = Number.MAX_SAFE_INTEGER;
 
-  constructor(config: DatabasePaginatorConfig<T, U>) {
-    this.#qb = config.select;
-    this.#orderBy = Array.isArray(config.orderBy) ? config.orderBy : [config.orderBy];
-    this.#countQb = config.count;
-    this.#ordering = config.ordering ?? this.#ordering;
-    this.#pageSize = config.pageSize ?? this.#pageSize;
-    this.#page = config.page ?? this.#page;
+  constructor(find: FindFn<T>, count: CountFn, options?: DatabasePaginatorOptions) {
+    this.#findFn = find;
+    this.#countFn = count;
+    if (options) {
+      const { pageSize = 10, defaultOrder = PaginatorOrder.ASC } = options;
+      this.#pageSize = pageSize;
+      this.#ordering = defaultOrder;
+    }
   }
 
   private async fetchCount() {
-    if (!this.isCountUnknown || !this.#countQb) return;
-    const [row] = await this.#countQb.execute();
-    if (row) this.#count = row.count;
-    else this.#count = 0;
+    if (!this.isCountUnknown) return;
+    this.#count = await this.#countFn();
   }
 
   public get count() {
@@ -93,17 +63,20 @@ export class DatabasePaginator<T extends PgSelect, U extends CountSelect>
     return (this.#page + 1) * this.#pageSize < this.#count;
   }
 
-  private get qb() {
-    const op = this.#ordering === "ASC" ? asc : desc;
-    return this.#qb
-      .orderBy(...this.#orderBy.map(op))
-      .limit(this.#pageSize)
-      .offset(this.currentOffset);
+  private get prismaOrdering() {
+    if (this.#ordering === PaginatorOrder.ASC) return "asc";
+    return "desc";
   }
 
-  public async current(): Promise<T["_"]["result"]> {
+  public async current() {
     await this.fetchCount();
-    const result = await this.qb.execute();
+    const result = await this.#findFn(
+      {
+        skip: this.currentOffset,
+        take: this.#pageSize,
+      },
+      this.prismaOrdering,
+    );
 
     if (this.isCountUnknown && result.length < this.#pageSize) {
       this.#count = this.currentOffset + result.length;

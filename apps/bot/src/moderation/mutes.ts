@@ -1,6 +1,10 @@
 import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Transaction, schema } from "@hashira/db";
-import { and, count, eq, gte, isNull } from "@hashira/db/drizzle";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type Mute,
+  type PrismaTransaction,
+} from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { add, intervalToDuration } from "date-fns";
 import {
@@ -32,7 +36,9 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatUserWithId, getMuteRoleId } from "./util";
 
-const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
+type Context = ExtractContext<typeof base>;
+
+const formatMuteLength = (mute: Mute) => {
   const { createdAt, endsAt } = mute;
   const duration = intervalToDuration({ start: createdAt, end: endsAt });
   const durationParts = [];
@@ -46,7 +52,7 @@ const formatMuteLength = (mute: typeof schema.mute.$inferSelect) => {
 
 export const createFormatMuteInList =
   ({ includeUser }: { includeUser: boolean }) =>
-  (mute: typeof schema.mute.$inferSelect, _idx: number) => {
+  (mute: Mute, _idx: number) => {
     const { id, createdAt, deletedAt, reason, moderatorId, deleteReason, userId } =
       mute;
 
@@ -78,26 +84,24 @@ export const createFormatMuteInList =
     return lines.join("\n");
   };
 
-type Context = ExtractContext<typeof base>;
-
 const getUserMutesPaginatedView = (
-  db: Context["db"],
+  prisma: ExtendedPrismaClient,
   user: User,
   guildId: string,
   deleted: boolean | null,
 ) => {
-  const muteWheres = and(
-    eq(schema.mute.guildId, guildId),
-    eq(schema.mute.userId, user.id),
-    deleted ? undefined : isNull(schema.mute.deletedAt),
+  const where = {
+    guildId,
+    userId: user.id,
+    ...(deleted ? {} : { deletedAt: null }),
+  };
+
+  const paginate = new DatabasePaginator(
+    (props, createdAt) =>
+      prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+    () => prisma.mute.count({ where }),
+    { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
   );
-  const paginate = new DatabasePaginator({
-    orderBy: schema.mute.createdAt,
-    ordering: PaginatorOrder.DESC,
-    pageSize: 5,
-    select: db.select().from(schema.mute).where(muteWheres).$dynamic(),
-    count: db.select({ count: count() }).from(schema.mute).where(muteWheres).$dynamic(),
-  });
 
   const formatMuteInList = createFormatMuteInList({ includeUser: false });
 
@@ -110,30 +114,21 @@ const getUserMutesPaginatedView = (
   );
 };
 
-const getMute = async (tx: Transaction, id: number, guildId: string) =>
-  tx
-    .select()
-    .from(schema.mute)
-    .where(
-      and(
-        eq(schema.mute.guildId, guildId),
-        eq(schema.mute.id, id),
-        isNull(schema.mute.deletedAt),
-      ),
-    );
+const getMute = (tx: PrismaTransaction, id: number, guildId: string) =>
+  tx.mute.findFirst({ where: { guildId, id, deletedAt: null } });
 
 const RULES_CHANNEL = "873167662082056232";
 const APPEALS_CHANNEL = "1213901611836117052";
 
 const addMute = async ({
-  db,
+  prisma,
   messageQueue,
   itx,
   user,
   duration: rawDuration,
   reason,
 }: {
-  db: Context["db"];
+  prisma: ExtendedPrismaClient;
   messageQueue: Context["messageQueue"];
   itx: RepliableInteraction<"cached">;
   user: User;
@@ -150,13 +145,13 @@ const addMute = async ({
   );
   if (!member) return;
 
-  const activeMute = await db.query.mute.findFirst({
-    where: and(
-      eq(schema.mute.guildId, itx.guildId),
-      eq(schema.mute.userId, user.id),
-      isNull(schema.mute.deletedAt),
-      gte(schema.mute.endsAt, itx.createdAt),
-    ),
+  const activeMute = await prisma.mute.findFirst({
+    where: {
+      guildId: itx.guildId,
+      userId: user.id,
+      deletedAt: null,
+      endsAt: { gte: itx.createdAt },
+    },
   });
   if (activeMute) {
     await errorFollowUp(
@@ -171,7 +166,7 @@ const addMute = async ({
     return;
   }
 
-  const muteRoleId = await getMuteRoleId(db, itx.guildId);
+  const muteRoleId = await getMuteRoleId(prisma, itx.guildId);
   if (!muteRoleId) {
     // TODO: Add an actual link to the settings command
     await errorFollowUp(
@@ -195,22 +190,22 @@ const addMute = async ({
   }
   const endsAt = add(itx.createdAt, duration);
 
-  await ensureUsersExist(db, [user.id, itx.user.id]);
+  await ensureUsersExist(prisma, [user.id, itx.user.id]);
 
   // Create mute and try to add the mute role
   // If adding the role fails, rollback the transaction
-  const mute = await db.transaction(async (tx) => {
-    const [mute] = await db
-      .insert(schema.mute)
-      .values({
+  const mute = await prisma.$transaction(async (tx) => {
+    const mute = await tx.mute.create({
+      data: {
         createdAt: itx.createdAt,
         endsAt,
         guildId: itx.guildId,
         moderatorId: itx.user.id,
         reason,
         userId: user.id,
-      })
-      .returning({ id: schema.mute.id });
+      },
+    });
+
     if (!mute) return null;
 
     const appliedMute = await applyMute(
@@ -223,8 +218,10 @@ const addMute = async ({
         itx,
         "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
       );
-      tx.rollback();
-      return null;
+
+      throw new Error(
+        `Failed to apply mute for user ${user.id} at guild ${itx.guildId}`,
+      );
     }
     return mute;
   });
@@ -284,10 +281,10 @@ export const mutes = new Hashira({ name: "mutes" })
             duration.setDescription("Czas trwania wyciszenia"),
           )
           .addString("reason", (reason) => reason.setDescription("Powód wyciszenia"))
-          .handle(async ({ db, messageQueue }, { user, duration, reason }, itx) => {
+          .handle(async ({ prisma, messageQueue }, { user, duration, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-            await addMute({ db, messageQueue, itx, user, duration, reason });
+            await addMute({ prisma, messageQueue, itx, user, duration, reason });
           }),
       )
       .addCommand("remove", (command) =>
@@ -297,21 +294,21 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
-          .handle(async ({ db, messageQueue }, { id, reason }, itx) => {
+          .handle(async ({ prisma, messageQueue }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const mute = await db.transaction(async (tx) => {
-              const [mute] = await getMute(tx, id, itx.guildId);
+            const mute = await prisma.$transaction(async (tx) => {
+              const mute = await getMute(tx, id, itx.guildId);
               if (!mute) {
                 await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
                 return null;
               }
               // TODO: Save a log of this edit in the database
-              await tx
-                .update(schema.mute)
-                .set({ deletedAt: itx.createdAt, deleteReason: reason })
-                .where(eq(schema.mute.id, id));
+              await prisma.mute.update({
+                where: { id },
+                data: { deletedAt: itx.createdAt, deleteReason: reason },
+              });
 
               await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
 
@@ -342,7 +339,7 @@ export const mutes = new Hashira({ name: "mutes" })
           )
           .handle(
             async (
-              { db, messageQueue },
+              { prisma, messageQueue },
               { id, reason, duration: rawDuration },
               itx,
             ) => {
@@ -357,8 +354,8 @@ export const mutes = new Hashira({ name: "mutes" })
                 return;
               }
 
-              const mute = await db.transaction(async (tx) => {
-                const [mute] = await getMute(tx, id, itx.guildId);
+              const mute = await prisma.$transaction(async (tx) => {
+                const mute = await getMute(tx, id, itx.guildId);
                 if (!mute) {
                   await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
                   return null;
@@ -387,16 +384,15 @@ export const mutes = new Hashira({ name: "mutes" })
                   return null;
                 }
 
-                const updates: Partial<typeof schema.mute.$inferInsert> = {};
+                const updates: Partial<Mute> = {};
                 if (reason) updates.reason = reason;
                 if (duration) updates.endsAt = add(mute.createdAt, duration);
 
                 // TODO: Save a log of this edit in the database
-                const [updatedMute] = await tx
-                  .update(schema.mute)
-                  .set(updates)
-                  .where(eq(schema.mute.id, id))
-                  .returning();
+                const updatedMute = await prisma.mute.update({
+                  where: { id },
+                  data: updates,
+                });
 
                 if (!updatedMute) return null;
 
@@ -454,36 +450,21 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl wszystkie aktywne wyciszenia")
-          .handle(async ({ db }, _, itx) => {
+          .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const muteWheres = and(
-              eq(schema.mute.guildId, itx.guildId),
-              isNull(schema.mute.deletedAt),
-              gte(schema.mute.endsAt, itx.createdAt),
+            const where = {
+              guildId: itx.guildId,
+              deletedAt: null,
+              endsAt: { gte: itx.createdAt },
+            };
+
+            const paginate = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+              () => prisma.mute.count({ where }),
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
             );
-            const paginate = new DatabasePaginator({
-              orderBy: schema.mute.createdAt,
-              ordering: PaginatorOrder.DESC,
-              pageSize: 5,
-              select: db
-                .select({
-                  id: schema.mute.id,
-                  createdAt: schema.mute.createdAt,
-                  reason: schema.mute.reason,
-                  userId: schema.mute.userId,
-                  moderatorId: schema.mute.moderatorId,
-                  endsAt: schema.mute.endsAt,
-                })
-                .from(schema.mute)
-                .where(muteWheres)
-                .$dynamic(),
-              count: db
-                .select({ count: count() })
-                .from(schema.mute)
-                .where(muteWheres)
-                .$dynamic(),
-            });
 
             const paginatedView = new PaginatedView(
               paginate,
@@ -513,12 +494,12 @@ export const mutes = new Hashira({ name: "mutes" })
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
-          .handle(async ({ db }, { user: selectedUser, deleted }, itx) => {
+          .handle(async ({ prisma }, { user: selectedUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const user = selectedUser ?? itx.user;
             const paginatedView = getUserMutesPaginatedView(
-              db,
+              prisma,
               user,
               itx.guildId,
               deleted,
@@ -532,11 +513,11 @@ export const mutes = new Hashira({ name: "mutes" })
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
-          .handle(async ({ db }, { deleted }, itx) => {
+          .handle(async ({ prisma }, { deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const paginatedView = getUserMutesPaginatedView(
-              db,
+              prisma,
               itx.user,
               itx.guildId,
               deleted,
@@ -545,25 +526,26 @@ export const mutes = new Hashira({ name: "mutes" })
           }),
       ),
   )
-  .handle("guildMemberAdd", async ({ db }, member) => {
-    const activeMute = await db.query.mute.findFirst({
-      where: and(
-        eq(schema.mute.guildId, member.guild.id),
-        eq(schema.mute.userId, member.id),
-        isNull(schema.mute.deletedAt),
-        gte(schema.mute.endsAt, new Date()),
-      ),
+  .handle("guildMemberAdd", async ({ prisma }, member) => {
+    const activeMute = await prisma.mute.findFirst({
+      where: {
+        guildId: member.guild.id,
+        userId: member.id,
+        deletedAt: null,
+        endsAt: { gte: new Date() },
+      },
     });
+
     if (!activeMute) return;
 
-    const muteRoleId = await getMuteRoleId(db, member.guild.id);
+    const muteRoleId = await getMuteRoleId(prisma, member.guild.id);
     if (!muteRoleId) return;
     await member.roles.add(muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
   })
   .userContextMenu(
     "mute",
     PermissionFlagsBits.ModerateMembers,
-    async ({ db, messageQueue }, itx) => {
+    async ({ prisma, messageQueue }, itx) => {
       if (!itx.inCachedGuild()) return;
 
       const rows = [
@@ -610,7 +592,7 @@ export const mutes = new Hashira({ name: "mutes" })
       }
 
       await addMute({
-        db,
+        prisma,
         messageQueue,
         itx: submitAction,
         user: itx.targetUser,
