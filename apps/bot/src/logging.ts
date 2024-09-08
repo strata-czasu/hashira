@@ -37,6 +37,18 @@ export const logging = new Hashira({ name: "logging" })
     if (member.guild.id !== LOG_GUILD_ID) return;
     log.push("guildMemberRemove", { member });
   })
+  .handle("guildMemberUpdate", async ({ log }, oldMember, newMember) => {
+    if (oldMember.guild.id !== LOG_GUILD_ID || newMember.guild.id !== LOG_GUILD_ID)
+      return;
+
+    if (oldMember.nickname !== newMember.nickname) {
+      log.push("guildMemberNicknameUpdate", {
+        member: newMember,
+        oldNickname: oldMember.nickname,
+        newNickname: newMember.nickname,
+      });
+    }
+  })
   .handle("guildBanAdd", async ({ log }, ban) => {
     if (ban.guild.id !== LOG_GUILD_ID) return;
     log.push("guildBanAdd", { ban });

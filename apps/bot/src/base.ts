@@ -7,6 +7,7 @@ import {
   GuildMember,
   type Message,
   type User,
+  bold,
   channelMention,
 } from "discord.js";
 import { database } from "./db";
@@ -24,6 +25,11 @@ type MessageEditData = {
 };
 type GuildMemberAddData = { member: GuildMember };
 type GuildMemberRemoveData = { member: GuildMember };
+type GuildMemberNicknameUpdateData = {
+  member: GuildMember;
+  oldNickname: string | null;
+  newNickname: string | null;
+};
 type GuildBanAddData = { ban: GuildBan };
 type GuildBanRemoveData = { ban: GuildBan };
 
@@ -117,6 +123,27 @@ export const base = new Hashira({ name: "base" })
           const embed = getLogMessageEmbed(member, timestamp)
             .setDescription("### Opuszcza serwer")
             .setColor("Red");
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildMemberNicknameUpdate",
+        async (
+          { timestamp },
+          { member, oldNickname, newNickname }: GuildMemberNicknameUpdateData,
+        ) => {
+          const embed = getLogMessageEmbed(member, timestamp).setColor("Yellow");
+
+          if (oldNickname === null && newNickname !== null) {
+            embed.setDescription(`### Ustawia nick na ${newNickname}`);
+          } else if (oldNickname !== null && newNickname !== null) {
+            embed.setDescription(`### Zmienia nick z ${oldNickname} na ${newNickname}`);
+          } else if (oldNickname !== null && newNickname === null) {
+            embed.setDescription(`### Usuwa nick ${bold(oldNickname)}`);
+          } else {
+            throw new Error("Nickname update from null to null");
+          }
+
           return embed;
         },
       )
