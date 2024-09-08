@@ -3,6 +3,7 @@ import env from "@hashira/env";
 import { captureException } from "@sentry/bun";
 import {
   EmbedBuilder,
+  type GuildBan,
   GuildMember,
   type Message,
   type User,
@@ -12,6 +13,7 @@ import { database } from "./db";
 import { LockManager } from "./lock";
 import { Logger } from "./logger";
 
+// TODO)) Move log event declarations to a separate module
 type GuildMessage = Message<true>;
 type MessageDeleteData = {
   message: GuildMessage;
@@ -20,9 +22,10 @@ type MessageEditData = {
   oldMessage: GuildMessage;
   newMessage: GuildMessage;
 };
-
 type GuildMemberAddData = { member: GuildMember };
 type GuildMemberRemoveData = { member: GuildMember };
+type GuildBanAddData = { ban: GuildBan };
+type GuildBanRemoveData = { ban: GuildBan };
 
 const getLogMessageEmbed = (author: User | GuildMember, timestamp: Date) => {
   const user = author instanceof GuildMember ? author.user : author;
@@ -89,6 +92,24 @@ export const base = new Hashira({ name: "base" })
           const embed = getLogMessageEmbed(member, timestamp)
             .setDescription("### Opuszcza serwer")
             .setColor("Red");
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildBanAdd",
+        async ({ timestamp }, { ban }: GuildBanAddData) => {
+          const embed = getLogMessageEmbed(ban.user, timestamp)
+            .setDescription("### Otrzymuje bana")
+            .setColor("Red");
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildBanRemove",
+        async ({ timestamp }, { ban }: GuildBanRemoveData) => {
+          const embed = getLogMessageEmbed(ban.user, timestamp)
+            .setDescription("### Zdjęto bana")
+            .setColor("Green");
           return embed;
         },
       ),
