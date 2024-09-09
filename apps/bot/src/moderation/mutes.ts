@@ -33,6 +33,7 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { parseUserMentions } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatUserWithId, getMuteRoleId } from "./util";
 
@@ -274,7 +275,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("add", (command) =>
         command
           .setDescription("Wycisz użytkownika")
-          .addUser("user", (user) =>
+          .addString("user", (user) =>
             user.setDescription("Użytkownik, którego chcesz wyciszyć"),
           )
           .addString("duration", (duration) =>
@@ -284,7 +285,29 @@ export const mutes = new Hashira({ name: "mutes" })
           .handle(async ({ prisma, messageQueue }, { user, duration, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-            await addMute({ prisma, messageQueue, itx, user, duration, reason });
+
+            // TODO: This is a workaround for a bug in discord that crashes the client when
+            // trying to use native mentions in the command
+            const [parsedUser, ...restOfUsers] = parseUserMentions(user);
+            if (!parsedUser) {
+              await errorFollowUp(itx, "Nie podano użytkownika");
+              return;
+            }
+            if (restOfUsers.length > 0) {
+              await errorFollowUp(itx, "Podano za dużo użytkowników");
+              return;
+            }
+
+            const fetchedUser = await itx.client.users.fetch(parsedUser);
+
+            await addMute({
+              prisma,
+              messageQueue,
+              itx,
+              user: fetchedUser,
+              duration,
+              reason,
+            });
           }),
       )
       .addCommand("remove", (command) =>
