@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
+import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
@@ -39,6 +40,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(roles)
   .use(settings)
   .use(tasks)
+  .use(ai)
   .use(userActivity)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
