@@ -20,6 +20,7 @@ const Env = v.object({
   SENTRY_DSN: v.optional(v.string()),
   DATABASE_URL: v.pipe(v.string(), v.url()),
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),
+  OPENAI_KEY: v.optional(v.string()),
 });
 
 export default v.parse(Env, process.env);

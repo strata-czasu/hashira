@@ -9,6 +9,7 @@ import { PaginatorOrder } from "@hashira/paginate";
 import { add, intervalToDuration } from "date-fns";
 import {
   ActionRowBuilder,
+  type Guild,
   HeadingLevel,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -33,8 +34,9 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { parseUserMentions } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, formatUserWithId, getMuteRoleId } from "./util";
+import { applyMute, getMuteRoleId } from "./util";
 
 type Context = ExtractContext<typeof base>;
 
@@ -120,6 +122,149 @@ const getMute = (tx: PrismaTransaction, id: number, guildId: string) =>
 const RULES_CHANNEL = "873167662082056232";
 const APPEALS_CHANNEL = "1213901611836117052";
 
+export const universalAddMute = async ({
+  prisma,
+  messageQueue,
+  userId,
+  guild,
+  moderatorId,
+  duration,
+  reason,
+  reply,
+}: {
+  prisma: ExtendedPrismaClient;
+  messageQueue: Context["messageQueue"];
+  userId: string;
+  guild: Guild;
+  moderatorId: string;
+  duration: string;
+  reason: string;
+  reply: (content: string) => Promise<unknown>;
+}) => {
+  const member = await discordTry(
+    async () => guild.members.fetch(userId),
+    [RESTJSONErrorCodes.UnknownMember],
+    async () => {
+      await reply("Nie znaleziono podanego użytkownika na tym serwerze.");
+      return null;
+    },
+  );
+  if (!member) return;
+
+  const guildId = guild.id;
+
+  const activeMute = await prisma.mute.findFirst({
+    where: {
+      guildId,
+      userId,
+      deletedAt: null,
+      endsAt: { gte: new Date() },
+    },
+  });
+  if (activeMute) {
+    await reply(
+      `Użytkownik jest już wyciszony do ${time(
+        activeMute.endsAt,
+        TimestampStyles.RelativeTime,
+      )} przez ${userMention(activeMute.moderatorId)}.\nPowód: ${italic(
+        activeMute.reason,
+      )}`,
+    );
+    return;
+  }
+
+  const muteRoleId = await getMuteRoleId(prisma, guildId);
+  if (!muteRoleId) {
+    await reply(
+      "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
+    );
+    return;
+  }
+
+  const parsedDuration = parseDuration(duration);
+
+  if (!parsedDuration) {
+    await reply("Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`");
+    return;
+  }
+
+  if (durationToSeconds(parsedDuration) === 0) {
+    await reply("Nie można ustawić czasu trwania wyciszenia na 0");
+    return;
+  }
+
+  const endsAt = add(new Date(), parsedDuration);
+
+  await ensureUsersExist(prisma, [userId, moderatorId]);
+
+  // Create mute and try to add the mute role
+
+  const mute = await prisma.$transaction(async (tx) => {
+    const mute = await tx.mute.create({
+      data: {
+        createdAt: new Date(),
+        endsAt,
+        guildId,
+        moderatorId,
+        reason,
+        userId,
+      },
+    });
+
+    if (!mute) return null;
+
+    const appliedMute = await applyMute(
+      member,
+      muteRoleId,
+      `Wyciszenie: ${reason} [${mute.id}]`,
+    );
+    if (!appliedMute) {
+      await reply(
+        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+      );
+
+      throw new Error(`Failed to apply mute for user ${userId} at guild ${guildId}`);
+    }
+    return mute;
+  });
+
+  if (!mute) return;
+
+  await messageQueue.push(
+    "muteEnd",
+    { muteId: mute.id, guildId, userId },
+    durationToSeconds(parsedDuration),
+    mute.id.toString(),
+  );
+
+  await reply(
+    `Dodano wyciszenie [${inlineCode(
+      mute.id.toString(),
+    )}] dla ${userMention(userId)}.\nPowód: ${italic(
+      reason,
+    )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
+  );
+
+  const sentMessage = await sendDirectMessage(
+    member.user,
+    `Hejka! Przed chwilą ${userMention(moderatorId)} nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
+      formatDuration(parsedDuration),
+    )}. Powodem Twojego wyciszenia jest: ${italic(
+      reason,
+    )}.\n\nPrzeczytaj ${channelMention(
+      RULES_CHANNEL,
+    )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
+      APPEALS_CHANNEL,
+    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
+  );
+
+  if (!sentMessage) {
+    await reply(`Nie udało się wysłać wiadomości do ${userMention(userId)}.`);
+  }
+
+  return mute;
+};
+
 const addMute = async ({
   prisma,
   messageQueue,
@@ -135,133 +280,16 @@ const addMute = async ({
   duration: string;
   reason: string;
 }) => {
-  const member = await discordTry(
-    async () => itx.guild.members.fetch(user),
-    [RESTJSONErrorCodes.UnknownMember],
-    async () => {
-      await errorFollowUp(itx, "Nie znaleziono podanego użytkownika na tym serwerze.");
-      return null;
-    },
-  );
-  if (!member) return;
-
-  const activeMute = await prisma.mute.findFirst({
-    where: {
-      guildId: itx.guildId,
-      userId: user.id,
-      deletedAt: null,
-      endsAt: { gte: itx.createdAt },
-    },
+  await universalAddMute({
+    prisma,
+    messageQueue,
+    userId: user.id,
+    guild: itx.guild,
+    moderatorId: itx.user.id,
+    duration: rawDuration,
+    reason,
+    reply: (content) => itx.editReply({ content }),
   });
-  if (activeMute) {
-    await errorFollowUp(
-      itx,
-      `Użytkownik jest już wyciszony do ${time(
-        activeMute.endsAt,
-        TimestampStyles.RelativeTime,
-      )} przez ${userMention(activeMute.moderatorId)}.\nPowód: ${italic(
-        activeMute.reason,
-      )}`,
-    );
-    return;
-  }
-
-  const muteRoleId = await getMuteRoleId(prisma, itx.guildId);
-  if (!muteRoleId) {
-    // TODO: Add an actual link to the settings command
-    await errorFollowUp(
-      itx,
-      "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
-    );
-    return;
-  }
-
-  const duration = parseDuration(rawDuration);
-  if (!duration) {
-    await errorFollowUp(
-      itx,
-      "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
-    );
-    return;
-  }
-  if (durationToSeconds(duration) === 0) {
-    await errorFollowUp(itx, "Nie można ustawić czasu trwania wyciszenia na 0");
-    return;
-  }
-  const endsAt = add(itx.createdAt, duration);
-
-  await ensureUsersExist(prisma, [user.id, itx.user.id]);
-
-  // Create mute and try to add the mute role
-  // If adding the role fails, rollback the transaction
-  const mute = await prisma.$transaction(async (tx) => {
-    const mute = await tx.mute.create({
-      data: {
-        createdAt: itx.createdAt,
-        endsAt,
-        guildId: itx.guildId,
-        moderatorId: itx.user.id,
-        reason,
-        userId: user.id,
-      },
-    });
-
-    if (!mute) return null;
-
-    const appliedMute = await applyMute(
-      member,
-      muteRoleId,
-      `Wyciszenie: ${reason} [${mute.id}]`,
-    );
-    if (!appliedMute) {
-      await errorFollowUp(
-        itx,
-        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-      );
-
-      throw new Error(
-        `Failed to apply mute for user ${user.id} at guild ${itx.guildId}`,
-      );
-    }
-    return mute;
-  });
-  if (!mute) return;
-
-  await messageQueue.push(
-    "muteEnd",
-    { muteId: mute.id, guildId: itx.guildId, userId: user.id },
-    durationToSeconds(duration),
-    mute.id.toString(),
-  );
-
-  const sentMessage = await sendDirectMessage(
-    user,
-    `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-      itx.user.tag
-    }) nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
-      formatDuration(duration),
-    )}. Powodem Twojego wyciszenia jest: ${italic(
-      reason,
-    )}.\n\nPrzeczytaj ${channelMention(
-      RULES_CHANNEL,
-    )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
-      APPEALS_CHANNEL,
-    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
-  );
-
-  await itx.editReply(
-    `Dodano wyciszenie [${inlineCode(
-      mute.id.toString(),
-    )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(
-      reason,
-    )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
-  );
-  if (!sentMessage) {
-    await itx.followUp({
-      content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-      ephemeral: true,
-    });
-  }
 };
 
 export const mutes = new Hashira({ name: "mutes" })
@@ -274,7 +302,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("add", (command) =>
         command
           .setDescription("Wycisz użytkownika")
-          .addUser("user", (user) =>
+          .addString("user", (user) =>
             user.setDescription("Użytkownik, którego chcesz wyciszyć"),
           )
           .addString("duration", (duration) =>
@@ -284,7 +312,29 @@ export const mutes = new Hashira({ name: "mutes" })
           .handle(async ({ prisma, messageQueue }, { user, duration, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-            await addMute({ prisma, messageQueue, itx, user, duration, reason });
+
+            // TODO: This is a workaround for a bug in discord that crashes the client when
+            // trying to use native mentions in the command
+            const [parsedUser, ...restOfUsers] = parseUserMentions(user);
+            if (!parsedUser) {
+              await errorFollowUp(itx, "Nie podano użytkownika");
+              return;
+            }
+            if (restOfUsers.length > 0) {
+              await errorFollowUp(itx, "Podano za dużo użytkowników");
+              return;
+            }
+
+            const fetchedUser = await itx.client.users.fetch(parsedUser);
+
+            await addMute({
+              prisma,
+              messageQueue,
+              itx,
+              user: fetchedUser,
+              duration,
+              reason,
+            });
           }),
       )
       .addCommand("remove", (command) =>

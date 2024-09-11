@@ -9,14 +9,15 @@
     "test": "bun test test/"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:*",
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
+    "@hashira/paginate": "workspace:*",
     "@sentry/bun": "^8.26.0",
     "date-fns": "3.6.0",
     "discord.js": "^14.15.3",
-    "ts-pattern": "5.3.1",
-    "es-toolkit": "^1.16.0"
+    "es-toolkit": "^1.16.0",
+    "openai": "^4.58.2",
+    "ts-pattern": "5.3.1"
   }
 }
