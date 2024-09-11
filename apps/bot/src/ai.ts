@@ -48,11 +48,11 @@ export const ai = new Hashira({ name: "ai" })
     if (!content) return;
 
     const runner = ai.beta.chat.completions.runTools({
-      model: "gpt-4o",
+      model: "gpt-4o-2024-08-06",
       messages: [
         {
           role: "system",
-          content: "You are a helpful moderation assistant for a Discord server.",
+          content: "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
         },
         {
           role: "user",
