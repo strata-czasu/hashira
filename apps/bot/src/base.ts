@@ -57,10 +57,10 @@ export const base = new Hashira({ name: "base" })
     if (env.SENTRY_DSN) captureException(e);
     console.error(e);
   })
-  .const((ctx) => ({
-    ...ctx,
-    lock: new LockManager(),
-    log: new Logger()
+  .const("lock", new LockManager())
+  .const(
+    "log",
+    new Logger()
       .addMessageType(
         "messageDelete",
         async ({ timestamp }, { message }: MessageDeleteData) => {
@@ -165,4 +165,4 @@ export const base = new Hashira({ name: "base" })
           return embed;
         },
       ),
-  }));
+  );

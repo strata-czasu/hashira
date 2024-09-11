@@ -1,48 +1,41 @@
 import { Hashira } from "@hashira/core";
 import { GuildMember } from "discord.js";
 import { base } from "./base";
-import { GUILD_IDS } from "./specializedConstants";
-
-// TODO)) Change to StrataCzasu
-const LOG_GUILD_ID = GUILD_IDS.Piwnica;
 
 export const logging = new Hashira({ name: "logging" })
   .use(base)
-  .handle("ready", async ({ log }, client) => {
-    await log.consumeLoop(client);
-  })
   .handle("messageDelete", async ({ log }, message) => {
     if (!message.inGuild()) return;
-    if (message.guildId !== LOG_GUILD_ID) return;
+    if (!log.isRegistered(message.guild)) return;
     if (message.author.bot) return;
 
-    log.push("messageDelete", { message });
+    log.push("messageDelete", message.guild, { message });
   })
   .handle("messageUpdate", async ({ log }, oldMessage, newMessage) => {
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
-    if (oldMessage.guildId !== LOG_GUILD_ID || newMessage.guildId !== LOG_GUILD_ID)
+    if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild))
       return;
     if (oldMessage.author.bot || newMessage.author.bot) return;
 
-    log.push("messageUpdate", { oldMessage, newMessage });
+    log.push("messageUpdate", newMessage.guild, { oldMessage, newMessage });
   })
   .handle("guildMemberAdd", async ({ log }, member) => {
-    if (member.guild.id !== LOG_GUILD_ID) return;
-    log.push("guildMemberAdd", { member });
+    if (!log.isRegistered(member.guild)) return;
+    log.push("guildMemberAdd", member.guild, { member });
   })
   .handle("guildMemberRemove", async ({ log }, member) => {
     // NOTE: We don't let partials through as events
     // FIXME: Support partial events
     if (!(member instanceof GuildMember)) return;
-    if (member.guild.id !== LOG_GUILD_ID) return;
-    log.push("guildMemberRemove", { member });
+    if (!log.isRegistered(member.guild)) return;
+    log.push("guildMemberRemove", member.guild, { member });
   })
   .handle("guildMemberUpdate", async ({ log }, oldMember, newMember) => {
-    if (oldMember.guild.id !== LOG_GUILD_ID || newMember.guild.id !== LOG_GUILD_ID)
+    if (!log.isRegistered(oldMember.guild) || !log.isRegistered(newMember.guild))
       return;
 
     if (oldMember.nickname !== newMember.nickname) {
-      log.push("guildMemberNicknameUpdate", {
+      log.push("guildMemberNicknameUpdate", newMember.guild, {
         member: newMember,
         oldNickname: oldMember.nickname,
         newNickname: newMember.nickname,
@@ -50,10 +43,10 @@ export const logging = new Hashira({ name: "logging" })
     }
   })
   .handle("guildBanAdd", async ({ log }, ban) => {
-    if (ban.guild.id !== LOG_GUILD_ID) return;
-    log.push("guildBanAdd", { ban });
+    if (!log.isRegistered(ban.guild)) return;
+    log.push("guildBanAdd", ban.guild, { ban });
   })
   .handle("guildBanRemove", async ({ log }, ban) => {
-    if (ban.guild.id !== LOG_GUILD_ID) return;
-    log.push("guildBanRemove", { ban });
+    if (!log.isRegistered(ban.guild)) return;
+    log.push("guildBanRemove", ban.guild, { ban });
   });

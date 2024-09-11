@@ -1,8 +1,5 @@
 import type { Prettify } from "@hashira/core";
-import type { Client, EmbedBuilder, TextBasedChannel } from "discord.js";
-
-// TODO)) Set correct channel ID
-const LOG_CHANNEL_ID = "464484064842219531" as const;
+import type { Client, EmbedBuilder, Guild, TextBasedChannel } from "discord.js";
 
 type LogMessageData = { [key: string]: unknown };
 type LogMessageType = { [key: string]: LogMessageData };
@@ -16,11 +13,13 @@ export class Logger<
   const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes,
 > {
   #messageTypes: Map<string, Handler<unknown>> = new Map();
-  #messages: Array<Message<keyof LogMessageTypes>> = [];
+  #messages: Map<string, Array<Message<keyof LogMessageTypes>>> = new Map();
   #interval = 5_000 as const;
-  #running = false;
+  #running: Map<string, boolean> = new Map();
   #batchSize = 5 as const;
-  #logChannel: TextBasedChannel | null = null;
+  #logChannels: Map<string, TextBasedChannel> = new Map();
+  // All registered guilds
+  #guilds: Set<Guild> = new Set();
 
   /**
    * Register a new log message type and define how it will be formatted
@@ -35,20 +34,40 @@ export class Logger<
     return this;
   }
 
+  addGuild(guild: Guild, logChannel: TextBasedChannel) {
+    this.#guilds.add(guild);
+    this.#messages.set(guild.id, []);
+    this.#logChannels.set(guild.id, logChannel);
+  }
+
+  isRegistered(guild: Guild) {
+    return this.#guilds.has(guild);
+  }
+
   /**
    * Push a log message
    * @param type {string} Log message type
+   * @param guild {Guild} Guild where the log message originated
    * @param data {unknown} Data for the log message
    */
-  async push<T extends keyof LogMessageTypes>(type: T, data: LogMessageTypes[T]) {
+  async push<T extends keyof LogMessageTypes>(
+    type: T,
+    guild: Guild,
+    data: LogMessageTypes[T],
+  ) {
     if (typeof type !== "string") throw new Error("Type must be a string");
-    this.#messages.push({ type, data, timestamp: new Date() });
+    const messages = this.#messages.get(guild.id);
+    if (!messages) throw new Error(`Logger for guild ${guild.id} not initialized`);
+    messages.push({ type, data, timestamp: new Date() });
   }
 
-  private consumeLogMessageBatch() {
+  private consumeLogMessageBatch(guild: Guild) {
     const messages: Array<Message<keyof LogMessageTypes>> = [];
     for (let i = 0; i < this.#batchSize; i++) {
-      const message = this.#messages.pop();
+      const guildMessages = this.#messages.get(guild.id);
+      if (!guildMessages)
+        throw new Error(`Logger for guild ${guild.id} not initialized`);
+      const message = guildMessages.pop();
       if (!message) break;
       messages.push(message);
     }
@@ -66,39 +85,43 @@ export class Logger<
     return await handler({ client, timestamp }, data);
   }
 
-  private async getLogChannel(client: Client) {
-    if (this.#logChannel) return this.#logChannel;
-    const channel = await client.channels.fetch(LOG_CHANNEL_ID);
-    if (!channel) throw new Error(`Channel ${LOG_CHANNEL_ID} not found`);
-    if (!channel.isTextBased())
-      throw new Error(`Channel ${LOG_CHANNEL_ID} is not text based`);
-    this.#logChannel = channel;
-    return channel;
+  private async getLogChannel(guild: Guild) {
+    const logChannel = this.#logChannels.get(guild.id);
+    if (!logChannel)
+      throw new Error(`Log channel for guild ${guild.id} not initialized`);
+    return logChannel;
   }
 
-  private async innerConsumeLoop(client: Client) {
+  private async innerConsumeLoop(client: Client, guild: Guild) {
     try {
-      const messages = this.consumeLogMessageBatch();
+      const messages = this.consumeLogMessageBatch(guild);
       if (messages.length !== 0) {
         // TODO)) Add limiting by message length,
         // because our batch size could overflow a single message
         const formatted = await Promise.all(
           messages.map((m) => this.formatLogMessage(client, m)),
         );
-        const channel = await this.getLogChannel(client);
+        const channel = await this.getLogChannel(guild);
         await channel.send({ embeds: formatted });
       }
     } catch (e) {
       console.error(e);
     }
 
-    setTimeout(() => this.innerConsumeLoop(client), this.#interval);
+    setTimeout(() => this.innerConsumeLoop(client, guild), this.#interval);
   }
 
-  async consumeLoop(client: Client) {
-    if (this.#running) throw new Error("logger is already running");
-    this.#running = true;
+  private consumeLoop(client: Client, guild: Guild) {
+    const running = this.#running.get(guild.id);
+    if (running) throw new Error(`logger is already running for guild ${guild.id}`);
+    this.#running.set(guild.id, true);
 
-    this.innerConsumeLoop(client);
+    this.innerConsumeLoop(client, guild);
+  }
+
+  startConsumeLoops(client: Client) {
+    for (const guild of this.#guilds) {
+      this.consumeLoop(client, guild);
+    }
   }
 }
