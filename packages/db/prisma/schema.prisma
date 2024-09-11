@@ -118,6 +118,7 @@ model GuildSettings {
   guildId      String  @unique(map: "guildSettings_guildId_unique")
   muteRoleId   String?
   plus18RoleId String?
+  logChannelId String?
   guild        Guild   @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "guildSettings_guildId_guild_id_fk")
 
   @@map("guildSettings")

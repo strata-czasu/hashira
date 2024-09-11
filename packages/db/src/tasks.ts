@@ -1,9 +1,7 @@
+import type { Prettify } from "@hashira/core";
+
 import { addSeconds } from "date-fns";
 import type { ExtendedPrismaClient, PrismaTransaction, Task } from ".";
-
-type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
 
 export async function getPendingTask(tx: PrismaTransaction) {
   return await tx.$queryRaw<

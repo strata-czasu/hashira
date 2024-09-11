@@ -1,9 +1,17 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, roleMention } from "discord.js";
+import {
+  ChannelType,
+  PermissionFlagsBits,
+  channelMention,
+  roleMention,
+} from "discord.js";
 import { base } from "./base";
 
 const formatRoleSetting = (name: string, roleId: string | null) =>
   `${name}: ${roleId ? roleMention(roleId) : "Nie ustawiono"}`;
+
+const formatChannelSetting = (name: string, channelId: string | null) =>
+  `${name}: ${channelId ? channelMention(channelId) : "Nie ustawiono"}`;
 
 export const settings = new Hashira({ name: "settings" })
   .use(base)
@@ -53,6 +61,35 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("log-channel", (command) =>
+        command
+          .setDescription("Ustaw kanał do wysyłania logów")
+          .addChannel("channel", (channel) =>
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(ChannelType.GuildText),
+          )
+          .handle(async ({ prisma, log }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { logChannelId: channel.id },
+            });
+
+            if (log.isRegistered(itx.guild)) {
+              log.updateGuild(itx.guild, channel);
+            } else {
+              log.addGuild(itx.guild, channel);
+              log.consumeLoop(itx.client, itx.guild);
+            }
+
+            await itx.reply({
+              content: `Kanał do wysyłania logów został ustawiony na ${channelMention(channel.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl ustawienia serwera")
@@ -65,11 +102,13 @@ export const settings = new Hashira({ name: "settings" })
 
             if (!settings) throw new Error("Guild settings not found");
 
+            const entries = [
+              formatRoleSetting("Rola do wyciszeń", settings.muteRoleId),
+              formatRoleSetting("Rola 18+", settings.plus18RoleId),
+              formatChannelSetting("Kanał do logów", settings.logChannelId),
+            ];
             await itx.reply({
-              content: `${formatRoleSetting(
-                "Rola do wyciszeń",
-                settings.muteRoleId,
-              )}\n${formatRoleSetting("Rola 18+", settings.plus18RoleId)}`,
+              content: entries.join("\n"),
               ephemeral: true,
             });
           }),

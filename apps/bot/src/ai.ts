@@ -52,7 +52,8 @@ export const ai = new Hashira({ name: "ai" })
       messages: [
         {
           role: "system",
-          content: "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
+          content:
+            "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
         },
         {
           role: "user",
