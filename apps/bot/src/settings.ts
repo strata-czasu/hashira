@@ -1,5 +1,10 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, channelMention, roleMention } from "discord.js";
+import {
+  ChannelType,
+  PermissionFlagsBits,
+  channelMention,
+  roleMention,
+} from "discord.js";
 import { base } from "./base";
 
 const formatRoleSetting = (name: string, roleId: string | null) =>
@@ -60,7 +65,9 @@ export const settings = new Hashira({ name: "settings" })
         command
           .setDescription("Ustaw kanał do wysyłania logów")
           .addChannel("channel", (channel) =>
-            channel.setDescription("Kanał, na który mają być wysyłane logi"),
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(ChannelType.GuildText),
           )
           .handle(async ({ prisma }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
