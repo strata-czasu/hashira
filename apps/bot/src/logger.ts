@@ -40,6 +40,10 @@ export class Logger<
     this.#logChannels.set(guild.id, logChannel);
   }
 
+  updateGuild(guild: Guild, logChannel: TextBasedChannel) {
+    this.#logChannels.set(guild.id, logChannel);
+  }
+
   isRegistered(guild: Guild) {
     return this.#guilds.has(guild);
   }
@@ -111,7 +115,7 @@ export class Logger<
     setTimeout(() => this.innerConsumeLoop(client, guild), this.#interval);
   }
 
-  private consumeLoop(client: Client, guild: Guild) {
+  consumeLoop(client: Client, guild: Guild) {
     const running = this.#running.get(guild.id);
     if (running) throw new Error(`logger is already running for guild ${guild.id}`);
     this.#running.set(guild.id, true);

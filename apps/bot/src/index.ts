@@ -27,6 +27,7 @@ if (env.SENTRY_DSN) {
 
 export const bot = new Hashira({ name: "bot" })
   .use(base)
+  .use(logging)
   .use(autoRole)
   .use(avatar)
   .use(colorRoles)
@@ -40,7 +41,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(roles)
   .use(settings)
   .use(tasks)
-  .use(logging)
   .use(userActivity)
   .handle("ready", async () => {
     // TODO)) Use a proper logger

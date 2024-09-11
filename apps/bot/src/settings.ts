@@ -69,13 +69,20 @@ export const settings = new Hashira({ name: "settings" })
               .setDescription("Kanał, na który mają być wysyłane logi")
               .setChannelType(ChannelType.GuildText),
           )
-          .handle(async ({ prisma }, { channel }, itx) => {
+          .handle(async ({ prisma, log }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
               where: { guildId: itx.guildId },
               data: { logChannelId: channel.id },
             });
+
+            if (log.isRegistered(itx.guild)) {
+              log.updateGuild(itx.guild, channel);
+            } else {
+              log.addGuild(itx.guild, channel);
+              log.consumeLoop(itx.client, itx.guild);
+            }
 
             await itx.reply({
               content: `Kanał do wysyłania logów został ustawiony na ${channelMention(channel.id)}`,
