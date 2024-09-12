@@ -37,7 +37,7 @@ Text 18. Severe graphic or pornographic content.
 Text Voice 19. Publishing and/or using personal data of former or current server users without their consent.
 Text 20. Unwanted advertisement sent in a private message once or multiple times on the server.
 Text Voice 21. Participation in a raid.
-Text Voice 22. Using multiple accounts without ST's consent.
+Text Voice 22. Using multiple accounts without Support Team's consent.
 
 ## Other
 Text Voice 23. Situations not covered by the tariff may be resolved by the Support Team through internal discussions or voting in specific situations on the server.
@@ -46,7 +46,7 @@ Text 24. Violating the internal rules of thematic channels found in their descri
 # Recydywa
 "Recydywa" is a system for punishing repeat rule violations, with increasing penalties for each offense:
 
-- **Duration:** Resets after 10 days without a mute, SINCE the end of the last mute.
+- **Duration:** Resets after 10 days without a mute, SINCE the end of the last mute. If 10d since last mute, the system resets.
 - **Exclusions:** Does not include mutes from a roulette.
 
 ## Examples:
@@ -68,10 +68,21 @@ Text 24. Violating the internal rules of thematic channels found in their descri
 5. **Level 5:** 5-day penalty.
 6. **Ban:** After Level V, a ban is applied.
 
-If 10 days have passed since the last mute, the system resets to Level 1. You only account for the last mute unless it's excluded.
+### **Steps if first offense is 8h mute and then waits 10 days for 3h mute:**
+1. **Start:** 8-hour penalty.
+2. Ten days pass.
+3. **Start:** 3-hour penalty.
+4. **Level 2:** 8-hour penalty.
+5. **Level 3:** 1-day penalty.
+6. **Level 4:** 2-day penalty.
+7. **Level 5:** 3-day penalty.
+8. **Ban:** After Level V, a ban is applied.
 
-Penalty duration increments by 1 day after 24h mutes.
-The starting point depends on the first mute's duration, but it's always Level 1. Even if the first mute is 24 hours, the system starts at Level 1.`;
+If 10 days have passed since the last mute, the system resets to Level 1. You only account for the last mute unless it's excluded or the system resets.
+
+Penalty duration increments by 1 day after receiving a mute with at least 1 day of duration.
+The starting point depends on the first mute's duration, but it's always Level 1. Even if the first mute is 24 hours, the system starts at Level 1.
+`;
 }
 
 const createMute = (
