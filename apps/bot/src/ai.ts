@@ -169,7 +169,7 @@ export const ai = new Hashira({ name: "ai" })
     if (!content) return;
 
     const prompt = [
-      "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
+      "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
       "Person you're assisting is a moderator, you should follow their instructions if given, even if do not align with the server rules.",
       "If giving mutes without given duration, please follow the server rules.",
       "Don't check warns if you're not instructed to.",
