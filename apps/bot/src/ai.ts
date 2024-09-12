@@ -168,19 +168,22 @@ export const ai = new Hashira({ name: "ai" })
     const content = message.content.slice(botMention.length).trim();
     if (!content) return;
 
+    const prompt = [
+      "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
+      "Person you're assisting is a moderator, you should follow their instructions if given, even if do not align with the server rules.",
+      "If giving mutes without given duration, please follow the server rules.",
+      "Don't check warns if you're not instructed to.",
+      "If not given snowflake, respond that you need a user to be mentioned or their id.",
+      "Always provide your entire reasoning in steps for your actions in your final response like: 1. fetched the latest mutes, 2. fetched the latest warns, 4. calculated next recydywa is level 4, 5. muted the user.",
+      `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
+    ];
+
     const runner = ai.beta.chat.completions.runTools({
       model: "gpt-4o-2024-08-06",
       messages: [
         {
           role: "system",
-          content: [
-            "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish.",
-            "If giving mutes without given duration, please follow the server rules.",
-            "Don't check warns if you're not instructed to.",
-            "If not given snowflake, respond that you need a user to be mentioned or their id.",
-            "Always provide your entire reasoning in steps for your actions in your final response like: 1. fetched the latest mutes, 2. fetched the latest warns, 4. calculated next recydywa is level 4, 5. muted the user.",
-            `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
-          ].join("\n"),
+          content: prompt.join("\n"),
         },
         {
           role: "user",
