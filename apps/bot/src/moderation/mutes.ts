@@ -152,13 +152,13 @@ export const universalAddMute = async ({
   if (!member) return;
 
   const guildId = guild.id;
-
+  const now = new Date();
   const activeMute = await prisma.mute.findFirst({
     where: {
       guildId,
       userId,
       deletedAt: null,
-      endsAt: { gte: new Date() },
+      endsAt: { gte: now },
     },
   });
   if (activeMute) {
@@ -193,7 +193,7 @@ export const universalAddMute = async ({
     return;
   }
 
-  const endsAt = add(new Date(), parsedDuration);
+  const endsAt = add(now, parsedDuration);
 
   await ensureUsersExist(prisma, [userId, moderatorId]);
 
@@ -202,7 +202,7 @@ export const universalAddMute = async ({
   const mute = await prisma.$transaction(async (tx) => {
     const mute = await tx.mute.create({
       data: {
-        createdAt: new Date(),
+        createdAt: now,
         endsAt,
         guildId,
         moderatorId,
