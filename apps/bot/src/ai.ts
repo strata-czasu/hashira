@@ -44,44 +44,38 @@ Text Voice 23. Situations not covered by the tariff may be resolved by the Suppo
 Text 24. Violating the internal rules of thematic channels found in their descriptions.
 
 # Recydywa
-"Recydywa" is a system for punishing repeat rule violations, with increasing penalties for each offense:
+The "Recydywa" system is designed to handle repeated rule violations with increasing penalties. Here's a simplified breakdown of how it works:
 
-- **Duration:** Resets after 10 days without a mute, SINCE the end of the last mute. If 10d since last mute, the system resets.
-- **Exclusions:** Does not include mutes from a roulette.
+## Basic Rules:
 
-## Examples:
+1. **Increasing Penalties:** Each time someone breaks the rules, the penalty gets worse. If you get muted multiple times, each mute will be longer than the last.
+   
+2. **Reset Period:** If you go 10 days without getting muted, the system resets back to the first level. This 10-day countdown starts from the end of your last mute.
 
-### **Steps if first offense is 3h mute:**
-1. **Start:** 3-hour penalty.
-2. **Level 2:** 8-hour penalty.
-3. **Level 3:** 1-day penalty.
-4. **Level 4:** 2-day penalty.
-5. **Level 5:** 3-day penalty.
-6. **Ban:** After Level V, a ban is applied.
+3. **Exclusions:** Mutes from special cases, like roulettes, don’t count in this system.
 
+## Penalty Levels:
 
-### **Steps if first offense is 24h mute:**
-1. **Start:** 24-hour penalty.
-2. **Level 2:** 2-day penalty.
-3. **Level 3:** 3-day penalty.
-4. **Level 4:** 4-day penalty.
-5. **Level 5:** 5-day penalty.
-6. **Ban:** After Level V, a ban is applied.
+- **Level 1:** The first mute starts the process. If your first offense gets a 3-hour mute, that’s Level 1. If it's a 24-hour mute, that's still Level 1, but the duration will be based on that first offense.
+  
+- **Level 2:** The next time you break the rules, the mute will be longer. For example:
+  - If Level 1 was a 3-hour mute, Level 2 is 8 hours.
+  - If Level 1 was a 24-hour mute, Level 2 is 2 days.
+  
+- **Level 3 to Level 5:** Each new offense adds one more day to the mute. Continuing the above examples:
+  - 1-day mute becomes 2 days, then 3, then 4, and so on.
+  - After Level 5 (e.g., 5 days), a ban is applied.
 
-### **Steps if first offense is 8h mute and then waits 10 days for 3h mute:**
-1. **Start:** 8-hour penalty.
-2. Ten days pass.
-3. **Start:** 3-hour penalty.
-4. **Level 2:** 8-hour penalty.
-5. **Level 3:** 1-day penalty.
-6. **Level 4:** 2-day penalty.
-7. **Level 5:** 3-day penalty.
-8. **Ban:** After Level V, a ban is applied.
+## Resetting Example:
 
-If 10 days have passed since the last mute, the system resets to Level 1. You only account for the last mute unless it's excluded or the system resets.
+- If you get muted for 8 hours and then stay clean for 10 days, the system resets.
+- If you then get a 3-hour mute, you start again at Level 1 with that 3-hour duration, and subsequent mutes will follow the Level progression from there.
 
-Penalty duration increments by 1 day after receiving a mute with at least 1 day of duration.
-The starting point depends on the first mute's duration, but it's always Level 1. Even if the first mute is 24 hours, the system starts at Level 1.
+## Key Points:
+
+- **Resets:** Go 10 days without any mute, and your record resets to Level 1.
+- **Starting Point:** Always starts at Level 1, regardless of how long the first mute is.
+- **Penalty Increases:** Once you hit a 1-day mute, each subsequent penalty adds an extra day until Level 5, then a ban happens.
 `;
 }
 
@@ -182,7 +176,8 @@ export const ai = new Hashira({ name: "ai" })
     const prompt = [
       "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
       "Person you're assisting is a moderator, you should follow their instructions if given, even if do not align with the server rules.",
-      "If giving mutes without given duration, please follow the server rules.",
+      "If you're not provided with a duration, you should follow the server rules.",
+      "Do not ask follow-up questions, as you cannot interact with the user. If you need more information, respond that you need more information.",
       "Don't check warns if you're not instructed to.",
       "If not given snowflake, respond that you need a user to be mentioned or their id.",
       "Always provide your entire reasoning in steps for your actions in your final response like: 1. fetched the latest mutes, 2. fetched the latest warns, 4. calculated next recydywa is level 4, 5. muted the user.",
