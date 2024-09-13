@@ -7,8 +7,9 @@ import {
   GuildMember,
   type Message,
   type User,
-  bold,
   channelMention,
+  inlineCode,
+  italic,
 } from "discord.js";
 import { database } from "./db";
 import { LockManager } from "./lock";
@@ -68,7 +69,7 @@ export const base = new Hashira({ name: "base" })
         async ({ timestamp }, { message }: MessageDeleteData) => {
           const embed = getLogMessageEmbed(message.author, timestamp)
             .setDescription(
-              `${linkMessage(message)} usunięta na ${channelMention(message.channelId)}\n${
+              `**${linkMessage(message)} usunięta na ${channelMention(message.channelId)}**\n${
                 message.content
               }`,
             )
@@ -92,7 +93,7 @@ export const base = new Hashira({ name: "base" })
         async ({ timestamp }, { oldMessage, newMessage }: MessageEditData) => {
           const embed = getLogMessageEmbed(newMessage.author, timestamp)
             .setDescription(
-              `${linkMessage(oldMessage)} edytowana na ${channelMention(oldMessage.channelId)}`,
+              `**${linkMessage(oldMessage)} edytowana na ${channelMention(oldMessage.channelId)}**`,
             )
             .setColor("Yellow");
 
@@ -114,7 +115,7 @@ export const base = new Hashira({ name: "base" })
         "guildMemberAdd",
         async ({ timestamp }, { member }: GuildMemberAddData) => {
           const embed = getLogMessageEmbed(member, timestamp)
-            .setDescription("Dołącza do serwera")
+            .setDescription("**Dołącza do serwera**")
             .setColor("Green");
           return embed;
         },
@@ -123,7 +124,7 @@ export const base = new Hashira({ name: "base" })
         "guildMemberRemove",
         async ({ timestamp }, { member }: GuildMemberRemoveData) => {
           const embed = getLogMessageEmbed(member, timestamp)
-            .setDescription("Opuszcza serwer")
+            .setDescription("**Opuszcza serwer**")
             .setColor("Red");
           return embed;
         },
@@ -137,11 +138,13 @@ export const base = new Hashira({ name: "base" })
           const embed = getLogMessageEmbed(member, timestamp).setColor("Yellow");
 
           if (oldNickname === null && newNickname !== null) {
-            embed.setDescription(`Ustawia nick na ${newNickname}`);
+            embed.setDescription(`**Ustawia nick na ${inlineCode(newNickname)}**`);
           } else if (oldNickname !== null && newNickname !== null) {
-            embed.setDescription(`Zmienia nick z ${oldNickname} na ${newNickname}`);
+            embed.setDescription(
+              `**Zmienia nick z ${inlineCode(oldNickname)} na ${inlineCode(newNickname)}**`,
+            );
           } else if (oldNickname !== null && newNickname === null) {
-            embed.setDescription(`Usuwa nick ${bold(oldNickname)}`);
+            embed.setDescription(`**Usuwa nick** ${inlineCode(oldNickname)}**`);
           } else {
             throw new Error("Nickname update from null to null");
           }
@@ -152,8 +155,10 @@ export const base = new Hashira({ name: "base" })
       .addMessageType(
         "guildBanAdd",
         async ({ timestamp }, { ban }: GuildBanAddData) => {
+          let content = "**Otrzymuje bana**";
+          if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
           const embed = getLogMessageEmbed(ban.user, timestamp)
-            .setDescription("Otrzymuje bana")
+            .setDescription(content)
             .setColor("Red");
           return embed;
         },
@@ -161,8 +166,10 @@ export const base = new Hashira({ name: "base" })
       .addMessageType(
         "guildBanRemove",
         async ({ timestamp }, { ban }: GuildBanRemoveData) => {
+          let content = "**Zdjęto bana**";
+          if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
           const embed = getLogMessageEmbed(ban.user, timestamp)
-            .setDescription("Zdjęto bana")
+            .setDescription(content)
             .setColor("Green");
           return embed;
         },
