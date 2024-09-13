@@ -23,6 +23,7 @@ import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -99,12 +100,14 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("add", (command) =>
         command
           .setDescription("Dodaj ostrzeżenie")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("user", (user) => user.setDescription("Użytkownik"))
           .addString("reason", (reason) => reason.setDescription("Powód ostrzeżenia"))
-          .handle(async ({ prisma }, { user, reason }, itx) => {
+          .handle(async ({ prisma }, { user: rawUser, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
             await ensureUserExists(prisma, user);
 
             const warn = await prisma.warn.create({
@@ -241,14 +244,16 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl ostrzeżenia użytkownika")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
           )
-          .handle(async ({ prisma }, { user: selectedUser, deleted }, itx) => {
+          .handle(async ({ prisma }, { user: rawUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const user = selectedUser ?? itx.user;
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
+
             const paginatedView = getUserWarnsPaginatedView(
               prisma,
               user,
