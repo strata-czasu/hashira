@@ -34,7 +34,7 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { parseUserMentions } from "../util/parseUsers";
+import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, getMuteRoleId } from "./util";
 
@@ -309,33 +309,28 @@ export const mutes = new Hashira({ name: "mutes" })
             duration.setDescription("Czas trwania wyciszenia"),
           )
           .addString("reason", (reason) => reason.setDescription("Powód wyciszenia"))
-          .handle(async ({ prisma, messageQueue }, { user, duration, reason }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            // TODO: This is a workaround for a bug in discord that crashes the client when
-            // trying to use native mentions in the command
-            const [parsedUser, ...restOfUsers] = parseUserMentions(user);
-            if (!parsedUser) {
-              await errorFollowUp(itx, "Nie podano użytkownika");
-              return;
-            }
-            if (restOfUsers.length > 0) {
-              await errorFollowUp(itx, "Podano za dużo użytkowników");
-              return;
-            }
-
-            const fetchedUser = await itx.client.users.fetch(parsedUser);
-
-            await addMute({
-              prisma,
-              messageQueue,
+          .handle(
+            async (
+              { prisma, messageQueue },
+              { user: rawUser, duration, reason },
               itx,
-              user: fetchedUser,
-              duration,
-              reason,
-            });
-          }),
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
+
+              const user = await parseUserMentionWorkaround(rawUser, itx);
+              if (!user) return;
+
+              await addMute({
+                prisma,
+                messageQueue,
+                itx,
+                user,
+                duration,
+                reason,
+              });
+            },
+          ),
       )
       .addCommand("remove", (command) =>
         command
@@ -540,14 +535,16 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl wyciszenia użytkownika")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
-          .handle(async ({ prisma }, { user: selectedUser, deleted }, itx) => {
+          .handle(async ({ prisma }, { user: rawUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const user = selectedUser ?? itx.user;
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
+
             const paginatedView = getUserMutesPaginatedView(
               prisma,
               user,
