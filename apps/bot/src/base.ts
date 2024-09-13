@@ -4,6 +4,7 @@ import { captureException } from "@sentry/bun";
 import {
   EmbedBuilder,
   type GuildBan,
+  type GuildBasedChannel,
   GuildMember,
   type Message,
   type User,
@@ -35,6 +36,8 @@ type GuildBanAddData = { ban: GuildBan };
 type GuildBanRemoveData = { ban: GuildBan };
 
 const linkMessage = (message: GuildMessage) => `[Wiadomość](${message.url})`;
+const linkChannel = (channel: GuildBasedChannel) =>
+  `${channelMention(channel.id)} (${channel.name})`;
 
 const getLogMessageEmbed = (author: User | GuildMember, timestamp: Date) => {
   const user = author instanceof GuildMember ? author.user : author;
@@ -69,7 +72,7 @@ export const base = new Hashira({ name: "base" })
         async ({ timestamp }, { message }: MessageDeleteData) => {
           const embed = getLogMessageEmbed(message.author, timestamp)
             .setDescription(
-              `**${linkMessage(message)} usunięta na ${channelMention(message.channelId)}**\n${
+              `**${linkMessage(message)} usunięta na ${linkChannel(message.channel)}**\n${
                 message.content
               }`,
             )
@@ -93,7 +96,7 @@ export const base = new Hashira({ name: "base" })
         async ({ timestamp }, { oldMessage, newMessage }: MessageEditData) => {
           const embed = getLogMessageEmbed(newMessage.author, timestamp)
             .setDescription(
-              `**${linkMessage(oldMessage)} edytowana na ${channelMention(oldMessage.channelId)}**`,
+              `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
             )
             .setColor("Yellow");
 
