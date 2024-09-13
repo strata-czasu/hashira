@@ -255,7 +255,7 @@ export const universalAddMute = async ({
       RULES_CHANNEL,
     )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
       APPEALS_CHANNEL,
-    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.`,
+    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.\n\n--\nMożesz **skrócić swój mute o połowę wpłacając minimum 10 zł w naszej zbiórce charytatywnej** na fundację pomagającą osobom w kryzysie psychicznym.\n**Wyślij :heart: jako osobną wiadomość na tym DMie**, to ktoś z administracji wkrótce napisze do Ciebie z linkiem do zbiórki[.](https://i.imgur.com/eaWPdUu.png)`,
   );
 
   if (!sentMessage) {
