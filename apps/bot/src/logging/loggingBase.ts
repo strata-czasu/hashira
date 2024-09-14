@@ -5,10 +5,12 @@ import {
   type GuildBasedChannel,
   GuildMember,
   type Message,
+  type Role,
   type User,
   channelMention,
   inlineCode,
   italic,
+  roleMention,
 } from "discord.js";
 import { Logger } from "./logger";
 
@@ -23,7 +25,7 @@ type MessageEditData = {
   newMessageContent: string;
 };
 type GuildMemberAddData = { member: GuildMember };
-type GuildMemberRemoveData = { member: GuildMember };
+type GuildMemberRemoveData = { member: GuildMember; roles: Role[] };
 type GuildMemberNicknameUpdateData = {
   member: GuildMember;
   oldNickname: string | null;
@@ -129,9 +131,17 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
       )
       .addMessageType(
         "guildMemberRemove",
-        async ({ timestamp }, { member }: GuildMemberRemoveData) => {
+        async ({ timestamp }, { member, roles }: GuildMemberRemoveData) => {
           const embed = getLogMessageEmbed(member, timestamp)
             .setDescription("**Opuszcza serwer**")
+            .addFields([
+              {
+                name: "Role",
+                value: roles
+                  .map((r) => `- ${roleMention(r.id)} (${r.name})`)
+                  .join("\n"),
+              },
+            ])
             .setColor("Red");
           return embed;
         },

@@ -34,7 +34,11 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
     // FIXME: Support partial events
     if (!(member instanceof GuildMember)) return;
     if (!log.isRegistered(member.guild)) return;
-    log.push("guildMemberRemove", member.guild, { member });
+
+    const roles = member.roles.cache
+      .filter((r) => r !== member.guild.roles.everyone)
+      .map((r) => r);
+    log.push("guildMemberRemove", member.guild, { member, roles });
   })
   .handle("guildMemberUpdate", async ({ profileLog: log }, oldMember, newMember) => {
     if (!log.isRegistered(oldMember.guild) || !log.isRegistered(newMember.guild))
