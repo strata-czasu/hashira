@@ -17,7 +17,12 @@ export const logging = new Hashira({ name: "logging" })
       return;
     if (oldMessage.author.bot || newMessage.author.bot) return;
 
-    log.push("messageUpdate", newMessage.guild, { oldMessage, newMessage });
+    log.push("messageUpdate", newMessage.guild, {
+      oldMessage,
+      newMessage,
+      oldMessageContent: oldMessage.content,
+      newMessageContent: newMessage.content,
+    });
   })
   .handle("guildMemberAdd", async ({ log }, member) => {
     if (!log.isRegistered(member.guild)) return;

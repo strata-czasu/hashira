@@ -24,6 +24,8 @@ type MessageDeleteData = {
 type MessageEditData = {
   oldMessage: GuildMessage;
   newMessage: GuildMessage;
+  oldMessageContent: string;
+  newMessageContent: string;
 };
 type GuildMemberAddData = { member: GuildMember };
 type GuildMemberRemoveData = { member: GuildMember };
@@ -49,12 +51,12 @@ const getLogMessageEmbed = (author: User | GuildMember, timestamp: Date) => {
     .setTimestamp(timestamp);
 };
 
-const getMessageUpdateLogContent = (message: GuildMessage) => {
-  let content = message.content;
+const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
+  let out = content;
   if (message.attachments.size > 0) {
-    content += `\n\n**Załączniki**\n${message.attachments.map((a) => `- ${a.proxyURL}`).join("\n")}`;
+    out += `\n\n**Załączniki**\n${message.attachments.map((a) => `- ${a.proxyURL}`).join("\n")}`;
   }
-  return content;
+  return out;
 };
 
 export const base = new Hashira({ name: "base" })
@@ -93,7 +95,15 @@ export const base = new Hashira({ name: "base" })
       )
       .addMessageType(
         "messageUpdate",
-        async ({ timestamp }, { oldMessage, newMessage }: MessageEditData) => {
+        async (
+          { timestamp },
+          {
+            oldMessage,
+            newMessage,
+            oldMessageContent,
+            newMessageContent,
+          }: MessageEditData,
+        ) => {
           const embed = getLogMessageEmbed(newMessage.author, timestamp)
             .setDescription(
               `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
@@ -103,11 +113,11 @@ export const base = new Hashira({ name: "base" })
           embed.addFields([
             {
               name: "Stara wiadomość",
-              value: getMessageUpdateLogContent(oldMessage),
+              value: getMessageUpdateLogContent(oldMessage, oldMessageContent),
             },
             {
               name: "Nowa wiadomość",
-              value: getMessageUpdateLogContent(newMessage),
+              value: getMessageUpdateLogContent(newMessage, newMessageContent),
             },
           ]);
 
