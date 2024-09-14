@@ -1,17 +1,18 @@
 import { Hashira } from "@hashira/core";
 import { GuildMember } from "discord.js";
-import { base } from "./base";
+import { base } from "../base";
 
-export const logging = new Hashira({ name: "logging" })
+// Logging for Discord events
+export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .use(base)
-  .handle("messageDelete", async ({ log }, message) => {
+  .handle("messageDelete", async ({ messageLog: log }, message) => {
     if (!message.inGuild()) return;
     if (!log.isRegistered(message.guild)) return;
     if (message.author.bot) return;
 
     log.push("messageDelete", message.guild, { message });
   })
-  .handle("messageUpdate", async ({ log }, oldMessage, newMessage) => {
+  .handle("messageUpdate", async ({ messageLog: log }, oldMessage, newMessage) => {
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
     if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild))
       return;
@@ -24,18 +25,22 @@ export const logging = new Hashira({ name: "logging" })
       newMessageContent: newMessage.content,
     });
   })
-  .handle("guildMemberAdd", async ({ log }, member) => {
+  .handle("guildMemberAdd", async ({ memberLog: log }, member) => {
     if (!log.isRegistered(member.guild)) return;
     log.push("guildMemberAdd", member.guild, { member });
   })
-  .handle("guildMemberRemove", async ({ log }, member) => {
+  .handle("guildMemberRemove", async ({ memberLog: log }, member) => {
     // NOTE: We don't let partials through as events
     // FIXME: Support partial events
     if (!(member instanceof GuildMember)) return;
     if (!log.isRegistered(member.guild)) return;
-    log.push("guildMemberRemove", member.guild, { member });
+
+    const roles = member.roles.cache
+      .filter((r) => r !== member.guild.roles.everyone)
+      .map((r) => r);
+    log.push("guildMemberRemove", member.guild, { member, roles });
   })
-  .handle("guildMemberUpdate", async ({ log }, oldMember, newMember) => {
+  .handle("guildMemberUpdate", async ({ profileLog: log }, oldMember, newMember) => {
     if (!log.isRegistered(oldMember.guild) || !log.isRegistered(newMember.guild))
       return;
 
@@ -47,11 +52,11 @@ export const logging = new Hashira({ name: "logging" })
       });
     }
   })
-  .handle("guildBanAdd", async ({ log }, ban) => {
+  .handle("guildBanAdd", async ({ banLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanAdd", ban.guild, { ban });
   })
-  .handle("guildBanRemove", async ({ log }, ban) => {
+  .handle("guildBanRemove", async ({ banLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanRemove", ban.guild, { ban });
   });
