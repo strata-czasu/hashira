@@ -67,7 +67,11 @@ export const settings = new Hashira({ name: "settings" })
           .addChannel("channel", (channel) =>
             channel
               .setDescription("Kanał, na który mają być wysyłane logi")
-              .setChannelType(ChannelType.GuildText),
+              .setChannelType(
+                ChannelType.GuildText,
+                ChannelType.PrivateThread,
+                ChannelType.PublicThread,
+              ),
           )
           .handle(async ({ prisma, log }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -90,6 +94,74 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("ban-log-channel", (command) =>
+        command
+          .setDescription("Ustaw kanał do wysyłania logów związanych z banami")
+          .addChannel("channel", (channel) =>
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(
+                ChannelType.GuildText,
+                ChannelType.PrivateThread,
+                ChannelType.PublicThread,
+              ),
+          )
+          .handle(async ({ prisma, banLog: log }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { banLogChannelId: channel.id },
+            });
+
+            if (log.isRegistered(itx.guild)) {
+              log.updateGuild(itx.guild, channel);
+            } else {
+              log.addGuild(itx.guild, channel);
+              log.consumeLoop(itx.client, itx.guild);
+            }
+
+            await itx.reply({
+              content: `Kanał do wysyłania logów związanych z banami został ustawiony na ${channelMention(channel.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
+      .addCommand("profile-log-channel", (command) =>
+        command
+          .setDescription(
+            "Ustaw kanał do wysyłania logów związanych z profilami użytkowników",
+          )
+          .addChannel("channel", (channel) =>
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(
+                ChannelType.GuildText,
+                ChannelType.PrivateThread,
+                ChannelType.PublicThread,
+              ),
+          )
+          .handle(async ({ prisma, profileLog: log }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { profileLogChannelId: channel.id },
+            });
+
+            if (log.isRegistered(itx.guild)) {
+              log.updateGuild(itx.guild, channel);
+            } else {
+              log.addGuild(itx.guild, channel);
+              log.consumeLoop(itx.client, itx.guild);
+            }
+
+            await itx.reply({
+              content: `Kanał do wysyłania logów związanych z profilami użytkowników został ustawiony na ${channelMention(channel.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl ustawienia serwera")
@@ -106,6 +178,11 @@ export const settings = new Hashira({ name: "settings" })
               formatRoleSetting("Rola do wyciszeń", settings.muteRoleId),
               formatRoleSetting("Rola 18+", settings.plus18RoleId),
               formatChannelSetting("Kanał do logów", settings.logChannelId),
+              formatChannelSetting("Kanał do logów (bany)", settings.banLogChannelId),
+              formatChannelSetting(
+                "Kanał do logów (profile)",
+                settings.profileLogChannelId,
+              ),
             ];
             await itx.reply({
               content: entries.join("\n"),
