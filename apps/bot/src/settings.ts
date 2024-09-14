@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import type { LogSettings } from "@hashira/db";
 import {
   ChannelType,
   PermissionFlagsBits,
@@ -9,6 +10,17 @@ import { base } from "./base";
 
 const formatRoleSetting = (name: string, roleId: string | null) =>
   `${name}: ${roleId ? roleMention(roleId) : "Nie ustawiono"}`;
+
+const formatLogSettings = (settings: LogSettings | null) => {
+  if (!settings) return "Logi: Nie ustawiono żadnych kanałów";
+
+  return [
+    formatChannelSetting("Kanał do logów (wiadomości)", settings.messageLogChannelId),
+    formatChannelSetting("Kanał do logów (użytkownicy)", settings.memberLogChannelId),
+    formatChannelSetting("Kanał do logów (bany)", settings.banLogChannelId),
+    formatChannelSetting("Kanał do logów (profile)", settings.profileLogChannelId),
+  ].join("\n");
+};
 
 const formatChannelSetting = (name: string, channelId: string | null) =>
   `${name}: ${channelId ? channelMention(channelId) : "Nie ustawiono"}`;
@@ -77,8 +89,15 @@ export const settings = new Hashira({ name: "settings" })
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { messageLogChannelId: channel.id },
+                    update: { messageLogChannelId: channel.id },
+                  },
+                },
+              },
               where: { guildId: itx.guildId },
-              data: { messageLogChannelId: channel.id },
             });
 
             if (log.isRegistered(itx.guild)) {
@@ -110,8 +129,15 @@ export const settings = new Hashira({ name: "settings" })
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { memberLogChannelId: channel.id },
+                    update: { memberLogChannelId: channel.id },
+                  },
+                },
+              },
               where: { guildId: itx.guildId },
-              data: { memberLogChannelId: channel.id },
             });
 
             if (log.isRegistered(itx.guild)) {
@@ -143,8 +169,15 @@ export const settings = new Hashira({ name: "settings" })
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { banLogChannelId: channel.id },
+                    update: { banLogChannelId: channel.id },
+                  },
+                },
+              },
               where: { guildId: itx.guildId },
-              data: { banLogChannelId: channel.id },
             });
 
             if (log.isRegistered(itx.guild)) {
@@ -178,8 +211,15 @@ export const settings = new Hashira({ name: "settings" })
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { profileLogChannelId: channel.id },
+                    update: { profileLogChannelId: channel.id },
+                  },
+                },
+              },
               where: { guildId: itx.guildId },
-              data: { profileLogChannelId: channel.id },
             });
 
             if (log.isRegistered(itx.guild)) {
@@ -203,6 +243,7 @@ export const settings = new Hashira({ name: "settings" })
 
             const settings = await prisma.guildSettings.findFirst({
               where: { guildId: itx.guildId },
+              include: { logSettings: true },
             });
 
             if (!settings) throw new Error("Guild settings not found");
@@ -210,20 +251,9 @@ export const settings = new Hashira({ name: "settings" })
             const entries = [
               formatRoleSetting("Rola do wyciszeń", settings.muteRoleId),
               formatRoleSetting("Rola 18+", settings.plus18RoleId),
-              formatChannelSetting(
-                "Kanał do logów (wiadomości)",
-                settings.messageLogChannelId,
-              ),
-              formatChannelSetting(
-                "Kanał do logów (użytkownicy)",
-                settings.memberLogChannelId,
-              ),
-              formatChannelSetting("Kanał do logów (bany)", settings.banLogChannelId),
-              formatChannelSetting(
-                "Kanał do logów (profile)",
-                settings.profileLogChannelId,
-              ),
+              formatLogSettings(settings.logSettings),
             ];
+
             await itx.reply({
               content: entries.join("\n"),
               ephemeral: true,

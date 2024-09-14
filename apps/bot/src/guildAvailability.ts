@@ -37,25 +37,35 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
 
   const settings = await prisma.guildSettings.findFirst({
     where: { guildId: guild.id },
+    select: { logSettings: true },
   });
-  if (!settings) return;
+
+  if (!settings?.logSettings) return;
 
   // TODO)) Generalize logger registration
-  if (settings.messageLogChannelId)
+  if (settings.logSettings.messageLogChannelId)
     await registerGuildLogger(
       messageLog as Logger,
       guild,
-      settings.messageLogChannelId,
+      settings.logSettings.messageLogChannelId,
     );
-  if (settings.memberLogChannelId)
-    await registerGuildLogger(memberLog as Logger, guild, settings.memberLogChannelId);
-  if (settings.banLogChannelId)
-    await registerGuildLogger(banLog as Logger, guild, settings.banLogChannelId);
-  if (settings.profileLogChannelId)
+  if (settings.logSettings.memberLogChannelId)
+    await registerGuildLogger(
+      memberLog as Logger,
+      guild,
+      settings.logSettings.memberLogChannelId,
+    );
+  if (settings.logSettings.banLogChannelId)
+    await registerGuildLogger(
+      banLog as Logger,
+      guild,
+      settings.logSettings.banLogChannelId,
+    );
+  if (settings.logSettings.profileLogChannelId)
     await registerGuildLogger(
       profileLog as Logger,
       guild,
-      settings.profileLogChannelId,
+      settings.logSettings.profileLogChannelId,
     );
 }
 
