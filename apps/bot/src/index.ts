@@ -9,7 +9,7 @@ import { dmForwarding } from "./dmForwarding";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
-import { logging } from "./logging";
+import { discordEventLogging } from "./logging/discordEventLogging";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { profile } from "./profile";
@@ -28,7 +28,7 @@ if (env.SENTRY_DSN) {
 
 export const bot = new Hashira({ name: "bot" })
   .use(base)
-  .use(logging)
+  .use(discordEventLogging)
   .use(autoRole)
   .use(avatar)
   .use(colorRoles)

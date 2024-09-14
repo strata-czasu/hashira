@@ -1,8 +1,9 @@
 import { Hashira } from "@hashira/core";
 import { GuildMember } from "discord.js";
-import { base } from "./base";
+import { base } from "../base";
 
-export const logging = new Hashira({ name: "logging" })
+// Logging for Discord events
+export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .use(base)
   .handle("messageDelete", async ({ log }, message) => {
     if (!message.inGuild()) return;
