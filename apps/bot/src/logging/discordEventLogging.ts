@@ -36,7 +36,7 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
     if (!log.isRegistered(member.guild)) return;
     log.push("guildMemberRemove", member.guild, { member });
   })
-  .handle("guildMemberUpdate", async ({ log }, oldMember, newMember) => {
+  .handle("guildMemberUpdate", async ({ profileLog: log }, oldMember, newMember) => {
     if (!log.isRegistered(oldMember.guild) || !log.isRegistered(newMember.guild))
       return;
 
@@ -48,11 +48,11 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
       });
     }
   })
-  .handle("guildBanAdd", async ({ log }, ban) => {
+  .handle("guildBanAdd", async ({ banLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanAdd", ban.guild, { ban });
   })
-  .handle("guildBanRemove", async ({ log }, ban) => {
+  .handle("guildBanRemove", async ({ banLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanRemove", ban.guild, { ban });
   });

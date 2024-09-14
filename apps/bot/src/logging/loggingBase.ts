@@ -55,83 +55,87 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
 };
 
 // Base definition of loggers and log message types
-export const loggingBase = new Hashira({ name: "loggingBase" }).const(
-  "log",
-  new Logger()
-    .addMessageType(
-      "messageDelete",
-      async ({ timestamp }, { message }: MessageDeleteData) => {
-        const embed = getLogMessageEmbed(message.author, timestamp)
-          .setDescription(
-            `**${linkMessage(message)} usunięta na ${linkChannel(message.channel)}**\n${
-              message.content
-            }`,
-          )
-          .setColor("Red");
+export const loggingBase = new Hashira({ name: "loggingBase" })
+  .const(
+    "log",
+    new Logger()
+      .addMessageType(
+        "messageDelete",
+        async ({ timestamp }, { message }: MessageDeleteData) => {
+          const embed = getLogMessageEmbed(message.author, timestamp)
+            .setDescription(
+              `**${linkMessage(message)} usunięta na ${linkChannel(message.channel)}**\n${
+                message.content
+              }`,
+            )
+            .setColor("Red");
 
-        if (message.attachments.size > 0) {
-          const fieldName = message.attachments.size > 1 ? "Załączniki" : "Załącznik";
+          if (message.attachments.size > 0) {
+            const fieldName = message.attachments.size > 1 ? "Załączniki" : "Załącznik";
+            embed.addFields([
+              {
+                name: fieldName,
+                value: message.attachments.map((a) => `- ${a.proxyURL}`).join("\n"),
+              },
+            ]);
+          }
+
+          return embed;
+        },
+      )
+      .addMessageType(
+        "messageUpdate",
+        async (
+          { timestamp },
+          {
+            oldMessage,
+            newMessage,
+            oldMessageContent,
+            newMessageContent,
+          }: MessageEditData,
+        ) => {
+          const embed = getLogMessageEmbed(newMessage.author, timestamp)
+            .setDescription(
+              `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
+            )
+            .setColor("Yellow");
+
           embed.addFields([
             {
-              name: fieldName,
-              value: message.attachments.map((a) => `- ${a.proxyURL}`).join("\n"),
+              name: "Stara wiadomość",
+              value: getMessageUpdateLogContent(oldMessage, oldMessageContent),
+            },
+            {
+              name: "Nowa wiadomość",
+              value: getMessageUpdateLogContent(newMessage, newMessageContent),
             },
           ]);
-        }
 
-        return embed;
-      },
-    )
-    .addMessageType(
-      "messageUpdate",
-      async (
-        { timestamp },
-        {
-          oldMessage,
-          newMessage,
-          oldMessageContent,
-          newMessageContent,
-        }: MessageEditData,
-      ) => {
-        const embed = getLogMessageEmbed(newMessage.author, timestamp)
-          .setDescription(
-            `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
-          )
-          .setColor("Yellow");
-
-        embed.addFields([
-          {
-            name: "Stara wiadomość",
-            value: getMessageUpdateLogContent(oldMessage, oldMessageContent),
-          },
-          {
-            name: "Nowa wiadomość",
-            value: getMessageUpdateLogContent(newMessage, newMessageContent),
-          },
-        ]);
-
-        return embed;
-      },
-    )
-    .addMessageType(
-      "guildMemberAdd",
-      async ({ timestamp }, { member }: GuildMemberAddData) => {
-        const embed = getLogMessageEmbed(member, timestamp)
-          .setDescription("**Dołącza do serwera**")
-          .setColor("Green");
-        return embed;
-      },
-    )
-    .addMessageType(
-      "guildMemberRemove",
-      async ({ timestamp }, { member }: GuildMemberRemoveData) => {
-        const embed = getLogMessageEmbed(member, timestamp)
-          .setDescription("**Opuszcza serwer**")
-          .setColor("Red");
-        return embed;
-      },
-    )
-    .addMessageType(
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildMemberAdd",
+        async ({ timestamp }, { member }: GuildMemberAddData) => {
+          const embed = getLogMessageEmbed(member, timestamp)
+            .setDescription("**Dołącza do serwera**")
+            .setColor("Green");
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildMemberRemove",
+        async ({ timestamp }, { member }: GuildMemberRemoveData) => {
+          const embed = getLogMessageEmbed(member, timestamp)
+            .setDescription("**Opuszcza serwer**")
+            .setColor("Red");
+          return embed;
+        },
+      ),
+  )
+  .const(
+    "profileLog",
+    new Logger().addMessageType(
       "guildMemberNicknameUpdate",
       async (
         { timestamp },
@@ -140,37 +144,44 @@ export const loggingBase = new Hashira({ name: "loggingBase" }).const(
         const embed = getLogMessageEmbed(member, timestamp).setColor("Yellow");
 
         if (oldNickname === null && newNickname !== null) {
-          embed.setDescription(`**Ustawia nick na ${inlineCode(newNickname)}**`);
+          embed.setDescription(`**Ustawia nick na** ${inlineCode(newNickname)}`);
         } else if (oldNickname !== null && newNickname !== null) {
           embed.setDescription(
-            `**Zmienia nick z ${inlineCode(oldNickname)} na ${inlineCode(newNickname)}**`,
+            `**Zmienia nick z** ${inlineCode(oldNickname)} **na** ${inlineCode(newNickname)}`,
           );
         } else if (oldNickname !== null && newNickname === null) {
-          embed.setDescription(`**Usuwa nick** ${inlineCode(oldNickname)}**`);
+          embed.setDescription(`**Usuwa nick** ${inlineCode(oldNickname)}`);
         } else {
           throw new Error("Nickname update from null to null");
         }
 
         return embed;
       },
-    )
-    .addMessageType("guildBanAdd", async ({ timestamp }, { ban }: GuildBanAddData) => {
-      let content = "**Otrzymuje bana**";
-      if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
-      const embed = getLogMessageEmbed(ban.user, timestamp)
-        .setDescription(content)
-        .setColor("Red");
-      return embed;
-    })
-    .addMessageType(
-      "guildBanRemove",
-      async ({ timestamp }, { ban }: GuildBanRemoveData) => {
-        let content = "**Zdjęto bana**";
-        if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
-        const embed = getLogMessageEmbed(ban.user, timestamp)
-          .setDescription(content)
-          .setColor("Green");
-        return embed;
-      },
     ),
-);
+  )
+  .const(
+    "banLog",
+    new Logger()
+      .addMessageType(
+        "guildBanAdd",
+        async ({ timestamp }, { ban }: GuildBanAddData) => {
+          let content = "**Otrzymuje bana**";
+          if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
+          const embed = getLogMessageEmbed(ban.user, timestamp)
+            .setDescription(content)
+            .setColor("Red");
+          return embed;
+        },
+      )
+      .addMessageType(
+        "guildBanRemove",
+        async ({ timestamp }, { ban }: GuildBanRemoveData) => {
+          let content = "**Zdjęto bana**";
+          if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
+          const embed = getLogMessageEmbed(ban.user, timestamp)
+            .setDescription(content)
+            .setColor("Green");
+          return embed;
+        },
+      ),
+  );
