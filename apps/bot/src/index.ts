@@ -5,6 +5,7 @@ import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
+import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
@@ -43,6 +44,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(settings)
   .use(tasks)
   .use(ai)
+  .use(brochure)
   .use(userActivity)
   .handle("ready", async () => {
     // TODO)) Use a proper logger

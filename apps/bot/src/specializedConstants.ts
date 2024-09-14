@@ -17,4 +17,9 @@ export const STRATA_CZASU_CURRENCY = {
   defaultWalletName: "Portfel",
 } as const;
 
+export const STRATA_CZASU_GENDER_ROLES = {
+  female: "412324847423717378", // @Kobieta
+  male: "427454159747547136", // @Facet
+} as const;
+
 export const STRATA_BAN_APPEAL_URL = "https://bit.ly/unban_na_stracie";
