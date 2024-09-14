@@ -57,7 +57,7 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
 // Base definition of loggers and log message types
 export const loggingBase = new Hashira({ name: "loggingBase" })
   .const(
-    "log",
+    "messageLog",
     new Logger()
       .addMessageType(
         "messageDelete",
@@ -113,7 +113,11 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
 
           return embed;
         },
-      )
+      ),
+  )
+  .const(
+    "memberLog",
+    new Logger()
       .addMessageType(
         "guildMemberAdd",
         async ({ timestamp }, { member }: GuildMemberAddData) => {

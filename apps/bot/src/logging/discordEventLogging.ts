@@ -5,14 +5,14 @@ import { base } from "../base";
 // Logging for Discord events
 export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .use(base)
-  .handle("messageDelete", async ({ log }, message) => {
+  .handle("messageDelete", async ({ messageLog: log }, message) => {
     if (!message.inGuild()) return;
     if (!log.isRegistered(message.guild)) return;
     if (message.author.bot) return;
 
     log.push("messageDelete", message.guild, { message });
   })
-  .handle("messageUpdate", async ({ log }, oldMessage, newMessage) => {
+  .handle("messageUpdate", async ({ messageLog: log }, oldMessage, newMessage) => {
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
     if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild))
       return;
@@ -25,11 +25,11 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
       newMessageContent: newMessage.content,
     });
   })
-  .handle("guildMemberAdd", async ({ log }, member) => {
+  .handle("guildMemberAdd", async ({ memberLog: log }, member) => {
     if (!log.isRegistered(member.guild)) return;
     log.push("guildMemberAdd", member.guild, { member });
   })
-  .handle("guildMemberRemove", async ({ log }, member) => {
+  .handle("guildMemberRemove", async ({ memberLog: log }, member) => {
     // NOTE: We don't let partials through as events
     // FIXME: Support partial events
     if (!(member instanceof GuildMember)) return;
