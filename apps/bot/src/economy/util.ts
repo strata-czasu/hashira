@@ -19,3 +19,16 @@ export const getShopItem = async (prisma: PrismaTransaction, id: number) =>
       deletedAt: null,
     },
   });
+
+export const getInventoryItem = async (
+  prisma: PrismaTransaction,
+  itemId: number,
+  userId: string,
+) =>
+  prisma.inventoryItem.findFirst({
+    where: {
+      itemId,
+      userId,
+      deletedAt: null,
+    },
+  });
