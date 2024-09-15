@@ -33,17 +33,40 @@ export const avatar = new Hashira({ name: "avatar" }).command("avatar", (command
           })),
         ),
     )
-    .handle(async (_, { user, size: rawSize, format: rawExtension }, itx) => {
-      await itx.deferReply();
+    .addBoolean("guild-avatar", (guildAvatar) =>
+      guildAvatar
+        .setDescription("Pobierz serwerowy avatar zamiast globalnego")
+        .setRequired(false),
+    )
+    .handle(
+      async (
+        _,
+        { user, size: rawSize, format: rawExtension, "guild-avatar": guildAvatar },
+        itx,
+      ) => {
+        await itx.deferReply();
 
-      const size = rawSize as ImageSize | null;
-      const extension = rawExtension as ImageExtension | null;
-      // TODO)) Add option to get the guild avatar if available
-      const url = user.displayAvatarURL({
-        size: size ?? 1024,
-        ...(extension ? { extension } : {}),
-      });
-      const embed = new EmbedBuilder().setTitle(`Avatar ${user.tag}`).setImage(url);
-      await itx.editReply({ embeds: [embed] });
-    }),
+        const size = (rawSize as ImageSize | null) ?? 1024;
+        const extension = rawExtension as ImageExtension | null;
+
+        let avatarUrl: string;
+        if (guildAvatar && itx.inCachedGuild()) {
+          const member = await itx.guild.members.fetch(user.id);
+          avatarUrl = member.displayAvatarURL({
+            size,
+            ...(extension ? { extension } : {}),
+          });
+        } else {
+          avatarUrl = user.displayAvatarURL({
+            size,
+            ...(extension ? { extension } : {}),
+          });
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`Avatar ${user.tag}`)
+          .setImage(avatarUrl);
+        await itx.editReply({ embeds: [embed] });
+      },
+    ),
 );
