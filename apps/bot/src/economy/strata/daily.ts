@@ -109,13 +109,14 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           data: { userId: itx.user.id, guildId: itx.guildId },
         });
 
+        const balance = formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol);
         const giveOrReceive = shouldApplyTargetNotSelf
-          ? `Przekazujesz dla ${userMention(targetUser.id)}`
-          : "Otrzymujesz";
+          ? `Przekazujesz ${balance} dla ${userMention(targetUser.id)}!`
+          : `Otrzymujesz ${balance}!`;
 
         const lines = [
           bold("Twoje codzienne punkty!"),
-          `${giveOrReceive} ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}!`,
+          giveOrReceive,
           `Twój obecny streak: ${dailyStreak + 1}`,
         ];
 
