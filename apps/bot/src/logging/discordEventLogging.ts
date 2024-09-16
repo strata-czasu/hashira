@@ -52,11 +52,11 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
       });
     }
   })
-  .handle("guildBanAdd", async ({ banLog: log }, ban) => {
+  .handle("guildBanAdd", async ({ moderationLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanAdd", ban.guild, { ban });
   })
-  .handle("guildBanRemove", async ({ banLog: log }, ban) => {
+  .handle("guildBanRemove", async ({ moderationLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanRemove", ban.guild, { ban });
   });

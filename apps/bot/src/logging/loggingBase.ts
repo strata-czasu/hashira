@@ -174,7 +174,7 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
     ),
   )
   .const(
-    "banLog",
+    "moderationLog",
     new Logger()
       .addMessageType(
         "guildBanAdd",

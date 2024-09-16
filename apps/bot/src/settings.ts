@@ -17,7 +17,7 @@ const formatLogSettings = (settings: LogSettings | null) => {
   return [
     formatChannelSetting("Kanał do logów (wiadomości)", settings.messageLogChannelId),
     formatChannelSetting("Kanał do logów (użytkownicy)", settings.memberLogChannelId),
-    formatChannelSetting("Kanał do logów (bany)", settings.banLogChannelId),
+    formatChannelSetting("Kanał do logów (moderacja)", settings.moderationLogChannelId),
     formatChannelSetting("Kanał do logów (profile)", settings.profileLogChannelId),
   ].join("\n");
 };
@@ -153,9 +153,11 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
-      .addCommand("ban-log-channel", (command) =>
+      .addCommand("moderation-log-channel", (command) =>
         command
-          .setDescription("Ustaw kanał do wysyłania logów związanych z banami")
+          .setDescription(
+            "Ustaw kanał do wysyłania logów związanych z mutami, warnami i banami",
+          )
           .addChannel("channel", (channel) =>
             channel
               .setDescription("Kanał, na który mają być wysyłane logi")
@@ -165,15 +167,15 @@ export const settings = new Hashira({ name: "settings" })
                 ChannelType.PublicThread,
               ),
           )
-          .handle(async ({ prisma, banLog: log }, { channel }, itx) => {
+          .handle(async ({ prisma, moderationLog: log }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({
               data: {
                 logSettings: {
                   upsert: {
-                    create: { banLogChannelId: channel.id },
-                    update: { banLogChannelId: channel.id },
+                    create: { moderationLogChannelId: channel.id },
+                    update: { moderationLogChannelId: channel.id },
                   },
                 },
               },
