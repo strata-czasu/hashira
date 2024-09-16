@@ -19,6 +19,7 @@ import { settings } from "./settings";
 import { colorRoles } from "./strata/colorRoles";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
+import { userComplaint } from "./userComplaint";
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -46,6 +47,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(ai)
   .use(brochure)
   .use(userActivity)
+  .use(userComplaint)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
