@@ -36,21 +36,9 @@ import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, getMuteRoleId } from "./util";
+import { applyMute, formatMuteLength, getMuteRoleId } from "./util";
 
 type Context = ExtractContext<typeof base>;
-
-const formatMuteLength = (mute: Mute) => {
-  const { createdAt, endsAt } = mute;
-  const duration = intervalToDuration({ start: createdAt, end: endsAt });
-  const durationParts = [];
-  if (duration.days) durationParts.push(`${duration.days}d`);
-  if (duration.hours) durationParts.push(`${duration.hours}h`);
-  if (duration.minutes) durationParts.push(`${duration.minutes}m`);
-  if (duration.seconds) durationParts.push(`${duration.seconds}s`);
-  if (durationParts.length === 0) return "0s";
-  return durationParts.join(" ");
-};
 
 export const createFormatMuteInList =
   ({ includeUser }: { includeUser: boolean }) =>
@@ -125,18 +113,20 @@ const APPEALS_CHANNEL = "1213901611836117052";
 export const universalAddMute = async ({
   prisma,
   messageQueue,
+  log,
   userId,
   guild,
-  moderatorId,
+  moderator,
   duration,
   reason,
   reply,
 }: {
   prisma: ExtendedPrismaClient;
   messageQueue: Context["messageQueue"];
+  log: Context["moderationLog"];
   userId: string;
   guild: Guild;
-  moderatorId: string;
+  moderator: User;
   duration: string;
   reason: string;
   reply: (content: string) => Promise<unknown>;
@@ -195,7 +185,7 @@ export const universalAddMute = async ({
 
   const endsAt = add(now, parsedDuration);
 
-  await ensureUsersExist(prisma, [userId, moderatorId]);
+  await ensureUsersExist(prisma, [userId, moderator.id]);
 
   // Create mute and try to add the mute role
 
@@ -205,7 +195,7 @@ export const universalAddMute = async ({
         createdAt: now,
         endsAt,
         guildId,
-        moderatorId,
+        moderatorId: moderator.id,
         reason,
         userId,
       },
@@ -236,6 +226,7 @@ export const universalAddMute = async ({
     durationToSeconds(parsedDuration),
     mute.id.toString(),
   );
+  log.push("muteCreate", guild, { mute, moderator: moderator });
 
   await reply(
     `Dodano wyciszenie [${inlineCode(
@@ -247,7 +238,7 @@ export const universalAddMute = async ({
 
   const sentMessage = await sendDirectMessage(
     member.user,
-    `Hejka! Przed chwilą ${userMention(moderatorId)} nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
+    `Hejka! Przed chwilą ${userMention(moderator.id)} nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
       formatDuration(parsedDuration),
     )}. Powodem Twojego wyciszenia jest: ${italic(
       reason,
@@ -268,6 +259,7 @@ export const universalAddMute = async ({
 const addMute = async ({
   prisma,
   messageQueue,
+  log,
   itx,
   user,
   duration: rawDuration,
@@ -275,6 +267,7 @@ const addMute = async ({
 }: {
   prisma: ExtendedPrismaClient;
   messageQueue: Context["messageQueue"];
+  log: Context["moderationLog"];
   itx: RepliableInteraction<"cached">;
   user: User;
   duration: string;
@@ -283,9 +276,10 @@ const addMute = async ({
   await universalAddMute({
     prisma,
     messageQueue,
+    log,
     userId: user.id,
     guild: itx.guild,
-    moderatorId: itx.user.id,
+    moderator: itx.user,
     duration: rawDuration,
     reason,
     reply: (content) => itx.editReply({ content }),
@@ -311,7 +305,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) => reason.setDescription("Powód wyciszenia"))
           .handle(
             async (
-              { prisma, messageQueue },
+              { prisma, messageQueue, moderationLog: log },
               { user: rawUser, duration, reason },
               itx,
             ) => {
@@ -324,6 +318,7 @@ export const mutes = new Hashira({ name: "mutes" })
               await addMute({
                 prisma,
                 messageQueue,
+                log,
                 itx,
                 user,
                 duration,
@@ -339,38 +334,48 @@ export const mutes = new Hashira({ name: "mutes" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia wyciszenia").setRequired(false),
           )
-          .handle(async ({ prisma, messageQueue }, { id, reason }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, messageQueue, moderationLog: log },
+              { id, reason },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const mute = await prisma.$transaction(async (tx) => {
-              const mute = await getMute(tx, id, itx.guildId);
-              if (!mute) {
-                await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
-                return null;
-              }
-              // TODO: Save a log of this edit in the database
-              await prisma.mute.update({
-                where: { id },
-                data: { deletedAt: itx.createdAt, deleteReason: reason },
+              const mute = await prisma.$transaction(async (tx) => {
+                const mute = await getMute(tx, id, itx.guildId);
+                if (!mute) {
+                  await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
+                  return null;
+                }
+
+                await prisma.mute.update({
+                  where: { id },
+                  data: { deletedAt: itx.createdAt, deleteReason: reason },
+                });
+                await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
+                log.push("muteRemove", itx.guild, {
+                  mute,
+                  moderator: itx.user,
+                  removeReason: reason,
+                });
+
+                return mute;
               });
+              if (!mute) return;
 
-              await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
-
-              return mute;
-            });
-            if (!mute) return;
-
-            if (reason) {
-              await itx.editReply(
-                `Usunięto wyciszenie ${inlineCode(
-                  id.toString(),
-                )}. Powód usunięcia: ${italic(reason)}`,
-              );
-            } else {
-              itx.editReply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
-            }
-          }),
+              if (reason) {
+                await itx.editReply(
+                  `Usunięto wyciszenie ${inlineCode(
+                    id.toString(),
+                  )}. Powód usunięcia: ${italic(reason)}`,
+                );
+              } else {
+                itx.editReply(`Usunięto wyciszenie ${inlineCode(id.toString())}`);
+              }
+            },
+          ),
       )
       .addCommand("edit", (command) =>
         command
@@ -384,7 +389,7 @@ export const mutes = new Hashira({ name: "mutes" })
           )
           .handle(
             async (
-              { prisma, messageQueue },
+              { prisma, messageQueue, moderationLog: log },
               { id, reason, duration: rawDuration },
               itx,
             ) => {
@@ -448,6 +453,15 @@ export const mutes = new Hashira({ name: "mutes" })
                     durationToSeconds(duration),
                   );
                 }
+
+                log.push("muteEdit", itx.guild, {
+                  mute,
+                  moderator: itx.user,
+                  oldReason: originalReason,
+                  newReason: reason,
+                  oldDuration: originalDuration,
+                  newDuration: duration ?? null,
+                });
 
                 await discordTry(
                   async () => {
@@ -592,7 +606,7 @@ export const mutes = new Hashira({ name: "mutes" })
   .userContextMenu(
     "mute",
     PermissionFlagsBits.ModerateMembers,
-    async ({ prisma, messageQueue }, itx) => {
+    async ({ prisma, messageQueue, moderationLog: log }, itx) => {
       if (!itx.inCachedGuild()) return;
 
       const rows = [
@@ -641,6 +655,7 @@ export const mutes = new Hashira({ name: "mutes" })
       await addMute({
         prisma,
         messageQueue,
+        log,
         itx: submitAction,
         user: itx.targetUser,
         duration,

@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
-import type { Warn } from "@hashira/db";
+import type { Mute, Warn } from "@hashira/db";
+import { type Duration, formatDuration } from "date-fns";
 import {
   EmbedBuilder,
   type GuildBan,
@@ -7,13 +8,16 @@ import {
   GuildMember,
   type Message,
   type Role,
+  TimestampStyles,
   type User,
   channelMention,
   inlineCode,
   italic,
   roleMention,
+  time,
   userMention,
 } from "discord.js";
+import { formatMuteLength } from "../moderation/util";
 import { Logger } from "./logger";
 
 type GuildMessage = Message<true>;
@@ -42,6 +46,16 @@ type WarnEditData = {
   oldReason: string;
   newReason: string;
 };
+type MuteCreateData = { mute: Mute; moderator: User };
+type MuteRemoveData = { mute: Mute; moderator: User; removeReason: string | null };
+type MuteEditData = {
+  mute: Mute;
+  moderator: User;
+  oldReason: string;
+  newReason: string | null;
+  oldDuration: Duration;
+  newDuration: Duration | null;
+};
 type GuildBanAddData = { ban: GuildBan };
 type GuildBanRemoveData = { ban: GuildBan };
 
@@ -69,6 +83,9 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
 
 const getWarnLogHeader = (action: string, warn: Warn) =>
   `**${action} ostrzeżenie [${inlineCode(warn.id.toString())}] dla ${userMention(warn.userId)} (${warn.userId})**`;
+
+const getMuteLogHeader = (action: string, mute: Mute) =>
+  `**${action} wyciszenie [${inlineCode(mute.id.toString())}] dla ${userMention(mute.userId)} (${mute.userId})**`;
 
 // Base definition of loggers and log message types
 export const loggingBase = new Hashira({ name: "loggingBase" })
@@ -220,6 +237,49 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
             .setDescription(
               `${getWarnLogHeader("Edytuje", warn)}\nStary powód: ${italic(oldReason)}\nNowy powód: ${italic(newReason)}`,
             )
+            .setColor("Yellow");
+        },
+      )
+      .addMessageType(
+        "muteCreate",
+        async ({ timestamp }, { mute, moderator }: MuteCreateData) => {
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(
+              `${getMuteLogHeader("Nadaje", mute)}\nCzas trwania: ${formatMuteLength(mute)}\nKoniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}\nPowód: ${italic(mute.reason)}`,
+            )
+            .setColor("Green");
+        },
+      )
+      .addMessageType(
+        "muteRemove",
+        async ({ timestamp }, { mute, moderator, removeReason }: MuteRemoveData) => {
+          let content = `${getMuteLogHeader("Usuwa", mute)}\nPowód mute: ${italic(mute.reason)}`;
+          if (removeReason) content += `\nPowód usunięcia: ${italic(removeReason)}`;
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(content)
+            .setColor("Yellow");
+        },
+      )
+      .addMessageType(
+        "muteEdit",
+        async (
+          { timestamp },
+          {
+            mute,
+            moderator,
+            oldReason,
+            newReason,
+            oldDuration,
+            newDuration,
+          }: MuteEditData,
+        ) => {
+          let content = getMuteLogHeader("Edytuje", mute);
+          if (newReason)
+            content += `\nStary powód: ${italic(oldReason)}\nNowy powód: ${italic(newReason)}`;
+          if (newDuration)
+            content += `\nStary czas trwania: ${formatDuration(oldDuration)}\nNowy czas trwania: ${formatDuration(newDuration)}`;
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(content)
             .setColor("Yellow");
         },
       )

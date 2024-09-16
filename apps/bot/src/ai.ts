@@ -2,7 +2,7 @@ import { type ExtractContext, Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import env from "@hashira/env";
 import { format, intervalToDuration, isAfter } from "date-fns";
-import { type Guild, userMention } from "discord.js";
+import { type Guild, type User, userMention } from "discord.js";
 import OpenAI from "openai";
 import { base } from "./base";
 import { universalAddMute } from "./moderation/mutes";
@@ -49,7 +49,7 @@ The "Recydywa" system is designed to handle repeated rule violations with increa
 ## Basic Rules:
 
 1. **Increasing Penalties:** Each time someone breaks the rules, the penalty gets worse. If you get muted multiple times, each mute will be longer than the last.
-   
+
 2. **Reset Period:** If you go 10 days without getting muted, the system resets back to the first level. This 10-day countdown starts from the end of your last mute.
 
 3. **Exclusions:** Mutes from special cases, like roulettes, don’t count in this system.
@@ -57,11 +57,11 @@ The "Recydywa" system is designed to handle repeated rule violations with increa
 ## Penalty Levels:
 
 - **Level 1:** The first mute starts the process. If your first offense gets a 3-hour mute, that’s Level 1. If it's a 24-hour mute, that's still Level 1, but the duration will be based on that first offense.
-  
+
 - **Level 2:** The next time you break the rules, the mute will be longer. For example:
   - If Level 1 was a 3-hour mute, Level 2 is 8 hours.
   - If Level 1 was a 24-hour mute, Level 2 is 2 days.
-  
+
 - **Level 3 to Level 5:** Each new offense adds one more day to the mute. Continuing the above examples:
   - 1-day mute becomes 2 days, then 3, then 4, and so on.
   - After Level 5 (e.g., 5 days), a ban is applied.
@@ -82,8 +82,9 @@ The "Recydywa" system is designed to handle repeated rule violations with increa
 const createMute = (
   prisma: ExtendedPrismaClient,
   messageQueue: ExtractContext<typeof base>["messageQueue"],
+  log: ExtractContext<typeof base>["moderationLog"],
   guild: Guild,
-  moderatorId: string,
+  moderator: User,
   reply: (content: string) => Promise<unknown>,
 ) => {
   async function mute({
@@ -94,9 +95,10 @@ const createMute = (
     await universalAddMute({
       prisma,
       messageQueue,
+      log,
       userId,
       guild,
-      moderatorId,
+      moderator,
       duration,
       reason,
       reply,
@@ -204,7 +206,7 @@ export const ai = new Hashira({ name: "ai" })
               prisma,
               messageQueue,
               message.guild,
-              message.author.id,
+              message.author,
               (content) => message.reply(content),
             ),
             parse: JSON.parse,

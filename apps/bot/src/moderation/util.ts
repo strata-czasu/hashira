@@ -1,6 +1,6 @@
 import type { ExtractContext } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
-import { formatDate } from "date-fns";
+import type { ExtendedPrismaClient, Mute } from "@hashira/db";
+import { formatDate, intervalToDuration } from "date-fns";
 import {
   type GuildMember,
   RESTJSONErrorCodes,
@@ -26,6 +26,18 @@ export const getMuteRoleId = async (prisma: ExtendedPrismaClient, guildId: strin
 
   if (!settings) return null;
   return settings.muteRoleId;
+};
+
+export const formatMuteLength = (mute: Mute) => {
+  const { createdAt, endsAt } = mute;
+  const duration = intervalToDuration({ start: createdAt, end: endsAt });
+  const durationParts = [];
+  if (duration.days) durationParts.push(`${duration.days}d`);
+  if (duration.hours) durationParts.push(`${duration.hours}h`);
+  if (duration.minutes) durationParts.push(`${duration.minutes}m`);
+  if (duration.seconds) durationParts.push(`${duration.seconds}s`);
+  if (durationParts.length === 0) return "0s";
+  return durationParts.join(" ");
 };
 
 /**
