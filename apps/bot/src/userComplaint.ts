@@ -78,7 +78,13 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
           .setTimestamp(submitAction.createdAt);
         const success = await discordTry(
           async () => {
-            channel.send({ embeds: [embed] });
+            channel.send({
+              content: "@everyone",
+              embeds: [embed],
+              allowedMentions: {
+                parse: ["everyone"],
+              },
+            });
             return true;
           },
           [RESTJSONErrorCodes.MissingAccess],
