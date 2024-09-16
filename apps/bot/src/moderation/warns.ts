@@ -21,7 +21,7 @@ import {
 } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
-import { ensureUserExists } from "../util/ensureUsersExist";
+import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -102,46 +102,49 @@ export const warns = new Hashira({ name: "warns" })
           .setDescription("Dodaj ostrzeżenie")
           .addString("user", (user) => user.setDescription("Użytkownik"))
           .addString("reason", (reason) => reason.setDescription("Powód ostrzeżenia"))
-          .handle(async ({ prisma }, { user: rawUser, reason }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async ({ prisma, moderationLog: log }, { user: rawUser, reason }, itx) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
-            await ensureUserExists(prisma, user);
+              const user = await parseUserMentionWorkaround(rawUser, itx);
+              if (!user) return;
+              await ensureUsersExist(prisma, [user, itx.user]);
 
-            const warn = await prisma.warn.create({
-              data: {
-                guildId: itx.guildId,
-                userId: user.id,
-                moderatorId: itx.user.id,
-                reason,
-              },
-            });
-
-            const sentMessage = await sendDirectMessage(
-              user,
-              `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-                itx.user.tag
-              }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
-                reason,
-              )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
-            );
-
-            await itx.editReply(
-              `Dodano ostrzeżenie [${inlineCode(
-                warn.id.toString(),
-              )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-            );
-            if (!sentMessage) {
-              await itx.followUp({
-                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
-                  user,
-                )}.`,
-                ephemeral: true,
+              const warn = await prisma.warn.create({
+                data: {
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  moderatorId: itx.user.id,
+                  reason,
+                },
               });
-            }
-          }),
+              log.push("warnCreate", itx.guild, { warn, moderator: itx.user });
+
+              const sentMessage = await sendDirectMessage(
+                user,
+                `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+                  itx.user.tag
+                }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
+                  reason,
+                )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
+              );
+
+              await itx.editReply(
+                `Dodano ostrzeżenie [${inlineCode(
+                  warn.id.toString(),
+                )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+              );
+              if (!sentMessage) {
+                await itx.followUp({
+                  content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
+                    user,
+                  )}.`,
+                  ephemeral: true,
+                });
+              }
+            },
+          ),
       )
       .addCommand("remove", (command) =>
         command
@@ -150,7 +153,7 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Powód usunięcia ostrzeżenia").setRequired(false),
           )
-          .handle(async ({ prisma }, { id, reason }, itx) => {
+          .handle(async ({ prisma, moderationLog: log }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -160,10 +163,14 @@ export const warns = new Hashira({ name: "warns" })
                 await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
                 return null;
               }
-              // TODO: Save a log of this update in the database
               await tx.warn.update({
                 where: { id },
                 data: { deletedAt: new Date(), deleteReason: reason },
+              });
+              log.push("warnRemove", itx.guild, {
+                warn,
+                moderator: itx.user,
+                removeReason: reason,
               });
 
               return warn;
@@ -188,7 +195,7 @@ export const warns = new Hashira({ name: "warns" })
           .addString("reason", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
-          .handle(async ({ prisma }, { id, reason }, itx) => {
+          .handle(async ({ prisma, moderationLog: log }, { id, reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -203,10 +210,15 @@ export const warns = new Hashira({ name: "warns" })
                 return null;
               }
               const originalReason = warn.reason;
-              // TODO: Save a log of this edit in the database
               await tx.warn.update({
                 where: { id },
                 data: { reason },
+              });
+              log.push("warnEdit", itx.guild, {
+                warn,
+                moderator: itx.user,
+                oldReason: originalReason,
+                newReason: reason,
               });
 
               await discordTry(

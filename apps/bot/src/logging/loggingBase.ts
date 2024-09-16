@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import type { Warn } from "@hashira/db";
 import {
   EmbedBuilder,
   type GuildBan,
@@ -11,6 +12,7 @@ import {
   inlineCode,
   italic,
   roleMention,
+  userMention,
 } from "discord.js";
 import { Logger } from "./logger";
 
@@ -30,6 +32,15 @@ type GuildMemberNicknameUpdateData = {
   member: GuildMember;
   oldNickname: string | null;
   newNickname: string | null;
+};
+
+type WarnCreateData = { warn: Warn; moderator: User };
+type WarnRemoveData = { warn: Warn; moderator: User; removeReason: string | null };
+type WarnEditData = {
+  warn: Warn;
+  moderator: User;
+  oldReason: string;
+  newReason: string;
 };
 type GuildBanAddData = { ban: GuildBan };
 type GuildBanRemoveData = { ban: GuildBan };
@@ -55,6 +66,9 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
   }
   return out;
 };
+
+const getWarnLogHeader = (action: string, warn: Warn) =>
+  `**${action} ostrzeżenie [${inlineCode(warn.id.toString())}] dla ${userMention(warn.userId)} (${warn.userId})**`;
 
 // Base definition of loggers and log message types
 export const loggingBase = new Hashira({ name: "loggingBase" })
@@ -176,6 +190,39 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
   .const(
     "moderationLog",
     new Logger()
+      .addMessageType(
+        "warnCreate",
+        async ({ timestamp }, { warn, moderator }: WarnCreateData) => {
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(
+              `${getWarnLogHeader("Nadaje", warn)}\nPowód: ${italic(warn.reason)}`,
+            )
+            .setColor("Green");
+        },
+      )
+      .addMessageType(
+        "warnRemove",
+        async ({ timestamp }, { warn, moderator, removeReason }: WarnRemoveData) => {
+          let content = `${getWarnLogHeader("Usuwa", warn)}\nPowód warna: ${italic(warn.reason)}`;
+          if (removeReason) content += `\nPowód usunięcia: ${italic(removeReason)}`;
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(content)
+            .setColor("Red");
+        },
+      )
+      .addMessageType(
+        "warnEdit",
+        async (
+          { timestamp },
+          { warn, moderator, oldReason, newReason }: WarnEditData,
+        ) => {
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(
+              `${getWarnLogHeader("Edytuje", warn)}\nStary powód: ${italic(oldReason)}\nNowy powód: ${italic(newReason)}`,
+            )
+            .setColor("Yellow");
+        },
+      )
       .addMessageType(
         "guildBanAdd",
         async ({ timestamp }, { ban }: GuildBanAddData) => {

@@ -54,7 +54,7 @@ export class Logger<
    * @param guild {Guild} Guild where the log message originated
    * @param data {unknown} Data for the log message
    */
-  async push<T extends keyof LogMessageTypes>(
+  push<T extends keyof LogMessageTypes>(
     type: T,
     guild: Guild,
     data: LogMessageTypes[T],
