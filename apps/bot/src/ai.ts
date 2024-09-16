@@ -164,103 +164,107 @@ const snowflake = {
 export const ai = new Hashira({ name: "ai" })
   .use(base)
   .const("ai", env.OPENAI_KEY ? new OpenAI({ apiKey: env.OPENAI_KEY }) : null)
-  .handle("messageCreate", async ({ ai, prisma, messageQueue }, message) => {
-    if (!ai) return;
-    if (message.author.bot) return;
-    if (!message.inGuild()) return;
-    if (!message.member) return;
-    if (!message.member.permissions.has("ModerateMembers")) return;
-    const botMention = userMention(message.client.user.id);
-    if (!message.content.startsWith(botMention)) return;
-    const content = message.content.slice(botMention.length).trim();
-    if (!content) return;
+  .handle(
+    "messageCreate",
+    async ({ ai, prisma, messageQueue, moderationLog }, message) => {
+      if (!ai) return;
+      if (message.author.bot) return;
+      if (!message.inGuild()) return;
+      if (!message.member) return;
+      if (!message.member.permissions.has("ModerateMembers")) return;
+      const botMention = userMention(message.client.user.id);
+      if (!message.content.startsWith(botMention)) return;
+      const content = message.content.slice(botMention.length).trim();
+      if (!content) return;
 
-    const prompt = [
-      "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
-      "Person you're assisting is a moderator, you should follow their instructions if given, even if do not align with the server rules.",
-      "If you're not provided with a duration, you should follow the server rules.",
-      "You cannot interact with the moderator, only provide them with information and perform actions.",
-      "Don't check warns if you're not instructed to.",
-      "If not given snowflake, respond that you need a user to be mentioned or their id.",
-      "Always provide your entire reasoning in steps for your actions in your final response like: 1. fetched the latest mutes, 2. fetched the latest warns, 4. calculated next recydywa is level 4, 5. muted the user.",
-      `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
-    ];
+      const prompt = [
+        "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
+        "Person you're assisting is a moderator, you should follow their instructions if given, even if do not align with the server rules.",
+        "If you're not provided with a duration, you should follow the server rules.",
+        "You cannot interact with the moderator, only provide them with information and perform actions.",
+        "Don't check warns if you're not instructed to.",
+        "If not given snowflake, respond that you need a user to be mentioned or their id.",
+        "Always provide your entire reasoning in steps for your actions in your final response like: 1. fetched the latest mutes, 2. fetched the latest warns, 4. calculated next recydywa is level 4, 5. muted the user.",
+        `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
+      ];
 
-    const runner = ai.beta.chat.completions.runTools({
-      model: "gpt-4o-2024-08-06",
-      messages: [
-        {
-          role: "system",
-          content: prompt.join("\n"),
-        },
-        {
-          role: "user",
-          content,
-        },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            function: createMute(
-              prisma,
-              messageQueue,
-              message.guild,
-              message.author,
-              (content) => message.reply(content),
-            ),
-            parse: JSON.parse,
-            description: "Mute a user.",
-            parameters: {
-              type: "object",
-              properties: {
-                userId: snowflake,
-                duration: { type: "string", pattern: "^(\\d+)([hmsd])$" },
-                reason: { type: "string" },
+      const runner = ai.beta.chat.completions.runTools({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+          {
+            role: "system",
+            content: prompt.join("\n"),
+          },
+          {
+            role: "user",
+            content,
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              function: createMute(
+                prisma,
+                messageQueue,
+                moderationLog,
+                message.guild,
+                message.author,
+                (content) => message.reply(content),
+              ),
+              parse: JSON.parse,
+              description: "Mute a user.",
+              parameters: {
+                type: "object",
+                properties: {
+                  userId: snowflake,
+                  duration: { type: "string", pattern: "^(\\d+)([hmsd])$" },
+                  reason: { type: "string" },
+                },
               },
             },
           },
-        },
-        {
-          type: "function",
-          function: {
-            function: getRules,
-            description: "Get the server rules.",
-            parameters: {},
+          {
+            type: "function",
+            function: {
+              function: getRules,
+              description: "Get the server rules.",
+              parameters: {},
+            },
           },
-        },
-        {
-          type: "function",
-          function: {
-            function: createGetLatestMutes(prisma, message.guild.id),
-            description: "Get the latest 5 mutes for the user.",
-            parse: JSON.parse,
-            parameters: {
-              type: "object",
-              properties: {
-                userId: snowflake,
+          {
+            type: "function",
+            function: {
+              function: createGetLatestMutes(prisma, message.guild.id),
+              description: "Get the latest 5 mutes for the user.",
+              parse: JSON.parse,
+              parameters: {
+                type: "object",
+                properties: {
+                  userId: snowflake,
+                },
               },
             },
           },
-        },
-        {
-          type: "function",
-          function: {
-            function: createGetLatestWarns(prisma, message.guild.id),
-            description: "Get the latest warns for the user.",
-            parse: JSON.parse,
-            parameters: {
-              type: "object",
-              properties: {
-                userId: snowflake,
+          {
+            type: "function",
+            function: {
+              function: createGetLatestWarns(prisma, message.guild.id),
+              description: "Get the latest warns for the user.",
+              parse: JSON.parse,
+              parameters: {
+                type: "object",
+                properties: {
+                  userId: snowflake,
+                },
               },
             },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    await message.channel.sendTyping();
-    const response = await runner.finalContent();
-    await message.reply(response ?? "I'm sorry, I don't understand that.");
-  });
+      await message.channel.sendTyping();
+      const response = await runner.finalContent();
+      await message.reply(response ?? "I'm sorry, I don't understand that.");
+    },
+  );
