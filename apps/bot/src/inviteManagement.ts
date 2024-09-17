@@ -71,13 +71,17 @@ export const inviteManagement = new Hashira({ name: "invite-management" })
               "Yes",
               "No",
               async () => {
-                await Promise.all(
-                  oldInvitesToRemove.map((invite) =>
-                    itx.guild.invites
-                      .delete(invite.code, `Cleanup by ${itx.user.id}`)
-                      .then((inv) => itx.channel?.send(`Deleted invite ${inv.code}`)),
-                  ),
-                );
+                try {
+                  await Promise.all(
+                    oldInvitesToRemove.map((invite) =>
+                      itx.guild.invites
+                        .delete(invite.code, `Cleanup by ${itx.user.id}`)
+                        .then((inv) => itx.channel?.send(`Deleted invite ${inv.code}`)),
+                    ),
+                  );
+                } catch (e) {
+                  await itx.channel?.send(`Error deleting invites: ${e}`);
+                }
               },
               () => Promise.resolve(),
               (buttonItx) => buttonItx.user.id === itx.user.id,
