@@ -81,10 +81,12 @@ export class ConfirmationDialog {
         time: 60_000,
       });
 
-      await match(buttonAction.customId)
-        .with("accept", this.#acceptCallback)
-        .with("decline", this.#declineCallback)
-        .run();
+      const callback = match(buttonAction.customId)
+        .with("accept", () => this.#acceptCallback)
+        .with("decline", () => this.#declineCallback)
+        .otherwise(() => this.#declineCallback);
+
+      await callback();
     } catch (error) {
       // Handle timeout
       if (this.#timeoutCallback) {
