@@ -19,7 +19,7 @@
     "prisma-migrate-dev": "bun run --cwd packages/db prisma migrate dev",
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",
     "prisma-migrate-create": "bun run --cwd packages/db prisma migrate create",
-    "push": "bun run --cwd packages/db push",
+    "prisma-push": "bun run --cwd packages/db prisma-push",
     "drop": "bun run --cwd packages/db drop",
     "test:core": "bun run --cwd packages/core test",
     "test:bot": "bun run --cwd apps/bot test",
