@@ -100,13 +100,7 @@ export const settings = new Hashira({ name: "settings" })
               where: { guildId: itx.guildId },
             });
 
-            if (log.isRegistered(itx.guild)) {
-              log.updateGuild(itx.guild, channel);
-            } else {
-              log.addGuild(itx.guild, channel);
-              log.consumeLoop(itx.client, itx.guild);
-            }
-
+            log.updateGuild(itx.guild, channel);
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z wiadomościami został ustawiony na ${channelMention(channel.id)}`,
               ephemeral: true,
@@ -140,12 +134,7 @@ export const settings = new Hashira({ name: "settings" })
               where: { guildId: itx.guildId },
             });
 
-            if (log.isRegistered(itx.guild)) {
-              log.updateGuild(itx.guild, channel);
-            } else {
-              log.addGuild(itx.guild, channel);
-              log.consumeLoop(itx.client, itx.guild);
-            }
+            log.updateGuild(itx.guild, channel);
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z użytkownikami został ustawiony na ${channelMention(channel.id)}`,
@@ -182,12 +171,7 @@ export const settings = new Hashira({ name: "settings" })
               where: { guildId: itx.guildId },
             });
 
-            if (log.isRegistered(itx.guild)) {
-              log.updateGuild(itx.guild, channel);
-            } else {
-              log.addGuild(itx.guild, channel);
-              log.consumeLoop(itx.client, itx.guild);
-            }
+            log.updateGuild(itx.guild, channel);
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z banami został ustawiony na ${channelMention(channel.id)}`,
@@ -224,12 +208,7 @@ export const settings = new Hashira({ name: "settings" })
               where: { guildId: itx.guildId },
             });
 
-            if (log.isRegistered(itx.guild)) {
-              log.updateGuild(itx.guild, channel);
-            } else {
-              log.addGuild(itx.guild, channel);
-              log.consumeLoop(itx.client, itx.guild);
-            }
+            log.updateGuild(itx.guild, channel);
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z profilami użytkowników został ustawiony na ${channelMention(channel.id)}`,
