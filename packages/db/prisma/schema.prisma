@@ -109,6 +109,7 @@ model Guild {
   verification       Verification[]
   wallet             Wallet[]
   warn               Warn[]
+  protectedInvites   ProtectedInvite[]
 
   @@map("guild")
 }
@@ -133,6 +134,13 @@ model GuildSettings {
   logSettings   LogSettings?
 
   @@map("guildSettings")
+}
+
+model ProtectedInvite {
+  id      Int    @id @default(autoincrement())
+  guildId String
+  code    String
+  guild   Guild  @relation(fields: [guildId], references: [id])
 }
 
 model InventoryItem {

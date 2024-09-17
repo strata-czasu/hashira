@@ -10,6 +10,7 @@ import { dmForwarding } from "./dmForwarding";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
+import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
@@ -48,6 +49,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(brochure)
   .use(userActivity)
   .use(userComplaint)
+  .use(inviteManagement)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
