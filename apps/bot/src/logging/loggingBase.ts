@@ -56,7 +56,7 @@ type MuteEditData = {
   oldDuration: Duration;
   newDuration: Duration | null;
 };
-type GuildBanAddData = { ban: GuildBan };
+type GuildBanAddData = { reason: string | null; user: User; moderator: User };
 type GuildBanRemoveData = { ban: GuildBan };
 
 const linkMessage = (message: GuildMessage) => `[Wiadomość](${message.url})`;
@@ -165,15 +165,19 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
         async ({ timestamp }, { member, roles }: GuildMemberRemoveData) => {
           const embed = getLogMessageEmbed(member, timestamp)
             .setDescription("**Opuszcza serwer**")
-            .addFields([
+            .setColor("Red");
+
+          if (roles.length > 0) {
+            embed.addFields([
               {
                 name: "Role",
                 value: roles
                   .map((r) => `- ${roleMention(r.id)} (${r.name})`)
                   .join("\n"),
               },
-            ])
-            .setColor("Red");
+            ]);
+          }
+
           return embed;
         },
       ),
@@ -285,15 +289,18 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
       )
       .addMessageType(
         "guildBanAdd",
-        async ({ timestamp }, { ban }: GuildBanAddData) => {
+        async ({ timestamp }, { reason, user, moderator }: GuildBanAddData) => {
           let content = "**Otrzymuje bana**";
-          if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
-          const embed = getLogMessageEmbed(ban.user, timestamp)
+          if (reason) content += `\nPowód: ${italic(reason)}`;
+          content += `\nModerator: ${userMention(moderator.id)}`;
+          const embed = getLogMessageEmbed(user, timestamp)
             .setDescription(content)
             .setColor("Red");
           return embed;
         },
       )
+      // TODO)) Add moderator, remove reason and reason when using /unban
+      //        This info is missing when receiving the ban event from Discord
       .addMessageType(
         "guildBanRemove",
         async ({ timestamp }, { ban }: GuildBanRemoveData) => {
