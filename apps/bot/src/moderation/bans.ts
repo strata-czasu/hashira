@@ -1,8 +1,16 @@
-import { Hashira } from "@hashira/core";
+import { type ExtractContext, Hashira } from "@hashira/core";
 import {
+  ActionRowBuilder,
   AuditLogEvent,
+  type ChatInputCommandInteraction,
+  type ModalActionRowComponentBuilder,
+  ModalBuilder,
+  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  TextInputBuilder,
+  TextInputStyle,
+  type User,
   hideLinkEmbed,
   italic,
   userMention,
@@ -26,6 +34,53 @@ enum BanDeleteInterval {
 }
 const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
   return deleteInterval * 3600;
+};
+
+const applyBan = async (
+  itx: ChatInputCommandInteraction<"cached"> | ModalSubmitInteraction<"cached">,
+  user: User,
+  reason: string,
+  deleteInterval: BanDeleteInterval | null,
+  log: ExtractContext<typeof base>["moderationLog"],
+) => {
+  const sentMessage = await sendDirectMessage(
+    user,
+    `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+      itx.user.tag
+    }) nałożył Ci karę bana. Powodem Twojego bana jest ${italic(
+      reason,
+    )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
+      STRATA_BAN_APPEAL_URL,
+    )}.`,
+  );
+  const banReason = formatBanReason(reason, itx.user, itx.createdAt);
+
+  await discordTry(
+    async () => {
+      if (!deleteInterval) {
+        await itx.guild.members.ban(user, { reason: banReason });
+      } else {
+        await itx.guild.members.ban(user, {
+          reason: banReason,
+          deleteMessageSeconds: getBanDeleteSeconds(deleteInterval),
+        });
+      }
+      log.push("guildBanAdd", itx.guild, { reason, user, moderator: itx.user });
+      await itx.editReply(
+        `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+      );
+      if (!sentMessage) {
+        await itx.followUp({
+          content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+          ephemeral: true,
+        });
+      }
+    },
+    [RESTJSONErrorCodes.MissingPermissions],
+    async () => {
+      await errorFollowUp(itx, "Nie mam uprawnień do zbanowania tego użytkownika.");
+    },
+  );
 };
 
 const BAN_FIXUP_GUILDS: string[] = [
@@ -71,49 +126,7 @@ export const bans = new Hashira({ name: "bans" })
           const user = await parseUserMentionWorkaround(rawUser, itx);
           if (!user) return;
 
-          const sentMessage = await sendDirectMessage(
-            user,
-            `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-              itx.user.tag
-            }) nałożył Ci karę bana. Powodem Twojego bana jest ${italic(
-              reason,
-            )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
-              STRATA_BAN_APPEAL_URL,
-            )}.`,
-          );
-          const banReason = formatBanReason(reason, itx.user, itx.createdAt);
-
-          await discordTry(
-            async () => {
-              if (!deleteInterval) {
-                await itx.guild.members.ban(user, { reason: banReason });
-              } else {
-                await itx.guild.members.ban(user, {
-                  reason: banReason,
-                  deleteMessageSeconds: getBanDeleteSeconds(deleteInterval),
-                });
-              }
-              log.push("guildBanAdd", itx.guild, { reason, user, moderator: itx.user });
-              await itx.editReply(
-                `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-              );
-              if (!sentMessage) {
-                await itx.followUp({
-                  content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
-                    user,
-                  )}.`,
-                  ephemeral: true,
-                });
-              }
-            },
-            [RESTJSONErrorCodes.MissingPermissions],
-            async () => {
-              await errorFollowUp(
-                itx,
-                "Nie mam uprawnień do zbanowania tego użytkownika.",
-              );
-            },
-          );
+          await applyBan(itx, user, reason, deleteInterval, log);
         },
       ),
   )
@@ -179,6 +192,46 @@ export const bans = new Hashira({ name: "bans" })
           },
         );
       }),
+  )
+  .userContextMenu(
+    "ban",
+    PermissionFlagsBits.BanMembers,
+    async ({ moderationLog: log }, itx) => {
+      if (!itx.inCachedGuild()) return;
+
+      const rows = [
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+          new TextInputBuilder()
+            .setCustomId("reason")
+            .setLabel("Powód bana")
+            .setRequired(true)
+            .setMinLength(2)
+            .setStyle(TextInputStyle.Paragraph),
+        ),
+        // TODO)) Delete interval
+      ];
+      const modal = new ModalBuilder()
+        .setCustomId(`ban-${itx.targetUser.id}`)
+        .setTitle(`Zbanuj ${itx.targetUser.tag}`)
+        .addComponents(...rows);
+      await itx.showModal(modal);
+
+      const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
+      await submitAction.deferReply();
+
+      // TODO)) Abstract this into a helper/common util
+      const reason = submitAction.components
+        .at(0)
+        ?.components.find((c) => c.customId === "reason")?.value;
+      if (!reason) {
+        return await errorFollowUp(
+          submitAction,
+          "Nie podano wszystkich wymaganych danych!",
+        );
+      }
+
+      await applyBan(submitAction, itx.targetUser, reason, null, log);
+    },
   )
   .handle("guildBanAdd", async ({ moderationLog: log }, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons
