@@ -17,6 +17,7 @@ import {
 import { base } from "../base";
 import { GUILD_IDS, STRATA_BAN_APPEAL_URL } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
+import { durationToSeconds, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -31,7 +32,7 @@ enum BanDeleteInterval {
   ThreeDays = 24 * 3,
   SevenDays = 24 * 7,
 }
-const getBanDeleteSeconds = (deleteInterval: BanDeleteInterval) => {
+const getBanDeleteSeconds = (deleteInterval: number) => {
   return deleteInterval * 3600;
 };
 
@@ -39,7 +40,7 @@ const applyBan = async (
   itx: ChatInputCommandInteraction<"cached"> | ModalSubmitInteraction<"cached">,
   user: User,
   reason: string,
-  deleteInterval: BanDeleteInterval | null,
+  deleteMessageSeconds: number | null,
   log: ExtractContext<typeof base>["moderationLog"],
 ) => {
   const sentMessage = await sendDirectMessage(
@@ -54,12 +55,12 @@ const applyBan = async (
 
   await discordTry(
     async () => {
-      if (!deleteInterval) {
+      if (!deleteMessageSeconds) {
         await itx.guild.members.ban(user, { reason: banReason });
       } else {
         await itx.guild.members.ban(user, {
           reason: banReason,
-          deleteMessageSeconds: getBanDeleteSeconds(deleteInterval),
+          deleteMessageSeconds,
         });
       }
       log.push("guildBanAdd", itx.guild, { reason, user, moderator: itx.user });
@@ -123,7 +124,11 @@ export const bans = new Hashira({ name: "bans" })
           const user = await parseUserMentionWorkaround(rawUser, itx);
           if (!user) return;
 
-          await applyBan(itx, user, reason, deleteInterval, log);
+          const banDeleteSeconds = deleteInterval
+            ? getBanDeleteSeconds(deleteInterval)
+            : null;
+
+          await applyBan(itx, user, reason, banDeleteSeconds, log);
         },
       ),
   )
@@ -205,7 +210,15 @@ export const bans = new Hashira({ name: "bans" })
             .setMinLength(2)
             .setStyle(TextInputStyle.Paragraph),
         ),
-        // TODO)) Delete interval
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+          new TextInputBuilder()
+            .setCustomId("delete-interval")
+            .setLabel("Przedział czasowy usuwania wiadomości")
+            .setRequired(false)
+            .setPlaceholder("1h, 6h, 12h, 1d, 3d, 7d")
+            .setMinLength(2)
+            .setStyle(TextInputStyle.Short),
+        ),
       ];
       const modal = new ModalBuilder()
         .setCustomId(`ban-${itx.targetUser.id}`)
@@ -220,6 +233,10 @@ export const bans = new Hashira({ name: "bans" })
       const reason = submitAction.components
         .at(0)
         ?.components.find((c) => c.customId === "reason")?.value;
+      const rawDeleteInterval =
+        submitAction.components
+          .at(1)
+          ?.components.find((c) => c.customId === "delete-interval")?.value || null;
       if (!reason) {
         return await errorFollowUp(
           submitAction,
@@ -227,7 +244,19 @@ export const bans = new Hashira({ name: "bans" })
         );
       }
 
-      await applyBan(submitAction, itx.targetUser, reason, null, log);
+      let deleteMessageSeconds: number | null = null;
+      if (rawDeleteInterval) {
+        const parsedDuration = parseDuration(rawDeleteInterval);
+        if (!parsedDuration) {
+          return await errorFollowUp(
+            submitAction,
+            "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+          );
+        }
+        deleteMessageSeconds = durationToSeconds(parsedDuration);
+      }
+
+      await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds, log);
     },
   )
   .handle("guildBanAdd", async ({ moderationLog: log }, { guild, user }) => {
