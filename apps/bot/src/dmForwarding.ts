@@ -12,6 +12,7 @@ import {
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { parseUserMentionWorkaround } from "./util/parseUsers";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 const DM_FORWARD_CHANNEL_ID = "1240038565275238430";
@@ -47,17 +48,18 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       .addCommand("send", (command) =>
         command
           .setDescription("Wyślij prywatną wiaodmość")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("user", (user) => user.setDescription("Użytkownik"))
           .addString("content", (content) => content.setDescription("Treść wiadomości"))
-          .handle(async (_, { user, content }, itx) => {
-            if (user.id === itx.client.user.id) {
-              await itx.reply({
-                content: "Nie mogę wysłać wiadomości do siebie",
-                ephemeral: true,
-              });
-              return;
-            }
+          .handle(async (_, { user: rawUser, content }, itx) => {
+            if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
+
+            if (user.id === itx.client.user.id) {
+              return await errorFollowUp(itx, "Nie mogę wysłać wiadomości do siebie");
+            }
 
             const logChannel = await discordTry(
               async () => itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID),
@@ -84,9 +86,13 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       .addCommand("history", (command) =>
         command
           .setDescription("Wyświetl historię wiadomości")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async (_, { user }, itx) => {
+          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async (_, { user: rawUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
 
             if (user.id === itx.client.user.id) {
               return await errorFollowUp(
