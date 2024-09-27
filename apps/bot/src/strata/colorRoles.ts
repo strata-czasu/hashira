@@ -152,8 +152,8 @@ export const colorRoles = new Hashira({ name: "color-role" })
 
               const colorRole = await prisma.colorRole.findFirst({
                 where: {
-                  ownerId: owner.id,
                   guildId: itx.guildId,
+                  roleId: role.id,
                 },
               });
 
@@ -174,7 +174,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                     await itx.followUp(`Nadpisano kolor ${role.name} dla ${owner.tag}`);
                   },
                   async () => {},
-                  (itx) => itx.user.id === owner.id,
+                  (buttonItx) => buttonItx.user.id === itx.user.id,
                 );
 
                 await confirmation.render(itx);
