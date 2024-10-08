@@ -31,6 +31,6 @@ RUN apt-get update && apt-get install -y ca-certificates libssl3 libstdc++6 && r
 
 WORKDIR /app
 
-COPY --from=build /app/hashira/dist/hashira /usr/local/bin/hashira
+COPY --from=build /app/dist/hashira /usr/local/bin/hashira
 
 CMD ["hashira"]
