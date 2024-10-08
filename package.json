@@ -20,6 +20,7 @@
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",
     "prisma-migrate-create": "bun run --cwd packages/db prisma migrate create",
     "prisma-push": "bun run --cwd packages/db prisma-push",
+    "compile": "bun build apps/bot/src/index.ts --compile --outfile dist/hashira",
     "drop": "bun run --cwd packages/db drop",
     "test:core": "bun run --cwd packages/core test",
     "test:bot": "bun run --cwd apps/bot test",
