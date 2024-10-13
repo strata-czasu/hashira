@@ -73,7 +73,7 @@ export class Logger<
 
   private async getLogChannel(guild: Guild) {
     const logChannel = this.#logChannels.get(guild.id);
-    if (!logChannel) {
+    if (!logChannel?.isSendable()) {
       throw new Error(`Log channel for guild ${guild.id} not initialized`);
     }
     return logChannel;
