@@ -57,7 +57,7 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
           [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
           () => null,
         );
-        if (!channel || !channel.isTextBased()) {
+        if (!channel || !channel.isSendable()) {
           return await errorFollowUp(
             submitAction,
             "Nie udało się wysłać zgłoszenia! Odezwij się bezpośrednio do kogoś z moderacji.",

@@ -28,7 +28,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
       () => null,
     );
-    if (!channel || !channel.isTextBased()) return;
+    if (!channel || !channel.isSendable()) return;
 
     await discordTry(
       async () =>
@@ -73,7 +73,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
               await itx.editReply(
                 `Wysłano wiadomość do ${userMention(user.id)}: ${content}`,
               );
-              if (logChannel?.isTextBased()) {
+              if (logChannel?.isSendable()) {
                 logChannel.send(
                   `${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`,
                 );

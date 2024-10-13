@@ -4,6 +4,7 @@ import {
   type ChatInputCommandInteraction,
   Client,
   ContextMenuCommandBuilder,
+  InteractionContextType,
   Partials,
   type Permissions,
   REST,
@@ -326,11 +327,11 @@ class Hashira<
     ) => Promise<void>,
   ): Hashira<Decorators, Commands> {
     const builder = new ContextMenuCommandBuilder()
-      .setDMPermission(false)
+      .setContexts(InteractionContextType.BotDM)
       .setDefaultMemberPermissions(permissions)
+      // @ts-expect-error This is a problem with @discord.js/builders as they use older discord-api-types version
       .setType(ApplicationCommandType.User)
       .setName(name)
-      // TODO)) Let the builder set this
       .setNameLocalization("en-US", capitalize(name));
     this.#userContextMenus.set(name, [
       builder,
@@ -507,6 +508,6 @@ class Hashira<
 
 export { ConfirmationDialog } from "./confirmationDialog";
 export { PaginatedView } from "./paginatedView";
-export { Hashira, decoratorInitBase };
 export type { Prettify } from "./types";
+export { Hashira, decoratorInitBase };
 export type { BaseDecorator, ExtractContext, HashiraContext, HashiraDecorators };

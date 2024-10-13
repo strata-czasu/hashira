@@ -24,9 +24,9 @@
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^5.20.0",
-    "prisma": "^5.20.0",
     "date-fns": "^4.1.0",
     "pg": "^8.13.0",
-    "postgres": "^3.4.4"
+    "postgres": "^3.4.4",
+    "prisma": "^5.20.0"
   }
 }
