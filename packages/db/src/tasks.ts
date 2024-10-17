@@ -50,6 +50,11 @@ type TaskFindOptions = {
   throwIfNotFound?: boolean;
 };
 
+const handleDelay = (delay: number | Date, accordingTo?: Date) => {
+  if (delay instanceof Date) return delay;
+  return addSeconds(accordingTo ?? new Date(), delay);
+};
+
 export class MessageQueue<
   const HandleTypes extends Handle = typeof initHandleTypes,
   const Args extends Record<string, unknown> = typeof initHandleTypes,
@@ -84,19 +89,19 @@ export class MessageQueue<
    * Enqueue a message to be handled later by the message queue
    * @param type {string} The type of message to be handled
    * @param data {unknown} The data to be handled
-   * @param delay {number} The delay in seconds before the message is handled
+   * @param delay {number|Date} The delay in seconds before the message is handled
    * @param identifier {string} The identifier of the task
    */
   async push<T extends keyof HandleTypes>(
     type: T,
     data: HandleTypes[T],
-    delay?: number,
+    delay?: number | Date,
     identifier?: string,
   ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    const handleAfter = delay ? addSeconds(new Date(), delay) : new Date();
+    const handleAfter = delay ? handleDelay(delay) : new Date();
 
     await this.#prisma.task.create({
       data: {
@@ -144,12 +149,12 @@ export class MessageQueue<
    * The endsAt value will be calculated from the original creation time of the task plus the new delay
    * @param type {string} The type of message to be handled
    * @param identifier {string} The identifier of the task
-   * @param delay {number} The delay in seconds before the message is handled
+   * @param delay {number|Date} The delay in seconds before the message is handled
    */
   async updateDelay<T extends keyof HandleTypes>(
     type: T,
     identifier: string,
-    delay: number,
+    delay: number | Date,
     options?: TaskFindOptions,
   ) {
     // This should never happen, but somehow typescript doesn't understand that
@@ -172,7 +177,7 @@ export class MessageQueue<
         return;
       }
 
-      const handleAfter = addSeconds(task.createdAt, delay);
+      const handleAfter = handleDelay(delay, task.createdAt);
       await tx.task.update({
         where: { id: task.id },
         data: { handleAfter },
