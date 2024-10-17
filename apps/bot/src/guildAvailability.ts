@@ -4,7 +4,7 @@ import type { Guild } from "discord.js";
 import { partition } from "es-toolkit";
 import { base } from "./base";
 import type { LogMessageType, Logger } from "./logging/logger";
-import { GUILD_IDS } from "./specializedConstants";
+import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
 
 type BaseContext = ExtractContext<typeof base>;
 const ALLOWED_GUILDS: string[] = Object.values(GUILD_IDS);
@@ -95,10 +95,17 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
 
     await Promise.all([...creationPromises, ...leavePromises]);
 
+    await registerGuildLogger(
+      ctx.strataCzasuLog,
+      await client.guilds.fetch(STRATA_CZASU.GUILD_ID),
+      STRATA_CZASU.MOD_LOG_CHANNEL_ID,
+    );
+
     ctx.messageLog.start(client);
     ctx.memberLog.start(client);
     ctx.moderationLog.start(client);
     ctx.profileLog.start(client);
+    ctx.strataCzasuLog.start(client);
   })
   .handle("guildCreate", async (ctx, guild) => {
     if (!ALLOWED_GUILDS.includes(guild.id)) {
