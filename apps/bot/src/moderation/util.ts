@@ -65,10 +65,15 @@ export const applyMute = async (
 
 export const formatBanReason = (
   reason: string,
-  moderator: User,
+  moderator: User | null,
   createdAt: Date,
-) => `${reason} (banujący: ${moderator.tag} (${moderator.id}), \
-data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")})`;
+) => {
+  const components = [reason];
+  if (moderator) components.push(` (banujący: ${moderator.tag} (${moderator.id})`);
+  components.push(`, data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")}`);
+
+  return components.join("");
+};
 
 export const scheduleVerificationReminders = async (
   messageQueue: BaseContext["messageQueue"],

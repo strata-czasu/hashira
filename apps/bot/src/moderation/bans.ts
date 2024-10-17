@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   AuditLogEvent,
   type ChatInputCommandInteraction,
+  type GuildAuditLogsEntry,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   type ModalSubmitInteraction,
@@ -22,6 +23,11 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
+
+const isBanGuildAuditLogsEntry = (
+  entry: GuildAuditLogsEntry,
+): entry is GuildAuditLogsEntry<AuditLogEvent.MemberBanAdd> =>
+  entry.action === AuditLogEvent.MemberBanAdd;
 
 enum BanDeleteInterval {
   None = 0,
@@ -259,7 +265,22 @@ export const bans = new Hashira({ name: "bans" })
       await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds, log);
     },
   )
-  .handle("guildBanAdd", async ({ moderationLog: log }, { guild, user }) => {
+  .handle("guildAuditLogEntryCreate", async ({ moderationLog: log }, entry, guild) => {
+    if (!isBanGuildAuditLogsEntry(entry)) return;
+
+    if (!entry.target) {
+      // NOTE: This possibly shouldn't happen, but types do not guarantee the target to be present
+      console.log("Possible audit log issue: Ban entry without target", entry);
+      return;
+    }
+
+    log.push("guildBanAdd", guild, {
+      reason: entry.reason,
+      user: entry.target,
+      moderator: entry.executor,
+    });
+  })
+  .handle("guildBanAdd", async (_, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons
     if (!BAN_FIXUP_GUILDS.includes(guild.id)) return;
 
@@ -268,8 +289,7 @@ export const bans = new Hashira({ name: "bans" })
       limit: 5,
     });
     const entry = auditLogs.entries.find((entry) => entry.targetId === user.id);
-    if (!entry?.executor || !entry?.createdAt || !entry?.reason) return;
-    if (entry.executor.bot) return;
+    if (!entry || entry.executor?.bot) return;
 
     await guild.members.unban(user, "Poprawienie powodu po manualnym zbanowaniu");
     const reason = formatBanReason(
@@ -277,10 +297,6 @@ export const bans = new Hashira({ name: "bans" })
       entry.executor,
       entry.createdAt,
     );
+
     await guild.members.ban(user, { reason: reason });
-    log.push("guildBanAdd", guild, {
-      reason: entry.reason,
-      user,
-      moderator: entry.executor,
-    });
   });

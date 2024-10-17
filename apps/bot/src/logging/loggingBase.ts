@@ -10,6 +10,7 @@ import {
   type Role,
   TimestampStyles,
   type User,
+  bold,
   channelMention,
   inlineCode,
   italic,
@@ -56,7 +57,7 @@ type MuteEditData = {
   oldDuration: Duration;
   newDuration: Duration | null;
 };
-type GuildBanAddData = { reason: string | null; user: User; moderator: User };
+type GuildBanAddData = { reason: string | null; user: User; moderator: User | null };
 type GuildBanRemoveData = { ban: GuildBan };
 
 const linkMessage = (message: GuildMessage) => `[Wiadomość](${message.url})`;
@@ -290,11 +291,18 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
       .addMessageType(
         "guildBanAdd",
         async ({ timestamp }, { reason, user, moderator }: GuildBanAddData) => {
-          let content = "**Otrzymuje bana**";
-          if (reason) content += `\nPowód: ${italic(reason)}`;
-          content += `\nModerator: ${userMention(moderator.id)}`;
+          const content: string[] = [bold("Otrzymuje bana")];
+
+          if (reason) content.push(`Powód: ${italic(reason)}`);
+
+          const moderatorMentionString = moderator
+            ? userMention(moderator.id)
+            : "Nieznany";
+
+          content.push(`Moderator: ${moderatorMentionString}`);
+
           const embed = getLogMessageEmbed(user, timestamp)
-            .setDescription(content)
+            .setDescription(content.join("\n"))
             .setColor("Red");
           return embed;
         },
