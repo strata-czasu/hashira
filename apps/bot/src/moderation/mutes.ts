@@ -493,7 +493,7 @@ export const mutes = new Hashira({ name: "mutes" })
 
                 return { updatedMute, hasOriginalEnded };
               });
-              if (!result) return;
+              if (!result || !result.updatedMute) return;
               const { updatedMute: mute, hasOriginalEnded } = result;
 
               const content = [
