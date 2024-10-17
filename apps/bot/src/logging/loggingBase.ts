@@ -60,6 +60,19 @@ type MuteEditData = {
 type GuildBanAddData = { reason: string | null; user: User; moderator: User | null };
 type GuildBanRemoveData = { ban: GuildBan };
 
+type UltimatumStartData = {
+  user: User;
+  createdAt: Date;
+  expiresAt: Date;
+  reason: string;
+};
+type UltimatumEndData = {
+  user: User;
+  createdAt: Date;
+  endedAt: Date;
+  reason: string;
+};
+
 const linkMessage = (message: GuildMessage) => `[Wiadomość](${message.url})`;
 const linkChannel = (channel: GuildBasedChannel) =>
   `${channelMention(channel.id)} (${channel.name})`;
@@ -318,6 +331,44 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
             .setDescription(content)
             .setColor("Green");
           return embed;
+        },
+      ),
+  )
+  .const(
+    "strataCzasuLog",
+    new Logger()
+      .addMessageType(
+        "ultimatumStart",
+        async (
+          { timestamp },
+          { user, createdAt, expiresAt, reason }: UltimatumStartData,
+        ) => {
+          const content = [
+            bold("Rozpoczyna ultimatum"),
+            `Poczatek: ${time(createdAt, TimestampStyles.RelativeTime)}`,
+            `Koniec: ${time(expiresAt, TimestampStyles.RelativeTime)}`,
+            `Powód: ${italic(reason)}`,
+          ];
+          return getLogMessageEmbed(user, timestamp)
+            .setDescription(content.join("\n"))
+            .setColor("Red");
+        },
+      )
+      .addMessageType(
+        "ultimatumEnd",
+        async (
+          { timestamp },
+          { user, createdAt, endedAt, reason }: UltimatumEndData,
+        ) => {
+          const content = [
+            bold("Kończy ultimatum"),
+            `Poczatek: ${time(createdAt, TimestampStyles.RelativeTime)}`,
+            `Koniec: ${time(endedAt, TimestampStyles.RelativeTime)}`,
+            `Powód: ${italic(reason)}`,
+          ];
+          return getLogMessageEmbed(user, timestamp)
+            .setDescription(content.join("\n"))
+            .setColor("Green");
         },
       ),
   );
