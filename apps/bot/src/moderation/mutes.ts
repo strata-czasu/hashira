@@ -404,13 +404,14 @@ export const mutes = new Hashira({ name: "mutes" })
                 return;
               }
 
-              const mute = await prisma.$transaction(async (tx) => {
+              const result = await prisma.$transaction(async (tx) => {
                 const mute = await getMute(tx, id, itx.guildId);
                 if (!mute) {
                   await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
                   return null;
                 }
                 const originalReason = mute.reason;
+                const hasOriginalEnded = mute.endsAt <= itx.createdAt;
                 const originalDuration = intervalToDuration({
                   start: mute.createdAt,
                   end: mute.endsAt,
@@ -438,7 +439,6 @@ export const mutes = new Hashira({ name: "mutes" })
                 if (reason) updates.reason = reason;
                 if (duration) updates.endsAt = add(mute.createdAt, duration);
 
-                // TODO: Save a log of this edit in the database
                 const updatedMute = await prisma.mute.update({
                   where: { id },
                   data: updates,
@@ -479,25 +479,42 @@ export const mutes = new Hashira({ name: "mutes" })
                         formatDuration(originalDuration),
                       )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
                     }
+                    if (hasOriginalEnded) {
+                      content += `\nTwoje wyciszenie zakończyło się ${time(
+                        mute.endsAt,
+                        TimestampStyles.RelativeTime,
+                      )}, więc te zmiany nie wpłyną na długość Twojego wyciszenia.`;
+                    }
                     await sendDirectMessage(member.user, content);
                   },
                   [RESTJSONErrorCodes.UnknownMember],
                   async () => {},
                 );
 
-                return updatedMute;
+                return { updatedMute, hasOriginalEnded };
               });
-              if (!mute) return;
+              if (!result) return;
+              const { updatedMute: mute, hasOriginalEnded } = result;
 
-              await itx.editReply(
-                `Zaktualizowano wyciszenie ${inlineCode(id.toString())}. `
-                  .concat(reason ? `\nNowy powód: ${italic(reason)}` : "")
-                  .concat(
-                    rawDuration
-                      ? `\nKoniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`
-                      : "",
-                  ),
-              );
+              const content = [
+                `Zaktualizowano wyciszenie ${inlineCode(id.toString())}.`,
+              ];
+              if (reason) content.push(`Nowy powód: ${italic(reason)}`);
+              if (rawDuration) {
+                content.push(
+                  `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`,
+                );
+              }
+              if (hasOriginalEnded) {
+                content.push(
+                  `To wyciszenie już się zakończyło ${time(
+                    mute.endsAt,
+                    TimestampStyles.RelativeTime,
+                  )}, więc te zmiany nie wpłyną na długość wyciszenia.`,
+                );
+              }
+
+              await itx.editReply(content.join("\n"));
             },
           ),
       ),
