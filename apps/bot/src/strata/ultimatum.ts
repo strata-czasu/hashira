@@ -148,35 +148,45 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
       .addCommand("zakończ", (command) =>
         command
           .setDescription("Zakończ aktywne ultimatum")
+          .addString("użytkownik", (user) => user.setDescription("Użytkownik"))
           .addBoolean("force", (force) =>
             force.setDescription("Zakończ ultimatum siłą").setRequired(false),
           )
-          .handle(async ({ prisma, messageQueue }, { force }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async ({ prisma, messageQueue }, { użytkownik: rawUser, force }, itx) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const ultimatum = await getCurrentUltimatum(prisma, itx.guild, itx.user);
+              const user = await parseUserMentionWorkaround(rawUser, itx);
 
-            if (!ultimatum) {
-              await itx.editReply("Nie znaleziono aktywnego ultimatum");
-              return;
-            }
+              if (!user) {
+                await itx.editReply("Nie znaleziono użytkownika");
+                return;
+              }
 
-            await messageQueue.updateDelay(
-              "ultimatumEnd",
-              ultimatum.id.toString(),
-              new Date(),
-            );
+              const ultimatum = await getCurrentUltimatum(prisma, itx.guild, user);
 
-            if (force) {
-              await prisma.ultimatum.update({
-                where: { id: ultimatum.id },
-                data: { endedAt: new Date() },
-              });
-            }
+              if (!ultimatum) {
+                await itx.editReply("Nie znaleziono aktywnego ultimatum");
+                return;
+              }
 
-            await itx.editReply("Zakończono ultimatum");
-          }),
+              await messageQueue.updateDelay(
+                "ultimatumEnd",
+                ultimatum.id.toString(),
+                new Date(),
+              );
+
+              if (force) {
+                await prisma.ultimatum.update({
+                  where: { id: ultimatum.id },
+                  data: { endedAt: new Date() },
+                });
+              }
+
+              await itx.editReply("Zakończono ultimatum");
+            },
+          ),
       ),
   )
   .handle("guildMemberAdd", async ({ prisma }, member) => {
