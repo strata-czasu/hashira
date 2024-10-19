@@ -110,6 +110,7 @@ model Guild {
   wallet             Wallet[]
   warn               Warn[]
   protectedInvites   ProtectedInvite[]
+  ultimatums         Ultimatum[]
 
   @@map("guild")
 }
@@ -266,6 +267,7 @@ model User {
   receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
+  ultimatums                        Ultimatum[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
@@ -325,6 +327,18 @@ model Warn {
 
   @@index([userId], map: "warn_userId_index")
   @@map("warn")
+}
+
+model Ultimatum {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  endedAt   DateTime?
+  userId    String
+  guildId   String
+  reason    String
+  guild     Guild     @relation(fields: [guildId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 }
 
 enum EntryType {
