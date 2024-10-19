@@ -30,6 +30,7 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
+import { getCurrentUltimatum } from "../strata/ultimatum";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -253,6 +254,9 @@ export const universalAddMute = async ({
     await reply(`Nie udało się wysłać wiadomości do ${userMention(userId)}.`);
   }
 
+  const currentUltimatum = await getCurrentUltimatum(prisma, guild, member.user);
+  if (currentUltimatum) await reply("Użytkownik ma aktywne ultimatum.");
+
   return mute;
 };
 
@@ -282,7 +286,7 @@ const addMute = async ({
     moderator: itx.user,
     duration: rawDuration,
     reason,
-    reply: (content) => itx.editReply({ content }),
+    reply: (content) => itx.followUp({ content }),
   });
 };
 

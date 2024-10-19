@@ -1,16 +1,38 @@
 import { Hashira } from "@hashira/core";
+import type { ExtendedPrismaClient } from "@hashira/db";
 import { addSeconds } from "date-fns";
-import { PermissionFlagsBits, bold } from "discord.js";
+import {
+  type Guild,
+  PermissionFlagsBits,
+  type User,
+  italic,
+  userMention,
+} from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
-const ULTIMATUM_BASE_MESSAGE = [
-  "Hej,",
-  "otrzymujesz z dniem dzisiejszym Ultimatum. Oznacza to, że jeżeli otrzymasz jakąkolwiek karę w ciągu najbliższych 60 dni, to zostanie na Ciebie nałożona automatyczna kara w postaci bana.",
-  "**Zasady ultimatum**: https://discord.com/channels/211261411119202305/1242497355240968295/1242501552900669500",
-];
+export const getCurrentUltimatum = async (
+  prisma: ExtendedPrismaClient,
+  guild: Guild,
+  user: User,
+) => {
+  return prisma.ultimatum.findFirst({
+    where: { userId: user.id, guildId: guild.id, endedAt: null },
+  });
+};
+
+const ULTIMATUM_TEMPLATE = `
+## Hejka {{mention}}!
+Przed chwilą **nałożyłem Ci rolę Ultimatum**. Jeżeli przez najbliższe **60 dni** otrzymasz jakąkolwiek **karę Mute** na naszym serwerze, to niestety będę musiał **zamienić Ci ją na bana** - na tym polega posiadanie Ultimatum. Mam nadzieję, że przez najbliższe dwa miesiące nie złamiesz naszych Zasad dostępnych pod [tym linkiem](https://discord.com/channels/211261411119202305/873167662082056232/1270484486131290255) i zostaniesz z nami na serwerze na dłużej. W razie pytań zapraszam Cię na nasz [kanał od ticketów](https://discord.com/channels/211261411119202305/1213901611836117052/1219338768012804106).
+
+**Oto powód Twojego Ultimatum:**
+*{{reason}}*
+
+Pozdrawiam,
+Biszkopt
+`;
 
 export const ultimatum = new Hashira({ name: "ultimatum" })
   .use(base)
@@ -29,7 +51,6 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
               { użytkownik: rawUser, powód: reason },
               itx,
             ) => {
-              console.log("xd");
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -39,9 +60,11 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 return;
               }
 
-              const currentUltimatum = await prisma.ultimatum.findFirst({
-                where: { userId: user.id, guildId: itx.guild.id, endedAt: null },
-              });
+              const currentUltimatum = await getCurrentUltimatum(
+                prisma,
+                itx.guild,
+                user,
+              );
 
               if (currentUltimatum) {
                 await itx.editReply("Użytkownik ma już aktywne ultimatum");
@@ -68,7 +91,10 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
 
               await sendDirectMessage(
                 user,
-                [...ULTIMATUM_BASE_MESSAGE, `${bold("Powód")}: ${reason}`].join("\n"),
+                ULTIMATUM_TEMPLATE.replace("{{mention}}", userMention(user.id)).replace(
+                  "{{reason}}",
+                  italic(reason),
+                ),
               );
 
               strataCzasuLog.push("ultimatumStart", itx.guild, {
@@ -118,28 +144,29 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
       .addCommand("zakończ", (command) =>
         command
           .setDescription("Zakończ aktywne ultimatum")
-          .addNumber("id", (id) => id.setDescription("ID ultimatum"))
           .addBoolean("force", (force) =>
             force.setDescription("Zakończ ultimatum siłą").setRequired(false),
           )
-          .handle(async ({ prisma, messageQueue }, { id, force }, itx) => {
+          .handle(async ({ prisma, messageQueue }, { force }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const ultimatum = await prisma.ultimatum.findFirst({
-              where: { id, guildId: itx.guild.id, endedAt: null },
-            });
+            const ultimatum = await getCurrentUltimatum(prisma, itx.guild, itx.user);
 
             if (!ultimatum) {
-              await itx.editReply("Nie znaleziono aktywnego ultimatum o podanym ID");
+              await itx.editReply("Nie znaleziono aktywnego ultimatum");
               return;
             }
 
-            await messageQueue.updateDelay("ultimatumEnd", id.toString(), new Date());
+            await messageQueue.updateDelay(
+              "ultimatumEnd",
+              ultimatum.id.toString(),
+              new Date(),
+            );
 
             if (force) {
               await prisma.ultimatum.update({
-                where: { id },
+                where: { id: ultimatum.id },
                 data: { endedAt: new Date() },
               });
             }

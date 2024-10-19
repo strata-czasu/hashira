@@ -50,8 +50,6 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               where: { userId, guildId, endedAt: null },
             });
 
-            console.log("currentUltimatum", currentUltimatum);
-
             if (!currentUltimatum) return;
 
             const guild = await discordTry(
