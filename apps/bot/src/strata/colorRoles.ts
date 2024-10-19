@@ -8,7 +8,6 @@ import {
   resolveColor,
   time,
 } from "discord.js";
-import { match } from "ts-pattern";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -33,14 +32,22 @@ const getColor = (rawColor: ColorResolvable | string) => {
 const readExpiration = (expiration: string): Date | null => {
   const now = new Date();
 
-  return match(expiration)
-    .with("1d", () => addDays(now, 1))
-    .with("1w", () => addWeeks(now, 1))
-    .with("1m", () => addMonths(now, 1))
-    .with("3m", () => addMonths(now, 3))
-    .with("6m", () => addMonths(now, 6))
-    .with("1y", () => addYears(now, 1))
-    .otherwise(() => null);
+  switch (expiration) {
+    case "1d":
+      return addDays(now, 1);
+    case "1w":
+      return addWeeks(now, 1);
+    case "1m":
+      return addMonths(now, 1);
+    case "3m":
+      return addMonths(now, 3);
+    case "6m":
+      return addMonths(now, 6);
+    case "1y":
+      return addYears(now, 1);
+    default:
+      return null;
+  }
 };
 
 export const colorRoles = new Hashira({ name: "color-role" })

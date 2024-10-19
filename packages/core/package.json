@@ -13,7 +13,6 @@
     "@hashira/paginate": "workspace:*",
     "discord-api-types": "^0.37.101",
     "discord.js": "^14.16.3",
-    "es-toolkit": "^1.24.0",
-    "ts-pattern": "5.4.0"
+    "es-toolkit": "^1.24.0"
   }
 }

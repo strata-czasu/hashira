@@ -10,7 +10,6 @@ import {
   ComponentType,
   type Message,
 } from "discord.js";
-import { match } from "ts-pattern";
 
 type CreateFilter = (
   interaction: ChatInputCommandInteraction<CacheType>,
@@ -110,20 +109,23 @@ export class PaginatedView<T> {
         time: 60_000,
       });
 
-      const newItems = await match(buttonAction)
-        .with({ customId: "previous" }, async () => await this.#paginator.previous())
-        .with({ customId: "next" }, async () => await this.#paginator.next())
-        .with({ customId: "orderBy" }, async () => await this.#paginator.reorder())
-        .run();
-
-      this.#items = newItems;
+      this.#items = await this.getNewItems(buttonAction.customId);
 
       buttonAction.deferUpdate();
+
       await this.render(interaction);
     } catch (error) {
       // Handle timeout
       await this.#message.edit({ components: [] });
     }
+  }
+
+  private async getNewItems(buttonType: string) {
+    if (buttonType === "previous") return await this.#paginator.previous();
+    if (buttonType === "next") return await this.#paginator.next();
+    if (buttonType === "reoder") return await this.#paginator.reorder();
+
+    throw new Error(`Unknown button type: ${buttonType}`);
   }
 
   private getFooter() {

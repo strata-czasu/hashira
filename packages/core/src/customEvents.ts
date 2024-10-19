@@ -1,5 +1,4 @@
 import type { ClientEvents } from "discord.js";
-import { match } from "ts-pattern";
 import type { CustomEventMethodName } from "./intents";
 
 const customEventToInternalEvent = {
@@ -30,20 +29,19 @@ const filter =
 export const handleCustomEvent = (
   event: CustomEventMethodName,
   handler: (...args: unknown[]) => Promise<void>,
-): readonly [CustomEventToInternalEvent[typeof event], InternalHandler<typeof event>] =>
-  match(event)
-    .with("directMessageCreate", (value) => {
-      return [
-        customEventToInternalEvent[value],
-        filter((message) => !message.inGuild(), handler),
-      ] as const;
-    })
-    .with(
-      "guildMessageCreate",
-      (value) =>
-        [
-          customEventToInternalEvent[value],
-          filter((message) => message.inGuild(), handler),
-        ] as const,
-    )
-    .exhaustive();
+): readonly [
+  CustomEventToInternalEvent[typeof event],
+  InternalHandler<typeof event>,
+] => {
+  if (event === "directMessageCreate") {
+    return [
+      customEventToInternalEvent[event],
+      filter((message) => !message.inGuild(), handler),
+    ] as const;
+  }
+
+  return [
+    customEventToInternalEvent[event],
+    filter((message) => message.inGuild(), handler),
+  ] as const;
+};

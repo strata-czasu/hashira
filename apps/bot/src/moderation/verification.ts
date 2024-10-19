@@ -19,7 +19,6 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { match } from "ts-pattern";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
@@ -55,12 +54,16 @@ const satisfiesVerificationLevel = (
 };
 
 const formatVerificationType = (type: VerificationLevel | null) => {
-  return match(type)
-    .with("plus13", () => "13+")
-    .with("plus16", () => "16+")
-    .with("plus18", () => "18+")
-    .with(null, () => "Brak")
-    .exhaustive();
+  switch (type) {
+    case "plus13":
+      return "13+";
+    case "plus16":
+      return "16+";
+    case "plus18":
+      return "18+";
+    default:
+      return "Brak";
+  }
 };
 
 const getActive16PlusVerification = async (

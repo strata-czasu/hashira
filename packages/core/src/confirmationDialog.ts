@@ -9,7 +9,6 @@ import {
   ComponentType,
   type Message,
 } from "discord.js";
-import { match } from "ts-pattern";
 
 type DialogCallback = () => Promise<void>;
 type DialogFilter = CollectorFilter<[ButtonInteraction]>;
@@ -81,12 +80,7 @@ export class ConfirmationDialog {
         time: 60_000,
       });
 
-      const callback = match(buttonAction.customId)
-        .with("accept", () => this.#acceptCallback)
-        .with("decline", () => this.#declineCallback)
-        .otherwise(() => this.#declineCallback);
-
-      await callback();
+      await this.runCallback(buttonAction.customId);
     } catch (error) {
       // Handle timeout
       if (this.#timeoutCallback) {
@@ -95,5 +89,11 @@ export class ConfirmationDialog {
         await this.#message.edit({ components: [] });
       }
     }
+  }
+
+  private async runCallback(customId: string) {
+    if (customId === "accept") return await this.#acceptCallback();
+
+    return await this.#declineCallback();
   }
 }
