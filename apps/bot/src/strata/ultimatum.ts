@@ -10,6 +10,7 @@ import {
 } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
+import { ensureUsersExist } from "../util/ensureUsersExist";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
@@ -55,10 +56,13 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
               await itx.deferReply();
 
               const user = await parseUserMentionWorkaround(rawUser, itx);
+
               if (!user) {
                 await itx.editReply("Nie znaleziono użytkownika");
                 return;
               }
+
+              await ensureUsersExist(prisma, [itx.user, user]);
 
               const currentUltimatum = await getCurrentUltimatum(
                 prisma,
@@ -174,4 +178,11 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
             await itx.editReply("Zakończono ultimatum");
           }),
       ),
-  );
+  )
+  .handle("guildMemberAdd", async ({ prisma }, member) => {
+    const ultimatum = await getCurrentUltimatum(prisma, member.guild, member.user);
+
+    if (!ultimatum) return;
+
+    await member.roles.add(STRATA_CZASU.ULTIMATUM_ROLE, "Dodano ultimatum");
+  });

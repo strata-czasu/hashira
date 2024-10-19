@@ -1,3 +1,5 @@
+import { durationToSeconds } from "./util/duration";
+
 export const GUILD_IDS = {
   Piwnica: "342022299957854220",
   StrataCzasu: "211261411119202305",
@@ -26,11 +28,8 @@ export const STRATA_BAN_APPEAL_URL = "https://bit.ly/unban_na_stracie";
 
 // TODO: Convert all above constant into this format
 export const STRATA_CZASU = {
-  GUILD_ID: GUILD_IDS.Homik,
-  // GUILD_ID: GUILD_IDS.StrataCzasu,
-  // ULTIMATUM_ROLE: "452888858934378497",
-  ULTIMATUM_DURATION: 60,
-  ULTIMATUM_ROLE: "1245119449346871366",
-  // MOD_LOG_CHANNEL_ID: "1285004804602593301",
-  MOD_LOG_CHANNEL_ID: "1285715909117218816",
+  GUILD_ID: GUILD_IDS.StrataCzasu,
+  ULTIMATUM_ROLE: "452888858934378497",
+  ULTIMATUM_DURATION: durationToSeconds({ days: 60 }),
+  MOD_LOG_CHANNEL_ID: "1285004804602593301",
 };

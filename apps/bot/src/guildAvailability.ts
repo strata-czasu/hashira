@@ -95,17 +95,21 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
 
     await Promise.all([...creationPromises, ...leavePromises]);
 
-    await registerGuildLogger(
-      ctx.strataCzasuLog,
-      await client.guilds.fetch(STRATA_CZASU.GUILD_ID),
-      STRATA_CZASU.MOD_LOG_CHANNEL_ID,
-    );
+    try {
+      await registerGuildLogger(
+        ctx.strataCzasuLog,
+        await client.guilds.fetch(STRATA_CZASU.GUILD_ID),
+        STRATA_CZASU.MOD_LOG_CHANNEL_ID,
+      );
+      ctx.strataCzasuLog.start(client);
+    } catch (e) {
+      console.error("Failed to register Strata Czasu logger", e);
+    }
 
     ctx.messageLog.start(client);
     ctx.memberLog.start(client);
     ctx.moderationLog.start(client);
     ctx.profileLog.start(client);
-    ctx.strataCzasuLog.start(client);
   })
   .handle("guildCreate", async (ctx, guild) => {
     if (!ALLOWED_GUILDS.includes(guild.id)) {
