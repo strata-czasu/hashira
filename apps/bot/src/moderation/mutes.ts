@@ -179,11 +179,6 @@ export const universalAddMute = async ({
     return;
   }
 
-  if (durationToSeconds(parsedDuration) === 0) {
-    await reply("Nie można ustawić czasu trwania wyciszenia na 0");
-    return;
-  }
-
   const endsAt = add(now, parsedDuration);
 
   await ensureUsersExist(prisma, [userId, moderator.id]);
@@ -202,13 +197,17 @@ export const universalAddMute = async ({
       },
     });
 
-    if (!mute) return null;
+    const durationSeconds = durationToSeconds(parsedDuration);
+
+    // If the duration is 0, we don't need to apply the mute role or set a timeout for it
+    if (durationSeconds === 0) return mute;
 
     const appliedMute = await applyMute(
       member,
       muteRoleId,
       `Wyciszenie: ${reason} [${mute.id}]`,
     );
+
     if (!appliedMute) {
       await reply(
         "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
@@ -216,17 +215,19 @@ export const universalAddMute = async ({
 
       throw new Error(`Failed to apply mute for user ${userId} at guild ${guildId}`);
     }
+
+    await messageQueue.push(
+      "muteEnd",
+      { muteId: mute.id, guildId, userId },
+      durationSeconds,
+      mute.id.toString(),
+    );
+
     return mute;
   });
 
   if (!mute) return;
 
-  await messageQueue.push(
-    "muteEnd",
-    { muteId: mute.id, guildId, userId },
-    durationToSeconds(parsedDuration),
-    mute.id.toString(),
-  );
   log.push("muteCreate", guild, { mute, moderator: moderator });
 
   await reply(
