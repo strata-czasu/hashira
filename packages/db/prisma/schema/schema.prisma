@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
 }
 
 datasource db {
@@ -58,22 +59,6 @@ model ColorRole {
   @@map("colorRole")
 }
 
-model Currency {
-  id                               Int      @id(map: "core_currency_pkey") @default(autoincrement())
-  name                             String
-  symbol                           String
-  guildId                          String
-  createdBy                        String
-  createdAt                        DateTime @default(now()) @db.Timestamp(6)
-  user                             User     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
-  guild                            Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
-  wallet_wallet_currencyTocurrency Wallet[] @relation("wallet_currencyTocurrency")
-
-  @@unique([guildId, name], map: "currency_guildId_name_unique")
-  @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")
-  @@map("currency")
-}
-
 model DailyPointsRedeems {
   id        Int      @id(map: "strata_daily_points_redeems_pkey") @default(autoincrement())
   guildId   String
@@ -97,20 +82,21 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                 String               @id(map: "core_guild_pkey")
-  autoRole           AutoRole[]
-  colorRole          ColorRole[]
-  currency           Currency[]
-  dailyPointsRedeems DailyPointsRedeems[]
-  emojiUsage         EmojiUsage[]
-  guildSettings      GuildSettings?
-  mute               Mute[]
-  userTextActivity   UserTextActivity[]
-  verification       Verification[]
-  wallet             Wallet[]
-  warn               Warn[]
-  protectedInvites   ProtectedInvite[]
-  ultimatums         Ultimatum[]
+  id                  String               @id(map: "core_guild_pkey")
+  autoRole            AutoRole[]
+  colorRole           ColorRole[]
+  currency            Currency[]
+  dailyPointsRedeems  DailyPointsRedeems[]
+  emojiUsage          EmojiUsage[]
+  guildSettings       GuildSettings?
+  mute                Mute[]
+  userTextActivities  UserTextActivity[]
+  userVoiceActivities UserVoiceActivity[]
+  verification        Verification[]
+  wallet              Wallet[]
+  warn                Warn[]
+  protectedInvites    ProtectedInvite[]
+  ultimatums          Ultimatum[]
 
   @@map("guild")
 }
@@ -215,36 +201,6 @@ model Task {
   @@map("task")
 }
 
-model Transaction {
-  id              Int             @id(map: "core_transaction_pkey") @default(autoincrement())
-  walletId        Int             @map("wallet")
-  relatedWalletId Int?            @map("relatedWallet")
-  relatedUserId   String?
-  amount          Int
-  createdAt       DateTime        @default(now()) @db.Timestamp(6)
-  reason          String?
-  transactionType TransactionType
-  entryType       EntryType
-  relatedUser     User?           @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
-  relatedWallet   Wallet?         @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
-  wallet          Wallet          @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
-
-  @@map("transaction")
-}
-
-model UserTextActivity {
-  id        Int      @id(map: "core_user_text_activity_pkey") @default(autoincrement())
-  userId    String
-  guildId   String
-  messageId String
-  channelId String
-  timestamp DateTime @db.Timestamp(6)
-  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_guildId_guild_id_fk")
-  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_userId_users_id_fk")
-
-  @@map("userTextActivity")
-}
-
 model User {
   id                                String                             @id(map: "core_users_pkey")
   verificationLevel                 VerificationLevel?
@@ -261,6 +217,7 @@ model User {
   createdShopItems                  ShopItem[]
   transactions                      Transaction[]
   userTextActivities                UserTextActivity[]
+  userVoiceActivities               UserVoiceActivity[]
   marriedUser                       User?                              @relation("usersTousers", fields: [marriedTo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_marriedTo_users_id_fk")
   wallets                           Wallet[]
   givenVerifications                Verification[]                     @relation("verification_moderatorIdTousers")
@@ -273,42 +230,6 @@ model User {
   other_users User[] @relation("usersTousers")
 
   @@map("users")
-}
-
-model Verification {
-  id          Int                 @id(map: "core_verification_pkey") @default(autoincrement())
-  createdAt   DateTime            @default(now()) @db.Timestamp(6)
-  acceptedAt  DateTime?           @db.Timestamp(6)
-  rejectedAt  DateTime?           @db.Timestamp(6)
-  guildId     String
-  userId      String
-  moderatorId String
-  type        VerificationType
-  status      VerificationStatus? @default(in_progress)
-  guild       Guild               @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_guildId_guild_id_fk")
-  moderator   User                @relation("verification_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_moderatorId_users_id_fk")
-  user        User                @relation("verification_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "verification_userId_users_id_fk")
-
-  @@map("verification")
-}
-
-model Wallet {
-  id                  Int           @id(map: "core_wallet_pkey") @default(autoincrement())
-  name                String
-  userId              String
-  currencyId          Int           @map("currency")
-  default             Boolean       @default(false)
-  createdAt           DateTime      @default(now()) @db.Timestamp(6)
-  guildId             String
-  balance             Int           @default(0)
-  relatedTransactions Transaction[] @relation("transaction_relatedWalletTowallet")
-  transactions        Transaction[] @relation("transaction_walletTowallet")
-  currency            Currency      @relation("wallet_currencyTocurrency", fields: [currencyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_currency_currency_id_fk")
-  guild               Guild         @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_guildId_guild_id_fk")
-  user                User          @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_userId_users_id_fk")
-
-  @@unique([userId, name, guildId], map: "wallet_userId_name_guildId_unique")
-  @@map("wallet")
 }
 
 model Warn {
@@ -341,13 +262,6 @@ model Ultimatum {
   user      User      @relation(fields: [userId], references: [id])
 }
 
-enum EntryType {
-  debit
-  credit
-
-  @@map("entry_type")
-}
-
 enum Status {
   pending
   completed
@@ -355,35 +269,4 @@ enum Status {
   cancelled
 
   @@map("status")
-}
-
-enum TransactionType {
-  transfer
-  add
-
-  @@map("transaction_type")
-}
-
-enum VerificationLevel {
-  plus13 @map("13_plus")
-  plus18 @map("18_plus")
-  plus16 @map("16_plus")
-
-  @@map("verification_level")
-}
-
-enum VerificationStatus {
-  in_progress
-  accepted
-  rejected
-
-  @@map("verification_status")
-}
-
-enum VerificationType {
-  plus13 @map("13_plus")
-  plus18 @map("18_plus")
-  plus16 @map("16_plus")
-
-  @@map("verification_type")
 }

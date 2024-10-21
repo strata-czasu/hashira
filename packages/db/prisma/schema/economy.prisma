@@ -1,0 +1,65 @@
+model Wallet {
+  id                  Int           @id(map: "core_wallet_pkey") @default(autoincrement())
+  name                String
+  userId              String
+  currencyId          Int           @map("currency")
+  default             Boolean       @default(false)
+  createdAt           DateTime      @default(now()) @db.Timestamp(6)
+  guildId             String
+  balance             Int           @default(0)
+  relatedTransactions Transaction[] @relation("transaction_relatedWalletTowallet")
+  transactions        Transaction[] @relation("transaction_walletTowallet")
+  currency            Currency      @relation("wallet_currencyTocurrency", fields: [currencyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_currency_currency_id_fk")
+  guild               Guild         @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_guildId_guild_id_fk")
+  user                User          @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_userId_users_id_fk")
+
+  @@unique([userId, name, guildId], map: "wallet_userId_name_guildId_unique")
+  @@map("wallet")
+}
+
+model Currency {
+  id                               Int      @id(map: "core_currency_pkey") @default(autoincrement())
+  name                             String
+  symbol                           String
+  guildId                          String
+  createdBy                        String
+  createdAt                        DateTime @default(now()) @db.Timestamp(6)
+  user                             User     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
+  guild                            Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
+  wallet_wallet_currencyTocurrency Wallet[] @relation("wallet_currencyTocurrency")
+
+  @@unique([guildId, name], map: "currency_guildId_name_unique")
+  @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")
+  @@map("currency")
+}
+
+enum TransactionType {
+  transfer
+  add
+
+  @@map("transaction_type")
+}
+
+enum EntryType {
+  debit
+  credit
+
+  @@map("entry_type")
+}
+
+model Transaction {
+  id              Int             @id(map: "core_transaction_pkey") @default(autoincrement())
+  walletId        Int             @map("wallet")
+  relatedWalletId Int?            @map("relatedWallet")
+  relatedUserId   String?
+  amount          Int
+  createdAt       DateTime        @default(now()) @db.Timestamp(6)
+  reason          String?
+  transactionType TransactionType
+  entryType       EntryType
+  relatedUser     User?           @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
+  relatedWallet   Wallet?         @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
+  wallet          Wallet          @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
+
+  @@map("transaction")
+}
