@@ -5,6 +5,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   PermissionFlagsBits,
@@ -259,6 +260,61 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             await view.render(itx);
           }),
       )
+      .addCommand("sprawdz", (command) =>
+        command
+          .setDescription("Sprawdź szczegóły głosowania")
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dMPoll.findFirst({
+              where: { id },
+              include: { options: { include: { votes: true } } },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+
+            await itx.deferReply();
+
+            const embed = new EmbedBuilder()
+              .setTitle(`Głosowanie ${poll.title} [${getDmPollStatus(poll)}]`)
+              .setDescription(poll.content)
+              .setFooter({ text: `ID: ${poll.id}` });
+
+            if (!poll.startedAt) {
+              embed.addFields([
+                {
+                  name: "Opcje",
+                  value: poll.options.map((option) => bold(option.option)).join("\n"),
+                },
+              ]);
+            } else if (poll.startedAt) {
+              const totalVotes = poll.options.reduce(
+                (acc, option) => acc + option.votes.length,
+                0,
+              );
+              const optionResults: string[] = [];
+              for (const option of poll.options) {
+                const percentage =
+                  totalVotes === 0 ? 0 : (option.votes.length / totalVotes) * 100;
+                optionResults.push(
+                  `${bold(option.option)}: ${option.votes.length} (${percentage.toFixed(0)}%)`,
+                );
+              }
+
+              // TODO)) Display total eliglible voters
+              embed.addFields([
+                {
+                  name: `Odpowiedzi (${totalVotes})`,
+                  value: optionResults.join("\n"),
+                },
+              ]);
+            }
+
+            await itx.editReply({ embeds: [embed] });
+          }),
+      )
       .addCommand("rozpocznij", (command) =>
         command
           .setDescription("Rozpocznij głosowanie")
@@ -302,6 +358,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await itx.deferReply();
             const successMembers = await prisma.$transaction(async (tx) => {
+              // TODO)) Save eliglibe voters (or their count?)
               await tx.dMPoll.update({
                 where: { id },
                 data: { startedAt: itx.createdAt },
