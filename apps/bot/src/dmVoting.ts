@@ -435,7 +435,24 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           include: { poll: true },
         });
         if (!option) {
-          console.error("Invalid optionId for vote-option button:", optionId, "user:");
+          console.error("Invalid optionId for vote-option button:", optionId);
+          await itx.editReply("Coś poszło nie tak...");
+          return;
+        }
+
+        const participant = await tx.dMPollParticipant.findFirst({
+          where: {
+            userId: itx.user.id,
+            poll: { options: { some: { id: optionId } } },
+          },
+        });
+        if (!participant) {
+          console.error(
+            "User is not a participant in the poll:",
+            itx.user.id,
+            "optionId:",
+            optionId,
+          );
           await itx.editReply("Coś poszło nie tak...");
           return;
         }
