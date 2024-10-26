@@ -43,7 +43,7 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
 
   const optionsInput = new TextInputBuilder()
     .setCustomId("options")
-    .setLabel("Opcje (oddzielone nowymi liniami)")
+    .setLabel("Opcje (oddzielone nowymi liniami, max. 5)")
     .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
     .setRequired(true)
     .setMinLength(2)
@@ -115,6 +115,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             const options = rawOptions.split("\n").map((option) => option.trim());
+            if (options.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+              );
+            }
 
             const poll = await prisma.dMPoll.create({
               data: {
@@ -182,6 +188,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             const options = rawOptions.split("\n").map((option) => option.trim());
+            if (options.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+              );
+            }
 
             await prisma.dMPoll.update({
               where: { id },
@@ -278,7 +290,6 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            // FIXME)) Max buttons per action row is 5 - split them
             const buttons = poll.options.map((option) =>
               new ButtonBuilder()
                 .setLabel(option.option)
