@@ -3,9 +3,12 @@ import { type DMPoll, type DMPollOption, DatabasePaginator } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   TextInputBuilder,
   TextInputStyle,
   TimestampStyles,
@@ -14,6 +17,7 @@ import {
   time,
 } from "discord.js";
 import { base } from "./base";
+import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 
 type DMPollWithOptions = DMPoll & { options: DMPollOption[] };
@@ -242,5 +246,137 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
             await view.render(itx);
           }),
+      )
+      .addCommand("rozpocznij", (command) =>
+        command
+          .setDescription("Rozpocznij głosowanie")
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .addRole("rola", (role) =>
+            role.setDescription("Rola, w której użytkownicy mogą głosować"),
+          )
+          .handle(async ({ prisma }, { id, rola: role }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dMPoll.findFirst({
+              where: { id },
+              include: { options: true },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+
+            if (poll.startedAt) {
+              return await errorFollowUp(
+                itx,
+                `Głosowanie zostało już rozpoczęte (${time(poll.startedAt, TimestampStyles.LongDateTime)})`,
+              );
+            }
+            if (poll.finishedAt) {
+              return await errorFollowUp(
+                itx,
+                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.LongDateTime)})`,
+              );
+            }
+
+            // FIXME)) Max buttons per action row is 5 - split them
+            const buttons = poll.options.map((option) =>
+              new ButtonBuilder()
+                .setLabel(option.option)
+                .setCustomId(`vote-option:${option.id}`)
+                .setStyle(ButtonStyle.Primary),
+            );
+            const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              buttons,
+            );
+
+            await itx.deferReply();
+            const successMembers = await prisma.$transaction(async (tx) => {
+              await tx.dMPoll.update({
+                where: { id },
+                data: { startedAt: itx.createdAt },
+              });
+
+              const sentToMembers = await Promise.all(
+                // FIXME)) Force-fetch all role members
+                role.members.map(async (member) =>
+                  discordTry(
+                    async () => {
+                      await member.send({
+                        content: poll.content,
+                        components: [actionRow],
+                      });
+                      return member;
+                    },
+                    [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                    () => null,
+                  ),
+                ),
+              );
+              const successMembers = sentToMembers.filter((m) => m !== null);
+              return successMembers;
+            });
+
+            const lines = [
+              `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+                successMembers.length.toString(),
+              )}/${bold(role.members.size.toString())} użytkowników.`,
+            ];
+
+            if (successMembers.length < role.members.size) {
+              const failedToSend = role.members.filter(
+                (m) => !successMembers.includes(m),
+              );
+              lines.push(
+                `Nie udało się wysłać wiadomości do: ${failedToSend
+                  .map((m) => m.user.tag)
+                  .join(", ")}`,
+              );
+            }
+
+            await itx.editReply(lines.join("\n"));
+          }),
       ),
-  );
+  )
+  .handle("ready", async ({ prisma }, client) => {
+    client.on("interactionCreate", async (itx) => {
+      if (!itx.isButton()) return;
+      // vote-option:optionId
+      if (!itx.customId.startsWith("vote-option:")) return;
+
+      await itx.deferReply({ ephemeral: true });
+
+      const [_, rawOptionId] = itx.customId.split(":");
+      if (!rawOptionId) {
+        console.error("Invalid customId for vote-option button:", itx.customId);
+        await itx.editReply("Coś poszło nie tak...");
+        return;
+      }
+      const optionId = Number.parseInt(rawOptionId, 10);
+
+      await prisma.$transaction(async (tx) => {
+        const option = await tx.dMPollOption.findFirst({
+          where: { id: optionId },
+          include: { poll: true },
+        });
+        if (!option) {
+          console.error("Invalid optionId for vote-option button:", optionId, "user:");
+          await itx.editReply("Coś poszło nie tak...");
+          return;
+        }
+
+        const { count: deletedCount } = await tx.dMPollVote.deleteMany({
+          where: { userId: itx.user.id, option: { pollId: option.pollId } },
+        });
+        const vote = await tx.dMPollVote.create({
+          data: { userId: itx.user.id, optionId },
+          include: { option: true },
+        });
+
+        if (deletedCount > 0) {
+          await itx.editReply(`Zmieniono głos na ${bold(vote.option.option)}`);
+        } else {
+          await itx.editReply(`Oddano głos na ${bold(vote.option.option)}`);
+        }
+      });
+    });
+  });
