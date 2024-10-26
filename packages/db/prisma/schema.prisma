@@ -270,6 +270,7 @@ model User {
   ultimatums                        Ultimatum[]
   dmPolls                           DMPoll[]
   dmPollVotes                       DMPollVote[]
+  participatingInDmPolls            DMPollParticipant[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
@@ -352,8 +353,9 @@ model DMPoll {
   title       String
   content     String
 
-  createdBy User           @relation(fields: [createdById], references: [id])
-  options   DMPollOption[]
+  createdBy    User                @relation(fields: [createdById], references: [id])
+  options      DMPollOption[]
+  participants DMPollParticipant[]
 }
 
 model DMPollOption {
@@ -365,13 +367,26 @@ model DMPollOption {
   votes DMPollVote[]
 }
 
+model DMPollParticipant {
+  pollId Int
+  userId String
+
+  poll DMPoll @relation(fields: [pollId], references: [id])
+  user User   @relation(fields: [userId], references: [id])
+
+  @@id([pollId, userId])
+  @@unique([pollId, userId])
+}
+
 model DMPollVote {
-  id       Int    @id @default(autoincrement())
   userId   String
   optionId Int
 
   user   User         @relation(fields: [userId], references: [id])
   option DMPollOption @relation(fields: [optionId], references: [id])
+
+  @@id([userId, optionId])
+  @@unique([userId, optionId])
 }
 
 enum EntryType {

@@ -227,7 +227,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   include: { options: true },
                 }),
               () => prisma.dMPoll.count(),
-              { pageSize: 1, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 3, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatPoll = (poll: DMPollWithOptions, _idx: number) => {
@@ -269,7 +269,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             const poll = await prisma.dMPoll.findFirst({
               where: { id },
-              include: { options: { include: { votes: true } } },
+              include: {
+                options: { include: { votes: true } },
+                participants: true,
+              },
             });
             if (poll === null) {
               return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
@@ -303,10 +306,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 );
               }
 
-              // TODO)) Display total eliglible voters
               embed.addFields([
                 {
-                  name: `Odpowiedzi (${totalVotes})`,
+                  name: `Odpowiedzi (${totalVotes}/${poll.participants.length})`,
                   value: optionResults.join("\n"),
                 },
               ]);
@@ -358,10 +360,16 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await itx.deferReply();
             const successMembers = await prisma.$transaction(async (tx) => {
-              // TODO)) Save eliglibe voters (or their count?)
               await tx.dMPoll.update({
                 where: { id },
-                data: { startedAt: itx.createdAt },
+                data: {
+                  startedAt: itx.createdAt,
+                  participants: {
+                    createMany: {
+                      data: role.members.map((member) => ({ userId: member.id })),
+                    },
+                  },
+                },
               });
 
               const sentToMembers = await Promise.all(
