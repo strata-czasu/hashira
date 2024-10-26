@@ -268,6 +268,7 @@ model User {
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
   ultimatums                        Ultimatum[]
+  dmPolls                           DMPoll[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
@@ -339,6 +340,27 @@ model Ultimatum {
   reason    String
   guild     Guild     @relation(fields: [guildId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
+}
+
+model DMPoll {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdById String
+  title       String
+  content     String
+
+  createdBy User           @relation(fields: [createdById], references: [id])
+  options   DMPollOption[]
+}
+
+model DMPollOption {
+  id     Int    @id @default(autoincrement())
+  pollId Int
+  option String
+
+  poll DMPoll @relation(fields: [pollId], references: [id])
 }
 
 enum EntryType {
