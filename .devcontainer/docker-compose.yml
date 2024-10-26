@@ -1,27 +1,25 @@
-version: '3.8'
-
 services:
   app:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     env_file: ../.env
 
     volumes:
       - ../..:/workspaces:cached
-      
+
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
     networks:
       - db
 
-    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
   db:
     image: postgres:latest
     restart: unless-stopped
-    networks: 
+    networks:
       - db
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -31,7 +29,7 @@ services:
     image: postgres:latest
     restart: unless-stopped
     env_file: ../.env
-    networks: 
+    networks:
       - db
     volumes:
       - postgres-test-data:/var/lib/postgresql/data
