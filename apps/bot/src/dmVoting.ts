@@ -411,6 +411,33 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await itx.editReply(lines.join("\n"));
           }),
+      )
+      .addCommand("zakoncz", (command) =>
+        command
+          .setDescription("Zakończ głosowanie")
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dMPoll.findFirst({
+              where: { id, startedAt: { not: null }, finishedAt: null },
+            });
+            if (poll === null) {
+              return await errorFollowUp(
+                itx,
+                "Nie znaleziono aktywnego głosowania o podanym ID",
+              );
+            }
+
+            await prisma.dMPoll.update({
+              where: { id },
+              data: { finishedAt: itx.createdAt },
+            });
+
+            // TODO)) Remove buttons from sent direct messages
+
+            await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
+          }),
       ),
   )
   .handle("ready", async ({ prisma }, client) => {
@@ -440,6 +467,11 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           return;
         }
 
+        if (option.poll.finishedAt) {
+          await itx.editReply("Głosowanie zostało zakończone.");
+          return;
+        }
+
         const participant = await tx.dMPollParticipant.findFirst({
           where: {
             userId: itx.user.id,
@@ -447,13 +479,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           },
         });
         if (!participant) {
-          console.error(
-            "User is not a participant in the poll:",
-            itx.user.id,
-            "optionId:",
-            optionId,
-          );
-          await itx.editReply("Coś poszło nie tak...");
+          await itx.editReply("Nie możesz wziąć udziału w tym głosowaniu");
           return;
         }
 
