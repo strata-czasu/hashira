@@ -16,6 +16,48 @@ import {
 import { base } from "./base";
 import { errorFollowUp } from "./util/errorFollowUp";
 
+type DMPollWithOptions = DMPoll & { options: DMPollOption[] };
+
+const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) => {
+  const titleInput = new TextInputBuilder()
+    .setCustomId("title")
+    .setLabel("Nazwa (dla administracji)")
+    .setPlaceholder("Głosowanie na Użytkownika Miesiąca")
+    .setRequired(true)
+    .setMinLength(2)
+    .setMaxLength(50)
+    .setStyle(TextInputStyle.Short);
+
+  const contentInput = new TextInputBuilder()
+    .setCustomId("content")
+    .setLabel("Treść (dla użytkownika)")
+    .setPlaceholder("Kto powinien zostać Użytkownikiem Miesiąca?")
+    .setRequired(true)
+    .setMinLength(10)
+    .setMaxLength(1024)
+    .setStyle(TextInputStyle.Paragraph);
+
+  const optionsInput = new TextInputBuilder()
+    .setCustomId("options")
+    .setLabel("Opcje (oddzielone nowymi liniami)")
+    .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
+    .setRequired(true)
+    .setMinLength(2)
+    .setMaxLength(256)
+    .setStyle(TextInputStyle.Paragraph);
+
+  if (poll) {
+    titleInput.setValue(poll.title);
+    contentInput.setValue(poll.content);
+    optionsInput.setValue(poll.options.map((o) => o.option).join("\n"));
+  }
+
+  const inputs = [titleInput, contentInput, optionsInput];
+  return inputs.map((input) =>
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(input),
+  );
+};
+
 const getDmPollStatus = (poll: DMPoll) => {
   if (poll.startedAt && poll.finishedAt) {
     return "zakończono";
@@ -42,42 +84,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, _params, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const rows = [
-              new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-                new TextInputBuilder()
-                  .setCustomId("title")
-                  .setLabel("Nazwa (dla administracji)")
-                  .setPlaceholder("Głosowanie na Użytkownika Miesiąca")
-                  .setRequired(true)
-                  .setMinLength(2)
-                  .setMaxLength(50)
-                  .setStyle(TextInputStyle.Short),
-              ),
-              new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-                new TextInputBuilder()
-                  .setCustomId("content")
-                  .setLabel("Treść (dla użytkownika)")
-                  .setPlaceholder("Kto powinien zostać Użytkownikiem Miesiąca?")
-                  .setRequired(true)
-                  .setMinLength(10)
-                  .setMaxLength(1024)
-                  .setStyle(TextInputStyle.Paragraph),
-              ),
-              new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-                new TextInputBuilder()
-                  .setCustomId("options")
-                  .setLabel("Opcje (oddzielone nowymi liniami)")
-                  .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
-                  .setRequired(true)
-                  .setMinLength(2)
-                  .setMaxLength(256)
-                  .setStyle(TextInputStyle.Paragraph),
-              ),
-            ];
             const modal = new ModalBuilder()
               .setCustomId(`new-poll-${itx.user.id}`)
               .setTitle("Nowe głosowanie")
-              .addComponents(...rows);
+              .addComponents(...getPollCreateOrUpdateActionRows());
             await itx.showModal(modal);
 
             const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 10 });
@@ -120,6 +130,72 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
           }),
       )
+      .addCommand("edytuj", (command) =>
+        command
+          .setDescription("Edytuj głosowanie")
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dMPoll.findFirst({
+              where: { id },
+              include: { options: true },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+            if (poll.startedAt) {
+              return await errorFollowUp(
+                itx,
+                "Nie można edytować rozpoczętego głosowania",
+              );
+            }
+
+            const modal = new ModalBuilder()
+              .setCustomId(`edit-poll-${poll.id}`)
+              .setTitle(`Edycja głosowania [${poll.id}]`)
+              .addComponents(...getPollCreateOrUpdateActionRows(poll));
+            await itx.showModal(modal);
+
+            const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 10 });
+            await submitAction.deferReply();
+
+            // TODO)) Abstract this into a helper/common util
+            const title = submitAction.components
+              .at(0)
+              ?.components.find((c) => c.customId === "title")?.value;
+            const content = submitAction.components
+              .at(1)
+              ?.components.find((c) => c.customId === "content")?.value;
+            const rawOptions = submitAction.components
+              .at(2)
+              ?.components.find((c) => c.customId === "options")?.value;
+            if (!title || !content || !rawOptions) {
+              return await errorFollowUp(
+                submitAction,
+                "Nie podano wszystkich wymaganych danych!",
+              );
+            }
+
+            const options = rawOptions.split("\n").map((option) => option.trim());
+
+            await prisma.dMPoll.update({
+              where: { id },
+              data: {
+                title,
+                content,
+                options: {
+                  deleteMany: { id: { in: poll.options.map((option) => option.id) } },
+                  createMany: { data: options.map((option) => ({ option })) },
+                },
+              },
+            });
+
+            await submitAction.editReply(
+              `Zaktualizowano głosowanie ${italic(title)} z ${bold(options.length.toString())} opcjami.`,
+            );
+          }),
+      )
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę głosowań")
@@ -137,11 +213,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               { pageSize: 1, defaultOrder: PaginatorOrder.DESC },
             );
 
-            const formatPoll = (
-              poll: DMPoll & { options: DMPollOption[] },
-              _idx: number,
-            ) => {
-              const lines = [`### ${poll.title} [${getDmPollStatus(poll)}]`];
+            const formatPoll = (poll: DMPollWithOptions, _idx: number) => {
+              const lines = [
+                `### ${poll.title} [${getDmPollStatus(poll)}] [${poll.id}]`,
+              ];
               if (poll.startedAt) {
                 lines.push(
                   `**Rozpoczęto**: ${time(poll.startedAt, TimestampStyles.ShortDateTime)}`,
@@ -163,7 +238,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               paginator,
               "Głosowania DM",
               formatPoll,
-              true,
+              false,
             );
             await view.render(itx);
           }),
