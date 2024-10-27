@@ -28,7 +28,7 @@ export class TextChannelPaginator implements Paginator<Message> {
   }
 
   public get displayPages(): string {
-    if (!this.#lastPage) return "?";
+    if (this.#lastPage === null) return "?";
     return (this.#lastPage + 1).toString();
   }
 
