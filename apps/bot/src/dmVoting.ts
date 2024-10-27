@@ -65,13 +65,13 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
 
 const getDmPollStatus = (poll: DMPoll) => {
   if (poll.startedAt && poll.finishedAt) {
-    return "zakończono";
+    return "zakończone";
   }
   if (poll.startedAt && !poll.finishedAt) {
     return "w trakcie";
   }
   if (!poll.startedAt && !poll.finishedAt) {
-    return "nie rozpoczęto";
+    return "nie rozpoczęte";
   }
   return "błędny status";
 };
@@ -359,52 +359,59 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
 
             await itx.deferReply();
-            const successMembers = await prisma.$transaction(async (tx) => {
+            const messageSendStatuses = await prisma.$transaction(async (tx) => {
               await tx.dMPoll.update({
                 where: { id },
-                data: {
-                  startedAt: itx.createdAt,
-                  participants: {
-                    createMany: {
-                      data: role.members.map((member) => ({ userId: member.id })),
-                    },
-                  },
-                },
+                data: { startedAt: itx.createdAt },
               });
 
-              const sentToMembers = await Promise.all(
-                // FIXME)) Force-fetch all role members
+              const messageSendStatuses = await Promise.all(
+                // FIXME)) Force-fetch all role members - we don't have a way of
+                //         fetching all members in **only** this role
                 role.members.map(async (member) =>
                   discordTry(
                     async () => {
-                      await member.send({
+                      const message = await member.send({
                         content: poll.content,
                         components: [actionRow],
                       });
-                      return member;
+                      return { member, messageId: message.id };
                     },
                     [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
-                    () => null,
+                    () => ({ member, messageId: null }),
                   ),
                 ),
               );
-              const successMembers = sentToMembers.filter((m) => m !== null);
-              return successMembers;
+
+              // Save participants with outgoing message IDs - null if failed to send
+              await tx.dMPollParticipant.createMany({
+                data: messageSendStatuses.map(({ member, messageId }) => ({
+                  pollId: poll.id,
+                  userId: member.id,
+                  messageId,
+                })),
+              });
+
+              // Should contain all members in the role, but some may have messageId: null
+              return messageSendStatuses;
             });
 
+            const successfullySentMessages = messageSendStatuses.filter(
+              (m) => m.messageId !== null,
+            );
             const lines = [
               `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
-                successMembers.length.toString(),
-              )}/${bold(role.members.size.toString())} użytkowników.`,
+                successfullySentMessages.length.toString(),
+              )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
 
-            if (successMembers.length < role.members.size) {
-              const failedToSend = role.members.filter(
-                (m) => !successMembers.includes(m),
+            if (successfullySentMessages.length < messageSendStatuses.length) {
+              const failedToSendMessages = messageSendStatuses.filter(
+                (m) => m.messageId === null,
               );
               lines.push(
-                `Nie udało się wysłać wiadomości do: ${failedToSend
-                  .map((m) => m.user.tag)
+                `Nie udało się wysłać wiadomości do: ${failedToSendMessages
+                  .map(({ member }) => member.user.tag)
                   .join(", ")}`,
               );
             }
@@ -419,22 +426,54 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const poll = await prisma.dMPoll.findFirst({
-              where: { id, startedAt: { not: null }, finishedAt: null },
-            });
-            if (poll === null) {
-              return await errorFollowUp(
-                itx,
-                "Nie znaleziono aktywnego głosowania o podanym ID",
+            const poll = await prisma.$transaction(async (tx) => {
+              const poll = await tx.dMPoll.findFirst({
+                where: { id, startedAt: { not: null }, finishedAt: null },
+                include: { participants: true },
+              });
+              if (poll === null) {
+                await errorFollowUp(
+                  itx,
+                  "Nie znaleziono aktywnego głosowania o podanym ID",
+                );
+                return null;
+              }
+
+              await tx.dMPoll.update({
+                where: { id },
+                data: { finishedAt: itx.createdAt },
+              });
+
+              // Remove buttons and add a footer to all outgoing messages
+              await Promise.all(
+                poll.participants.map(async ({ userId, messageId }) => {
+                  if (messageId === null) return;
+                  await discordTry(
+                    async () => {
+                      const user = await itx.client.users.fetch(userId);
+                      await user.createDM();
+                      if (!user.dmChannel) return;
+                      const message = await user.dmChannel.messages.fetch(messageId);
+                      const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*.`;
+                      await message.edit({ content, components: [] });
+                    },
+                    [
+                      RESTJSONErrorCodes.UnknownUser,
+                      RESTJSONErrorCodes.UnknownChannel,
+                      RESTJSONErrorCodes.UnknownMessage,
+                    ],
+                    () => {
+                      console.log(
+                        `Failed to delete message ${messageId} for user ${userId}`,
+                      );
+                    },
+                  );
+                }),
               );
-            }
 
-            await prisma.dMPoll.update({
-              where: { id },
-              data: { finishedAt: itx.createdAt },
+              return poll;
             });
-
-            // TODO)) Remove buttons from sent direct messages
+            if (!poll) return;
 
             await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
           }),

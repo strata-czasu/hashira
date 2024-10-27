@@ -368,8 +368,9 @@ model DMPollOption {
 }
 
 model DMPollParticipant {
-  pollId Int
-  userId String
+  pollId    Int
+  userId    String
+  messageId String?
 
   poll DMPoll @relation(fields: [pollId], references: [id])
   user User   @relation(fields: [userId], references: [id])
