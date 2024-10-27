@@ -410,9 +410,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 (m) => m.messageId === null,
               );
               lines.push(
-                `Nie udało się wysłać wiadomości do: ${failedToSendMessages
-                  .map(({ member }) => member.user.tag)
-                  .join(", ")}`,
+                `Nie udało się wysłać wiadomości do:\n${failedToSendMessages
+                  .map(({ member }) => `${member.user.tag} ${member.user.id}`)
+                  .join("\n")}`,
               );
             }
 
