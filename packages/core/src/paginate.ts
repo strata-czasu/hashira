@@ -42,11 +42,11 @@ export class TextChannelPaginator implements Paginator<Message> {
 
   private async getPage() {
     const end = this.currentOffset + this.#pageSize;
-    // Fetch more messages if they aren't cached
-    if (this.#items.length < end) {
+    // Fetch more messages if they aren't cached and we haven't reached the last page
+    if (this.#lastPage === null && this.#items.length < end) {
       const messages = await this.fetchMessages();
       this.#items.push(...Array.from(messages.values()));
-      // If we have less messages than the page size, we are on the last page
+      // If we got less messages than the page size, we are on the last page
       if (messages.size < this.#pageSize) {
         this.#lastPage = this.#page;
       }
