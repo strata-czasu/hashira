@@ -268,9 +268,9 @@ model User {
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
   ultimatums                        Ultimatum[]
-  dmPolls                           DMPoll[]
-  dmPollVotes                       DMPollVote[]
-  participatingInDmPolls            DMPollParticipant[]
+  dmPolls                           DmPoll[]
+  dmPollVotes                       DmPollVote[]
+  participatingInDmPolls            DmPollParticipant[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
@@ -344,7 +344,7 @@ model Ultimatum {
   user      User      @relation(fields: [userId], references: [id])
 }
 
-model DMPoll {
+model DmPoll {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now())
   startedAt   DateTime?
@@ -354,37 +354,37 @@ model DMPoll {
   content     String
 
   createdBy    User                @relation(fields: [createdById], references: [id])
-  options      DMPollOption[]
-  participants DMPollParticipant[]
+  options      DmPollOption[]
+  participants DmPollParticipant[]
 }
 
-model DMPollOption {
+model DmPollOption {
   id     Int    @id @default(autoincrement())
   pollId Int
   option String
 
-  poll  DMPoll       @relation(fields: [pollId], references: [id])
-  votes DMPollVote[]
+  poll  DmPoll       @relation(fields: [pollId], references: [id])
+  votes DmPollVote[]
 }
 
-model DMPollParticipant {
+model DmPollParticipant {
   pollId    Int
   userId    String
   messageId String?
 
-  poll DMPoll @relation(fields: [pollId], references: [id])
+  poll DmPoll @relation(fields: [pollId], references: [id])
   user User   @relation(fields: [userId], references: [id])
 
   @@id([pollId, userId])
   @@unique([pollId, userId])
 }
 
-model DMPollVote {
+model DmPollVote {
   userId   String
   optionId Int
 
   user   User         @relation(fields: [userId], references: [id])
-  option DMPollOption @relation(fields: [optionId], references: [id])
+  option DmPollOption @relation(fields: [optionId], references: [id])
 
   @@id([userId, optionId])
   @@unique([userId, optionId])

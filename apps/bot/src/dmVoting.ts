@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { type DMPoll, type DMPollOption, DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, type DmPoll, type DmPollOption } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
@@ -22,7 +22,7 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 
-type DMPollWithOptions = DMPoll & { options: DMPollOption[] };
+type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
 const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) => {
   const titleInput = new TextInputBuilder()
@@ -64,7 +64,7 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
   );
 };
 
-const getDmPollStatus = (poll: DMPoll) => {
+const getDmPollStatus = (poll: DmPoll) => {
   if (poll.startedAt && poll.finishedAt) {
     return "zakończone";
   }
@@ -124,7 +124,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            const poll = await prisma.dMPoll.create({
+            const poll = await prisma.dmPoll.create({
               data: {
                 createdById: itx.user.id,
                 title,
@@ -149,7 +149,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const poll = await prisma.dMPoll.findFirst({
+            const poll = await prisma.dmPoll.findFirst({
               where: { id },
               include: { options: true },
             });
@@ -197,7 +197,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            await prisma.dMPoll.update({
+            await prisma.dmPoll.update({
               where: { id },
               data: {
                 title,
@@ -222,12 +222,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             const paginator = new DatabasePaginator(
               (props, createdAt) =>
-                prisma.dMPoll.findMany({
+                prisma.dmPoll.findMany({
                   ...props,
                   orderBy: { createdAt },
                   include: { options: true },
                 }),
-              () => prisma.dMPoll.count(),
+              () => prisma.dmPoll.count(),
               { pageSize: 3, defaultOrder: PaginatorOrder.DESC },
             );
 
@@ -268,7 +268,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const poll = await prisma.dMPoll.findFirst({
+            const poll = await prisma.dmPoll.findFirst({
               where: { id },
               include: {
                 options: { include: { votes: true } },
@@ -341,7 +341,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, { id, rola: role }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const poll = await prisma.dMPoll.findFirst({
+            const poll = await prisma.dmPoll.findFirst({
               where: { id },
               include: { options: true },
             });
@@ -374,7 +374,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await itx.deferReply();
             const messageSendStatuses = await prisma.$transaction(async (tx) => {
-              await tx.dMPoll.update({
+              await tx.dmPoll.update({
                 where: { id },
                 data: { startedAt: itx.createdAt },
               });
@@ -398,7 +398,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
 
               // Save participants with outgoing message IDs - null if failed to send
-              await tx.dMPollParticipant.createMany({
+              await tx.dmPollParticipant.createMany({
                 data: messageSendStatuses.map(({ member, messageId }) => ({
                   pollId: poll.id,
                   userId: member.id,
@@ -441,7 +441,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             if (!itx.inCachedGuild()) return;
 
             const poll = await prisma.$transaction(async (tx) => {
-              const poll = await tx.dMPoll.findFirst({
+              const poll = await tx.dmPoll.findFirst({
                 where: { id, startedAt: { not: null }, finishedAt: null },
                 include: { participants: true },
               });
@@ -453,7 +453,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 return null;
               }
 
-              await tx.dMPoll.update({
+              await tx.dmPoll.update({
                 where: { id },
                 data: { finishedAt: itx.createdAt },
               });
@@ -510,7 +510,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
       const optionId = Number.parseInt(rawOptionId, 10);
 
       await prisma.$transaction(async (tx) => {
-        const option = await tx.dMPollOption.findFirst({
+        const option = await tx.dmPollOption.findFirst({
           where: { id: optionId },
           include: { poll: true },
         });
@@ -525,7 +525,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           return;
         }
 
-        const participant = await tx.dMPollParticipant.findFirst({
+        const participant = await tx.dmPollParticipant.findFirst({
           where: {
             userId: itx.user.id,
             poll: { options: { some: { id: optionId } } },
@@ -536,10 +536,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           return;
         }
 
-        const { count: deletedCount } = await tx.dMPollVote.deleteMany({
+        const { count: deletedCount } = await tx.dmPollVote.deleteMany({
           where: { userId: itx.user.id, option: { pollId: option.pollId } },
         });
-        const vote = await tx.dMPollVote.create({
+        const vote = await tx.dmPollVote.create({
           data: { userId: itx.user.id, optionId },
           include: { option: true },
         });
