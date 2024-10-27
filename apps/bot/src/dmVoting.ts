@@ -16,6 +16,7 @@ import {
   bold,
   italic,
   time,
+  userMention,
 } from "discord.js";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
@@ -306,10 +307,23 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 );
               }
 
+              // Participants who received the message
+              const eliglibleParticipants = poll.participants.filter(
+                (p) => p.messageId !== null,
+              );
+              const failedParticipants = poll.participants.filter(
+                (p) => p.messageId === null,
+              );
               embed.addFields([
                 {
-                  name: `Odpowiedzi (${totalVotes}/${poll.participants.length})`,
+                  name: `Odpowiedzi (${totalVotes}/${eliglibleParticipants.length})`,
                   value: optionResults.join("\n"),
+                },
+                {
+                  name: `Nieotrzymane wiadomości (${failedParticipants.length})`,
+                  value: failedParticipants
+                    .map(({ userId }) => `${userMention(userId)} (${userId})`)
+                    .join("\n"),
                 },
               ]);
             }
