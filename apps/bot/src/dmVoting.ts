@@ -311,21 +311,26 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               const eliglibleParticipants = poll.participants.filter(
                 (p) => p.messageId !== null,
               );
-              const failedParticipants = poll.participants.filter(
-                (p) => p.messageId === null,
-              );
               embed.addFields([
                 {
                   name: `Odpowiedzi (${totalVotes}/${eliglibleParticipants.length})`,
                   value: optionResults.join("\n"),
                 },
-                {
-                  name: `Nieotrzymane wiadomości (${failedParticipants.length})`,
-                  value: failedParticipants
-                    .map(({ userId }) => `${userMention(userId)} (${userId})`)
-                    .join("\n"),
-                },
               ]);
+
+              const failedParticipants = poll.participants.filter(
+                (p) => p.messageId === null,
+              );
+              if (failedParticipants.length > 0) {
+                embed.addFields([
+                  {
+                    name: `Nieotrzymane wiadomości (${failedParticipants.length})`,
+                    value: failedParticipants
+                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
+                      .join("\n"),
+                  },
+                ]);
+              }
             }
 
             await itx.editReply({ embeds: [embed] });
