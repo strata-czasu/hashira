@@ -268,6 +268,9 @@ model User {
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
   ultimatums                        Ultimatum[]
+  dmPolls                           DmPoll[]
+  dmPollVotes                       DmPollVote[]
+  participatingInDmPolls            DmPollParticipant[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
@@ -339,6 +342,52 @@ model Ultimatum {
   reason    String
   guild     Guild     @relation(fields: [guildId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
+}
+
+model DmPoll {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdById String
+  title       String
+  content     String
+
+  createdBy    User                @relation(fields: [createdById], references: [id])
+  options      DmPollOption[]
+  participants DmPollParticipant[]
+}
+
+model DmPollOption {
+  id     Int    @id @default(autoincrement())
+  pollId Int
+  option String
+
+  poll  DmPoll       @relation(fields: [pollId], references: [id])
+  votes DmPollVote[]
+}
+
+model DmPollParticipant {
+  pollId    Int
+  userId    String
+  messageId String?
+
+  poll DmPoll @relation(fields: [pollId], references: [id])
+  user User   @relation(fields: [userId], references: [id])
+
+  @@id([pollId, userId])
+  @@unique([pollId, userId])
+}
+
+model DmPollVote {
+  userId   String
+  optionId Int
+
+  user   User         @relation(fields: [userId], references: [id])
+  option DmPollOption @relation(fields: [optionId], references: [id])
+
+  @@id([userId, optionId])
+  @@unique([userId, optionId])
 }
 
 enum EntryType {
