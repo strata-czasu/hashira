@@ -380,8 +380,6 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               });
 
               const messageSendStatuses = await Promise.all(
-                // FIXME)) Force-fetch all role members - we don't have a way of
-                //         fetching all members in **only** this role
                 role.members.map(async (member) =>
                   discordTry(
                     async () => {
