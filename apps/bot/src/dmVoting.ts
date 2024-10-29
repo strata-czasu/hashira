@@ -308,7 +308,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 );
               }
 
-              // Participants who received the message
+              // Is in the role and received the message
               const eliglibleParticipants = poll.participants.filter(
                 (p) => p.messageId !== null,
               );
@@ -319,6 +319,25 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 },
               ]);
 
+              // Eliglible (message was delivered), but not yet voted
+              const notYetVoted = eliglibleParticipants.filter(
+                (p) =>
+                  !poll.options
+                    .flatMap((o) => o.votes)
+                    .some((v) => v.userId === p.userId),
+              );
+              if (totalVotes < eliglibleParticipants.length) {
+                embed.addFields([
+                  {
+                    name: `Nie oddano głosu (${eliglibleParticipants.length - totalVotes})`,
+                    value: notYetVoted
+                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
+                      .join("\n"),
+                  },
+                ]);
+              }
+
+              // Is in the role, but failed to receive the message
               const failedParticipants = poll.participants.filter(
                 (p) => p.messageId === null,
               );
