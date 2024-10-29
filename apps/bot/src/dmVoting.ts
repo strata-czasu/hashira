@@ -20,6 +20,7 @@ import {
 } from "discord.js";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
+import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
@@ -401,6 +402,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
 
               // Save participants with outgoing message IDs - null if failed to send
+              await ensureUsersExist(
+                prisma,
+                role.members.map((m) => m.id),
+              );
               await tx.dmPollParticipant.createMany({
                 data: messageSendStatuses.map(({ member, messageId }) => ({
                   pollId: poll.id,
