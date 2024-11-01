@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
+import { userTextActivity } from "./activity/userTextActivity";
 import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
@@ -20,7 +21,6 @@ import { settings } from "./settings";
 import { colorRoles } from "./strata/colorRoles";
 import { ultimatum } from "./strata/ultimatum";
 import { tasks } from "./tasks";
-import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
 
 if (env.SENTRY_DSN) {
@@ -48,7 +48,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(tasks)
   .use(ai)
   .use(brochure)
-  .use(userActivity)
+  .use(userTextActivity)
   .use(userComplaint)
   .use(inviteManagement)
   .use(ultimatum)

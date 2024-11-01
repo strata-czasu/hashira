@@ -10,3 +10,13 @@ model UserTextActivity {
 
   @@map("userTextActivity")
 }
+
+model UserVoiceActivity {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  guildId   String
+  channelId String
+  timestamp DateTime @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
