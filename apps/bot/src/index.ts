@@ -8,6 +8,7 @@ import { avatar } from "./avatar";
 import { base } from "./base";
 import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
+import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting";
 import { guildAvailability } from "./guildAvailability";
@@ -52,6 +53,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(userComplaint)
   .use(inviteManagement)
   .use(ultimatum)
+  .use(dmVoting)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");

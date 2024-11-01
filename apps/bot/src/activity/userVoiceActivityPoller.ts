@@ -2,7 +2,7 @@ import type { ExtendedPrismaClient, Prisma } from "@hashira/db";
 import type { Guild } from "discord.js";
 import { Batcher } from "../util/batcher";
 
-class VoiceActivityPoller {
+export class VoiceActivityPoller {
   #batcher: Batcher<string, Prisma.UserVoiceActivityUncheckedCreateInput>;
   #prisma: ExtendedPrismaClient;
   #guild: Guild | null = null;
@@ -13,6 +13,8 @@ class VoiceActivityPoller {
       interval: { minutes: 1 },
       batchSize: 100,
     });
+    // TODO: workaround to push the branch
+    this.#guild;
   }
 
   async processBatch(

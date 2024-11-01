@@ -87,13 +87,15 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     const creationPromises = allowedGuilds.map((guild) =>
       processAllowedGuild(ctx, guild),
     );
+    // Fetch all guild members to ensure we have fully saturated caches
+    const membersFetchPromises = allowedGuilds.map((guild) => guild.members.fetch());
 
     const leavePromises = unallowedGuilds.map((guild) => {
       console.log(`Leaving guild: ${guild.name}, owner: ${guild.ownerId}`);
       return guild.leave();
     });
 
-    await Promise.all([...creationPromises, ...leavePromises]);
+    await Promise.all([...creationPromises, ...membersFetchPromises, ...leavePromises]);
 
     try {
       await registerGuildLogger(

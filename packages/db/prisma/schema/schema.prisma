@@ -225,6 +225,9 @@ model User {
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
   ultimatums                        Ultimatum[]
+  dmPolls                           DmPoll[]
+  dmPollVotes                       DmPollVote[]
+  participatingInDmPolls            DmPollParticipant[]
 
   // what's this?
   other_users User[] @relation("usersTousers")
