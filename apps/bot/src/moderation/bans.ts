@@ -20,6 +20,7 @@ import { GUILD_IDS, STRATA_BAN_APPEAL_URL } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { hasHigherRole } from "../util/hasHigherRole";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
@@ -129,6 +130,15 @@ export const bans = new Hashira({ name: "bans" })
 
           const user = await parseUserMentionWorkaround(rawUser, itx);
           if (!user) return;
+
+          const member = itx.guild.members.cache.get(user.id);
+
+          if (member && hasHigherRole(itx.member, member)) {
+            return await errorFollowUp(
+              itx,
+              "Nie możesz zbanować użytkownika z wyższą rolą.",
+            );
+          }
 
           const banDeleteSeconds = deleteInterval
             ? getBanDeleteSeconds(deleteInterval)
