@@ -133,7 +133,7 @@ export const bans = new Hashira({ name: "bans" })
 
           const member = itx.guild.members.cache.get(user.id);
 
-          if (member && hasHigherRole(itx.member, member)) {
+          if (member && hasHigherRole(member, itx.member)) {
             return await errorFollowUp(
               itx,
               "Nie możesz zbanować użytkownika z wyższą rolą.",
