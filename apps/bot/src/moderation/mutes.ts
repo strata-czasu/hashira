@@ -6,7 +6,7 @@ import {
   type PrismaTransaction,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { add, intervalToDuration } from "date-fns";
+import { type Duration, add, intervalToDuration } from "date-fns";
 import {
   ActionRowBuilder,
   type Guild,
@@ -21,7 +21,6 @@ import {
   TimestampStyles,
   type User,
   bold,
-  channelMention,
   heading,
   inlineCode,
   italic,
@@ -40,6 +39,29 @@ import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatMuteLength, getMuteRoleId } from "./util";
 
 type Context = ExtractContext<typeof base>;
+
+const MUTE_TEMPLATE = `
+## Hejka {{user}}!
+Przed chwilą {{moderator}} nałożył Ci karę wyciszenia (rola Mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na **{{duration}}**.
+
+**Oto powód Twojego wyciszenia:**
+{{reason}}
+
+Przeczytaj proszę nasze Zasady dostępne pod [tym linkiem](https://discord.com/channels/211261411119202305/873167662082056232/1270484486131290255) i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na naszym [kanale od ticketów](https://discord.com/channels/211261411119202305/1213901611836117052/1219338768012804106). W odwołaniu spinguj nick osoby, która nałożyła Ci karę.
+
+Pozdrawiam,
+Biszkopt`;
+
+const composeMuteMessage = (
+  user: User,
+  moderator: User,
+  duration: Duration,
+  reason: string,
+) =>
+  MUTE_TEMPLATE.replace("{{user}}", user.toString())
+    .replace("{{moderator}}", moderator.toString())
+    .replace("{{duration}}", formatDuration(duration))
+    .replace("{{reason}}", italic(reason));
 
 export const createFormatMuteInList =
   ({ includeUser }: { includeUser: boolean }) =>
@@ -107,9 +129,6 @@ const getUserMutesPaginatedView = (
 
 const getMute = (tx: PrismaTransaction, id: number, guildId: string) =>
   tx.mute.findFirst({ where: { guildId, id, deletedAt: null } });
-
-const RULES_CHANNEL = "873167662082056232";
-const APPEALS_CHANNEL = "1213901611836117052";
 
 export const universalAddMute = async ({
   prisma,
@@ -239,15 +258,7 @@ export const universalAddMute = async ({
 
   const sentMessage = await sendDirectMessage(
     member.user,
-    `Hejka! Przed chwilą ${userMention(moderator.id)} nałożył Ci karę wyciszenia (mute). Musiałem więc niestety odebrać Ci prawo do pisania i mówienia na ${bold(
-      formatDuration(parsedDuration),
-    )}. Powodem Twojego wyciszenia jest: ${italic(
-      reason,
-    )}.\n\nPrzeczytaj ${channelMention(
-      RULES_CHANNEL,
-    )} i jeżeli nie zgadzasz się z powodem Twojej kary, to odwołaj się od niej klikając czerwony przycisk "Odwołaj się" na kanale ${channelMention(
-      APPEALS_CHANNEL,
-    )}. W odwołaniu spinguj nick osoby, która nałożyła Ci karę.\n\n--\nMożesz **skrócić swój mute o połowę wpłacając minimum 10 zł w naszej zbiórce charytatywnej** na fundację pomagającą osobom w kryzysie psychicznym.\n**Wyślij :heart: jako osobną wiadomość na tym DMie**, to ktoś z administracji wkrótce napisze do Ciebie z linkiem do zbiórki[.](https://i.imgur.com/eaWPdUu.png)`,
+    composeMuteMessage(member.user, moderator, parsedDuration, reason),
   );
 
   if (!sentMessage) {
