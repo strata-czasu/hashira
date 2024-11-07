@@ -1,13 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { addSeconds } from "date-fns";
-import {
-  type Guild,
-  PermissionFlagsBits,
-  type User,
-  italic,
-  userMention,
-} from "discord.js";
+import { type Guild, PermissionFlagsBits, type User, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -34,6 +28,12 @@ Przed chwilą **nałożyłem Ci rolę Ultimatum**. Jeżeli przez najbliższe **6
 Pozdrawiam,
 Biszkopt
 `;
+
+const composeUltimatumMessage = (user: User, reason: string) =>
+  ULTIMATUM_TEMPLATE.replace("{{mention}}", user.toString()).replace(
+    "{{reason}}",
+    italic(reason),
+  );
 
 export const ultimatum = new Hashira({ name: "ultimatum" })
   .use(base)
@@ -93,13 +93,7 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 `Dodano ultimatum: ${reason} (${expiresAt}) przez ${itx.user.tag}`,
               );
 
-              await sendDirectMessage(
-                user,
-                ULTIMATUM_TEMPLATE.replace("{{mention}}", userMention(user.id)).replace(
-                  "{{reason}}",
-                  italic(reason),
-                ),
-              );
+              await sendDirectMessage(user, composeUltimatumMessage(user, reason));
 
               strataCzasuLog.push("ultimatumStart", itx.guild, {
                 user,
