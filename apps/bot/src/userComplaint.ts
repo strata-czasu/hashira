@@ -24,7 +24,7 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
       .handle(async (_ctx, _, itx) => {
         if (!itx.inCachedGuild()) return;
 
-        const input =
+        const actionRows = [
           new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId("content")
@@ -34,11 +34,22 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
               .setMinLength(10)
               .setMaxLength(2000)
               .setStyle(TextInputStyle.Paragraph),
-          );
+          ),
+          new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+            new TextInputBuilder()
+              .setCustomId("target")
+              .setLabel("Kogo lub czego dotyczy zgłoszenie?")
+              .setPlaceholder("np. użytkownik, wiadomość lub inny istotny kontekst")
+              .setRequired(true)
+              .setMinLength(3)
+              .setMaxLength(200)
+              .setStyle(TextInputStyle.Short),
+          ),
+        ];
         const modal = new ModalBuilder()
           .setCustomId(`complaint-${itx.user.id}`)
           .setTitle("Zgłoś problem")
-          .addComponents(input);
+          .addComponents(actionRows);
         await itx.showModal(modal);
 
         const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 15 });
@@ -48,8 +59,14 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
         const content = submitAction.components
           .at(0)
           ?.components.find((c) => c.customId === "content")?.value;
-        if (!content) {
-          return await errorFollowUp(submitAction, "Nie podano treści zgłoszenia!");
+        const target = submitAction.components
+          .at(1)
+          ?.components.find((c) => c.customId === "target")?.value;
+        if (!content || !target) {
+          return await errorFollowUp(
+            submitAction,
+            "Nie podano wszystkich wymaganych danych!",
+          );
         }
 
         const channel = await discordTry(
@@ -67,10 +84,16 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
         const embed = new EmbedBuilder()
           .setTitle(`Zgłoszenie od ${itx.user.tag}`)
           .setDescription(content)
-          .addFields({
-            name: "Kanał zgłoszenia",
-            value: `${channelMention(itx.channelId)} (${itx.channelId})`,
-          })
+          .addFields(
+            {
+              name: "Kogo lub czego dotyczy zgłoszenie?",
+              value: target,
+            },
+            {
+              name: "Kanał zgłoszenia",
+              value: `${channelMention(itx.channelId)} (${itx.channelId})`,
+            },
+          )
           .setFooter({
             text: `ID: ${itx.user.id}`,
             iconURL: itx.user.displayAvatarURL(),
