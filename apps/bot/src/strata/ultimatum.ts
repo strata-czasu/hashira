@@ -61,6 +61,11 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 await itx.editReply("Nie znaleziono użytkownika");
                 return;
               }
+              const member = await itx.guild.members.fetch(user.id);
+              if (!member) {
+                await itx.editReply("Nie znaleziono użytkownika na serwerze");
+                return;
+              }
 
               await ensureUsersExist(prisma, [itx.user, user]);
 
@@ -88,7 +93,7 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 },
               });
 
-              await itx.member.roles.add(
+              await member.roles.add(
                 STRATA_CZASU.ULTIMATUM_ROLE,
                 `Dodano ultimatum: ${reason} (${expiresAt}) przez ${itx.user.tag}`,
               );
