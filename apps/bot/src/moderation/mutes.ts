@@ -633,7 +633,7 @@ export const mutes = new Hashira({ name: "mutes" })
 
     const muteRoleId = await getMuteRoleId(prisma, member.guild.id);
     if (!muteRoleId) return;
-    await member.roles.add(muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
+    await applyMute(member, muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
   })
   .userContextMenu(
     "mute",
