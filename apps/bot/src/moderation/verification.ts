@@ -167,7 +167,7 @@ export const verification = new Hashira({ name: "verification" })
                 },
               });
 
-              const appliedMute = applyMute(
+              const appliedMute = await applyMute(
                 member,
                 muteRoleId,
                 `Weryfikacja 16+, moderator: ${itx.user.tag} (${itx.user.id})`,
@@ -583,4 +583,21 @@ export const verification = new Hashira({ name: "verification" })
         }
         await itx.editReply({ embeds: [embed] });
       }),
-  );
+  )
+  .handle("guildMemberAdd", async ({ prisma }, member) => {
+    const verificationInProgress = await getActive16PlusVerification(
+      prisma,
+      member.guild.id,
+      member.id,
+    );
+    if (!verificationInProgress) return;
+
+    const muteRoleId = await getMuteRoleId(prisma, member.guild.id);
+    if (!muteRoleId) return;
+
+    await applyMute(
+      member,
+      muteRoleId,
+      `Przywrócone wyciszenie (weryfikacja 16+) [${verificationInProgress.id}]`,
+    );
+  });
