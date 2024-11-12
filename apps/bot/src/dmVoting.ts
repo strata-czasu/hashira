@@ -409,46 +409,55 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               prisma,
               role.members.map((m) => m.id),
             );
-            const messageSendStatuses = await prisma.$transaction(async (tx) => {
+            await prisma.$transaction(async (tx) => {
               await tx.dmPoll.update({
                 where: { id },
                 data: { startedAt: itx.createdAt },
               });
-
-              const messageSendStatuses = await Promise.all(
-                role.members.map(async (member) =>
-                  discordTry(
-                    async () => {
-                      const message = await member.send({
-                        content: poll.content,
-                        components: [actionRow],
-                      });
-                      return { member, messageId: message.id };
-                    },
-                    [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
-                    () => ({ member, messageId: null }),
-                  ),
-                ),
-              );
-
-              // Save participants with outgoing message IDs - null if failed to send
+              // Save all eligible participants with empty message IDs
               await tx.dmPollParticipant.createMany({
-                data: messageSendStatuses.map(({ member, messageId }) => ({
+                data: role.members.map((member) => ({
                   pollId: poll.id,
                   userId: member.id,
-                  messageId,
+                  messageId: null,
                 })),
               });
-
-              // Should contain all members in the role, but some may have messageId: null
-              return messageSendStatuses;
             });
+
+            // Notify that the vote has started, but send messages in the background
+            await itx.editReply(
+              `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysyłanie wiadomości do użytkowników... (może to zająć parę minut)`,
+            );
+
+            const messageSendStatuses = await Promise.all(
+              role.members.map(async (member) =>
+                discordTry(
+                  async () => {
+                    const message = await member.send({
+                      content: poll.content,
+                      components: [actionRow],
+                    });
+                    return { member, messageId: message.id };
+                  },
+                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  () => ({ member, messageId: null }),
+                ),
+              ),
+            );
 
             const successfullySentMessages = messageSendStatuses.filter(
               (m) => m.messageId !== null,
             );
+            // Save outgoing message IDs for participants with successfully sent messages
+            for (const { member, messageId } of successfullySentMessages) {
+              await prisma.dmPollParticipant.update({
+                where: { pollId_userId: { pollId: poll.id, userId: member.id } },
+                data: { messageId },
+              });
+            }
+
             const lines = [
-              `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+              `Rozesłano wiadomośći do głosowania ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
                 successfullySentMessages.length.toString(),
               )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
@@ -464,7 +473,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            await itx.editReply(lines.join("\n"));
+            await itx.user.createDM();
+            if (!itx.user.dmChannel) return;
+            await itx.user.dmChannel.send(lines.join("\n"));
           }),
       )
       .addCommand("przypomnij", (command) =>
