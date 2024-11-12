@@ -141,7 +141,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             });
 
             await submitAction.editReply(
-              `Utworzono głosowanie ${italic(poll.title)} z ${bold(options.length.toString())} opcjami.`,
+              `Utworzono głosowanie ${italic(poll.title)} [${poll.id}] z ${bold(options.length.toString())} opcjami.`,
             );
           }),
       )
