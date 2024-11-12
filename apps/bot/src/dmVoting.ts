@@ -389,12 +389,17 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            const buttons = poll.options.map((option) =>
-              new ButtonBuilder()
+            // FIXME)) This is awful.
+            const number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"] as const;
+            const buttons = poll.options.map((option, i) => {
+              const button = new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Secondary),
-            );
+                .setStyle(ButtonStyle.Secondary);
+              const emoji = number_emojis[i];
+              if (emoji) button.setEmoji(emoji);
+              return button;
+            });
             const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
               buttons,
             );
