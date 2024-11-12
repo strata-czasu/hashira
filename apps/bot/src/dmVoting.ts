@@ -15,6 +15,7 @@ import {
   TimestampStyles,
   bold,
   italic,
+  messageLink,
   time,
   userMention,
 } from "discord.js";
@@ -22,6 +23,7 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { fetchMembers } from "./util/fetchMembers";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -398,6 +400,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
 
             await itx.deferReply();
+            await ensureUsersExist(
+              prisma,
+              role.members.map((m) => m.id),
+            );
             const messageSendStatuses = await prisma.$transaction(async (tx) => {
               await tx.dmPoll.update({
                 where: { id },
@@ -421,10 +427,6 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
 
               // Save participants with outgoing message IDs - null if failed to send
-              await ensureUsersExist(
-                prisma,
-                role.members.map((m) => m.id),
-              );
               await tx.dmPollParticipant.createMany({
                 data: messageSendStatuses.map(({ member, messageId }) => ({
                   pollId: poll.id,
@@ -442,6 +444,102 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
             const lines = [
               `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+                successfullySentMessages.length.toString(),
+              )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
+            ];
+
+            if (successfullySentMessages.length < messageSendStatuses.length) {
+              const failedToSendMessages = messageSendStatuses.filter(
+                (m) => m.messageId === null,
+              );
+              lines.push(
+                `Nie udało się wysłać wiadomości do:\n${failedToSendMessages
+                  .map(({ member }) => `${member.user.tag} ${member.user.id}`)
+                  .join("\n")}`,
+              );
+            }
+
+            await itx.editReply(lines.join("\n"));
+          }),
+      )
+      .addCommand("przypomnij", (command) =>
+        command
+          .setDescription(
+            "Przypomnij o głosowaniu użytkownikom, którzy jeszcze nie zagłosowali",
+          )
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .addString("content", (content) =>
+            content
+              .setDescription("Niestandardowa treść przypomnienia")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { id, content: providedContent }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dmPoll.findFirst({
+              where: { id },
+              include: { participants: true, options: { include: { votes: true } } },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+
+            if (!poll.startedAt) {
+              return await errorFollowUp(
+                itx,
+                "Głosowanie nie zostało jeszcze rozpoczęte.",
+              );
+            }
+            if (poll.finishedAt) {
+              return await errorFollowUp(
+                itx,
+                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.LongDateTime)})`,
+              );
+            }
+
+            await itx.deferReply();
+            const members = await fetchMembers(
+              itx.guild,
+              poll.participants
+                .filter(
+                  (p) =>
+                    !poll.options
+                      .flatMap((o) => o.votes)
+                      .some((v) => v.userId === p.userId),
+                )
+                .map((p) => p.userId),
+            );
+            const messageSendStatuses = await Promise.all(
+              members.map(async (member) => {
+                const participant = poll.participants.find(
+                  (p) => p.userId === member.id && p.messageId !== null,
+                );
+                if (!participant) return { member, messageId: null };
+                const { messageId } = participant;
+                if (!messageId) return { member, messageId: null };
+                const channel = await member.createDM();
+                return await discordTry(
+                  async () => {
+                    const content =
+                      providedContent ??
+                      `Hej ${userMention(member.id)}, przypominam Ci o głosowaniu, bo Twój głos nie został jeszcze oddany.`;
+                    const message = await member.send({
+                      content: `${content}\nPrzejdź do głosowania: ${messageLink(channel.id, messageId)} i wybierz jedną z opcji klikając w przycisk. Miłego dnia! :heart:`,
+                      reply: { messageReference: messageId },
+                    });
+                    return { member, messageId: message.id };
+                  },
+                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  () => ({ member, messageId: null }),
+                );
+              }),
+            );
+
+            const successfullySentMessages = messageSendStatuses.filter(
+              (m) => m.messageId !== null,
+            );
+            const lines = [
+              `Wysłano przypomnienie o głosowaniu do ${bold(
                 successfullySentMessages.length.toString(),
               )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
@@ -495,7 +593,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                       await user.createDM();
                       if (!user.dmChannel) return;
                       const message = await user.dmChannel.messages.fetch(messageId);
-                      const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*.`;
+                      const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
                       await message.edit({ content, components: [] });
                     },
                     [
