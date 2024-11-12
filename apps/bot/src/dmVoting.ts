@@ -393,7 +393,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Primary),
+                .setStyle(ButtonStyle.Secondary),
             );
             const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
               buttons,
