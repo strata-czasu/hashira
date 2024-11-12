@@ -599,36 +599,36 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 data: { finishedAt: itx.createdAt },
               });
 
-              // Remove buttons and add a footer to all outgoing messages
-              await Promise.all(
-                poll.participants.map(async ({ userId, messageId }) => {
-                  if (messageId === null) return;
-                  await discordTry(
-                    async () => {
-                      const user = await itx.client.users.fetch(userId);
-                      await user.createDM();
-                      if (!user.dmChannel) return;
-                      const message = await user.dmChannel.messages.fetch(messageId);
-                      const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
-                      await message.edit({ content, components: [] });
-                    },
-                    [
-                      RESTJSONErrorCodes.UnknownUser,
-                      RESTJSONErrorCodes.UnknownChannel,
-                      RESTJSONErrorCodes.UnknownMessage,
-                    ],
-                    () => {
-                      console.log(
-                        `Failed to delete message ${messageId} for user ${userId}`,
-                      );
-                    },
-                  );
-                }),
-              );
-
               return poll;
             });
             if (!poll) return;
+
+            // Remove buttons and add a footer to all outgoing messages
+            await Promise.all(
+              poll.participants.map(async ({ userId, messageId }) => {
+                if (messageId === null) return;
+                await discordTry(
+                  async () => {
+                    const user = await itx.client.users.fetch(userId);
+                    await user.createDM();
+                    if (!user.dmChannel) return;
+                    const message = await user.dmChannel.messages.fetch(messageId);
+                    const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
+                    await message.edit({ content, components: [] });
+                  },
+                  [
+                    RESTJSONErrorCodes.UnknownUser,
+                    RESTJSONErrorCodes.UnknownChannel,
+                    RESTJSONErrorCodes.UnknownMessage,
+                  ],
+                  () => {
+                    console.log(
+                      `Failed to delete message ${messageId} for user ${userId}`,
+                    );
+                  },
+                );
+              }),
+            );
 
             await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
           }),
