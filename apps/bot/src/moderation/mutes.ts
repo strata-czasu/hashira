@@ -667,8 +667,10 @@ export const mutes = new Hashira({ name: "mutes" })
         .addComponents(...rows);
       await itx.showModal(modal);
 
+      const moderatorDmChannel = await itx.user.createDM();
       const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
-      await submitAction.deferReply();
+      // Any reply is needed in order to successfully finish the modal interaction
+      await submitAction.deferReply({ ephemeral: true });
 
       // TODO)) Abstract this into a helper/common util
       const duration = submitAction.components
@@ -678,20 +680,27 @@ export const mutes = new Hashira({ name: "mutes" })
         .at(1)
         ?.components.find((c) => c.customId === "reason")?.value;
       if (!duration || !reason) {
-        return await errorFollowUp(
-          submitAction,
-          "Nie podano wszystkich wymaganych danych!",
+        await moderatorDmChannel.send(
+          "Nie podano wszystkich wymaganych danych do nałożenia wyciszenia!",
         );
+        return;
       }
 
-      await addMute({
+      // Send confirmation to the moderator's DM instead of itx.followUp()
+      // This avoids an inconsistency in handling of itx.channel context menus
+      // See https://github.com/strata-czasu/hashira/issues/75
+      await universalAddMute({
         prisma,
         messageQueue,
         log,
-        itx: submitAction,
-        user: itx.targetUser,
+        userId: itx.targetUser.id,
+        guild: itx.guild,
+        moderator: itx.user,
         duration,
         reason,
+        reply: (content) => moderatorDmChannel.send(content),
       });
+      // Don't send any message to the guild channel
+      await submitAction.deleteReply();
     },
   );
