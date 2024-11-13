@@ -346,12 +346,13 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 (p) => p.messageId === null,
               );
               if (failedParticipants.length > 0) {
+                const hastebinUrl = await hastebin(
+                  failedParticipants.map(({ userId }) => userId).join("\n"),
+                );
                 embed.addFields([
                   {
                     name: `Nieotrzymane wiadomości (${failedParticipants.length})`,
-                    value: failedParticipants
-                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
-                      .join("\n"),
+                    value: hastebinUrl,
                   },
                 ]);
               }
