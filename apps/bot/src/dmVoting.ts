@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { Hashira, PaginatedView, hastebin } from "@hashira/core";
 import { DatabasePaginator, type DmPoll, type DmPollOption } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
@@ -321,20 +321,21 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 },
               ]);
 
-              // Eliglible (message was delivered), but not yet voted
-              const notYetVoted = eliglibleParticipants.filter(
-                (p) =>
-                  !poll.options
-                    .flatMap((o) => o.votes)
-                    .some((v) => v.userId === p.userId),
-              );
               if (totalVotes < eliglibleParticipants.length) {
+                // Eliglible (message was delivered), but not yet voted
+                const notYetVoted = eliglibleParticipants.filter(
+                  (p) =>
+                    !poll.options
+                      .flatMap((o) => o.votes)
+                      .some((v) => v.userId === p.userId),
+                );
+                const hastebinUrl = await hastebin(
+                  notYetVoted.map(({ userId }) => userId).join("\n"),
+                );
                 embed.addFields([
                   {
                     name: `Nie oddano głosu (${eliglibleParticipants.length - totalVotes})`,
-                    value: notYetVoted
-                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
-                      .join("\n"),
+                    value: hastebinUrl,
                   },
                 ]);
               }
@@ -457,7 +458,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             const lines = [
-              `Rozesłano wiadomośći do głosowania ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+              `Rozesłano wiadomości do głosowania ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
                 successfullySentMessages.length.toString(),
               )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
