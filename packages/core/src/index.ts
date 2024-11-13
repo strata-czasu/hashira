@@ -507,7 +507,6 @@ class Hashira<
 }
 
 export { ConfirmationDialog } from "./confirmationDialog";
-export { hastebin } from "./hastebin";
 export { PaginatedView } from "./paginatedView";
 export type { Prettify } from "./types";
 export { Hashira, decoratorInitBase };

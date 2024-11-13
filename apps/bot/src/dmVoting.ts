@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView, hastebin } from "@hashira/core";
+import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type DmPoll, type DmPollOption } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
@@ -24,6 +24,7 @@ import { discordTry } from "./util/discordTry";
 import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
+import { hastebin } from "./util/hastebin";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
