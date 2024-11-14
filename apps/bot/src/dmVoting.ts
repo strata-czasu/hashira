@@ -225,10 +225,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               ?.components.find((c) => c.customId === "content")?.value;
             const rawFirstRowOptions = submitAction.components
               .at(2)
-              ?.components.find((c) => c.customId === "raw1")?.value;
+              ?.components.find((c) => c.customId === "row1")?.value;
             const rawSecondRowOptions = submitAction.components
               .at(3)
-              ?.components.find((c) => c.customId === "raw2")?.value;
+              ?.components.find((c) => c.customId === "row2")?.value;
 
             if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
