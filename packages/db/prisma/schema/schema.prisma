@@ -19,32 +19,6 @@ model AutoRole {
   @@map("autoRole")
 }
 
-model BirthdayEventStage2024 {
-  id                               Int                                @id(map: "strata_birthday_event_stage_2024_pkey") @default(autoincrement())
-  requiredStageId                  Int?
-  keyword                          String
-  outputRequirementsValid          String
-  outputRequirementsInvalid        String?
-  buttons                          String[]                           @default([])
-  lockedBy                         Int[]                              @default([])
-  birthdayEventStage2024           BirthdayEventStage2024?            @relation("birthdayEventStage2024TobirthdayEventStage2024", fields: [requiredStageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024_requiredStageId_birthdayEventStage2024_i")
-  other_birthdayEventStage2024     BirthdayEventStage2024[]           @relation("birthdayEventStage2024TobirthdayEventStage2024")
-  birthdayEventStage2024Completion BirthdayEventStage2024Completion[]
-
-  @@map("birthdayEventStage2024")
-}
-
-model BirthdayEventStage2024Completion {
-  id                     Int                    @id(map: "strata_birthday_event_stage_2024_completion_pkey") @default(autoincrement())
-  userId                 String
-  timestamp              DateTime               @default(now()) @db.Timestamp(6)
-  stageId                Int
-  birthdayEventStage2024 BirthdayEventStage2024 @relation(fields: [stageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_stageId_birthdayEventStage2024")
-  user                   User                   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_userId_users_id_fk")
-
-  @@map("birthdayEventStage2024Completion")
-}
-
 model ColorRole {
   id         Int       @id(map: "strata_color_role_pkey") @default(autoincrement())
   guildId    String
@@ -190,17 +164,6 @@ model ShopItem {
   @@map("shopItem")
 }
 
-model Task {
-  id          Int      @id(map: "core_task_pkey") @default(autoincrement())
-  status      Status   @default(pending)
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  handleAfter DateTime @default(now()) @db.Timestamp(6)
-  data        Json
-  identifier  String   @default(dbgenerated("(gen_random_uuid())::text"))
-
-  @@map("task")
-}
-
 model User {
   id                                String                             @id(map: "core_users_pkey")
   verificationLevel                 VerificationLevel?
@@ -219,6 +182,7 @@ model User {
   userTextActivities                UserTextActivity[]
   userVoiceActivities               UserVoiceActivity[]
   marriedUser                       User?                              @relation("usersTousers", fields: [marriedTo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_marriedTo_users_id_fk")
+  marriedToUsers                    User[]                             @relation("usersTousers")
   wallets                           Wallet[]
   givenVerifications                Verification[]                     @relation("verification_moderatorIdTousers")
   receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
@@ -229,11 +193,9 @@ model User {
   dmPollVotes                       DmPollVote[]
   participatingInDmPolls            DmPollParticipant[]
 
-  // what's this?
-  other_users User[] @relation("usersTousers")
-
   @@map("users")
 }
+
 
 model Warn {
   id           Int       @id(map: "core_warn_pkey") @default(autoincrement())
@@ -263,13 +225,4 @@ model Ultimatum {
   reason    String
   guild     Guild     @relation(fields: [guildId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
-}
-
-enum Status {
-  pending
-  completed
-  failed
-  cancelled
-
-  @@map("status")
 }

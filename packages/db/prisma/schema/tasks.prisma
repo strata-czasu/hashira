@@ -1,0 +1,19 @@
+enum Status {
+  pending
+  completed
+  failed
+  cancelled
+
+  @@map("status")
+}
+
+model Task {
+  id          Int      @id(map: "core_task_pkey") @default(autoincrement())
+  status      Status   @default(pending)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  handleAfter DateTime @default(now()) @db.Timestamp(6)
+  data        Json
+  identifier  String   @default(dbgenerated("(gen_random_uuid())::text"))
+
+  @@map("task")
+}

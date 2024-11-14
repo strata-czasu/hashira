@@ -1,0 +1,25 @@
+model BirthdayEventStage2024 {
+  id                               Int                                @id(map: "strata_birthday_event_stage_2024_pkey") @default(autoincrement())
+  requiredStageId                  Int?
+  keyword                          String
+  outputRequirementsValid          String
+  outputRequirementsInvalid        String?
+  buttons                          String[]                           @default([])
+  lockedBy                         Int[]                              @default([])
+  birthdayEventStage2024           BirthdayEventStage2024?            @relation("birthdayEventStage2024TobirthdayEventStage2024", fields: [requiredStageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024_requiredStageId_birthdayEventStage2024_i")
+  other_birthdayEventStage2024     BirthdayEventStage2024[]           @relation("birthdayEventStage2024TobirthdayEventStage2024")
+  birthdayEventStage2024Completion BirthdayEventStage2024Completion[]
+
+  @@map("birthdayEventStage2024")
+}
+
+model BirthdayEventStage2024Completion {
+  id                     Int                    @id(map: "strata_birthday_event_stage_2024_completion_pkey") @default(autoincrement())
+  userId                 String
+  timestamp              DateTime               @default(now()) @db.Timestamp(6)
+  stageId                Int
+  birthdayEventStage2024 BirthdayEventStage2024 @relation(fields: [stageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_stageId_birthdayEventStage2024")
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "birthdayEventStage2024Completion_userId_users_id_fk")
+
+  @@map("birthdayEventStage2024Completion")
+}

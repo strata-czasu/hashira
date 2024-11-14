@@ -190,6 +190,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             } else {
               directMessageContent +=
                 " Nie udało się zbanować użytkownika. Sprawdź permisje i zbanuj go ręcznie.";
+              console.warn(
+                `Missing permissions to ban user ${user.id} (failed 16+ verification).`,
+              );
             }
             if (!sentMessage) {
               directMessageContent +=

@@ -16,6 +16,7 @@ model DmPollOption {
   id     Int    @id @default(autoincrement())
   pollId Int
   option String
+  row    Int
 
   poll  DmPoll       @relation(fields: [pollId], references: [id])
   votes DmPollVote[]

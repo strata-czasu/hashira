@@ -1,13 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { addSeconds } from "date-fns";
-import {
-  type Guild,
-  PermissionFlagsBits,
-  type User,
-  italic,
-  userMention,
-} from "discord.js";
+import { type Guild, PermissionFlagsBits, type User, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -35,6 +29,12 @@ Pozdrawiam,
 Biszkopt
 `;
 
+const composeUltimatumMessage = (user: User, reason: string) =>
+  ULTIMATUM_TEMPLATE.replace("{{mention}}", user.toString()).replace(
+    "{{reason}}",
+    italic(reason),
+  );
+
 export const ultimatum = new Hashira({ name: "ultimatum" })
   .use(base)
   .group("ultimatum", (group) =>
@@ -59,6 +59,11 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
 
               if (!user) {
                 await itx.editReply("Nie znaleziono użytkownika");
+                return;
+              }
+              const member = await itx.guild.members.fetch(user.id);
+              if (!member) {
+                await itx.editReply("Nie znaleziono użytkownika na serwerze");
                 return;
               }
 
@@ -88,18 +93,12 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 },
               });
 
-              await itx.member.roles.add(
+              await member.roles.add(
                 STRATA_CZASU.ULTIMATUM_ROLE,
                 `Dodano ultimatum: ${reason} (${expiresAt}) przez ${itx.user.tag}`,
               );
 
-              await sendDirectMessage(
-                user,
-                ULTIMATUM_TEMPLATE.replace("{{mention}}", userMention(user.id)).replace(
-                  "{{reason}}",
-                  italic(reason),
-                ),
-              );
+              await sendDirectMessage(user, composeUltimatumMessage(user, reason));
 
               strataCzasuLog.push("ultimatumStart", itx.guild, {
                 user,

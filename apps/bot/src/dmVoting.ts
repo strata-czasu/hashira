@@ -15,6 +15,7 @@ import {
   TimestampStyles,
   bold,
   italic,
+  messageLink,
   time,
   userMention,
 } from "discord.js";
@@ -22,6 +23,9 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { fetchMembers } from "./util/fetchMembers";
+import { hastebin } from "./util/hastebin";
+import { numberToEmoji } from "./util/numberToEmoji";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -44,11 +48,20 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
     .setMaxLength(1024)
     .setStyle(TextInputStyle.Paragraph);
 
-  const optionsInput = new TextInputBuilder()
-    .setCustomId("options")
-    .setLabel("Opcje (oddzielone nowymi liniami, max. 5)")
+  const firstRowInput = new TextInputBuilder()
+    .setCustomId("row1")
+    .setLabel("Pierwszy rząd")
     .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
     .setRequired(true)
+    .setMinLength(2)
+    .setMaxLength(256)
+    .setStyle(TextInputStyle.Paragraph);
+
+  const secondRowInput = new TextInputBuilder()
+    .setCustomId("row2")
+    .setLabel("Drugi rząd")
+    .setPlaceholder("Pusty głos\nWycofaj z przyszłych głosowań")
+    .setRequired(false)
     .setMinLength(2)
     .setMaxLength(256)
     .setStyle(TextInputStyle.Paragraph);
@@ -56,10 +69,17 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
   if (poll) {
     titleInput.setValue(poll.title);
     contentInput.setValue(poll.content);
-    optionsInput.setValue(poll.options.map((o) => o.option).join("\n"));
+    const firstRowOptions = poll.options
+      .filter((it) => it.row === 0)
+      .map(({ option }) => option);
+    const secondRowOptions = poll.options
+      .filter((it) => it.row === 1)
+      .map(({ option }) => option);
+    firstRowInput.setValue(firstRowOptions.join("\n"));
+    secondRowInput.setValue(secondRowOptions.join("\n"));
   }
 
-  const inputs = [titleInput, contentInput, optionsInput];
+  const inputs = [titleInput, contentInput, firstRowInput, secondRowInput];
   return inputs.map((input) =>
     new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(input),
   );
@@ -107,23 +127,46 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const content = submitAction.components
               .at(1)
               ?.components.find((c) => c.customId === "content")?.value;
-            const rawOptions = submitAction.components
+            const rawFirstRowOptions = submitAction.components
               .at(2)
-              ?.components.find((c) => c.customId === "options")?.value;
-            if (!title || !content || !rawOptions) {
+              ?.components.find((c) => c.customId === "row1")?.value;
+            const rawSecondRowOptions = submitAction.components
+              .at(3)
+              ?.components.find((c) => c.customId === "row2")?.value;
+
+            if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
                 submitAction,
                 "Nie podano wszystkich wymaganych danych!",
               );
             }
 
-            const options = rawOptions.split("\n").map((option) => option.trim());
-            if (options.length > 5) {
+            const firstRowOptions = rawFirstRowOptions
+              .split("\n")
+              .map((option) => option.trim());
+
+            if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
               );
             }
+
+            const secondRowOptions = rawSecondRowOptions
+              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
+              : [];
+
+            if (secondRowOptions.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
+              );
+            }
+
+            const options = [
+              ...firstRowOptions.map((option) => ({ option, row: 0 })),
+              ...secondRowOptions.map((option) => ({ option, row: 1 })),
+            ];
 
             const poll = await prisma.dmPoll.create({
               data: {
@@ -132,14 +175,14 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 content,
                 options: {
                   createMany: {
-                    data: options.map((option) => ({ option })),
+                    data: options,
                   },
                 },
               },
             });
 
             await submitAction.editReply(
-              `Utworzono głosowanie ${italic(poll.title)} z ${bold(options.length.toString())} opcjami.`,
+              `Utworzono głosowanie ${italic(poll.title)} [${poll.id}] z ${bold(options.length.toString())} opcjami.`,
             );
           }),
       )
@@ -180,23 +223,46 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const content = submitAction.components
               .at(1)
               ?.components.find((c) => c.customId === "content")?.value;
-            const rawOptions = submitAction.components
+            const rawFirstRowOptions = submitAction.components
               .at(2)
-              ?.components.find((c) => c.customId === "options")?.value;
-            if (!title || !content || !rawOptions) {
+              ?.components.find((c) => c.customId === "row1")?.value;
+            const rawSecondRowOptions = submitAction.components
+              .at(3)
+              ?.components.find((c) => c.customId === "row2")?.value;
+
+            if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
                 submitAction,
                 "Nie podano wszystkich wymaganych danych!",
               );
             }
 
-            const options = rawOptions.split("\n").map((option) => option.trim());
-            if (options.length > 5) {
+            const firstRowOptions = rawFirstRowOptions
+              .split("\n")
+              .map((option) => option.trim());
+
+            if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
               );
             }
+
+            const secondRowOptions = rawSecondRowOptions
+              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
+              : [];
+
+            if (secondRowOptions.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
+              );
+            }
+
+            const options = [
+              ...firstRowOptions.map((option) => ({ option, row: 0 })),
+              ...secondRowOptions.map((option) => ({ option, row: 1 })),
+            ];
 
             await prisma.dmPoll.update({
               where: { id },
@@ -205,7 +271,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 content,
                 options: {
                   deleteMany: { id: { in: poll.options.map((option) => option.id) } },
-                  createMany: { data: options.map((option) => ({ option })) },
+                  createMany: { data: options },
                 },
               },
             });
@@ -246,9 +312,23 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   `**Zakończono**: ${time(poll.finishedAt, TimestampStyles.ShortDateTime)}`,
                 );
               }
+              const firstRowOptions = poll.options.filter((o) => o.row === 0);
               lines.push(
-                `**Opcje (${poll.options.length.toString()})**: ${poll.options.map((o) => o.option).join(", ")}`,
+                `**Opcje (${firstRowOptions.length.toString()})**: ${firstRowOptions
+                  .map((o) => o.option)
+                  .join(", ")}`,
               );
+
+              const secondRowOptions = poll.options.filter((o) => o.row === 1);
+
+              if (secondRowOptions.length > 0) {
+                lines.push(
+                  `**Opcje (${secondRowOptions.length.toString()})**: ${secondRowOptions
+                    .map((o) => o.option)
+                    .join(", ")}`,
+                );
+              }
+
               lines.push(`**Treść**: ${italic(poll.content)}`);
               return lines.join("\n");
             };
@@ -291,7 +371,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               embed.addFields([
                 {
                   name: "Opcje",
-                  value: poll.options.map((option) => bold(option.option)).join("\n"),
+                  value: poll.options
+                    .map((option) => `${bold(option.option)} - rząd ${option.row + 1}`)
+                    .join("\n"),
                 },
               ]);
             } else if (poll.startedAt) {
@@ -319,20 +401,21 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 },
               ]);
 
-              // Eliglible (message was delivered), but not yet voted
-              const notYetVoted = eliglibleParticipants.filter(
-                (p) =>
-                  !poll.options
-                    .flatMap((o) => o.votes)
-                    .some((v) => v.userId === p.userId),
-              );
               if (totalVotes < eliglibleParticipants.length) {
+                // Eliglible (message was delivered), but not yet voted
+                const notYetVoted = eliglibleParticipants.filter(
+                  (p) =>
+                    !poll.options
+                      .flatMap((o) => o.votes)
+                      .some((v) => v.userId === p.userId),
+                );
+                const hastebinUrl = await hastebin(
+                  notYetVoted.map(({ userId }) => userId).join("\n"),
+                );
                 embed.addFields([
                   {
                     name: `Nie oddano głosu (${eliglibleParticipants.length - totalVotes})`,
-                    value: notYetVoted
-                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
-                      .join("\n"),
+                    value: hastebinUrl,
                   },
                 ]);
               }
@@ -342,12 +425,13 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 (p) => p.messageId === null,
               );
               if (failedParticipants.length > 0) {
+                const hastebinUrl = await hastebin(
+                  failedParticipants.map(({ userId }) => userId).join("\n"),
+                );
                 embed.addFields([
                   {
                     name: `Nieotrzymane wiadomości (${failedParticipants.length})`,
-                    value: failedParticipants
-                      .map(({ userId }) => `${userMention(userId)} (${userId})`)
-                      .join("\n"),
+                    value: hastebinUrl,
                   },
                 ]);
               }
@@ -387,61 +471,181 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            const buttons = poll.options.map((option) =>
-              new ButtonBuilder()
+            const firstRowOptions = poll.options.filter((o) => o.row === 0);
+            const firstRowButtons = firstRowOptions.map((option, i) => {
+              return new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Primary),
-            );
-            const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-              buttons,
-            );
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji(numberToEmoji(i + 1));
+            });
+
+            const secondRowOptions = poll.options.filter((o) => o.row === 1);
+            const secondRowButtons = secondRowOptions.map((option, i) => {
+              return new ButtonBuilder()
+                .setLabel(option.option)
+                .setCustomId(`vote-option:${option.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji(numberToEmoji(firstRowOptions.length + i + 1));
+            });
+
+            const firstRowActionRow =
+              new ActionRowBuilder<ButtonBuilder>().addComponents(...firstRowButtons);
+            const secondRowActionRow =
+              new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
 
             await itx.deferReply();
-            const messageSendStatuses = await prisma.$transaction(async (tx) => {
+            await ensureUsersExist(
+              prisma,
+              role.members.map((m) => m.id),
+            );
+            await prisma.$transaction(async (tx) => {
               await tx.dmPoll.update({
                 where: { id },
                 data: { startedAt: itx.createdAt },
               });
-
-              const messageSendStatuses = await Promise.all(
-                role.members.map(async (member) =>
-                  discordTry(
-                    async () => {
-                      const message = await member.send({
-                        content: poll.content,
-                        components: [actionRow],
-                      });
-                      return { member, messageId: message.id };
-                    },
-                    [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
-                    () => ({ member, messageId: null }),
-                  ),
-                ),
-              );
-
-              // Save participants with outgoing message IDs - null if failed to send
-              await ensureUsersExist(
-                prisma,
-                role.members.map((m) => m.id),
-              );
+              // Save all eligible participants with empty message IDs
               await tx.dmPollParticipant.createMany({
-                data: messageSendStatuses.map(({ member, messageId }) => ({
+                data: role.members.map((member) => ({
                   pollId: poll.id,
                   userId: member.id,
-                  messageId,
+                  messageId: null,
                 })),
               });
-
-              // Should contain all members in the role, but some may have messageId: null
-              return messageSendStatuses;
             });
+
+            // Notify that the vote has started, but send messages in the background
+            await itx.editReply(
+              `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysyłanie wiadomości do użytkowników... (może to zająć parę minut)`,
+            );
+
+            const messageSendStatuses = await Promise.all(
+              role.members.map(async (member) =>
+                discordTry(
+                  async () => {
+                    const message = await member.send({
+                      content: poll.content,
+                      components: [firstRowActionRow, secondRowActionRow],
+                    });
+                    return { member, messageId: message.id };
+                  },
+                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  () => ({ member, messageId: null }),
+                ),
+              ),
+            );
+
+            const successfullySentMessages = messageSendStatuses.filter(
+              (m) => m.messageId !== null,
+            );
+            // Save outgoing message IDs for participants with successfully sent messages
+            for (const { member, messageId } of successfullySentMessages) {
+              await prisma.dmPollParticipant.update({
+                where: { pollId_userId: { pollId: poll.id, userId: member.id } },
+                data: { messageId },
+              });
+            }
+
+            const lines = [
+              `Rozesłano wiadomości do głosowania ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+                successfullySentMessages.length.toString(),
+              )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
+            ];
+
+            if (successfullySentMessages.length < messageSendStatuses.length) {
+              const failedToSendMessages = messageSendStatuses.filter(
+                (m) => m.messageId === null,
+              );
+              lines.push(
+                `Nie udało się wysłać wiadomości do:\n${failedToSendMessages
+                  .map(({ member }) => `${member.user.tag} ${member.user.id}`)
+                  .join("\n")}`,
+              );
+            }
+
+            await itx.user.createDM();
+            if (!itx.user.dmChannel) return;
+            await itx.user.dmChannel.send(lines.join("\n"));
+          }),
+      )
+      .addCommand("przypomnij", (command) =>
+        command
+          .setDescription(
+            "Przypomnij o głosowaniu użytkownikom, którzy jeszcze nie zagłosowali",
+          )
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .addString("content", (content) =>
+            content
+              .setDescription("Niestandardowa treść przypomnienia")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { id, content: providedContent }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dmPoll.findFirst({
+              where: { id },
+              include: { participants: true, options: { include: { votes: true } } },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+
+            if (!poll.startedAt) {
+              return await errorFollowUp(
+                itx,
+                "Głosowanie nie zostało jeszcze rozpoczęte.",
+              );
+            }
+            if (poll.finishedAt) {
+              return await errorFollowUp(
+                itx,
+                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.LongDateTime)})`,
+              );
+            }
+
+            await itx.deferReply();
+            const members = await fetchMembers(
+              itx.guild,
+              poll.participants
+                .filter(
+                  (p) =>
+                    !poll.options
+                      .flatMap((o) => o.votes)
+                      .some((v) => v.userId === p.userId),
+                )
+                .map((p) => p.userId),
+            );
+            const messageSendStatuses = await Promise.all(
+              members.map(async (member) => {
+                const participant = poll.participants.find(
+                  (p) => p.userId === member.id && p.messageId !== null,
+                );
+                if (!participant) return { member, messageId: null };
+                const { messageId } = participant;
+                if (!messageId) return { member, messageId: null };
+                const channel = await member.createDM();
+                return await discordTry(
+                  async () => {
+                    const content =
+                      providedContent ??
+                      `Hej ${userMention(member.id)}, przypominam Ci o głosowaniu, bo Twój głos nie został jeszcze oddany.`;
+                    const message = await member.send({
+                      content: `${content}\nPrzejdź do głosowania: ${messageLink(channel.id, messageId)} i wybierz jedną z opcji klikając w przycisk. Miłego dnia! :heart:`,
+                      reply: { messageReference: messageId },
+                    });
+                    return { member, messageId: message.id };
+                  },
+                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  () => ({ member, messageId: null }),
+                );
+              }),
+            );
 
             const successfullySentMessages = messageSendStatuses.filter(
               (m) => m.messageId !== null,
             );
             const lines = [
-              `Rozpoczęto głosowanie ${italic(poll.title)} [${poll.id}]. Wysłano wiadomość do ${bold(
+              `Wysłano przypomnienie o głosowaniu do ${bold(
                 successfullySentMessages.length.toString(),
               )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
@@ -485,36 +689,36 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 data: { finishedAt: itx.createdAt },
               });
 
-              // Remove buttons and add a footer to all outgoing messages
-              await Promise.all(
-                poll.participants.map(async ({ userId, messageId }) => {
-                  if (messageId === null) return;
-                  await discordTry(
-                    async () => {
-                      const user = await itx.client.users.fetch(userId);
-                      await user.createDM();
-                      if (!user.dmChannel) return;
-                      const message = await user.dmChannel.messages.fetch(messageId);
-                      const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*.`;
-                      await message.edit({ content, components: [] });
-                    },
-                    [
-                      RESTJSONErrorCodes.UnknownUser,
-                      RESTJSONErrorCodes.UnknownChannel,
-                      RESTJSONErrorCodes.UnknownMessage,
-                    ],
-                    () => {
-                      console.log(
-                        `Failed to delete message ${messageId} for user ${userId}`,
-                      );
-                    },
-                  );
-                }),
-              );
-
               return poll;
             });
             if (!poll) return;
+
+            // Remove buttons and add a footer to all outgoing messages
+            await Promise.all(
+              poll.participants.map(async ({ userId, messageId }) => {
+                if (messageId === null) return;
+                await discordTry(
+                  async () => {
+                    const user = await itx.client.users.fetch(userId);
+                    await user.createDM();
+                    if (!user.dmChannel) return;
+                    const message = await user.dmChannel.messages.fetch(messageId);
+                    const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
+                    await message.edit({ content, components: [] });
+                  },
+                  [
+                    RESTJSONErrorCodes.UnknownUser,
+                    RESTJSONErrorCodes.UnknownChannel,
+                    RESTJSONErrorCodes.UnknownMessage,
+                  ],
+                  () => {
+                    console.log(
+                      `Failed to delete message ${messageId} for user ${userId}`,
+                    );
+                  },
+                );
+              }),
+            );
 
             await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
           }),
