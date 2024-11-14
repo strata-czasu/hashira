@@ -97,6 +97,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
 
     await Promise.all([...creationPromises, ...membersFetchPromises, ...leavePromises]);
 
+    // TODO: Decouple logger registration from guild creation, we should not rely on try/catch
     try {
       await registerGuildLogger(
         ctx.strataCzasuLog,
