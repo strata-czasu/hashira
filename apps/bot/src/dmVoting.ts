@@ -487,13 +487,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 .setCustomId(`vote-option:${option.id}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji(numberToEmoji(firstRowOptions.length + i + 1));
-
             });
 
-          
-            const firstRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(...firstRowButtons);
-            const secondRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
-
+            const firstRowActionRow =
+              new ActionRowBuilder<ButtonBuilder>().addComponents(...firstRowButtons);
+            const secondRowActionRow =
+              new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
 
             await itx.deferReply();
             await ensureUsersExist(

@@ -13,5 +13,4 @@ describe("numberToEmoji", () => {
   test("throws for negative number", () => {
     expect(() => numberToEmoji(-1)).toThrow("Number must be positive");
   });
-  
 });
