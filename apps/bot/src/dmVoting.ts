@@ -25,6 +25,7 @@ import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
+import { numberToEmoji } from "./util/numberToEmoji";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -47,11 +48,20 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
     .setMaxLength(1024)
     .setStyle(TextInputStyle.Paragraph);
 
-  const optionsInput = new TextInputBuilder()
-    .setCustomId("options")
-    .setLabel("Opcje (oddzielone nowymi liniami, max. 5)")
+  const firstRowInput = new TextInputBuilder()
+    .setCustomId("row1")
+    .setLabel("Pierwszy rząd")
     .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
     .setRequired(true)
+    .setMinLength(2)
+    .setMaxLength(256)
+    .setStyle(TextInputStyle.Paragraph);
+
+  const secondRowInput = new TextInputBuilder()
+    .setCustomId("row2")
+    .setLabel("Drugi rząd")
+    .setPlaceholder("Pusty głos\nWycofaj z przyszłych głosowań")
+    .setRequired(false)
     .setMinLength(2)
     .setMaxLength(256)
     .setStyle(TextInputStyle.Paragraph);
@@ -59,10 +69,17 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
   if (poll) {
     titleInput.setValue(poll.title);
     contentInput.setValue(poll.content);
-    optionsInput.setValue(poll.options.map((o) => o.option).join("\n"));
+    const firstRowOptions = poll.options
+      .filter((it) => it.row === 0)
+      .map(({ option }) => option);
+    const secondRowOptions = poll.options
+      .filter((it) => it.row === 1)
+      .map(({ option }) => option);
+    firstRowInput.setValue(firstRowOptions.join("\n"));
+    secondRowInput.setValue(secondRowOptions.join("\n"));
   }
 
-  const inputs = [titleInput, contentInput, optionsInput];
+  const inputs = [titleInput, contentInput, firstRowInput, secondRowInput];
   return inputs.map((input) =>
     new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(input),
   );
@@ -110,23 +127,46 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const content = submitAction.components
               .at(1)
               ?.components.find((c) => c.customId === "content")?.value;
-            const rawOptions = submitAction.components
+            const rawFirstRowOptions = submitAction.components
               .at(2)
-              ?.components.find((c) => c.customId === "options")?.value;
-            if (!title || !content || !rawOptions) {
+              ?.components.find((c) => c.customId === "row1")?.value;
+            const rawSecondRowOptions = submitAction.components
+              .at(3)
+              ?.components.find((c) => c.customId === "row2")?.value;
+
+            if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
                 submitAction,
                 "Nie podano wszystkich wymaganych danych!",
               );
             }
 
-            const options = rawOptions.split("\n").map((option) => option.trim());
-            if (options.length > 5) {
+            const firstRowOptions = rawFirstRowOptions
+              .split("\n")
+              .map((option) => option.trim());
+
+            if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
               );
             }
+
+            const secondRowOptions = rawSecondRowOptions
+              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
+              : [];
+
+            if (secondRowOptions.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
+              );
+            }
+
+            const options = [
+              ...firstRowOptions.map((option) => ({ option, row: 0 })),
+              ...secondRowOptions.map((option) => ({ option, row: 1 })),
+            ];
 
             const poll = await prisma.dmPoll.create({
               data: {
@@ -135,7 +175,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 content,
                 options: {
                   createMany: {
-                    data: options.map((option) => ({ option })),
+                    data: options,
                   },
                 },
               },
@@ -183,23 +223,46 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const content = submitAction.components
               .at(1)
               ?.components.find((c) => c.customId === "content")?.value;
-            const rawOptions = submitAction.components
+            const rawFirstRowOptions = submitAction.components
               .at(2)
-              ?.components.find((c) => c.customId === "options")?.value;
-            if (!title || !content || !rawOptions) {
+              ?.components.find((c) => c.customId === "raw1")?.value;
+            const rawSecondRowOptions = submitAction.components
+              .at(3)
+              ?.components.find((c) => c.customId === "raw2")?.value;
+
+            if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
                 submitAction,
                 "Nie podano wszystkich wymaganych danych!",
               );
             }
 
-            const options = rawOptions.split("\n").map((option) => option.trim());
-            if (options.length > 5) {
+            const firstRowOptions = rawFirstRowOptions
+              .split("\n")
+              .map((option) => option.trim());
+
+            if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
               );
             }
+
+            const secondRowOptions = rawSecondRowOptions
+              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
+              : [];
+
+            if (secondRowOptions.length > 5) {
+              return await errorFollowUp(
+                submitAction,
+                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
+              );
+            }
+
+            const options = [
+              ...firstRowOptions.map((option) => ({ option, row: 0 })),
+              ...secondRowOptions.map((option) => ({ option, row: 1 })),
+            ];
 
             await prisma.dmPoll.update({
               where: { id },
@@ -208,7 +271,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 content,
                 options: {
                   deleteMany: { id: { in: poll.options.map((option) => option.id) } },
-                  createMany: { data: options.map((option) => ({ option })) },
+                  createMany: { data: options },
                 },
               },
             });
@@ -249,9 +312,23 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   `**Zakończono**: ${time(poll.finishedAt, TimestampStyles.ShortDateTime)}`,
                 );
               }
+              const firstRowOptions = poll.options.filter((o) => o.row === 0);
               lines.push(
-                `**Opcje (${poll.options.length.toString()})**: ${poll.options.map((o) => o.option).join(", ")}`,
+                `**Opcje (${firstRowOptions.length.toString()})**: ${firstRowOptions
+                  .map((o) => o.option)
+                  .join(", ")}`,
               );
+
+              const secondRowOptions = poll.options.filter((o) => o.row === 1);
+
+              if (secondRowOptions.length > 0) {
+                lines.push(
+                  `**Opcje (${secondRowOptions.length.toString()})**: ${secondRowOptions
+                    .map((o) => o.option)
+                    .join(", ")}`,
+                );
+              }
+
               lines.push(`**Treść**: ${italic(poll.content)}`);
               return lines.join("\n");
             };
@@ -294,7 +371,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               embed.addFields([
                 {
                   name: "Opcje",
-                  value: poll.options.map((option) => bold(option.option)).join("\n"),
+                  value: poll.options
+                    .map((option) => `${bold(option.option)} - rząd ${option.row + 1}`)
+                    .join("\n"),
                 },
               ]);
             } else if (poll.startedAt) {
@@ -392,20 +471,29 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
-            // FIXME)) This is awful.
-            const number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"] as const;
-            const buttons = poll.options.map((option, i) => {
-              const button = new ButtonBuilder()
+            const firstRowOptions = poll.options.filter((o) => o.row === 0);
+            const firstRowButtons = firstRowOptions.map((option, i) => {
+              return new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Secondary);
-              const emoji = number_emojis[i];
-              if (emoji) button.setEmoji(emoji);
-              return button;
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji(numberToEmoji(i + 1));
             });
-            const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-              buttons,
-            );
+
+            const secondRowOptions = poll.options.filter((o) => o.row === 1);
+            const secondRowButtons = secondRowOptions.map((option, i) => {
+              return new ButtonBuilder()
+                .setLabel(option.option)
+                .setCustomId(`vote-option:${option.id}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji(numberToEmoji(firstRowOptions.length + i + 1));
+
+            });
+
+          
+            const firstRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(...firstRowButtons);
+            const secondRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
+
 
             await itx.deferReply();
             await ensureUsersExist(
@@ -438,7 +526,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   async () => {
                     const message = await member.send({
                       content: poll.content,
-                      components: [actionRow],
+                      components: [firstRowActionRow, secondRowActionRow],
                     });
                     return { member, messageId: message.id };
                   },
