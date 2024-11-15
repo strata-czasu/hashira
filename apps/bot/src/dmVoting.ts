@@ -385,9 +385,18 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               for (const option of poll.options) {
                 const percentage =
                   totalVotes === 0 ? 0 : (option.votes.length / totalVotes) * 100;
-                optionResults.push(
-                  `${bold(option.option)}: ${option.votes.length} (${percentage.toFixed(0)}%)`,
+                const votingUsersHastebinUrl = await hastebin(
+                  option.votes.map(({ userId }) => userId).join("\n"),
                 );
+                if (option.votes.length === 0) {
+                  optionResults.push(
+                    `${bold(option.option)}: ${option.votes.length} (${percentage.toFixed(0)}%)`,
+                  );
+                } else {
+                  optionResults.push(
+                    `${bold(option.option)}: [${option.votes.length}](${votingUsersHastebinUrl}) (${percentage.toFixed(0)}%)`,
+                  );
+                }
               }
 
               // Is in the role and received the message
