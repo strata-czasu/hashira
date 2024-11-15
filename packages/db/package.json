@@ -17,15 +17,15 @@
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.0.3"
+    "@faker-js/faker": "^9.2.0"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "^5.22.0",
     "date-fns": "^4.1.0",
-    "pg": "^8.13.0",
-    "postgres": "^3.4.4",
-    "prisma": "^5.20.0"
+    "pg": "^8.13.1",
+    "postgres": "^3.4.5",
+    "prisma": "^5.22.0"
   }
 }
