@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
+import type { ExtendedPrismaClient, Ultimatum } from "@hashira/db";
 import { addSeconds } from "date-fns";
 import { type Guild, PermissionFlagsBits, type User, italic } from "discord.js";
 import { base } from "../base";
@@ -7,6 +7,19 @@ import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
+
+export const getLatestUltimatum = async (
+  prisma: ExtendedPrismaClient,
+  guild: Guild,
+  user: User,
+) => {
+  return prisma.ultimatum.findFirst({
+    where: { userId: user.id, guildId: guild.id },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const isUltimatumActive = (ultimatum: Ultimatum) => !ultimatum.endedAt;
 
 export const getCurrentUltimatum = async (
   prisma: ExtendedPrismaClient,

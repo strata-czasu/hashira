@@ -86,6 +86,7 @@ const createMute = (
   guild: Guild,
   moderator: User,
   reply: (content: string) => Promise<unknown>,
+  replyToModerator: (content: string) => Promise<unknown>,
 ) => {
   async function mute({
     userId,
@@ -102,6 +103,7 @@ const createMute = (
       duration,
       reason,
       reply,
+      replyToModerator,
     });
   }
 
@@ -211,6 +213,7 @@ export const ai = new Hashira({ name: "ai" })
                 message.guild,
                 message.author,
                 (content) => message.reply(content),
+                (content) => message.author.send(content),
               ),
               parse: JSON.parse,
               description: "Mute a user.",

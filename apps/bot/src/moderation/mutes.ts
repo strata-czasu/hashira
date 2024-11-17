@@ -10,6 +10,7 @@ import { type Duration, add, intervalToDuration } from "date-fns";
 import {
   ActionRowBuilder,
   type Guild,
+  type GuildMember,
   HeadingLevel,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -29,7 +30,7 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
-import { getCurrentUltimatum } from "../strata/ultimatum";
+import { getLatestUltimatum, isUltimatumActive } from "../strata/ultimatum";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -130,6 +131,35 @@ const getUserMutesPaginatedView = (
 const getMute = (tx: PrismaTransaction, id: number, guildId: string) =>
   tx.mute.findFirst({ where: { guildId, id, deletedAt: null } });
 
+const handleUltimatum = async (
+  prisma: ExtendedPrismaClient,
+  member: GuildMember,
+  replyToModerator: (content: string) => Promise<unknown>,
+) => {
+  const latestUltimatum = await getLatestUltimatum(prisma, member.guild, member.user);
+
+  if (!latestUltimatum) return;
+
+  if (isUltimatumActive(latestUltimatum)) {
+    await replyToModerator(
+      `Użytkownik ${userMention(member.id)} ma aktywne ultimatum. Należy nałożyć bana.`,
+    );
+  }
+
+  if (latestUltimatum.endedAt) {
+    const daysSinceEnd =
+      intervalToDuration({ start: latestUltimatum.endedAt, end: new Date() }).days ?? 0;
+    if (daysSinceEnd < 30) {
+      await replyToModerator(
+        `Ostatnie ultimatum użytkownika ${userMention(member.id)} zakończyło się ${time(
+          latestUltimatum.endedAt,
+          TimestampStyles.RelativeTime,
+        )}. Należy nałożyć przedłużyć ultimatum.`,
+      );
+    }
+  }
+};
+
 export const universalAddMute = async ({
   prisma,
   messageQueue,
@@ -140,6 +170,7 @@ export const universalAddMute = async ({
   duration,
   reason,
   reply,
+  replyToModerator,
 }: {
   prisma: ExtendedPrismaClient;
   messageQueue: Context["messageQueue"];
@@ -150,6 +181,7 @@ export const universalAddMute = async ({
   duration: string;
   reason: string;
   reply: (content: string) => Promise<unknown>;
+  replyToModerator: (content: string) => Promise<unknown>;
 }) => {
   const member = await discordTry(
     async () => guild.members.fetch(userId),
@@ -262,11 +294,12 @@ export const universalAddMute = async ({
   );
 
   if (!sentMessage) {
-    await reply(`Nie udało się wysłać wiadomości do ${userMention(userId)}.`);
+    await replyToModerator(
+      `Nie udało się wysłać wiadomości do ${userMention(userId)}.`,
+    );
   }
 
-  const currentUltimatum = await getCurrentUltimatum(prisma, guild, member.user);
-  if (currentUltimatum) await reply("Użytkownik ma aktywne ultimatum.");
+  await handleUltimatum(prisma, member, replyToModerator);
 
   return mute;
 };
@@ -298,6 +331,7 @@ const addMute = async ({
     duration: rawDuration,
     reason,
     reply: (content) => itx.followUp({ content }),
+    replyToModerator: (content) => itx.user.send(content),
   });
 };
 
@@ -699,6 +733,7 @@ export const mutes = new Hashira({ name: "mutes" })
         duration,
         reason,
         reply: (content) => moderatorDmChannel.send(content),
+        replyToModerator: (content) => moderatorDmChannel.send(content),
       });
       // Don't send any message to the guild channel
       await submitAction.deleteReply();
