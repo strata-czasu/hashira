@@ -1,12 +1,14 @@
+import { sleep } from "bun";
+
 type BatchProcessFunction<K, T> = (key: K, batch: T[]) => Promise<void>;
 
 export class Batcher<K, const T> {
-  private items: Map<K, T[]> = new Map();
-  private interval: number;
-  private batchSize: number;
-  private processing: Map<K, boolean> = new Map();
-  private processBatch: BatchProcessFunction<K, T>;
-  private enabled = false;
+  protected items: Map<K, T[]> = new Map();
+  protected interval: number;
+  protected batchSize: number;
+  protected processing: Map<K, boolean> = new Map();
+  protected processBatch: BatchProcessFunction<K, T>;
+  protected enabled = false;
 
   constructor(
     processBatch: BatchProcessFunction<K, T>,
@@ -18,22 +20,20 @@ export class Batcher<K, const T> {
   }
 
   push(key: K, item: T): void {
-    if (!this.items.has(key)) {
-      this.items.set(key, []);
-    }
-    const itemsForKey = this.items.get(key);
-    if (itemsForKey) {
-      itemsForKey.push(item);
-    }
+    const itemsForKey = this.items.get(key) ?? [];
+    itemsForKey.push(item);
+    this.items.set(key, itemsForKey);
+
     if (!this.processing.get(key)) {
       this.startProcessing(key);
     }
   }
 
-  private async startProcessing(key: K): Promise<void> {
+  protected async startProcessing(key: K): Promise<void> {
     if (!this.enabled) return;
     this.processing.set(key, true);
     while (this.items.get(key)?.length) {
+      await sleep(this.interval);
       const itemsForKey = this.items.get(key);
       if (!itemsForKey) return;
       // Pop the first `batchSize` items from the array
@@ -43,7 +43,6 @@ export class Batcher<K, const T> {
       } catch (error) {
         console.error(`Error processing batch for key ${key}:`, error);
       }
-      await new Promise((resolve) => setTimeout(resolve, this.interval));
     }
     this.processing.set(key, false);
   }
