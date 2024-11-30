@@ -18,8 +18,7 @@ import { moderation } from "./moderation";
 import { profile } from "./profile";
 import { roles } from "./roles";
 import { settings } from "./settings";
-import { colorRoles } from "./strata/colorRoles";
-import { ultimatum } from "./strata/ultimatum";
+import { strataCzasu } from "./strata";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
@@ -36,7 +35,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(discordEventLogging)
   .use(autoRole)
   .use(avatar)
-  .use(colorRoles)
+  .use(strataCzasu)
   .use(dmForwarding)
   .use(economy)
   .use(emojiCounting)
@@ -52,7 +51,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(userActivity)
   .use(userComplaint)
   .use(inviteManagement)
-  .use(ultimatum)
   .use(dmVoting)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
