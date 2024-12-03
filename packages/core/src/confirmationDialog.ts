@@ -1,10 +1,9 @@
 import {
   ActionRowBuilder,
+  type BaseMessageOptions,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  type CacheType,
-  type ChatInputCommandInteraction,
   type CollectorFilter,
   ComponentType,
   type Message,
@@ -12,6 +11,10 @@ import {
 
 type DialogCallback = () => Promise<void>;
 type DialogFilter = CollectorFilter<[ButtonInteraction]>;
+
+type StubInteraction = {
+  send(components: BaseMessageOptions): Promise<Message<boolean>>;
+};
 
 export class ConfirmationDialog {
   #message?: Message<boolean>;
@@ -41,7 +44,7 @@ export class ConfirmationDialog {
     this.#timeoutCallback = timeoutCallback;
   }
 
-  private async send(interaction: ChatInputCommandInteraction<CacheType>) {
+  private async send(interaction: StubInteraction) {
     const buttons = [
       new ButtonBuilder()
         .setLabel(this.#acceptMessage)
@@ -54,23 +57,17 @@ export class ConfirmationDialog {
     ];
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
-    if (interaction.deferred && !this.#message) {
-      this.#message = await interaction.editReply({
+    if (!this.#message) {
+      this.#message = await interaction.send({
         content: this.#title,
         components: [actionRow],
-      });
-    } else if (!this.#message) {
-      this.#message = await interaction.reply({
-        content: this.#title,
-        components: [actionRow],
-        fetchReply: true,
       });
     }
 
     await this.render(interaction);
   }
 
-  async render(interaction: ChatInputCommandInteraction<CacheType>) {
+  async render(interaction: StubInteraction) {
     if (!this.#message) return await this.send(interaction);
 
     try {

@@ -184,7 +184,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                   (buttonItx) => buttonItx.user.id === itx.user.id,
                 );
 
-                await confirmation.render(itx);
+                await confirmation.render({ send: itx.editReply.bind(itx) });
 
                 return;
               }

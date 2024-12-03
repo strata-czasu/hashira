@@ -120,7 +120,7 @@ export const inventory = new Hashira({ name: "inventory" })
 
             await lock.run(
               [`inventory_item_transfer_${itx.user.id}_${itemId}`],
-              async () => dialog.render(itx),
+              async () => dialog.render({ send: itx.editReply.bind(itx) }),
               () =>
                 errorFollowUp(itx, "Jesteś już w trakcie przekazania tego przedmiotu!"),
             );

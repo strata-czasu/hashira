@@ -95,7 +95,7 @@ export const marriage = new Hashira({ name: "marriage" })
         );
         await lock.run(
           [`marriage_${itx.user.id}`, `marriage_${targetUserId}`],
-          async () => dialog.render(itx),
+          async () => dialog.render({ send: itx.editReply.bind(itx) }),
           () =>
             errorFollowUp(
               itx,
@@ -166,6 +166,6 @@ export const marriage = new Hashira({ name: "marriage" })
             });
           },
         );
-        await dialog.render(itx);
+        await dialog.render({ send: itx.editReply });
       }),
   );

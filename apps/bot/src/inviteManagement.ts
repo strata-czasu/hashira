@@ -87,7 +87,7 @@ export const inviteManagement = new Hashira({ name: "invite-management" })
               (buttonItx) => buttonItx.user.id === itx.user.id,
             );
 
-            await dialog.render(itx);
+            await dialog.render({ send: itx.editReply.bind(itx) });
           }),
       ),
   );
