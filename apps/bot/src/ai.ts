@@ -1,12 +1,22 @@
-import { type ExtractContext, Hashira } from "@hashira/core";
+import { ConfirmationDialog, type ExtractContext, Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import env from "@hashira/env";
 import { format, intervalToDuration, isAfter } from "date-fns";
-import { type Guild, type User, userMention } from "discord.js";
+import {
+  type Guild,
+  type GuildMember,
+  type GuildTextBasedChannel,
+  type User,
+  codeBlock,
+  inlineCode,
+  userMention,
+} from "discord.js";
 import OpenAI from "openai";
 import { base } from "./base";
 import { universalAddMute } from "./moderation/mutes";
+import { AsyncFunction } from "./util/asyncFunction";
 import { formatDuration } from "./util/duration";
+import { isOwner } from "./util/isOwner";
 
 const createMute = (
   prisma: ExtendedPrismaClient,
@@ -86,6 +96,81 @@ const createGetLatestWarns = (prisma: ExtendedPrismaClient, guildId: string) => 
   };
 };
 
+type InterpreterContext = {
+  prisma: ExtendedPrismaClient;
+  guild: Guild;
+  invokedBy: GuildMember;
+  channel: GuildTextBasedChannel;
+};
+
+const createCodeInterpreter = (context: InterpreterContext) => {
+  return async function interpretCode({ code }: { code: string }) {
+    let result: unknown;
+    await context.channel.send(codeBlock("js", code));
+    const confirmation = new ConfirmationDialog(
+      "Are you sure you want to run this code?",
+      "Yes",
+      "No",
+      async () => {
+        try {
+          const fn = new AsyncFunction("prisma", "guild", "moderator", "channel", code);
+          result = await fn(
+            context.prisma,
+            context.guild,
+            context.invokedBy,
+            context.channel,
+          );
+        } catch (error) {
+          await context.invokedBy.send(`Error: ${error}`);
+          throw error;
+        }
+      },
+      async () => {
+        result = "Code execution cancelled by user interaction or timeout.";
+      },
+      (interaction) => interaction.user.id === context.invokedBy.id,
+    );
+
+    await confirmation.render({ send: context.channel.send.bind(context.channel) });
+    return result;
+  };
+};
+
+const readInterpreterFunction = async (
+  invoker: GuildMember,
+  context: InterpreterContext,
+) => {
+  if (!(await isOwner(invoker))) return [];
+
+  return [
+    {
+      type: "function",
+      function: {
+        function: createCodeInterpreter(context),
+        description: `Write a code snippet to run in the context of the bot.
+You can import using \`import { ... } from 'module'\`.
+The code will be executed inside of a function with the following signature:
+\`\`\`ts
+async function (prisma: ExtendedPrismaClient, guild: Guild, moderator: GuildMember, channel: GuildTextBasedChannel): Promise<unknown> {
+// Your code here
+}
+\`\`\``,
+        parse: JSON.parse,
+        parameters: {
+          type: "object",
+          properties: {
+            code: {
+              type: "string",
+              description:
+                "The code snippet to run. It should be a valid JavaScript code.",
+            },
+          },
+        },
+      },
+    },
+  ] as const;
+};
+
 const snowflake = {
   type: "string",
   pattern: "^\\d+$",
@@ -108,6 +193,8 @@ export const ai = new Hashira({ name: "ai" })
       const content = message.content.slice(botMention.length).trim();
       if (!content) return;
 
+      const thread = await message.startThread({ name: "AI Command" });
+
       const prompt = [
         "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
         "You cannot interact with the moderator, only provide them with information and perform actions.",
@@ -115,73 +202,85 @@ export const ai = new Hashira({ name: "ai" })
         `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
       ];
 
-      const runner = ai.beta.chat.completions.runTools({
-        model: "gpt-4o-2024-08-06",
-        messages: [
-          {
-            role: "system",
-            content: prompt.join("\n"),
-          },
-          {
-            role: "user",
-            content,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              function: createMute(
-                prisma,
-                messageQueue,
-                moderationLog,
-                message.guild,
-                message.author,
-                (content) => message.reply(content),
-                (content) => message.author.send(content),
-              ),
-              parse: JSON.parse,
-              description: "Mute a user.",
-              parameters: {
-                type: "object",
-                properties: {
-                  userId: snowflake,
-                  duration: { type: "string", pattern: "^(\\d+)([hmsd])$" },
-                  reason: { type: "string" },
+      const runner = ai.beta.chat.completions
+        .runTools({
+          model: "gpt-4o-2024-08-06",
+          messages: [
+            {
+              role: "system",
+              content: prompt.join("\n"),
+            },
+            {
+              role: "user",
+              content,
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                function: createMute(
+                  prisma,
+                  messageQueue,
+                  moderationLog,
+                  message.guild,
+                  message.author,
+                  (content) => message.reply(content),
+                  (content) => message.author.send(content),
+                ),
+                parse: JSON.parse,
+                description: "Mute a user.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    userId: snowflake,
+                    duration: { type: "string", pattern: "^(\\d+)([hmsd])$" },
+                    reason: { type: "string" },
+                  },
                 },
               },
             },
-          },
-          {
-            type: "function",
-            function: {
-              function: createGetLatestMutes(prisma, message.guild.id),
-              description: "Get the latest 5 mutes for the user.",
-              parse: JSON.parse,
-              parameters: {
-                type: "object",
-                properties: {
-                  userId: snowflake,
+            {
+              type: "function",
+              function: {
+                function: createGetLatestMutes(prisma, message.guild.id),
+                description: "Get the latest 5 mutes for the user.",
+                parse: JSON.parse,
+                parameters: {
+                  type: "object",
+                  properties: {
+                    userId: snowflake,
+                  },
                 },
               },
             },
-          },
-          {
-            type: "function",
-            function: {
-              function: createGetLatestWarns(prisma, message.guild.id),
-              description: "Get the latest warns for the user.",
-              parse: JSON.parse,
-              parameters: {
-                type: "object",
-                properties: {
-                  userId: snowflake,
+            {
+              type: "function",
+              function: {
+                function: createGetLatestWarns(prisma, message.guild.id),
+                description: "Get the latest warns for the user.",
+                parse: JSON.parse,
+                parameters: {
+                  type: "object",
+                  properties: {
+                    userId: snowflake,
+                  },
                 },
               },
             },
-          },
-        ],
-      });
+            ...(await readInterpreterFunction(message.member, {
+              prisma,
+              guild: message.guild,
+              invokedBy: message.member,
+              channel: message.channel,
+            })),
+          ],
+        })
+        .on("message", (message) => {
+          if (typeof message.content === "string") {
+            thread.send(`${inlineCode(message.role)}:${message.content}`);
+          }
+        });
 
       await message.channel.sendTyping();
       const response = await runner.finalContent();
