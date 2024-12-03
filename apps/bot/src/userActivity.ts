@@ -36,7 +36,7 @@ export const userActivity = new Hashira({ name: "user-activity" })
               { channel: rawChannel, before: rawBefore, limit: rawLimit },
               itx,
             ) => {
-              if (!(await isOwner(itx))) return;
+              if (!(await isOwner(itx.user))) return;
               if (!itx.inCachedGuild()) return;
               const channel = rawChannel ?? itx.channel;
 

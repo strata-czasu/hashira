@@ -1,17 +1,14 @@
-import { type ChatInputCommandInteraction, Team, User } from "discord.js";
+import { type GuildMember, Team, User } from "discord.js";
 
-export const isOwner = async (
-  interaction: ChatInputCommandInteraction,
-): Promise<boolean> => {
-  const userToMatch = interaction.user;
-  const application = await interaction.client.application.fetch();
+export const isOwner = async (user: User | GuildMember): Promise<boolean> => {
+  const application = await user.client.application.fetch();
 
   if (application.owner instanceof User) {
-    return application.owner.id === userToMatch.id;
+    return application.owner.id === user.id;
   }
 
   if (application.owner instanceof Team) {
-    return application.owner.members.has(userToMatch.id);
+    return application.owner.members.has(user.id);
   }
 
   return false;
