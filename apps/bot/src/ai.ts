@@ -152,9 +152,10 @@ You can import using \`import { ... } from 'module'\`.
 The code will be executed inside of a function with the following signature:
 \`\`\`ts
 async function (prisma: ExtendedPrismaClient, guild: Guild, moderator: GuildMember, channel: GuildTextBasedChannel): Promise<unknown> {
-// Your code here
+  // Your code here
 }
-\`\`\``,
+\`\`\`
+Do not write the function signature, just the code inside the function.`,
         parse: JSON.parse,
         parameters: {
           type: "object",
@@ -162,7 +163,7 @@ async function (prisma: ExtendedPrismaClient, guild: Guild, moderator: GuildMemb
             code: {
               type: "string",
               description:
-                "The code snippet to run. It should be a valid JavaScript code.",
+                "The code snippet to run. It should be a valid JavaScript code. It should always return a value.",
             },
           },
         },
