@@ -7,8 +7,6 @@ import {
   type GuildMember,
   type GuildTextBasedChannel,
   type User,
-  codeBlock,
-  inlineCode,
   userMention,
 } from "discord.js";
 import OpenAI from "openai";
@@ -17,6 +15,8 @@ import { universalAddMute } from "./moderation/mutes";
 import { AsyncFunction } from "./util/asyncFunction";
 import { formatDuration } from "./util/duration";
 import { isOwner } from "./util/isOwner";
+import safeSendCode from "./util/safeSendCode";
+import safeSendLongMessage from "./util/safeSendLongMessage";
 
 const createMute = (
   prisma: ExtendedPrismaClient,
@@ -106,7 +106,7 @@ type InterpreterContext = {
 const createCodeInterpreter = (context: InterpreterContext) => {
   return async function interpretCode({ code }: { code: string }) {
     let result: unknown;
-    await context.channel.send(codeBlock("js", code));
+    await safeSendCode(context.channel.send.bind(context.channel), code, "js");
     const confirmation = new ConfirmationDialog(
       "Are you sure you want to run this code?",
       "Yes",
@@ -276,9 +276,10 @@ export const ai = new Hashira({ name: "ai" })
             })),
           ],
         })
-        .on("message", (message) => {
-          if (typeof message.content === "string") {
-            thread.send(`${inlineCode(message.role)}:${message.content}`);
+        .on("message", async (message) => {
+          if (typeof message.content === "string" && message.role !== "tool") {
+            const content = `${message.role === "system" ? "Biszkopt" : message.role}: ${message.content}`;
+            await safeSendLongMessage(thread.send.bind(thread), content);
           }
         });
 
