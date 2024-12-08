@@ -20,7 +20,7 @@ export class Logger<
 
   constructor() {
     this.#batcher = new Batcher(this.processBatch.bind(this), {
-      interval: 5_000,
+      interval: { seconds: 5 },
       batchSize: 5,
     });
   }

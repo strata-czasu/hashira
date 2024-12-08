@@ -1,6 +1,13 @@
 import { sleep } from "bun";
+import type { Duration } from "date-fns";
+import { durationToMilliseconds } from "./duration";
 
 type BatchProcessFunction<K, T> = (key: K, batch: T[]) => Promise<void>;
+
+type BatchOptions = {
+  interval: Duration;
+  batchSize: number;
+};
 
 export class Batcher<K, const T> {
   protected items: Map<K, T[]> = new Map();
@@ -10,11 +17,8 @@ export class Batcher<K, const T> {
   protected processBatch: BatchProcessFunction<K, T>;
   protected enabled = false;
 
-  constructor(
-    processBatch: BatchProcessFunction<K, T>,
-    options: { interval: number; batchSize: number },
-  ) {
-    this.interval = options.interval;
+  constructor(processBatch: BatchProcessFunction<K, T>, options: BatchOptions) {
+    this.interval = durationToMilliseconds(options.interval);
     this.batchSize = options.batchSize;
     this.processBatch = processBatch;
   }

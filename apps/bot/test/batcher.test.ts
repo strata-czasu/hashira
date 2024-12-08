@@ -9,7 +9,7 @@ describe("Batcher", () => {
   beforeEach(() => {
     processBatchMock = mock(() => sleep(20));
     batcher = new Batcher<string, number>(processBatchMock, {
-      interval: 10,
+      interval: { seconds: 0.01 },
       batchSize: 2,
     });
   });
@@ -61,7 +61,7 @@ describe("Batcher", () => {
 
   test("should process a large batch size of 20 items", async () => {
     batcher = new Batcher<string, number>(processBatchMock, {
-      interval: 10,
+      interval: { seconds: 0.01 },
       batchSize: 20,
     });
     batcher.start();

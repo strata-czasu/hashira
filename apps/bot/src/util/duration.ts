@@ -34,6 +34,9 @@ export const durationToSeconds = (duration: Duration): number => {
   );
 };
 
+export const durationToMilliseconds = (duration: Duration): number =>
+  durationToSeconds(duration) * 1000;
+
 export const formatDuration = (duration: Duration): string => {
   const parts = [];
   if (duration.years) parts.push(`${duration.years}y`);
@@ -42,5 +45,6 @@ export const formatDuration = (duration: Duration): string => {
   if (duration.hours) parts.push(`${duration.hours}h`);
   if (duration.minutes) parts.push(`${duration.minutes}m`);
   if (duration.seconds) parts.push(`${duration.seconds}s`);
+
   return parts.join(" ");
 };
