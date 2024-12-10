@@ -1,0 +1,12 @@
+model UserTextActivity {
+  id        Int      @id(map: "core_user_text_activity_pkey") @default(autoincrement())
+  userId    String
+  guildId   String
+  messageId String
+  channelId String
+  timestamp DateTime @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_guildId_guild_id_fk")
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_userId_users_id_fk")
+
+  @@map("userTextActivity")
+}
