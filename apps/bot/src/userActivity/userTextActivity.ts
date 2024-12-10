@@ -1,12 +1,11 @@
 import { Hashira } from "@hashira/core";
 import { ChannelType, SnowflakeUtil } from "discord.js";
-import { base } from "./base";
-import { ensureUserExists } from "./util/ensureUsersExist";
-import { fetchMessages } from "./util/fetchMessages";
-import { isOwner } from "./util/isOwner";
+import { base } from "../base";
+import { ensureUserExists } from "../util/ensureUsersExist";
+import { fetchMessages } from "../util/fetchMessages";
+import { isOwner } from "../util/isOwner";
 
-// TODO: this could be merged with the emojiCounting plugin
-export const userActivity = new Hashira({ name: "user-activity" })
+export const userTextActivity = new Hashira({ name: "user-text-activity" })
   .use(base)
   .group("user-activity", (group) =>
     group
