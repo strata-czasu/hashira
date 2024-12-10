@@ -46,13 +46,19 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
               .setStyle(TextInputStyle.Short),
           ),
         ];
+
+        const customId = `complaint-${itx.user.id}`;
         const modal = new ModalBuilder()
-          .setCustomId(`complaint-${itx.user.id}`)
+          .setCustomId(customId)
           .setTitle("Zgłoś problem")
           .addComponents(actionRows);
         await itx.showModal(modal);
 
-        const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 15 });
+        const submitAction = await itx.awaitModalSubmit({
+          time: 60_000 * 15,
+          filter: (modal) => modal.customId === customId,
+        });
+
         await submitAction.deferReply({ ephemeral: true });
 
         // TODO)) Abstract this into a helper/common util

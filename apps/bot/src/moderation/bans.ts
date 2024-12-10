@@ -236,13 +236,18 @@ export const bans = new Hashira({ name: "bans" })
             .setStyle(TextInputStyle.Short),
         ),
       ];
+
+      const customId = `ban-${itx.targetUser.id}`;
       const modal = new ModalBuilder()
-        .setCustomId(`ban-${itx.targetUser.id}`)
+        .setCustomId(customId)
         .setTitle(`Zbanuj ${itx.targetUser.tag}`)
         .addComponents(...rows);
       await itx.showModal(modal);
 
-      const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
+      const submitAction = await itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      });
       await submitAction.deferReply();
 
       // TODO)) Abstract this into a helper/common util

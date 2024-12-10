@@ -111,13 +111,18 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, _params, itx) => {
             if (!itx.inCachedGuild()) return;
 
+            const customId = `new-poll-${itx.user.id}`;
             const modal = new ModalBuilder()
-              .setCustomId(`new-poll-${itx.user.id}`)
+              .setCustomId(customId)
               .setTitle("Nowe głosowanie")
               .addComponents(...getPollCreateOrUpdateActionRows());
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 10 });
+            const submitAction = await itx.awaitModalSubmit({
+              time: 60_000 * 10,
+              filter: (modal) => modal.customId === customId,
+            });
+
             await submitAction.deferReply();
 
             // TODO)) Abstract this into a helper/common util
@@ -207,13 +212,17 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               );
             }
 
+            const customId = `edit-poll-${poll.id}`;
             const modal = new ModalBuilder()
-              .setCustomId(`edit-poll-${poll.id}`)
+              .setCustomId(customId)
               .setTitle(`Edycja głosowania [${poll.id}]`)
               .addComponents(...getPollCreateOrUpdateActionRows(poll));
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 10 });
+            const submitAction = await itx.awaitModalSubmit({
+              time: 60_000 * 10,
+              filter: (modal) => modal.customId === customId,
+            });
             await submitAction.deferReply();
 
             // TODO)) Abstract this into a helper/common util

@@ -695,14 +695,22 @@ export const mutes = new Hashira({ name: "mutes" })
             .setStyle(TextInputStyle.Paragraph),
         ),
       ];
+
+      const customId = `mute-${itx.targetUser.id}`;
       const modal = new ModalBuilder()
-        .setCustomId(`mute-${itx.targetUser.id}`)
+        .setCustomId(customId)
         .setTitle(`Wycisz ${itx.targetUser.tag}`)
         .addComponents(...rows);
+
       await itx.showModal(modal);
 
       const moderatorDmChannel = await itx.user.createDM();
-      const submitAction = await itx.awaitModalSubmit({ time: 60_000 * 5 });
+
+      const submitAction = await itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      });
+
       // Any reply is needed in order to successfully finish the modal interaction
       await submitAction.deferReply({ ephemeral: true });
 
