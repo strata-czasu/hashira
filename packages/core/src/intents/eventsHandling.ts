@@ -52,6 +52,10 @@ export type GuildMessagesHandling = EventsToHandling<typeof events.guildMessages
 
 export type ReadyHandling = EventsToHandling<typeof events.readyEvents>;
 
+export type InteractionCreateHandling = EventsToHandling<
+  typeof events.interactionCreate
+>;
+
 export type DirectMessageCreateHandling = {
   directMessageCreate: (message: Message<false>) => Promise<void>;
 };
@@ -78,4 +82,5 @@ export type AllEventsHandling = AutoModerationConfigurationHandling &
   GuildVoiceStatesHandling &
   GuildWebhooksHandling &
   ReadyHandling &
+  InteractionCreateHandling &
   CustomEventsHandling;

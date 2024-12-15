@@ -82,6 +82,11 @@ export const guildWebhooksEventsToIntent = createEventsToIntent(
 
 export const readyEventsToIntent = createEventsToIntent(events.readyEvents, []);
 
+export const interactionCreateToIntent = createEventsToIntent(
+  events.interactionCreate,
+  [],
+);
+
 export const directMessageCreateToIntent = createEventsToIntent(
   events.directMessageCreate,
   [GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent],
@@ -117,5 +122,6 @@ export const allEventsToIntent = {
   ...guildVoiceStatesEventsToIntent,
   ...guildWebhooksEventsToIntent,
   ...readyEventsToIntent,
+  ...interactionCreateToIntent,
   ...customEventsToIntent,
 } as const;
