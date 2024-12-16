@@ -5,7 +5,7 @@ import { groupBy, mapValues } from "es-toolkit";
 import { base } from "../base";
 import { parseUserMentions } from "../util/parseUsers";
 
-export const strataMisc = new Hashira({ name: "strata-misc" })
+export const misc = new Hashira({ name: "strata-misc" })
   .use(base)
   .group("strata", (group) =>
     group
