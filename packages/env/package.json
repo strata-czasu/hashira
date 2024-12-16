@@ -1,8 +1,5 @@
 {
   "name": "@hashira/env",
   "module": "index.ts",
-  "type": "module",
-  "dependencies": {
-    "valibot": "^0.42.1"
-  }
+  "type": "module"
 }

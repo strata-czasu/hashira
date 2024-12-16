@@ -35,5 +35,8 @@
     "prisma"
   ],
   "type": "module",
-  "workspaces": ["tooling/*", "packages/*", "apps/*"]
+  "workspaces": ["tooling/*", "packages/*", "apps/*"],
+  "dependencies": {
+    "valibot": "^1.0.0-beta.9"
+  }
 }
