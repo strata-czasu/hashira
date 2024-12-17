@@ -10,8 +10,6 @@
     "test": "bun test test/"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:*",
-    "discord.js": "^14.16.3",
-    "es-toolkit": "^1.29.0"
+    "@hashira/paginate": "workspace:*"
   }
 }

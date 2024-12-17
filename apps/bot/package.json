@@ -13,10 +13,8 @@
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@sentry/bun": "^8.42.0",
+    "@sentry/bun": "^8.45.1",
     "date-fns": "4.1.0",
-    "discord.js": "^14.16.3",
-    "es-toolkit": "^1.29.0",
     "openai": "4.67.3"
   }
 }
