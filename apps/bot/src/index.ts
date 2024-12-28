@@ -18,6 +18,7 @@ import { moderation } from "./moderation";
 import { profile } from "./profile";
 import { roles } from "./roles";
 import { settings } from "./settings";
+import { stickyMessage } from "./stickyMessage";
 import { strataCzasu } from "./strata";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
@@ -47,6 +48,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(settings)
   .use(tasks)
   .use(ai)
+  .use(stickyMessage)
   .use(brochure)
   .use(userActivity)
   .use(userComplaint)

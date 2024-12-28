@@ -86,6 +86,7 @@ model Guild {
   warn               Warn[]
   protectedInvites   ProtectedInvite[]
   ultimatums         Ultimatum[]
+  stickyMessages     StickyMessage[]
 
   @@map("guild")
 }
@@ -274,6 +275,16 @@ model Ultimatum {
   reason    String
   guild     Guild     @relation(fields: [guildId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
+}
+
+model StickyMessage {
+  id            Int     @id @default(autoincrement())
+  guildId       String
+  channelId     String  @unique
+  lastMessageId String  @unique
+  content       Json
+  enabled       Boolean
+  guild         Guild   @relation(fields: [guildId], references: [id])
 }
 
 enum EntryType {

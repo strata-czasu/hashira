@@ -1,9 +1,46 @@
 import { Hashira } from "@hashira/core";
-import { ChannelType, SnowflakeUtil } from "discord.js";
+import type { ExtendedPrismaClient } from "@hashira/db";
+import {
+  ChannelType,
+  type Message,
+  type MessageCreateOptions,
+  RESTJSONErrorCodes,
+  SnowflakeUtil,
+} from "discord.js";
+import { noop } from "es-toolkit";
 import { base } from "../base";
+import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { fetchMessages } from "../util/fetchMessages";
 import { isOwner } from "../util/isOwner";
+
+const handleStickyMessage = async (
+  prisma: ExtendedPrismaClient,
+  message: Message<true>,
+) => {
+  if (message.author.id === message.client.user?.id) return;
+
+  const stickyMessage = await prisma.stickyMessage.findFirst({
+    where: { channelId: message.channel.id, enabled: true },
+  });
+
+  if (!stickyMessage) return;
+
+  discordTry(
+    () => message.channel.messages.delete(stickyMessage.lastMessageId),
+    [RESTJSONErrorCodes.UnknownMessage],
+    noop,
+  ); // just ignore the error if cannot remove the message
+
+  const newMessage = await message.channel.send(
+    stickyMessage.content as MessageCreateOptions,
+  );
+
+  await prisma.stickyMessage.update({
+    where: { channelId: message.channel.id },
+    data: { lastMessageId: newMessage.id },
+  });
+};
 
 export const userTextActivity = new Hashira({ name: "user-text-activity" })
   .use(base)
@@ -94,4 +131,6 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
         timestamp: message.createdAt,
       },
     });
+
+    await handleStickyMessage(prisma, message);
   });
