@@ -20,7 +20,6 @@ export const misc = new Hashira({ name: "strata-misc" })
             const mentionedUsers: { userId: string; channelId: string }[] = [];
 
             for (const channel of channels.values()) {
-              console.log(channel?.id);
               if (!channel) continue;
               if (channel.isVoiceBased() || !channel.isTextBased()) continue;
               if (!channel.topic) continue;
