@@ -41,7 +41,6 @@ const propositionRows = [
       .setLabel("Treść propozycji")
       .setRequired(true)
       .setPlaceholder("# Regulamin jest zły i szyny były złe.")
-      .setMaxLength(1024)
       .setStyle(TextInputStyle.Paragraph),
   ),
 ];
@@ -53,7 +52,6 @@ const complaintRows = [
       .setLabel("Treść skargi")
       .setRequired(true)
       .setPlaceholder("# XYZ powiedział mi, że jestem głupi.")
-      .setMaxLength(1024)
       .setStyle(TextInputStyle.Paragraph),
   ),
 ];
@@ -65,7 +63,6 @@ const questionRows = [
       .setLabel("Treść pytania")
       .setRequired(true)
       .setPlaceholder("# Czy za XYZ są kary?")
-      .setMaxLength(1024)
       .setStyle(TextInputStyle.Paragraph),
   ),
 ];
@@ -311,6 +308,7 @@ export const propositions = new Hashira({ name: "propositions" })
 
     await Promise.all([
       ...meta.propositionsEmojis.map((emoji) => message.react(emoji)),
+      message.startThread({ name: "Dyskusja" }),
       itx.editReply(`Zgłoszenie zostało wysłane na ${channelMention(channelId)}`),
       webhook.delete("Usunięcie webhooka"),
     ]);
