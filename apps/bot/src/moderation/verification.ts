@@ -10,6 +10,7 @@ import {
 import { PaginatorOrder } from "@hashira/paginate";
 import { type Duration, add } from "date-fns";
 import {
+  type ChatInputCommandInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
@@ -32,6 +33,7 @@ import {
   formatBanReason,
   formatUserWithId,
   getMuteRoleId,
+  removeMute,
   scheduleVerificationReminders,
   sendVerificationFailedMessage,
 } from "./util";
@@ -81,6 +83,20 @@ const get18PlusRoleId = async (prisma: ExtendedPrismaClient, guildId: string) =>
   return settings.plus18RoleId;
 };
 
+const readMember = async (
+  itx: ChatInputCommandInteraction<"cached">,
+  rawUser: string,
+) => {
+  const user = await parseUserMentionWorkaround(rawUser, itx);
+  if (!user) return null;
+
+  return discordTry(
+    async () => itx.guild.members.fetch(user.id),
+    [RESTJSONErrorCodes.UnknownMember],
+    async () => null,
+  );
+};
+
 export const verification = new Hashira({ name: "verification" })
   .use(base)
   .group("weryfikacja", (group) =>
@@ -97,27 +113,18 @@ export const verification = new Hashira({ name: "verification" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
+            const member = await readMember(itx, rawUser);
+            if (!member)
+              return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
 
-            const member = await discordTry(
-              async () => itx.guild.members.fetch(user.id),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => {
-                await errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
-                return null;
-              },
-            );
-            if (!member) return;
-
-            await ensureUsersExist(prisma, [user, itx.user]);
-            const dbUser = await prisma.user.findFirst({ where: { id: user.id } });
+            await ensureUsersExist(prisma, [member, itx.user]);
+            const dbUser = await prisma.user.findFirst({ where: { id: member.id } });
             if (!dbUser) return;
 
             if (satisfiesVerificationLevel(dbUser.verificationLevel, "plus16")) {
               return await errorFollowUp(
                 itx,
-                `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
+                `${userMention(member.id)} ma już weryfikację ${formatVerificationType(
                   dbUser.verificationLevel,
                 )}`,
               );
@@ -126,13 +133,13 @@ export const verification = new Hashira({ name: "verification" })
             const verificationInProgress = await getActive16PlusVerification(
               prisma,
               itx.guildId,
-              user.id,
+              member.id,
             );
             if (verificationInProgress) {
               return await errorFollowUp(
                 itx,
                 `${userMention(
-                  user.id,
+                  member.id,
                 )} jest już w trakcie weryfikacji przez ${userMention(
                   verificationInProgress.moderatorId,
                 )}\nData rozpoczęcia: ${time(
@@ -160,7 +167,7 @@ export const verification = new Hashira({ name: "verification" })
               const verification = await tx.verification.create({
                 data: {
                   guildId: itx.guildId,
-                  userId: user.id,
+                  userId: member.id,
                   moderatorId: itx.user.id,
                   type: "plus16",
                   status: "in_progress",
@@ -178,7 +185,7 @@ export const verification = new Hashira({ name: "verification" })
                   "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
                 );
 
-                throw new Error(`Failed to apply mute role to ${user.id}`);
+                throw new Error(`Failed to apply mute role to ${member.id}`);
               }
               return verification;
             });
@@ -193,9 +200,9 @@ export const verification = new Hashira({ name: "verification" })
             await scheduleVerificationReminders(messageQueue, verification.id);
 
             const sentMessage = await sendDirectMessage(
-              user,
+              member,
               `Hejka ${userMention(
-                user.id,
+                member.id,
               )}! Na podstawie Twojego zachowania na serwerze lub którejś z Twoich wiadomości uznaliśmy, że **możesz mieć mniej niż 16 lat**. Dlatego przed chwilą jedna z osób z administracji (${userMention(
                 itx.user.id,
               )}) **rozpoczęła weryfikację Twojego wieku**.\n\n**Masz teraz 72 godziny na otwarcie ticketa na kanale \`#wyslij-ticket\`: ${channelMention(
@@ -204,12 +211,12 @@ export const verification = new Hashira({ name: "verification" })
             );
 
             await itx.editReply(
-              `Rozpoczęto weryfikację 16+ dla ${userMention(user.id)}`,
+              `Rozpoczęto weryfikację 16+ dla ${userMention(member.id)}`,
             );
             if (!sentMessage) {
               await errorFollowUp(
                 itx,
-                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+                `Nie udało się wysłać wiadomości do ${formatUserWithId(member)}.`,
               );
             }
           }),
@@ -530,6 +537,66 @@ export const verification = new Hashira({ name: "verification" })
               );
             }
             return;
+          }),
+      )
+      .addCommand("wycofaj", (command) =>
+        command
+          .setDescription("Wycofaj weryfikację, jeśli przypadkowo została rozpoczęta")
+          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async ({ prisma, messageQueue }, { user: rawUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const member = await readMember(itx, rawUser);
+            if (!member)
+              return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
+
+            await ensureUsersExist(prisma, [member, itx.user]);
+
+            const result = await prisma.$transaction(async (tx) => {
+              const verificationInProgress = await getActive16PlusVerification(
+                tx,
+                itx.guildId,
+                member.id,
+              );
+
+              if (!verificationInProgress)
+                return { status: "not_in_progress" as const };
+
+              await prisma.verification.update({
+                where: { id: verificationInProgress.id },
+                data: { status: "cancelled", cancelledAt: itx.createdAt },
+              });
+
+              await messageQueue.cancel(
+                "verificationEnd",
+                verificationInProgress.id.toString(),
+              );
+
+              const muteRoleId = await getMuteRoleId(prisma, itx.guildId);
+              if (!muteRoleId) return { status: "mute_role_not_set" as const };
+              return { status: "success" as const, muteRoleId };
+            });
+
+            if (result.status === "not_in_progress") {
+              return errorFollowUp(
+                itx,
+                `${userMention(member.id)} nie jest w trakcie weryfikacji 16+`,
+              );
+            }
+
+            if (result.status === "mute_role_not_set") {
+              return errorFollowUp(
+                itx,
+                "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
+              );
+            }
+
+            await removeMute(member, result.muteRoleId, "Wycofanie weryfikacji 16+");
+
+            await itx.editReply(
+              `Wycofano weryfikację 16+ dla ${userMention(member.id)}`,
+            );
           }),
       ),
   )

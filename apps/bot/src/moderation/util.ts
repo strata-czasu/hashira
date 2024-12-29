@@ -2,7 +2,7 @@ import type { ExtractContext } from "@hashira/core";
 import type { ExtendedPrismaClient, Mute } from "@hashira/db";
 import { formatDate, intervalToDuration } from "date-fns";
 import {
-  type GuildMember,
+  GuildMember,
   RESTJSONErrorCodes,
   type User,
   bold,
@@ -18,8 +18,10 @@ import { sendDirectMessage } from "../util/sendDirectMessage";
 
 type BaseContext = ExtractContext<typeof base>;
 
-export const formatUserWithId = (user: User) =>
-  `${bold(user.tag)} (${inlineCode(user.id)})`;
+export const formatUserWithId = (user: User | GuildMember) => {
+  const tag = user instanceof GuildMember ? user.user.tag : user.tag;
+  return `${bold(tag)} (${inlineCode(user.id)})`;
+};
 
 export const getMuteRoleId = async (prisma: ExtendedPrismaClient, guildId: string) => {
   const settings = await prisma.guildSettings.findFirst({ where: { guildId } });
@@ -56,6 +58,21 @@ export const applyMute = async (
         await member.voice.disconnect(auditLogMessage);
       }
       await member.roles.add(muteRoleId, auditLogMessage);
+      return true;
+    },
+    [RESTJSONErrorCodes.MissingPermissions],
+    () => false,
+  );
+};
+
+export const removeMute = async (
+  member: GuildMember,
+  muteRoleId: string,
+  auditLogMessage: string,
+) => {
+  return discordTry(
+    async () => {
+      await member.roles.remove(muteRoleId, auditLogMessage);
       return true;
     },
     [RESTJSONErrorCodes.MissingPermissions],

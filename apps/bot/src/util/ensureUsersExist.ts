@@ -1,20 +1,32 @@
 import type { ExtendedPrismaClient } from "@hashira/db";
-import type { User } from "discord.js";
+import {
+  GuildMember,
+  Message,
+  ThreadMember,
+  User,
+  type UserResolvable,
+} from "discord.js";
+
+const resolveId = (userResolvable: UserResolvable) => {
+  if (
+    userResolvable instanceof User ||
+    userResolvable instanceof GuildMember ||
+    userResolvable instanceof ThreadMember
+  ) {
+    return { id: userResolvable.id };
+  }
+  if (userResolvable instanceof Message) return { id: userResolvable.author.id };
+
+  return { id: userResolvable };
+};
 
 export async function ensureUsersExist(
   prisma: ExtendedPrismaClient,
-  users: (string | User)[],
-): Promise<void> {
-  const toInsert = users.map((user) => ({
-    id: typeof user === "string" ? user : user.id,
-  }));
-
-  await prisma.user.createMany({ data: toInsert, skipDuplicates: true });
+  users: UserResolvable[],
+) {
+  await prisma.user.createMany({ data: users.map(resolveId), skipDuplicates: true });
 }
 
-export async function ensureUserExists(
-  db: ExtendedPrismaClient,
-  user: User | string,
-): Promise<void> {
+export async function ensureUserExists(db: ExtendedPrismaClient, user: User | string) {
   await ensureUsersExist(db, [user]);
 }

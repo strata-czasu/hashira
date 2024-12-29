@@ -1,11 +1,14 @@
-import { RESTJSONErrorCodes, type User } from "discord.js";
+import { type PartialTextBasedChannelFields, RESTJSONErrorCodes } from "discord.js";
 import { discordTry } from "./discordTry";
 
 /**
  * Send a DM to a user, handling the case where the user has DMs disabled.
  * @returns Whether the message was sent successfully
  */
-export const sendDirectMessage = async (user: User, message: string) =>
+export const sendDirectMessage = async (
+  user: PartialTextBasedChannelFields<false>,
+  message: string,
+) =>
   discordTry(
     async () => {
       await user.send(message);
