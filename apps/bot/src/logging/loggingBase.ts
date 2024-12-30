@@ -141,22 +141,14 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
             newMessageContent,
           }: MessageEditData,
         ) => {
+          const lines = [
+            `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
+            `### Stara wiadomość\n${getMessageUpdateLogContent(oldMessage, oldMessageContent)}`,
+            `### Nowa wiadomość\n${getMessageUpdateLogContent(newMessage, newMessageContent)}`,
+          ];
           const embed = getLogMessageEmbed(newMessage.author, timestamp)
-            .setDescription(
-              `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,
-            )
+            .setDescription(lines.join("\n"))
             .setColor("Yellow");
-
-          embed.addFields([
-            {
-              name: "Stara wiadomość",
-              value: getMessageUpdateLogContent(oldMessage, oldMessageContent),
-            },
-            {
-              name: "Nowa wiadomość",
-              value: getMessageUpdateLogContent(newMessage, newMessageContent),
-            },
-          ]);
 
           return embed;
         },
