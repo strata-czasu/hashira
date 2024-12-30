@@ -12,9 +12,6 @@
         "ms-vscode.vscode-typescript-next",
         "oven.bun-vscode",
         "biomejs.biome",
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
-        "eamodio.gitlens",
         "Prisma.prisma"
       ]
     }
