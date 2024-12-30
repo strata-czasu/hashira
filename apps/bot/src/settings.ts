@@ -19,6 +19,7 @@ const formatLogSettings = (settings: LogSettings | null) => {
     formatChannelSetting("Kanał do logów (użytkownicy)", settings.memberLogChannelId),
     formatChannelSetting("Kanał do logów (moderacja)", settings.moderationLogChannelId),
     formatChannelSetting("Kanał do logów (profile)", settings.profileLogChannelId),
+    formatChannelSetting("Kanał do logów (ekonomia)", settings.economyLogChannelId),
   ].join("\n");
 };
 
@@ -212,6 +213,41 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z profilami użytkowników został ustawiony na ${channelMention(channel.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
+      .addCommand("economy-log-channel", (command) =>
+        command
+          .setDescription("Ustaw kanał do wysyłania logów związanych z ekonomią")
+          .addChannel("channel", (channel) =>
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(
+                ChannelType.GuildText,
+                ChannelType.PrivateThread,
+                ChannelType.PublicThread,
+              ),
+          )
+          .handle(async ({ prisma, profileLog: log }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { economyLogChannelId: channel.id },
+                    update: { economyLogChannelId: channel.id },
+                  },
+                },
+              },
+              where: { guildId: itx.guildId },
+            });
+
+            log.updateGuild(itx.guild, channel);
+
+            await itx.reply({
+              content: `Kanał do wysyłania logów związanych z ekonomią został ustawiony na ${channelMention(channel.id)}`,
               ephemeral: true,
             });
           }),
