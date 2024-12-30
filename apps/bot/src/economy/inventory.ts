@@ -65,66 +65,84 @@ export const inventory = new Hashira({ name: "inventory" })
           .setDescription("Przekaż przedmiot innemu użytkownikowi")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, lock }, { id: itemId, user: targetUser }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, lock, economyLog },
+              { id: itemId, user: targetUser },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            if (targetUser.id === itx.user.id) {
-              return await errorFollowUp(
-                itx,
-                "Nie możesz przekazać przedmiotu samemu sobie!",
-              );
-            }
+              if (targetUser.id === itx.user.id) {
+                return await errorFollowUp(
+                  itx,
+                  "Nie możesz przekazać przedmiotu samemu sobie!",
+                );
+              }
 
-            const item = await getItem(prisma, itemId);
-            if (!item) {
-              return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-            }
+              const item = await getItem(prisma, itemId);
+              if (!item) {
+                return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+              }
 
-            await ensureUsersExist(prisma, [targetUser, itx.user]);
-            const dialog = new ConfirmationDialog(
-              `Czy na pewno chcesz przekazać ${bold(item.name)} [${inlineCode(
-                itemId.toString(),
-              )}] dla ${bold(targetUser.tag)}?`,
-              "Tak",
-              "Nie",
-              async () => {
-                const inventoryItem = await prisma.$transaction(async (tx) => {
-                  const inventoryItem = await getInventoryItem(tx, itemId, itx.user.id);
-                  if (!inventoryItem) {
-                    await errorFollowUp(itx, `Nie posiadasz ${bold(item.name)}`);
-                    return null;
-                  }
+              await ensureUsersExist(prisma, [targetUser, itx.user]);
+              const dialog = new ConfirmationDialog(
+                `Czy na pewno chcesz przekazać ${bold(item.name)} [${inlineCode(
+                  itemId.toString(),
+                )}] dla ${bold(targetUser.tag)}?`,
+                "Tak",
+                "Nie",
+                async () => {
+                  const inventoryItem = await prisma.$transaction(async (tx) => {
+                    const inventoryItem = await getInventoryItem(
+                      tx,
+                      itemId,
+                      itx.user.id,
+                    );
+                    if (!inventoryItem) {
+                      await errorFollowUp(itx, `Nie posiadasz ${bold(item.name)}`);
+                      return null;
+                    }
 
-                  await tx.inventoryItem.update({
-                    where: { id: inventoryItem.id },
-                    data: { userId: targetUser.id },
+                    await tx.inventoryItem.update({
+                      where: { id: inventoryItem.id },
+                      data: { userId: targetUser.id },
+                    });
+
+                    return inventoryItem;
                   });
+                  if (!inventoryItem) return;
+                  await itx.editReply({
+                    content: `Przekazano ${bold(item.name)} dla ${bold(targetUser.tag)}`,
+                    components: [],
+                  });
+                  economyLog.push("itemTransfer", itx.guild, {
+                    fromUser: itx.user,
+                    toUser: targetUser,
+                    item,
+                  });
+                },
+                async () => {
+                  await itx.editReply({
+                    content: "Anulowano przekazywanie przedmiotu.",
+                    components: [],
+                  });
+                },
+                (action) => action.user.id === itx.user.id,
+              );
 
-                  return inventoryItem;
-                });
-                if (!inventoryItem) return;
-                await itx.editReply({
-                  content: `Przekazano ${bold(item.name)} dla ${bold(targetUser.tag)}`,
-                  components: [],
-                });
-              },
-              async () => {
-                await itx.editReply({
-                  content: "Anulowano przekazywanie przedmiotu.",
-                  components: [],
-                });
-              },
-              (action) => action.user.id === itx.user.id,
-            );
-
-            await lock.run(
-              [`inventory_item_transfer_${itx.user.id}_${itemId}`],
-              async () => dialog.render({ send: itx.editReply.bind(itx) }),
-              () =>
-                errorFollowUp(itx, "Jesteś już w trakcie przekazania tego przedmiotu!"),
-            );
-          }),
+              await lock.run(
+                [`inventory_item_transfer_${itx.user.id}_${itemId}`],
+                async () => dialog.render({ send: itx.editReply.bind(itx) }),
+                () =>
+                  errorFollowUp(
+                    itx,
+                    "Jesteś już w trakcie przekazania tego przedmiotu!",
+                  ),
+              );
+            },
+          ),
       ),
   )
   .group("eq-admin", (group) =>
@@ -137,7 +155,7 @@ export const inventory = new Hashira({ name: "inventory" })
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma }, { id: itemId, user }, itx) => {
+          .handle(async ({ prisma, economyLog }, { id: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -159,6 +177,11 @@ export const inventory = new Hashira({ name: "inventory" })
             });
             if (!item) return;
 
+            economyLog.push("itemAddToInventory", itx.guild, {
+              moderator: itx.user,
+              user,
+              item,
+            });
             await itx.editReply(
               `Dodano ${bold(item.name)} do ekwipunku ${bold(user.tag)}`,
             );
@@ -169,7 +192,7 @@ export const inventory = new Hashira({ name: "inventory" })
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma }, { id: itemId, user }, itx) => {
+          .handle(async ({ prisma, economyLog }, { id: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -197,6 +220,11 @@ export const inventory = new Hashira({ name: "inventory" })
             });
             if (!item) return;
 
+            economyLog.push("itemRemoveFromInventory", itx.guild, {
+              moderator: itx.user,
+              user,
+              item,
+            });
             await itx.editReply(
               `Usunięto ${bold(item.name)} z ekwipunku ${bold(user.tag)}.`,
             );

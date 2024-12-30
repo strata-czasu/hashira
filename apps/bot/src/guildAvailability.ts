@@ -36,7 +36,7 @@ async function registerGuildLogger<T extends LogMessageType>(
 }
 
 async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
-  const { prisma, messageLog, memberLog, moderationLog, profileLog } = ctx;
+  const { prisma, messageLog, memberLog, moderationLog, profileLog, economyLog } = ctx;
 
   const settings = await prisma.guildSettings.findFirst({
     where: { guildId: guild.id },
@@ -69,6 +69,12 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
       profileLog,
       guild,
       settings.logSettings.profileLogChannelId,
+    );
+  if (settings.logSettings.economyLogChannelId)
+    await registerGuildLogger(
+      economyLog,
+      guild,
+      settings.logSettings.economyLogChannelId,
     );
 }
 
@@ -113,6 +119,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     ctx.memberLog.start(client);
     ctx.moderationLog.start(client);
     ctx.profileLog.start(client);
+    ctx.economyLog.start(client);
   })
   .handle("guildCreate", async (ctx, guild) => {
     if (!ALLOWED_GUILDS.includes(guild.id)) {

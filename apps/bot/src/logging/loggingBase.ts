@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import type { Mute, Warn } from "@hashira/db";
+import type { Item, Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
   EmbedBuilder,
@@ -71,6 +71,17 @@ type UltimatumEndData = {
   createdAt: Date;
   endedAt: Date;
   reason: string;
+};
+
+type ItemTransferData = {
+  fromUser: User;
+  toUser: User;
+  item: Item;
+};
+type ItemAddToOrRemoveFromInventoryData = {
+  moderator: User;
+  user: User;
+  item: Item;
 };
 
 const linkMessage = (message: GuildMessage) => `[Wiadomość](${message.url})`;
@@ -361,6 +372,46 @@ export const loggingBase = new Hashira({ name: "loggingBase" })
           return getLogMessageEmbed(user, timestamp)
             .setDescription(content.join("\n"))
             .setColor("Green");
+        },
+      ),
+  )
+  .const(
+    "economyLog",
+    new Logger()
+      .addMessageType(
+        "itemTransfer",
+        async ({ timestamp }, { fromUser, toUser, item }: ItemTransferData) => {
+          return getLogMessageEmbed(fromUser, timestamp)
+            .setDescription(
+              `Przekazuje ${bold(item.name)} [${inlineCode(item.id.toString())}] dla ${userMention(toUser.id)}`,
+            )
+            .setColor("Yellow");
+        },
+      )
+      .addMessageType(
+        "itemAddToInventory",
+        async (
+          { timestamp },
+          { moderator, user, item }: ItemAddToOrRemoveFromInventoryData,
+        ) => {
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(
+              `Dodaje ${bold(item.name)} [${inlineCode(item.id.toString())}] do ekwipunku ${userMention(user.id)}`,
+            )
+            .setColor("Green");
+        },
+      )
+      .addMessageType(
+        "itemRemoveFromInventory",
+        async (
+          { timestamp },
+          { moderator, user, item }: ItemAddToOrRemoveFromInventoryData,
+        ) => {
+          return getLogMessageEmbed(moderator, timestamp)
+            .setDescription(
+              `Zabiera ${bold(item.name)} [${inlineCode(item.id.toString())}] z ekwipunku ${userMention(user.id)}`,
+            )
+            .setColor("Red");
         },
       ),
   );
