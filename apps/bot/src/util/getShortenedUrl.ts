@@ -1,11 +1,11 @@
 import env from "@hashira/env";
 
 export function getShortenedUrl(url: string): Promise<string> {
-  if (!env.KUTT_API_KEY || !env.KUTT_URL) {
+  if (!env.KUTT_API_KEY || !env.KUTT_API_URL) {
     throw new Error("Kutt API key or URL not provided");
   }
 
-  return fetch(env.KUTT_URL, {
+  return fetch(env.KUTT_API_URL, {
     method: "POST",
     headers: {
       "X-API-Key": env.KUTT_API_KEY,

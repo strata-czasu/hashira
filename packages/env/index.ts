@@ -22,7 +22,7 @@ const Env = v.object({
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),
   OPENAI_KEY: v.optional(v.string()),
   KUTT_API_KEY: v.optional(v.string()),
-  KUTT_URL: v.optional(v.pipe(v.string(), v.url())),
+  KUTT_API_URL: v.optional(v.pipe(v.string(), v.url())),
 });
 
 export default v.parse(Env, process.env);
