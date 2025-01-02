@@ -92,7 +92,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
             const content = encodeJson(stickyMessage.content);
             const shortenedUrl = await getShortenedUrl(content);
 
-            await itx.reply({ content: shortenedUrl });
+            await itx.reply({ content: shortenedUrl.shortUrl });
           }),
       )
       .addCommand("toggle", (command) =>
