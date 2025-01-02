@@ -14,7 +14,6 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { decodeJson, encodeJson } from "./util/embedBuilder";
 import { errorFollowUp } from "./util/errorFollowUp";
-import { isOwner } from "./util/isOwner";
 
 export const stickyMessage = new Hashira({ name: "sticky-message" })
   .use(base)
@@ -35,7 +34,6 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
           )
           .handle(async ({ prisma }, { channel, dataurl }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await isOwner(itx.user))) return;
             const url = new URL(dataurl);
             const data = url.searchParams.get("data");
             if (!data) return errorFollowUp(itx, "Invalid data URL");
@@ -84,7 +82,6 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
           )
           .handle(async ({ prisma }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!isOwner(itx.user)) return;
 
             const stickyMessage = await prisma.stickyMessage.findFirst({
               where: { channelId: channel.id },
