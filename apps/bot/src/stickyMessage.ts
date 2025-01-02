@@ -1,7 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import {
-  AttachmentBuilder,
   ChannelType,
   type MessageCreateOptions,
   PermissionFlagsBits,
@@ -14,6 +13,7 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { decodeJson, encodeJson } from "./util/embedBuilder";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { getShortenedUrl } from "./util/getShortenedUrl";
 
 export const stickyMessage = new Hashira({ name: "sticky-message" })
   .use(base)
@@ -90,11 +90,9 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
             if (!stickyMessage) return errorFollowUp(itx, "No sticky message found");
 
             const content = encodeJson(stickyMessage.content);
-            const attachment = new AttachmentBuilder(Buffer.from(content), {
-              name: "dataurl.txt",
-            });
+            const shortenedUrl = await getShortenedUrl(content);
 
-            await itx.reply({ files: [attachment] });
+            await itx.reply({ content: shortenedUrl });
           }),
       )
       .addCommand("toggle", (command) =>
