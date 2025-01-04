@@ -41,14 +41,34 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
     log.push("guildMemberRemove", member.guild, { member, roles });
   })
   .handle("guildMemberUpdate", async ({ profileLog: log }, oldMember, newMember) => {
-    if (!log.isRegistered(oldMember.guild) || !log.isRegistered(newMember.guild))
-      return;
+    if (!log.isRegistered(newMember.guild)) return;
 
     if (oldMember.nickname !== newMember.nickname) {
       log.push("guildMemberNicknameUpdate", newMember.guild, {
         member: newMember,
         oldNickname: oldMember.nickname,
         newNickname: newMember.nickname,
+      });
+    }
+  })
+  .handle("guildMemberUpdate", async ({ memberLog: log }, oldMember, newMember) => {
+    if (!log.isRegistered(newMember.guild)) return;
+
+    if (oldMember.roles.cache.size > newMember.roles.cache.size) {
+      const removedRoles = oldMember.roles.cache
+        .filter((r) => !newMember.roles.cache.has(r.id))
+        .map((r) => r);
+      log.push("guildMemberRoleRemove", newMember.guild, {
+        member: newMember,
+        removedRoles,
+      });
+    } else if (oldMember.roles.cache.size < newMember.roles.cache.size) {
+      const addedRoles = newMember.roles.cache
+        .filter((r) => !oldMember.roles.cache.has(r.id))
+        .map((r) => r);
+      log.push("guildMemberRoleAdd", newMember.guild, {
+        member: newMember,
+        addedRoles,
       });
     }
   })
