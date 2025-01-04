@@ -1,10 +1,11 @@
 import { Hashira } from "@hashira/core";
 import { PermissionFlagsBits, bold, roleMention } from "discord.js";
+import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
 import { modifyMembers } from "./util/modifyMembers";
 import { parseUserMentions } from "./util/parseUsers";
 
-export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
+export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (group) =>
   group
     .setDescription("Zarządzaj rolami użytkowników")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
@@ -16,7 +17,7 @@ export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
         .addString("users", (users) =>
           users.setDescription("Użytkownicy do dodania roli (oddzielone spacjami)"),
         )
-        .handle(async (_, { role, users }, itx) => {
+        .handle(async ({ memberLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
           await itx.deferReply({ ephemeral: true });
@@ -26,6 +27,12 @@ export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
           await itx.editReply(
             `Dodaję rolę ${bold(toAdd.size.toString())} użytkownikom....`,
           );
+          log.push("guildMemberBulkRoleAdd", itx.guild, {
+            moderator: itx.member,
+            role: role,
+            members: toAdd.map((m) => m),
+          });
+
           const results = await modifyMembers(toAdd, (m) =>
             m.roles.add(role, `Dodano rolę przez ${itx.user.tag} (${itx.user.id})`),
           );
@@ -49,7 +56,7 @@ export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
         .addString("users", (users) =>
           users.setDescription("Użytkownicy do dodania roli (oddzielone spacjami)"),
         )
-        .handle(async (_, { role, users }, itx) => {
+        .handle(async ({ memberLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
           await itx.deferReply({ ephemeral: true });
@@ -59,6 +66,12 @@ export const roles = new Hashira({ name: "roles" }).group("rola", (group) =>
           await itx.editReply(
             `Zabieram rolę ${bold(toRemove.size.toString())} użytkownikom....`,
           );
+          log.push("guildMemberBulkRoleRemove", itx.guild, {
+            moderator: itx.member,
+            role: role,
+            members: toRemove.map((m) => m),
+          });
+
           const results = await modifyMembers(toRemove, (m) =>
             m.roles.remove(
               role,
