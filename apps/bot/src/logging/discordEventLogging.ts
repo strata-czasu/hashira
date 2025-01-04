@@ -1,12 +1,10 @@
 import { Hashira } from "@hashira/core";
 import { GuildMember } from "discord.js";
 import { base } from "../base";
-import { roleCommandsState } from "../roles";
 
 // Logging for Discord events
 export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .use(base)
-  .use(roleCommandsState)
   .handle("messageDelete", async ({ messageLog: log }, message) => {
     if (!message.inGuild()) return;
     if (!log.isRegistered(message.guild)) return;
@@ -53,36 +51,31 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
       });
     }
   })
-  .handle(
-    "guildMemberUpdate",
-    async ({ memberLog: log, roleCommandsState }, oldMember, newMember) => {
-      if (!log.isRegistered(newMember.guild)) return;
+  .handle("guildMemberUpdate", async ({ memberLog: log }, oldMember, newMember) => {
+    if (!log.isRegistered(newMember.guild)) return;
 
-      if (oldMember.roles.cache.size > newMember.roles.cache.size) {
-        const removedRoles = oldMember.roles.cache
-          .filter((r) => !newMember.roles.cache.has(r.id))
-          .filter((r) => !roleCommandsState.getRemoveTask(newMember.guild.id, r.id))
-          .map((r) => r);
-        if (removedRoles.length > 0) {
-          log.push("guildMemberRoleRemove", newMember.guild, {
-            member: newMember,
-            removedRoles,
-          });
-        }
-      } else if (oldMember.roles.cache.size < newMember.roles.cache.size) {
-        const addedRoles = newMember.roles.cache
-          .filter((r) => !oldMember.roles.cache.has(r.id))
-          .filter((r) => !roleCommandsState.getAddTask(newMember.guild.id, r.id))
-          .map((r) => r);
-        if (addedRoles.length > 0) {
-          log.push("guildMemberRoleAdd", newMember.guild, {
-            member: newMember,
-            addedRoles,
-          });
-        }
+    if (oldMember.roles.cache.size > newMember.roles.cache.size) {
+      const removedRoles = oldMember.roles.cache
+        .filter((r) => !newMember.roles.cache.has(r.id))
+        .map((r) => r);
+      if (removedRoles.length > 0) {
+        log.push("guildMemberRoleRemove", newMember.guild, {
+          member: newMember,
+          removedRoles,
+        });
       }
-    },
-  )
+    } else if (oldMember.roles.cache.size < newMember.roles.cache.size) {
+      const addedRoles = newMember.roles.cache
+        .filter((r) => !oldMember.roles.cache.has(r.id))
+        .map((r) => r);
+      if (addedRoles.length > 0) {
+        log.push("guildMemberRoleAdd", newMember.guild, {
+          member: newMember,
+          addedRoles,
+        });
+      }
+    }
+  })
   .handle("guildBanRemove", async ({ moderationLog: log }, ban) => {
     if (!log.isRegistered(ban.guild)) return;
     log.push("guildBanRemove", ban.guild, { ban });
