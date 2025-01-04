@@ -1,6 +1,6 @@
 import type { Prettify } from "@hashira/core";
 import type { Client, EmbedBuilder, Guild, TextBasedChannel } from "discord.js";
-import { Batcher } from "../util/batcher";
+import { Batcher } from "../../util/batcher";
 
 type LogMessageData = Record<string, unknown>;
 export type LogMessageType = Record<string, LogMessageData>;

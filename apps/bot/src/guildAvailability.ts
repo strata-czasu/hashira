@@ -3,7 +3,7 @@ import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
 import type { Guild } from "discord.js";
 import { partition } from "es-toolkit";
 import { base } from "./base";
-import type { LogMessageType, Logger } from "./logging/logger";
+import type { LogMessageType, Logger } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
 
 type BaseContext = ExtractContext<typeof base>;

@@ -4,7 +4,7 @@ import { MessageQueue } from "@hashira/db/tasks";
 import { type Duration, formatDuration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { database } from "./db";
-import { loggingBase } from "./logging/loggingBase";
+import { loggingBase } from "./logging/base";
 import { formatBanReason, sendVerificationFailedMessage } from "./moderation/util";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";

@@ -3,7 +3,7 @@ import env from "@hashira/env";
 import { captureException } from "@sentry/bun";
 import { database } from "./db";
 import { LockManager } from "./lock";
-import { loggingBase } from "./logging/loggingBase";
+import { loggingBase } from "./logging/base";
 import { messageQueueBase } from "./messageQueueBase";
 
 export const base = new Hashira({ name: "base" })
