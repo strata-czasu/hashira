@@ -577,6 +577,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .setDescription("Wyświetl wszystkie aktywne wyciszenia")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
+            if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) return;
 
             const where = {
               guildId: itx.guildId,
