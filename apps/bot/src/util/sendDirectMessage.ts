@@ -1,4 +1,8 @@
-import { type PartialTextBasedChannelFields, RESTJSONErrorCodes } from "discord.js";
+import {
+  type MessageCreateOptions,
+  type PartialTextBasedChannelFields,
+  RESTJSONErrorCodes,
+} from "discord.js";
 import { discordTry } from "./discordTry";
 
 /**
@@ -7,7 +11,7 @@ import { discordTry } from "./discordTry";
  */
 export const sendDirectMessage = async (
   user: PartialTextBasedChannelFields<false>,
-  message: string,
+  message: string | MessageCreateOptions,
 ) =>
   discordTry(
     async () => {

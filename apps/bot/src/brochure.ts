@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { type GuildMember, type PartialGuildMember, userMention } from "discord.js";
-import { STRATA_CZASU_GENDER_ROLES } from "./specializedConstants";
+import { STRATA_CZASU_BROCHURE_ROLES } from "./specializedConstants";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 const addedRole = (
@@ -9,7 +9,7 @@ const addedRole = (
   roleId: string,
 ) => !oldMember.roles.cache.has(roleId) && newMember.roles.cache.has(roleId);
 
-const formatMessage = (
+const formatGenderChannelMessage = (
   member: GuildMember,
   imageUrl: string,
 ) => `## Hej ${userMention(member.id)}!
@@ -20,12 +20,36 @@ Nie tolerujemy takich obrzydliwych zachowań na Stracie Czasu[.](${imageUrl}) Ni
 export const brochure = new Hashira({ name: "brochure" }).handle(
   "guildMemberUpdate",
   async (_, oldMember, newMember) => {
-    if (addedRole(oldMember, newMember, STRATA_CZASU_GENDER_ROLES.female)) {
-      const message = formatMessage(newMember, "https://i.imgur.com/qETLkML.png");
+    if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.female)) {
+      const message = formatGenderChannelMessage(
+        newMember,
+        "https://i.imgur.com/qETLkML.png",
+      );
       await sendDirectMessage(newMember.user, message);
-    } else if (addedRole(oldMember, newMember, STRATA_CZASU_GENDER_ROLES.male)) {
-      const message = formatMessage(newMember, "https://i.imgur.com/h97Vub1.png");
+    } else if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.male)) {
+      const message = formatGenderChannelMessage(
+        newMember,
+        "https://i.imgur.com/h97Vub1.png",
+      );
       await sendDirectMessage(newMember.user, message);
+    } else if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.rdn)) {
+      await sendDirectMessage(newMember.user, {
+        content: userMention(newMember.id),
+        embeds: [
+          {
+            image: {
+              url: "https://i.imgur.com/Zknqwak.png",
+            },
+            color: 4572336,
+            author: {
+              name: "Strata Czasu",
+              icon_url: "https://i.imgur.com/RaXlSrq.png",
+            },
+            description:
+              "Otrzymałxś właśnie rolę RDN i stały dostęp do <#683025889658929231> na Stracie Czasu.",
+          },
+        ],
+      });
     }
   },
 );
