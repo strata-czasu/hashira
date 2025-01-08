@@ -96,6 +96,7 @@ model LogSettings {
   guildSettingsId        Int           @unique
   messageLogChannelId    String?
   memberLogChannelId     String?
+  roleLogChannelId       String?
   moderationLogChannelId String?
   profileLogChannelId    String?
   economyLogChannelId    String?

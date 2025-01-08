@@ -17,6 +17,7 @@ const formatLogSettings = (settings: LogSettings | null) => {
   return [
     formatChannelSetting("Kanał do logów (wiadomości)", settings.messageLogChannelId),
     formatChannelSetting("Kanał do logów (użytkownicy)", settings.memberLogChannelId),
+    formatChannelSetting("Kanał do logów (role)", settings.roleLogChannelId),
     formatChannelSetting("Kanał do logów (moderacja)", settings.moderationLogChannelId),
     formatChannelSetting("Kanał do logów (profile)", settings.profileLogChannelId),
     formatChannelSetting("Kanał do logów (ekonomia)", settings.economyLogChannelId),
@@ -143,6 +144,41 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("role-log-channel", (command) =>
+        command
+          .setDescription("Ustaw kanał do wysyłania logów związanych z rolami")
+          .addChannel("channel", (channel) =>
+            channel
+              .setDescription("Kanał, na który mają być wysyłane logi")
+              .setChannelType(
+                ChannelType.GuildText,
+                ChannelType.PrivateThread,
+                ChannelType.PublicThread,
+              ),
+          )
+          .handle(async ({ prisma, roleLog: log }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              data: {
+                logSettings: {
+                  upsert: {
+                    create: { roleLogChannelId: channel.id },
+                    update: { roleLogChannelId: channel.id },
+                  },
+                },
+              },
+              where: { guildId: itx.guildId },
+            });
+
+            log.updateGuild(itx.guild, channel);
+
+            await itx.reply({
+              content: `Kanał do wysyłania logów związanych z rolami został ustawiony na ${channelMention(channel.id)}`,
+              ephemeral: true,
+            });
+          }),
+      )
       .addCommand("moderation-log-channel", (command) =>
         command
           .setDescription(
@@ -229,7 +265,7 @@ export const settings = new Hashira({ name: "settings" })
                 ChannelType.PublicThread,
               ),
           )
-          .handle(async ({ prisma, profileLog: log }, { channel }, itx) => {
+          .handle(async ({ prisma, economyLog: log }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             await prisma.guildSettings.update({

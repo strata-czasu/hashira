@@ -51,7 +51,7 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
       });
     }
   })
-  .handle("guildMemberUpdate", async ({ memberLog: log }, oldMember, newMember) => {
+  .handle("guildMemberUpdate", async ({ roleLog: log }, oldMember, newMember) => {
     if (!log.isRegistered(newMember.guild)) return;
 
     if (oldMember.roles.cache.size > newMember.roles.cache.size) {

@@ -17,7 +17,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
         .addString("users", (users) =>
           users.setDescription("Użytkownicy do dodania roli (oddzielone spacjami)"),
         )
-        .handle(async ({ memberLog: log }, { role, users }, itx) => {
+        .handle(async ({ roleLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
           await itx.deferReply({ ephemeral: true });
@@ -56,7 +56,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
         .addString("users", (users) =>
           users.setDescription("Użytkownicy do dodania roli (oddzielone spacjami)"),
         )
-        .handle(async ({ memberLog: log }, { role, users }, itx) => {
+        .handle(async ({ roleLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
           await itx.deferReply({ ephemeral: true });
