@@ -15,6 +15,7 @@ import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
+import { ping } from "./ping";
 import { profile } from "./profile";
 import { roles } from "./roles";
 import { settings } from "./settings";
@@ -54,6 +55,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(userComplaint)
   .use(inviteManagement)
   .use(dmVoting)
+  .use(ping)
   .handle("ready", async () => {
     // TODO)) Use a proper logger
     console.log("Bot is ready");
