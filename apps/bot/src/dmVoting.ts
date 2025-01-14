@@ -186,9 +186,13 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               },
             });
 
-            await submitAction.editReply(
+            const lines = [
               `Utworzono głosowanie ${italic(poll.title)} [${poll.id}] z ${bold(options.length.toString())} opcjami.`,
-            );
+              `Możesz edytować je przez \`/glosowanie-dm edytuj ${poll.id.toString()}\``,
+              `Rozpocznij głosowanie przez \`/glosowanie-dm rozpocznij ${poll.id.toString()} @rola-wyborcy\``,
+              `Jeśli potrzebujesz, możesz usunąć je przez \`/glosowanie-dm usun ${poll.id.toString()}\``,
+            ];
+            await submitAction.editReply(lines.join("\n"));
           }),
       )
       .addCommand("edytuj", (command) =>
@@ -296,14 +300,16 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, _params, itx) => {
             if (!itx.inCachedGuild()) return;
 
+            const where = { deletedAt: null };
             const paginator = new DatabasePaginator(
               (props, createdAt) =>
                 prisma.dmPoll.findMany({
                   ...props,
+                  where,
                   orderBy: { createdAt },
                   include: { options: true },
                 }),
-              () => prisma.dmPoll.count(),
+              () => prisma.dmPoll.count({ where }),
               { pageSize: 3, defaultOrder: PaginatorOrder.DESC },
             );
 
@@ -740,6 +746,35 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
 
             await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
+          }),
+      )
+      .addCommand("usun", (command) =>
+        command
+          .setDescription("Usuń głosowanie")
+          .addInteger("id", (id) => id.setDescription("ID głosowania"))
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const poll = await prisma.dmPoll.findFirst({
+              where: { id },
+              include: { options: true },
+            });
+            if (poll === null) {
+              return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
+            }
+
+            if (poll.startedAt && !poll.finishedAt) {
+              return await errorFollowUp(
+                itx,
+                "Nie można usunąć rozpoczętego głosowania",
+              );
+            }
+
+            await prisma.dmPoll.update({
+              where: { id },
+              data: { deletedAt: itx.createdAt },
+            });
+            await itx.reply(`Usunięto głosowanie ${italic(poll.title)} [${poll.id}]`);
           }),
       ),
   )

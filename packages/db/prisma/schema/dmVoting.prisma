@@ -2,6 +2,7 @@ model DmPoll {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now())
   startedAt   DateTime?
+  deletedAt   DateTime?
   finishedAt  DateTime?
   createdById String
   title       String
