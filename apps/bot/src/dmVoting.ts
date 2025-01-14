@@ -513,6 +513,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
 
             await itx.deferReply();
+            await itx.guild.members.fetch();
             await ensureUsersExist(
               prisma,
               role.members.map((m) => m.id),
