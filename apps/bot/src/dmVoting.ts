@@ -418,9 +418,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               const eliglibleParticipants = poll.participants.filter(
                 (p) => p.messageId !== null,
               );
+              const votedPercentage = (totalVotes / eliglibleParticipants.length) * 100;
               embed.addFields([
                 {
-                  name: `Odpowiedzi (${totalVotes}/${eliglibleParticipants.length})`,
+                  name: `Odpowiedzi - ${totalVotes}/${eliglibleParticipants.length} (${votedPercentage.toFixed(1)}%)`,
                   value: optionResults.join("\n"),
                 },
               ]);
@@ -436,9 +437,11 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 const hastebinUrl = await hastebin(
                   notYetVoted.map(({ userId }) => userId).join("\n"),
                 );
+                const notYetVotedPercentage =
+                  (notYetVoted.length / eliglibleParticipants.length) * 100;
                 embed.addFields([
                   {
-                    name: `Nie oddano głosu (${eliglibleParticipants.length - totalVotes})`,
+                    name: `Nie oddano głosu - ${notYetVoted.length}/${eliglibleParticipants.length} (${notYetVotedPercentage.toFixed(1)}%)`,
                     value: hastebinUrl,
                   },
                 ]);
