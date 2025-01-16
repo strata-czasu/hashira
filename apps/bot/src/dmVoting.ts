@@ -743,6 +743,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             });
             if (!poll) return;
 
+            await itx.deferReply();
             // Remove buttons and add a footer to all outgoing messages
             await Promise.all(
               poll.participants.map(async ({ userId, messageId }) => {
@@ -770,7 +771,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               }),
             );
 
-            await itx.reply(`Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`);
+            await itx.editReply(
+              `Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`,
+            );
           }),
       )
       .addCommand("usun", (command) =>
