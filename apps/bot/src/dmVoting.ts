@@ -159,12 +159,17 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             const secondRowOptions = [
-              { option: "Pusty głos", row: 1 },
+              {
+                option: "Pusty głos",
+                row: 1,
+                emoji: "🤐",
+              },
               {
                 option: "Usuń mnie z kolejnych głosowań",
                 row: 1,
                 isOptOut: true,
                 style: "danger",
+                emoji: "🚪",
               },
             ];
 
@@ -507,7 +512,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
                 .setStyle(parseButtonStyle(option.style))
-                .setEmoji(numberToEmoji(i + 1));
+                .setEmoji(option.emoji ?? numberToEmoji(i + 1));
             });
 
             const secondRowOptions = poll.options.filter((o) => o.row === 1);
@@ -516,7 +521,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
                 .setStyle(parseButtonStyle(option.style))
-                .setEmoji(numberToEmoji(firstRowOptions.length + i + 1));
+                .setEmoji(
+                  option.emoji ?? numberToEmoji(firstRowOptions.length + i + 1),
+                );
             });
 
             const firstRowActionRow =

@@ -21,6 +21,7 @@ model DmPollOption {
   row      Int
   isOptOut Boolean            @default(false)
   style    DiscordButtonStyle @default(secondary)
+  emoji    String?
 
   poll  DmPoll       @relation(fields: [pollId], references: [id])
   votes DmPollVote[]
