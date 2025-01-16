@@ -1,5 +1,10 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type DmPoll, type DmPollOption } from "@hashira/db";
+import {
+  DatabasePaginator,
+  type DiscordButtonStyle,
+  type DmPoll,
+  type DmPollOption,
+} from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
@@ -21,7 +26,7 @@ import {
 } from "discord.js";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
-import { ensureUsersExist } from "./util/ensureUsersExist";
+import { ensureUserExists, ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
@@ -50,18 +55,9 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
 
   const firstRowInput = new TextInputBuilder()
     .setCustomId("row1")
-    .setLabel("Pierwszy rząd")
+    .setLabel("Pierwszy rząd opcji")
     .setPlaceholder("Użytkownik 1\nUżytkownik 2\nUżytkownik 3")
     .setRequired(true)
-    .setMinLength(2)
-    .setMaxLength(256)
-    .setStyle(TextInputStyle.Paragraph);
-
-  const secondRowInput = new TextInputBuilder()
-    .setCustomId("row2")
-    .setLabel("Drugi rząd")
-    .setPlaceholder("Pusty głos\nWycofaj z przyszłych głosowań")
-    .setRequired(false)
     .setMinLength(2)
     .setMaxLength(256)
     .setStyle(TextInputStyle.Paragraph);
@@ -72,14 +68,10 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
     const firstRowOptions = poll.options
       .filter((it) => it.row === 0)
       .map(({ option }) => option);
-    const secondRowOptions = poll.options
-      .filter((it) => it.row === 1)
-      .map(({ option }) => option);
     firstRowInput.setValue(firstRowOptions.join("\n"));
-    secondRowInput.setValue(secondRowOptions.join("\n"));
   }
 
-  const inputs = [titleInput, contentInput, firstRowInput, secondRowInput];
+  const inputs = [titleInput, contentInput, firstRowInput];
   return inputs.map((input) =>
     new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(input),
   );
@@ -96,6 +88,18 @@ const getDmPollStatus = (poll: DmPoll) => {
     return "nie rozpoczęte";
   }
   return "błędny status";
+};
+
+// TODO)) Move this to a more appropriate location
+const parseButtonStyle = (style: DiscordButtonStyle): ButtonStyle => {
+  return {
+    primary: ButtonStyle.Primary,
+    secondary: ButtonStyle.Secondary,
+    success: ButtonStyle.Success,
+    danger: ButtonStyle.Danger,
+    link: ButtonStyle.Link,
+    premium: ButtonStyle.Premium,
+  }[style];
 };
 
 export const dmVoting = new Hashira({ name: "dmVoting" })
@@ -132,47 +136,43 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const content = submitAction.components
               .at(1)
               ?.components.find((c) => c.customId === "content")?.value;
-            const rawFirstRowOptions = submitAction.components
+            const rawOptions = submitAction.components
               .at(2)
               ?.components.find((c) => c.customId === "row1")?.value;
-            const rawSecondRowOptions = submitAction.components
-              .at(3)
-              ?.components.find((c) => c.customId === "row2")?.value;
 
-            if (!title || !content || !rawFirstRowOptions) {
+            if (!title || !content || !rawOptions) {
               return await errorFollowUp(
                 submitAction,
                 "Nie podano wszystkich wymaganych danych!",
               );
             }
 
-            const firstRowOptions = rawFirstRowOptions
+            const firstRowOptions = rawOptions
               .split("\n")
               .map((option) => option.trim());
 
             if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji odpowiedzi. Maksymalna liczba to 5.",
               );
             }
 
-            const secondRowOptions = rawSecondRowOptions
-              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
-              : [];
-
-            if (secondRowOptions.length > 5) {
-              return await errorFollowUp(
-                submitAction,
-                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
-              );
-            }
+            const secondRowOptions = [
+              { option: "Pusty głos", row: 1 },
+              {
+                option: "Usuń mnie z kolejnych głosowań",
+                row: 1,
+                isOptOut: true,
+                style: "danger",
+              },
+            ];
 
             const options = [
               ...firstRowOptions.map((option) => ({ option, row: 0 })),
-              ...secondRowOptions.map((option) => ({ option, row: 1 })),
+              ...secondRowOptions,
             ];
-
+            await ensureUserExists(prisma, itx.user);
             const poll = await prisma.dmPoll.create({
               data: {
                 createdById: itx.user.id,
@@ -187,9 +187,11 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             });
 
             const lines = [
-              `Utworzono głosowanie ${italic(poll.title)} [${poll.id}] z ${bold(options.length.toString())} opcjami.`,
+              `Utworzono głosowanie ${italic(poll.title)} [${poll.id}] z ${bold(firstRowOptions.length.toString())} opcjami.`,
+              `Dodano też domyślne opcje "Pusty głos" i "Usuń mnie z kolejnych głosowań".\n`,
               `Możesz edytować je przez \`/glosowanie-dm edytuj ${poll.id.toString()}\``,
               `Rozpocznij głosowanie przez \`/glosowanie-dm rozpocznij ${poll.id.toString()} @rola-wyborcy\``,
+              `Po rozpoczęciu możesz sprawdzić je przez \`/glosowanie-dm sprawdz ${poll.id.toString()}\``,
               `Jeśli potrzebujesz, możesz usunąć je przez \`/glosowanie-dm usun ${poll.id.toString()}\``,
             ];
             await submitAction.editReply(lines.join("\n"));
@@ -239,9 +241,6 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const rawFirstRowOptions = submitAction.components
               .at(2)
               ?.components.find((c) => c.customId === "row1")?.value;
-            const rawSecondRowOptions = submitAction.components
-              .at(3)
-              ?.components.find((c) => c.customId === "row2")?.value;
 
             if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
@@ -257,33 +256,24 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             if (firstRowOptions.length > 5) {
               return await errorFollowUp(
                 submitAction,
-                "Podano za dużo opcji w pierwszym rzędzie. Maksymalna liczba opcji to 5.",
+                "Podano za dużo opcji odpowiedzi. Maksymalna liczba to 5.",
               );
             }
 
-            const secondRowOptions = rawSecondRowOptions
-              ? rawSecondRowOptions.split("\n").map((option) => option.trim())
-              : [];
-
-            if (secondRowOptions.length > 5) {
-              return await errorFollowUp(
-                submitAction,
-                "Podano za dużo opcji w drugim rzędzie. Maksymalna liczba opcji to 5.",
-              );
-            }
-
-            const options = [
-              ...firstRowOptions.map((option) => ({ option, row: 0 })),
-              ...secondRowOptions.map((option) => ({ option, row: 1 })),
-            ];
-
+            const options = firstRowOptions.map((option) => ({ option, row: 0 }));
             await prisma.dmPoll.update({
               where: { id },
               data: {
                 title,
                 content,
                 options: {
-                  deleteMany: { id: { in: poll.options.map((option) => option.id) } },
+                  deleteMany: {
+                    id: {
+                      in: poll.options
+                        .filter((option) => option.row === 0)
+                        .map((option) => option.id),
+                    },
+                  },
                   createMany: { data: options },
                 },
               },
@@ -367,7 +357,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const poll = await prisma.dmPoll.findFirst({
               where: { id },
               include: {
-                options: { include: { votes: true } },
+                options: {
+                  include: { votes: true },
+                  orderBy: [{ row: "asc" }, { id: "asc" }],
+                },
                 participants: true,
               },
             });
@@ -383,14 +376,19 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               .setFooter({ text: `ID: ${poll.id}` });
 
             if (!poll.startedAt) {
-              embed.addFields([
-                {
-                  name: "Opcje",
-                  value: poll.options
-                    .map((option) => `${bold(option.option)} - rząd ${option.row + 1}`)
-                    .join("\n"),
-                },
-              ]);
+              const perRowOptions = new Map<number, string[]>();
+              for (const option of poll.options) {
+                const row = perRowOptions.get(option.row) ?? [];
+                perRowOptions.set(option.row, [...row, option.option]);
+              }
+              for (const [row, options] of perRowOptions) {
+                embed.addFields([
+                  {
+                    name: `Opcje (rząd ${row + 1})`,
+                    value: options.map((option) => bold(option)).join("\n"),
+                  },
+                ]);
+              }
             } else if (poll.startedAt) {
               const totalVotes = poll.options.reduce(
                 (acc, option) => acc + option.votes.length,
@@ -479,7 +477,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             const poll = await prisma.dmPoll.findFirst({
               where: { id },
-              include: { options: true },
+              include: {
+                options: {
+                  include: { votes: true },
+                  orderBy: [{ row: "asc" }, { id: "asc" }],
+                },
+              },
             });
             if (poll === null) {
               return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
@@ -503,7 +506,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               return new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Secondary)
+                .setStyle(parseButtonStyle(option.style))
                 .setEmoji(numberToEmoji(i + 1));
             });
 
@@ -512,7 +515,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               return new ButtonBuilder()
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
-                .setStyle(ButtonStyle.Secondary)
+                .setStyle(parseButtonStyle(option.style))
                 .setEmoji(numberToEmoji(firstRowOptions.length + i + 1));
             });
 
@@ -527,6 +530,14 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               prisma,
               role.members.map((m) => m.id),
             );
+
+            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map(
+              (e) => e.userId,
+            );
+            const eliglibleParticipants = role.members.filter(
+              (m) => !excludedUserIds.includes(m.id),
+            );
+
             await prisma.$transaction(async (tx) => {
               await tx.dmPoll.update({
                 where: { id },
@@ -534,7 +545,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               });
               // Save all eligible participants with empty message IDs
               await tx.dmPollParticipant.createMany({
-                data: role.members.map((member) => ({
+                data: eliglibleParticipants.map((member) => ({
                   pollId: poll.id,
                   userId: member.id,
                   messageId: null,
@@ -548,7 +559,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
 
             const messageSendStatuses = await Promise.all(
-              role.members.map(async (member) =>
+              eliglibleParticipants.map(async (member) =>
                 discordTry(
                   async () => {
                     const message = await member.send({
@@ -579,6 +590,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 successfullySentMessages.length.toString(),
               )}/${bold(messageSendStatuses.length.toString())} użytkowników.`,
             ];
+
+            if (excludedUserIds.length > 0) {
+              lines.push(
+                `Wykluczono ${bold(excludedUserIds.length.toString())} użytkowników z głosowania (wypisani).`,
+              );
+            }
 
             if (successfullySentMessages.length < messageSendStatuses.length) {
               const failedToSendMessages = messageSendStatuses.filter(
@@ -612,7 +629,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             const poll = await prisma.dmPoll.findFirst({
               where: { id },
-              include: { participants: true, options: { include: { votes: true } } },
+              include: {
+                participants: true,
+                options: {
+                  include: { votes: true },
+                },
+              },
             });
             if (poll === null) {
               return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
@@ -758,10 +780,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const poll = await prisma.dmPoll.findFirst({
-              where: { id },
-              include: { options: true },
-            });
+            const poll = await prisma.dmPoll.findFirst({ where: { id } });
             if (poll === null) {
               return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
             }
@@ -831,6 +850,24 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           data: { userId: itx.user.id, optionId },
           include: { option: true },
         });
+
+        if (option.isOptOut) {
+          await tx.dmPollExclusion.upsert({
+            where: { userId: itx.user.id },
+            create: {
+              createdAt: itx.createdAt,
+              userId: itx.user.id,
+              optedOutDuringPollId: option.pollId,
+            },
+            update: {},
+          });
+          if (deletedCount > 0) {
+            await itx.editReply("Usunięto głos i wypisano z przyszłych głosowań");
+          } else {
+            await itx.editReply("Wypisano z przyszłych głosowań");
+          }
+          return;
+        }
 
         if (deletedCount > 0) {
           await itx.editReply(`Zmieniono głos na ${bold(vote.option.option)}`);

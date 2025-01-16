@@ -227,6 +227,7 @@ model User {
   dmPolls                           DmPoll[]
   dmPollVotes                       DmPollVote[]
   participatingInDmPolls            DmPollParticipant[]
+  dmPollExclusion                   DmPollExclusion?
 
   @@map("users")
 }
@@ -302,4 +303,15 @@ enum TransactionType {
   add
 
   @@map("transaction_type")
+}
+
+enum DiscordButtonStyle {
+  primary
+  secondary
+  success
+  danger
+  link
+  premium
+
+  @@map("button_style")
 }
