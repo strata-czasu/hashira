@@ -162,6 +162,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               {
                 option: "Pusty głos",
                 row: 1,
+                style: "primary",
                 emoji: "🤐",
               },
               {
