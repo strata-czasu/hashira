@@ -409,11 +409,11 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 );
                 if (option.votes.length === 0) {
                   optionResults.push(
-                    `${bold(option.option)}: ${option.votes.length} (${percentage.toFixed(0)}%)`,
+                    `${bold(option.option)}: ${option.votes.length} (${percentage.toFixed(1)}%)`,
                   );
                 } else {
                   optionResults.push(
-                    `${bold(option.option)}: [${option.votes.length}](${votingUsersHastebinUrl}) (${percentage.toFixed(0)}%)`,
+                    `${bold(option.option)}: [${option.votes.length}](${votingUsersHastebinUrl}) (${percentage.toFixed(1)}%)`,
                   );
                 }
               }
