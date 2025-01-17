@@ -32,7 +32,8 @@ import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
 import { numberToEmoji } from "./util/numberToEmoji";
-import { parseUserMentionWorkaround } from "./util/parseUsers";
+import { parseUserMentions } from "./util/parseUsers";
+import { createPluralize } from "./util/pluralize";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -103,6 +104,12 @@ const parseButtonStyle = (style: DiscordButtonStyle): ButtonStyle => {
     premium: ButtonStyle.Premium,
   }[style];
 };
+
+const pluralizeUsers = createPluralize({
+  // FIXME: Keys should be sorted automatically
+  2: "użytkowników",
+  1: "użytkownika",
+});
 
 export const dmVoting = new Hashira({ name: "dmVoting" })
   .use(base)
@@ -847,44 +854,59 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           )
           .addCommand("dodaj", (command) =>
             command
-              .setDescription("Dodaj użytkownika do wykluczeń")
-              .addString("user", (user) =>
-                user.setDescription("Użytkownik, którego chcesz dodać do wykluczeń"),
+              .setDescription("Dodaj użytkowników do wykluczeń")
+              .addString("users", (user) =>
+                user.setDescription("Użytkownicy (oddzielone spacjami)"),
               )
-              .handle(async ({ prisma }, { user: rawUser }, itx) => {
+              .handle(async ({ prisma }, { users: rawUsers }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const user = await parseUserMentionWorkaround(rawUser, itx);
-                if (!user) return;
+                const users = await fetchMembers(
+                  itx.guild,
+                  parseUserMentions(rawUsers),
+                );
+                await ensureUsersExist(
+                  prisma,
+                  users.map((u) => u.id),
+                );
 
-                await ensureUserExists(prisma, user);
-                await prisma.dmPollExclusion.upsert({
-                  where: { userId: user.id },
-                  create: { userId: user.id, optedOutDuringPollId: null },
-                  update: {},
-                });
+                for (const user of users.values()) {
+                  await prisma.dmPollExclusion.upsert({
+                    where: { userId: user.id },
+                    create: { userId: user.id, optedOutDuringPollId: null },
+                    update: {},
+                  });
+                }
                 await itx.editReply(
-                  `Dodano ${userMention(user.id)} do wykluczeń z głosowań DM`,
+                  `Dodano ${users.size} ${pluralizeUsers(users.size)} do wykluczeń z głosowań DM`,
                 );
               }),
           )
           .addCommand("usun", (command) =>
             command
-              .setDescription("Usuń użytkownika z wykluczeń")
-              .addString("user", (user) =>
-                user.setDescription("Użytkownik, którego chcesz usunąć z wykluczeń"),
+              .setDescription("Usuń użytkowników z wykluczeń")
+              .addString("users", (user) =>
+                user.setDescription("Użytkownicy (oddzielone spacjami)"),
               )
-              .handle(async ({ prisma }, { user: rawUser }, itx) => {
+              .handle(async ({ prisma }, { users: rawUsers }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const user = await parseUserMentionWorkaround(rawUser, itx);
-                if (!user) return;
+                const users = await fetchMembers(
+                  itx.guild,
+                  parseUserMentions(rawUsers),
+                );
+                await ensureUsersExist(
+                  prisma,
+                  users.map((u) => u.id),
+                );
 
-                await prisma.dmPollExclusion.delete({ where: { userId: user.id } });
+                for (const user of users.values()) {
+                  await prisma.dmPollExclusion.delete({ where: { userId: user.id } });
+                }
                 await itx.editReply(
-                  `Usunięto ${userMention(user.id)} z wykluczeń z głosowań DM`,
+                  `Usunięto ${users.size} ${pluralizeUsers(users.size)} z wykluczeń z głosowań DM`,
                 );
               }),
           ),
