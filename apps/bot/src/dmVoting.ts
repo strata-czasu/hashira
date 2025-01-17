@@ -3,6 +3,7 @@ import {
   DatabasePaginator,
   type DiscordButtonStyle,
   type DmPoll,
+  type DmPollExclusion,
   type DmPollOption,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -31,6 +32,7 @@ import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
 import { numberToEmoji } from "./util/numberToEmoji";
+import { parseUserMentionWorkaround } from "./util/parseUsers";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -809,6 +811,83 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             });
             await itx.reply(`Usunięto głosowanie ${italic(poll.title)} [${poll.id}]`);
           }),
+      )
+      .addGroup("wykluczenia", (group) =>
+        group
+          .setDescription("Wykluczenia z głosowań w wiadomościach prywatnych")
+          .addCommand("lista", (command) =>
+            command
+              .setDescription("Wyświetl listę wykluczeń")
+              .handle(async ({ prisma }, _params, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const paginator = new DatabasePaginator(
+                  (props, createdAt) =>
+                    prisma.dmPollExclusion.findMany({
+                      ...props,
+                      orderBy: { createdAt },
+                    }),
+                  () => prisma.dmPollExclusion.count(),
+                  { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+                );
+
+                const formatExclusion = (exclusion: DmPollExclusion, _idx: number) => {
+                  return `- ${userMention(exclusion.userId)} ${time(exclusion.createdAt, TimestampStyles.ShortDateTime)}`;
+                };
+
+                const view = new PaginatedView(
+                  paginator,
+                  "Wykluczenia z głosowań DM",
+                  formatExclusion,
+                  false,
+                );
+                await view.render(itx);
+              }),
+          )
+          .addCommand("dodaj", (command) =>
+            command
+              .setDescription("Dodaj użytkownika do wykluczeń")
+              .addString("user", (user) =>
+                user.setDescription("Użytkownik, którego chcesz dodać do wykluczeń"),
+              )
+              .handle(async ({ prisma }, { user: rawUser }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const user = await parseUserMentionWorkaround(rawUser, itx);
+                if (!user) return;
+
+                await ensureUserExists(prisma, user);
+                await prisma.dmPollExclusion.upsert({
+                  where: { userId: user.id },
+                  create: { userId: user.id, optedOutDuringPollId: null },
+                  update: {},
+                });
+                await itx.editReply(
+                  `Dodano ${userMention(user.id)} do wykluczeń z głosowań DM`,
+                );
+              }),
+          )
+          .addCommand("usun", (command) =>
+            command
+              .setDescription("Usuń użytkownika z wykluczeń")
+              .addString("user", (user) =>
+                user.setDescription("Użytkownik, którego chcesz usunąć z wykluczeń"),
+              )
+              .handle(async ({ prisma }, { user: rawUser }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const user = await parseUserMentionWorkaround(rawUser, itx);
+                if (!user) return;
+
+                await prisma.dmPollExclusion.delete({ where: { userId: user.id } });
+                await itx.editReply(
+                  `Usunięto ${userMention(user.id)} z wykluczeń z głosowań DM`,
+                );
+              }),
+          ),
       ),
   )
   .handle("ready", async ({ prisma }, client) => {

@@ -54,8 +54,8 @@ model DmPollVote {
 model DmPollExclusion {
   userId               String   @id @unique
   createdAt            DateTime @default(now())
-  optedOutDuringPollId Int      @map("excludedByPollId")
+  optedOutDuringPollId Int?     @map("excludedByPollId")
 
-  user               User   @relation(fields: [userId], references: [id])
-  optedOutDuringPoll DmPoll @relation(fields: [optedOutDuringPollId], references: [id])
+  user               User    @relation(fields: [userId], references: [id])
+  optedOutDuringPoll DmPoll? @relation(fields: [optedOutDuringPollId], references: [id])
 }
