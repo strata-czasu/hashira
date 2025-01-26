@@ -329,7 +329,6 @@ class Hashira<
     const builder = new ContextMenuCommandBuilder()
       .setContexts(InteractionContextType.BotDM)
       .setDefaultMemberPermissions(permissions)
-      // @ts-expect-error This is a problem with @discord.js/builders as they use older discord-api-types version
       .setType(ApplicationCommandType.User)
       .setName(name)
       .setNameLocalization("en-US", capitalize(name));
