@@ -21,7 +21,6 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { hasHigherRole } from "../util/hasHigherRole";
-import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
 
@@ -101,7 +100,7 @@ export const bans = new Hashira({ name: "bans" })
       .setDescription("Zbanuj użytkownika")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-      .addString("user", (user) => user.setDescription("Użytkownik"))
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
       .addString("reason", (reason) =>
         reason.setDescription("Powód bana").setEscaped(true),
       )
@@ -122,17 +121,13 @@ export const bans = new Hashira({ name: "bans" })
       .handle(
         async (
           { moderationLog: log },
-          { user: rawUser, reason, "delete-interval": deleteInterval },
+          { user, reason, "delete-interval": deleteInterval },
           itx,
         ) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
 
-          const user = await parseUserMentionWorkaround(rawUser, itx);
-          if (!user) return;
-
           const member = itx.guild.members.cache.get(user.id);
-
           if (member && hasHigherRole(member, itx.member)) {
             return await errorFollowUp(
               itx,
@@ -153,16 +148,13 @@ export const bans = new Hashira({ name: "bans" })
       .setDescription("Odbanuj użytkownika")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-      .addString("user", (user) => user.setDescription("Użytkownik"))
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
       .addString("reason", (reason) =>
         reason.setDescription("Powód zdjęcia bana").setRequired(false).setEscaped(true),
       )
-      .handle(async (_, { user: rawUser, reason }, itx) => {
+      .handle(async (_, { user, reason }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
-
-        const user = await parseUserMentionWorkaround(rawUser, itx);
-        if (!user) return;
 
         await discordTry(
           async () => {
@@ -187,13 +179,10 @@ export const bans = new Hashira({ name: "bans" })
       .setDescription("Sprawdź, czy użytkownik jest zbanowany")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-      .addString("user", (user) => user.setDescription("Użytkownik"))
-      .handle(async (_, { user: rawUser }, itx) => {
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
+      .handle(async (_, { user }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
-
-        const user = await parseUserMentionWorkaround(rawUser, itx);
-        if (!user) return;
 
         await discordTry(
           async () => {

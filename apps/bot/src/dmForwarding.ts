@@ -12,7 +12,6 @@ import {
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
-import { parseUserMentionWorkaround } from "./util/parseUsers";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 const DM_FORWARD_CHANNEL_ID = "1240038565275238430";
@@ -48,14 +47,11 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       .addCommand("send", (command) =>
         command
           .setDescription("Wyślij prywatną wiaodmość")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addString("content", (content) => content.setDescription("Treść wiadomości"))
-          .handle(async (_, { user: rawUser, content }, itx) => {
+          .handle(async (_, { user, content }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
 
             if (user.id === itx.client.user.id) {
               return await errorFollowUp(itx, "Nie mogę wysłać wiadomości do siebie");
@@ -86,13 +82,10 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
       .addCommand("history", (command) =>
         command
           .setDescription("Wyświetl historię wiadomości")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async (_, { user: rawUser }, itx) => {
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async (_, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
 
             if (user.id === itx.client.user.id) {
               return await errorFollowUp(
