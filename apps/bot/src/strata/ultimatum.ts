@@ -5,6 +5,7 @@ import { type Guild, PermissionFlagsBits, type User, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
+import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
 export const getLatestUltimatum = async (
@@ -56,17 +57,23 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
       .addCommand("dodaj", (command) =>
         command
           .setDescription("Dodaj użytkownikowi ultimatum")
-          .addUser("użytkownik", (user) => user.setDescription("Użytkownik"))
+          .addString("użytkownik", (user) => user.setDescription("Użytkownik"))
           .addString("powód", (reason) => reason.setDescription("Powód ultimatum"))
           .handle(
             async (
               { prisma, messageQueue, strataCzasuLog },
-              { użytkownik: user, powód: reason },
+              { użytkownik: rawUser, powód: reason },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
+              const user = await parseUserMentionWorkaround(rawUser, itx);
+
+              if (!user) {
+                await itx.editReply("Nie znaleziono użytkownika");
+                return;
+              }
               const member = await itx.guild.members.fetch(user.id);
               if (!member) {
                 await itx.editReply("Nie znaleziono użytkownika na serwerze");
@@ -153,16 +160,24 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
       .addCommand("zakończ", (command) =>
         command
           .setDescription("Zakończ aktywne ultimatum")
-          .addUser("użytkownik", (user) => user.setDescription("Użytkownik"))
+          .addString("użytkownik", (user) => user.setDescription("Użytkownik"))
           .addBoolean("force", (force) =>
             force.setDescription("Zakończ ultimatum siłą").setRequired(false),
           )
           .handle(
-            async ({ prisma, messageQueue }, { użytkownik: user, force }, itx) => {
+            async ({ prisma, messageQueue }, { użytkownik: rawUser, force }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
+              const user = await parseUserMentionWorkaround(rawUser, itx);
+
+              if (!user) {
+                await itx.editReply("Nie znaleziono użytkownika");
+                return;
+              }
+
               const ultimatum = await getCurrentUltimatum(prisma, itx.guild, user);
+
               if (!ultimatum) {
                 await itx.editReply("Nie znaleziono aktywnego ultimatum");
                 return;

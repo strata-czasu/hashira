@@ -35,6 +35,7 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatMuteLength, getMuteRoleId } from "./util";
 
@@ -344,7 +345,7 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("add", (command) =>
         command
           .setDescription("Wycisz użytkownika")
-          .addUser("user", (user) =>
+          .addString("user", (user) =>
             user.setDescription("Użytkownik, którego chcesz wyciszyć"),
           )
           .addString("duration", (duration) =>
@@ -354,11 +355,14 @@ export const mutes = new Hashira({ name: "mutes" })
           .handle(
             async (
               { prisma, messageQueue, moderationLog: log },
-              { user, duration, reason },
+              { user: rawUser, duration, reason },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
+
+              const user = await parseUserMentionWorkaround(rawUser, itx);
+              if (!user) return;
 
               await addMute({
                 prisma,
@@ -612,12 +616,15 @@ export const mutes = new Hashira({ name: "mutes" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl wyciszenia użytkownika")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte wyciszenia").setRequired(false),
           )
-          .handle(async ({ prisma }, { user, deleted }, itx) => {
+          .handle(async ({ prisma }, { user: rawUser, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
+
+            const user = await parseUserMentionWorkaround(rawUser, itx);
+            if (!user) return;
 
             const paginatedView = getUserMutesPaginatedView(
               prisma,
