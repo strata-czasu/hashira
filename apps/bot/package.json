@@ -2,6 +2,10 @@
   "name": "@hashira/bot",
   "module": "src/index.ts",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*.ts": "./src/*.ts"
+  },
   "scripts": {
     "start": "bun run src/index.ts",
     "reload-commands": "bun run reload-commands.ts",

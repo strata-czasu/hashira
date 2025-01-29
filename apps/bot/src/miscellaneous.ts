@@ -2,25 +2,31 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Task } from "@hashira/db";
 import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
+  ActionRowBuilder,
   AttachmentBuilder,
   type GuildBasedChannel,
   HeadingLevel,
+  ModalBuilder,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  TextInputBuilder,
+  TextInputStyle,
   channelMention,
   heading,
   inlineCode,
   time,
 } from "discord.js";
-import { isNotNil } from "es-toolkit";
+import { isNil, isNotNil } from "es-toolkit";
 import { base } from "./base";
 import { addBalances } from "./economy/managers/transferManager";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
+import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
+import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
@@ -313,6 +319,75 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             );
 
             await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("eval", (command) =>
+        command
+          .setDescription("Evaluate code")
+          .addString("code", (code) => code.setDescription("Code").setRequired(false))
+          .handle(async (ctx, { code: rawCode }, itx) => {
+            if (await isNotOwner(itx.user)) return;
+            let responder = itx.reply.bind(itx);
+            let code: string;
+            if (rawCode) code = rawCode;
+            else {
+              await itx.showModal(
+                new ModalBuilder()
+                  .setTitle("Eval")
+                  .setCustomId(`eval-${itx.id}`)
+                  .addComponents(
+                    new ActionRowBuilder({
+                      components: [
+                        new TextInputBuilder()
+                          .setCustomId(`code-${itx.id}`)
+                          .setLabel("Code")
+                          .setPlaceholder("Code")
+                          .setStyle(TextInputStyle.Paragraph),
+                      ],
+                    }),
+                  ),
+              );
+
+              const response = await itx.awaitModalSubmit({
+                filter: (interaction) => interaction.customId === `eval-${itx.id}`,
+                time: 60000,
+              });
+
+              responder = response.reply.bind(response);
+              code = response.fields.getTextInputValue(`code-${itx.id}`);
+            }
+
+            const lines = code.split("\n").map((line) => line.trim());
+
+            if (!lines.at(-1)?.includes("return")) {
+              lines[lines.length - 1] = `return ${lines.at(-1)}`;
+            }
+
+            let result: unknown;
+            try {
+              const fn = AsyncFunction("ctx", "itx", lines.join("\n"));
+              result = await fn(ctx, itx);
+            } catch (error) {
+              await responder({ content: `Error: ${error}`, flags: "Ephemeral" });
+            }
+
+            const strVal =
+              typeof result === "string" ? result : JSON.stringify(result, null, 2);
+
+            if (isNil(strVal)) {
+              await responder({ content: "No result" });
+              return;
+            }
+
+            if (strVal.length > 2000) {
+              const attachment = new AttachmentBuilder(Buffer.from(strVal), {
+                name: "result.txt",
+              });
+              await responder({ files: [attachment] });
+              return;
+            }
+
+            await responder({ content: strVal });
           }),
       ),
   );
