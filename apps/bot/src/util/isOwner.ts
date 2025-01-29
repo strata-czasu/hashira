@@ -13,3 +13,7 @@ export const isOwner = async (user: User | GuildMember): Promise<boolean> => {
 
   return false;
 };
+
+export const isNotOwner = async (user: User | GuildMember): Promise<boolean> => {
+  return !(await isOwner(user));
+};

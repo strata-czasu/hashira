@@ -12,7 +12,7 @@ import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { fetchMessages } from "../util/fetchMessages";
-import { isOwner } from "../util/isOwner";
+import { isNotOwner } from "../util/isOwner";
 
 const handleStickyMessage = async (
   prisma: ExtendedPrismaClient,
@@ -72,7 +72,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               { channel: rawChannel, before: rawBefore, limit: rawLimit },
               itx,
             ) => {
-              if (!(await isOwner(itx.user))) return;
+              if (await isNotOwner(itx.user)) return;
               if (!itx.inCachedGuild()) return;
               const channel = rawChannel ?? itx.channel;
 

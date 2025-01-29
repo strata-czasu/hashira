@@ -14,7 +14,7 @@ import { base } from "./base";
 import { universalAddMute } from "./moderation/mutes";
 import { AsyncFunction } from "./util/asyncFunction";
 import { formatDuration } from "./util/duration";
-import { isOwner } from "./util/isOwner";
+import { isNotOwner } from "./util/isOwner";
 import safeSendCode from "./util/safeSendCode";
 import safeSendLongMessage from "./util/safeSendLongMessage";
 
@@ -140,7 +140,7 @@ const readInterpreterFunction = async (
   invoker: GuildMember,
   context: InterpreterContext,
 ) => {
-  if (!(await isOwner(invoker))) return [];
+  if (await isNotOwner(invoker)) return [];
 
   return [
     {
