@@ -113,7 +113,7 @@ const createCodeInterpreter = (context: InterpreterContext) => {
       "No",
       async () => {
         try {
-          const fn = new AsyncFunction("prisma", "guild", "moderator", "channel", code);
+          const fn = AsyncFunction("prisma", "guild", "moderator", "channel", code);
           result = await fn(
             context.prisma,
             context.guild,
