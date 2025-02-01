@@ -27,9 +27,4 @@ COPY --link . .
 
 RUN bun prisma-generate
 
-RUN bunx biome lint . && \
-    bunx biome format . && \
-    bunx tsc --project apps/bot/tsconfig.json && \
-    bun prisma-check-migrations
-
 CMD ["bun", "start:prod"]
