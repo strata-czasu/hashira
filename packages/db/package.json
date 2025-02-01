@@ -22,10 +22,11 @@
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "^6.3.0",
+    "@prisma/instrumentation": "^6.3.0",
     "date-fns": "^4.1.0",
     "pg": "^8.13.1",
     "postgres": "^3.4.5",
-    "prisma": "^6.2.1"
+    "prisma": "^6.3.0"
   }
 }
