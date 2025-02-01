@@ -4,6 +4,7 @@ import {
   type ChatInputCommandInteraction,
   Client,
   ContextMenuCommandBuilder,
+  type Interaction,
   InteractionContextType,
   Partials,
   type Permissions,
@@ -48,6 +49,8 @@ type HashiraSlashCommandOptions =
   | SlashCommandSubcommandsOnlyBuilder
   | SlashCommandSubcommandBuilder;
 
+type HashiraExceptionHandler = (error: Error, interaction?: Interaction) => void;
+
 const handleCommandConflict = (
   [a]: [HashiraSlashCommandOptions, unknown],
   [b]: [HashiraSlashCommandOptions, unknown],
@@ -87,7 +90,7 @@ class Hashira<
   Decorators extends HashiraDecorators = typeof decoratorInitBase,
   Commands extends HashiraCommands = typeof commandsInitBase,
 > {
-  #exceptionHandlers: Map<string, (error: Error) => void>;
+  #exceptionHandlers: Map<string, HashiraExceptionHandler>;
   #state: BaseDecorator;
   #derive: UnknownDerive[];
   #const: BaseDecorator;
@@ -369,7 +372,7 @@ class Hashira<
     try {
       await handler(this.context(), interaction);
     } catch (error) {
-      if (error instanceof Error) this.handleException(error);
+      if (error instanceof Error) this.handleException(error, interaction);
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({
           content: "There was an error while executing this command!",
@@ -393,7 +396,7 @@ class Hashira<
     try {
       await handler(this.context(), interaction);
     } catch (error) {
-      if (error instanceof Error) this.handleException(error);
+      if (error instanceof Error) this.handleException(error, interaction);
     }
   }
 
@@ -405,7 +408,7 @@ class Hashira<
     try {
       await handler(this.context(), interaction);
     } catch (error) {
-      if (error instanceof Error) this.handleException(error);
+      if (error instanceof Error) this.handleException(error, interaction);
       await interaction.respond([]);
     }
   }
@@ -432,15 +435,15 @@ class Hashira<
     discordClient.on("error", (error) => this.handleException(error));
   }
 
-  addExceptionHandler(name: string, handler: (error: Error) => void) {
+  addExceptionHandler(name: string, handler: HashiraExceptionHandler) {
     this.#exceptionHandlers.set(name, handler);
 
     return this;
   }
 
-  private handleException(error: Error) {
+  private handleException(error: Error, interaction?: Interaction) {
     for (const handler of this.#exceptionHandlers.values()) {
-      handler(error);
+      handler(error, interaction);
     }
   }
 

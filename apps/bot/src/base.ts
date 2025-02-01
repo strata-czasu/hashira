@@ -10,8 +10,11 @@ export const base = new Hashira({ name: "base" })
   .use(database)
   .use(loggingBase)
   .use(messageQueueBase)
-  .addExceptionHandler("default", (e) => {
-    if (env.SENTRY_DSN) captureException(e);
+  .addExceptionHandler("default", (e, itx) => {
+    if (env.SENTRY_DSN) {
+      const user = itx ? { id: itx.user.id, username: itx.user.username } : {};
+      captureException(e, { user });
+    }
     console.error(e);
   })
   .const("lock", new LockManager());
