@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
+import { PrismaInstrumentation } from "@prisma/instrumentation";
 import * as Sentry from "@sentry/bun";
 import { ai } from "./ai";
 import { autoRole } from "./autoRole";
@@ -29,7 +30,12 @@ if (env.SENTRY_DSN) {
   Sentry.init({
     dsn: env.SENTRY_DSN,
     tracesSampleRate: 1.0, // Capture 100% of the transactions
-    integrations: [Sentry.prismaIntegration()],
+    integrations: [
+      Sentry.prismaIntegration({
+        // Override the default instrumentation that Sentry uses
+        prismaInstrumentation: new PrismaInstrumentation(),
+      }),
+    ],
   });
 }
 
