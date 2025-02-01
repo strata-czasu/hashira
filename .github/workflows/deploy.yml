@@ -1,10 +1,11 @@
 name: Deploy on Successful Push to Main
 
 on:
-  workflow_run:
-    workflows: ["Lint and Test"]
-    types:
-      - completed
+  workflow_dispatch:
+  # workflow_run:
+  #   workflows: ["Lint and Test"]
+  #   types:
+  #     - completed
 
 jobs:
   deploy:
