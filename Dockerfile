@@ -4,8 +4,6 @@ FROM oven/bun:${BUN_VERSION}-slim AS base
 
 WORKDIR /app
 
-FROM base AS build
-
 COPY --link bun.lockb package.json ./
 COPY --link apps/bot/package.json apps/bot/package.json
 COPY --link packages/core/package.json packages/core/package.json
@@ -20,4 +18,5 @@ COPY --link . .
 
 RUN bun prisma-generate
 
+USER bun
 CMD ["bun", "start:prod"]
