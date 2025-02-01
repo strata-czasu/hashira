@@ -1,2 +1,12 @@
 **/node_modules
 **/.env
+.git
+.gitignore
+.github
+.idea
+.vscode
+.devcontainer
+lefthook.yml
+biome.json
+knip.ts
+README.md

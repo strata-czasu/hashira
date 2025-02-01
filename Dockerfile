@@ -5,9 +5,10 @@ FROM node:${NODE_VERSION}-slim AS base
 ARG BUN_VERSION=bun-v1.2.0
 ENV BUN_INSTALL=/usr/local
 
-RUN apt-get update \
-    && apt-get -y install --no-install-recommends git curl ca-certificates unzip \
-    && curl -fsSL https://bun.sh/install | bash -s "${BUN_VERSION}"
+RUN apt-get update && \
+    apt-get -y install --no-install-recommends curl ca-certificates unzip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://bun.sh/install | bash -s "${BUN_VERSION}"
 
 WORKDIR /app
 
