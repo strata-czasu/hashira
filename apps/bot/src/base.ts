@@ -21,6 +21,9 @@ export const base = new Hashira({ name: "base" })
             scope.setExtra("channel_id", itx.channel.id);
             scope.setExtra("channel_type", itx.channel.type);
           }
+          if (itx.channel && itx.inGuild()) {
+            scope.setExtra("channel_name", itx.channel.name);
+          }
 
           if (itx.isCommand()) {
             scope.setTag("command_type", itx.commandType);
