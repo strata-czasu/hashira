@@ -116,7 +116,16 @@ export class PaginatedView<T> {
       await this.render(interaction);
     } catch (error) {
       // Handle timeout
-      await this.#message.edit({ components: [] });
+      // TODO)) More specific error handling
+      await this.finalize();
+    }
+  }
+
+  private async finalize() {
+    try {
+      await this.#message?.edit({ components: [] });
+    } catch (e) {
+      console.error(`Error finalizing PaginatedView ${this.#title}:`, e);
     }
   }
 
