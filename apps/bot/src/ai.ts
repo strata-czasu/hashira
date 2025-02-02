@@ -3,6 +3,7 @@ import type { ExtendedPrismaClient } from "@hashira/db";
 import env from "@hashira/env";
 import { format, intervalToDuration, isAfter } from "date-fns";
 import {
+  ChannelType,
   type Guild,
   type GuildMember,
   type GuildTextBasedChannel,
@@ -187,6 +188,7 @@ export const ai = new Hashira({ name: "ai" })
       if (!ai) return;
       if (message.author.bot) return;
       if (!message.inGuild()) return;
+      if (message.channel.type !== ChannelType.GuildText) return;
       if (!message.member) return;
       if (!message.member.permissions.has("ModerateMembers")) return;
       const botMention = userMention(message.client.user.id);
