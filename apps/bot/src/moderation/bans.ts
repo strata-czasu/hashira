@@ -1,4 +1,4 @@
-import { type ExtractContext, Hashira } from "@hashira/core";
+import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
   AuditLogEvent,
@@ -48,7 +48,6 @@ const applyBan = async (
   user: User,
   reason: string,
   deleteMessageSeconds: number | null,
-  log: ExtractContext<typeof base>["moderationLog"],
 ) => {
   const sentMessage = await sendDirectMessage(
     user,
@@ -70,7 +69,6 @@ const applyBan = async (
           deleteMessageSeconds,
         });
       }
-      log.push("guildBanAdd", itx.guild, { reason, user, moderator: itx.user });
       await itx.editReply(
         `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
       );
@@ -121,7 +119,7 @@ export const bans = new Hashira({ name: "bans" })
       )
       .handle(
         async (
-          { moderationLog: log },
+          _ctx,
           { user: rawUser, reason, "delete-interval": deleteInterval },
           itx,
         ) => {
@@ -144,7 +142,7 @@ export const bans = new Hashira({ name: "bans" })
             ? getBanDeleteSeconds(deleteInterval)
             : null;
 
-          await applyBan(itx, user, reason, banDeleteSeconds, log);
+          await applyBan(itx, user, reason, banDeleteSeconds);
         },
       ),
   )
@@ -211,75 +209,71 @@ export const bans = new Hashira({ name: "bans" })
         );
       }),
   )
-  .userContextMenu(
-    "ban",
-    PermissionFlagsBits.BanMembers,
-    async ({ moderationLog: log }, itx) => {
-      if (!itx.inCachedGuild()) return;
+  .userContextMenu("ban", PermissionFlagsBits.BanMembers, async (_ctx, itx) => {
+    if (!itx.inCachedGuild()) return;
 
-      const rows = [
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-          new TextInputBuilder()
-            .setCustomId("reason")
-            .setLabel("Powód bana")
-            .setRequired(true)
-            .setMinLength(2)
-            .setStyle(TextInputStyle.Paragraph),
-        ),
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-          new TextInputBuilder()
-            .setCustomId("delete-interval")
-            .setLabel("Przedział czasowy usuwania wiadomości")
-            .setRequired(false)
-            .setPlaceholder("1h, 6h, 12h, 1d, 3d, 7d")
-            .setMinLength(2)
-            .setStyle(TextInputStyle.Short),
-        ),
-      ];
+    const rows = [
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+        new TextInputBuilder()
+          .setCustomId("reason")
+          .setLabel("Powód bana")
+          .setRequired(true)
+          .setMinLength(2)
+          .setStyle(TextInputStyle.Paragraph),
+      ),
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+        new TextInputBuilder()
+          .setCustomId("delete-interval")
+          .setLabel("Przedział czasowy usuwania wiadomości")
+          .setRequired(false)
+          .setPlaceholder("1h, 6h, 12h, 1d, 3d, 7d")
+          .setMinLength(2)
+          .setStyle(TextInputStyle.Short),
+      ),
+    ];
 
-      const customId = `ban-${itx.targetUser.id}`;
-      const modal = new ModalBuilder()
-        .setCustomId(customId)
-        .setTitle(`Zbanuj ${itx.targetUser.tag}`)
-        .addComponents(...rows);
-      await itx.showModal(modal);
+    const customId = `ban-${itx.targetUser.id}`;
+    const modal = new ModalBuilder()
+      .setCustomId(customId)
+      .setTitle(`Zbanuj ${itx.targetUser.tag}`)
+      .addComponents(...rows);
+    await itx.showModal(modal);
 
-      const submitAction = await itx.awaitModalSubmit({
-        time: 60_000 * 5,
-        filter: (modal) => modal.customId === customId,
-      });
-      await submitAction.deferReply();
+    const submitAction = await itx.awaitModalSubmit({
+      time: 60_000 * 5,
+      filter: (modal) => modal.customId === customId,
+    });
+    await submitAction.deferReply();
 
-      // TODO)) Abstract this into a helper/common util
-      const reason = submitAction.components
-        .at(0)
-        ?.components.find((c) => c.customId === "reason")?.value;
-      const rawDeleteInterval =
-        submitAction.components
-          .at(1)
-          ?.components.find((c) => c.customId === "delete-interval")?.value || null;
-      if (!reason) {
+    // TODO)) Abstract this into a helper/common util
+    const reason = submitAction.components
+      .at(0)
+      ?.components.find((c) => c.customId === "reason")?.value;
+    const rawDeleteInterval =
+      submitAction.components
+        .at(1)
+        ?.components.find((c) => c.customId === "delete-interval")?.value || null;
+    if (!reason) {
+      return await errorFollowUp(
+        submitAction,
+        "Nie podano wszystkich wymaganych danych!",
+      );
+    }
+
+    let deleteMessageSeconds: number | null = null;
+    if (rawDeleteInterval) {
+      const parsedDuration = parseDuration(rawDeleteInterval);
+      if (!parsedDuration) {
         return await errorFollowUp(
           submitAction,
-          "Nie podano wszystkich wymaganych danych!",
+          "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
         );
       }
+      deleteMessageSeconds = durationToSeconds(parsedDuration);
+    }
 
-      let deleteMessageSeconds: number | null = null;
-      if (rawDeleteInterval) {
-        const parsedDuration = parseDuration(rawDeleteInterval);
-        if (!parsedDuration) {
-          return await errorFollowUp(
-            submitAction,
-            "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
-          );
-        }
-        deleteMessageSeconds = durationToSeconds(parsedDuration);
-      }
-
-      await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds, log);
-    },
-  )
+    await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds);
+  })
   .handle("guildAuditLogEntryCreate", async ({ moderationLog: log }, entry, guild) => {
     const reportMissingTarget = (action: keyof typeof AuditLogEvent) =>
       console.log(`Possible audit log issue: ${action} entry without target`, entry);
