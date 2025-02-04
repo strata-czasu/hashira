@@ -2,7 +2,6 @@ import { Hashira } from "@hashira/core";
 import type { Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
-  type GuildBan,
   TimestampStyles,
   type User,
   bold,
@@ -34,13 +33,28 @@ type MuteEditData = {
   newDuration: Duration | null;
 };
 type GuildBanAddData = { reason: string | null; user: User; moderator: User | null };
-type GuildBanRemoveData = { ban: GuildBan };
+type GuildBanRemoveData = { reason: string | null; user: User; moderator: User | null };
 
 const getWarnLogHeader = (action: string, warn: Warn) =>
   `**${action} ostrzeżenie [${inlineCode(warn.id.toString())}] dla ${userMention(warn.userId)} (${warn.userId})**`;
 
 const getMuteLogHeader = (action: string, mute: Mute) =>
   `**${action} wyciszenie [${inlineCode(mute.id.toString())}] dla ${userMention(mute.userId)} (${mute.userId})**`;
+
+const getBanLogContent = (
+  title: string,
+  reason: string | null,
+  moderator: User | null,
+) => {
+  const content: string[] = [bold(title)];
+
+  if (reason) content.push(`Powód: ${italic(reason)}`);
+
+  const moderatorMentionString = moderator ? userMention(moderator.id) : "Nieznany";
+  content.push(`Moderator: ${moderatorMentionString}`);
+
+  return content.join("\n");
+};
 
 export const moderationLog = new Hashira({ name: "moderationLog" }).const(
   "moderationLog",
@@ -124,30 +138,18 @@ export const moderationLog = new Hashira({ name: "moderationLog" }).const(
     .addMessageType(
       "guildBanAdd",
       async ({ timestamp }, { reason, user, moderator }: GuildBanAddData) => {
-        const content: string[] = [bold("Otrzymuje bana")];
-
-        if (reason) content.push(`Powód: ${italic(reason)}`);
-
-        const moderatorMentionString = moderator
-          ? userMention(moderator.id)
-          : "Nieznany";
-
-        content.push(`Moderator: ${moderatorMentionString}`);
-
+        const content = getBanLogContent("Otrzymuje bana", reason, moderator);
         const embed = getLogMessageEmbed(user, timestamp)
-          .setDescription(content.join("\n"))
+          .setDescription(content)
           .setColor("Red");
         return embed;
       },
     )
-    // TODO)) Add moderator, remove reason and reason when using /unban
-    //        This info is missing when receiving the ban event from Discord
     .addMessageType(
       "guildBanRemove",
-      async ({ timestamp }, { ban }: GuildBanRemoveData) => {
-        let content = "**Zdjęto bana**";
-        if (ban.reason) content += `\nPowód: ${italic(ban.reason)}`;
-        const embed = getLogMessageEmbed(ban.user, timestamp)
+      async ({ timestamp }, { reason, user, moderator }: GuildBanRemoveData) => {
+        const content = getBanLogContent("Otrzymuje unbana", reason, moderator);
+        const embed = getLogMessageEmbed(user, timestamp)
           .setDescription(content)
           .setColor("Green");
         return embed;

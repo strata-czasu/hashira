@@ -75,8 +75,4 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
         });
       }
     }
-  })
-  .handle("guildBanRemove", async ({ moderationLog: log }, ban) => {
-    if (!log.isRegistered(ban.guild)) return;
-    log.push("guildBanRemove", ban.guild, { ban });
   });

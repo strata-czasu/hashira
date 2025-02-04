@@ -25,10 +25,10 @@ import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
 
-const isBanGuildAuditLogsEntry = (
+const isAuditLogsEntryAction = <T extends AuditLogEvent>(
   entry: GuildAuditLogsEntry,
-): entry is GuildAuditLogsEntry<AuditLogEvent.MemberBanAdd> =>
-  entry.action === AuditLogEvent.MemberBanAdd;
+  action: T,
+): entry is GuildAuditLogsEntry<T> => entry.action === action;
 
 enum BanDeleteInterval {
   None = 0,
@@ -281,19 +281,28 @@ export const bans = new Hashira({ name: "bans" })
     },
   )
   .handle("guildAuditLogEntryCreate", async ({ moderationLog: log }, entry, guild) => {
-    if (!isBanGuildAuditLogsEntry(entry)) return;
+    const reportMissingTarget = (action: keyof typeof AuditLogEvent) =>
+      console.log(`Possible audit log issue: ${action} entry without target`, entry);
 
-    if (!entry.target) {
-      // NOTE: This possibly shouldn't happen, but types do not guarantee the target to be present
-      console.log("Possible audit log issue: Ban entry without target", entry);
+    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanAdd)) {
+      if (!entry.target) return reportMissingTarget("MemberBanAdd");
+      log.push("guildBanAdd", guild, {
+        reason: entry.reason,
+        user: entry.target,
+        moderator: entry.executor,
+      });
       return;
     }
 
-    log.push("guildBanAdd", guild, {
-      reason: entry.reason,
-      user: entry.target,
-      moderator: entry.executor,
-    });
+    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanRemove)) {
+      if (!entry.target) return reportMissingTarget("MemberBanRemove");
+      log.push("guildBanRemove", guild, {
+        reason: entry.reason,
+        user: entry.target,
+        moderator: entry.executor,
+      });
+      return;
+    }
   })
   .handle("guildBanAdd", async (_, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons
