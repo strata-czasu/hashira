@@ -3,7 +3,6 @@ import {
   ActionRowBuilder,
   AuditLogEvent,
   type ChatInputCommandInteraction,
-  type GuildAuditLogsEntry,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   type ModalSubmitInteraction,
@@ -24,11 +23,6 @@ import { hasHigherRole } from "../util/hasHigherRole";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
-
-const isAuditLogsEntryAction = <T extends AuditLogEvent>(
-  entry: GuildAuditLogsEntry,
-  action: T,
-): entry is GuildAuditLogsEntry<T> => entry.action === action;
 
 enum BanDeleteInterval {
   None = 0,
@@ -273,30 +267,6 @@ export const bans = new Hashira({ name: "bans" })
     }
 
     await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds);
-  })
-  .handle("guildAuditLogEntryCreate", async ({ moderationLog: log }, entry, guild) => {
-    const reportMissingTarget = (action: keyof typeof AuditLogEvent) =>
-      console.log(`Possible audit log issue: ${action} entry without target`, entry);
-
-    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanAdd)) {
-      if (!entry.target) return reportMissingTarget("MemberBanAdd");
-      log.push("guildBanAdd", guild, {
-        reason: entry.reason,
-        user: entry.target,
-        moderator: entry.executor,
-      });
-      return;
-    }
-
-    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanRemove)) {
-      if (!entry.target) return reportMissingTarget("MemberBanRemove");
-      log.push("guildBanRemove", guild, {
-        reason: entry.reason,
-        user: entry.target,
-        moderator: entry.executor,
-      });
-      return;
-    }
   })
   .handle("guildBanAdd", async (_, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons

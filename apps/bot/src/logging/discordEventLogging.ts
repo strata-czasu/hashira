@@ -1,6 +1,19 @@
 import { Hashira } from "@hashira/core";
-import { GuildMember } from "discord.js";
+import { AuditLogEvent, type GuildAuditLogsEntry, GuildMember } from "discord.js";
 import { base } from "../base";
+
+const isAuditLogsEntryAction = <T extends AuditLogEvent>(
+  entry: GuildAuditLogsEntry,
+  action: T,
+): entry is GuildAuditLogsEntry<T> => entry.action === action;
+
+const warnMissingAuditLogEntryTarget = (entry: GuildAuditLogsEntry) => {
+  // NOTE: While unlikely, the `target` property is marked as null
+  console.warn(
+    `Possible audit log issue: action_type: ${entry.action} without target`,
+    entry,
+  );
+};
 
 // Logging for Discord events
 export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
@@ -74,5 +87,24 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
           addedRoles,
         });
       }
+    }
+  })
+  .handle("guildAuditLogEntryCreate", async ({ moderationLog: log }, entry, guild) => {
+    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanAdd)) {
+      if (!entry.target) return warnMissingAuditLogEntryTarget(entry);
+      return log.push("guildBanAdd", guild, {
+        reason: entry.reason,
+        user: entry.target,
+        moderator: entry.executor,
+      });
+    }
+
+    if (isAuditLogsEntryAction(entry, AuditLogEvent.MemberBanRemove)) {
+      if (!entry.target) return warnMissingAuditLogEntryTarget(entry);
+      return log.push("guildBanRemove", guild, {
+        reason: entry.reason,
+        user: entry.target,
+        moderator: entry.executor,
+      });
     }
   });
