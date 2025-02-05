@@ -913,6 +913,40 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   `Usunięto ${users.size} ${pluralizeUsers(users.size)} z wykluczeń z głosowań DM`,
                 );
               }),
+          )
+          .addCommand("sprawdz", (command) =>
+            command
+              .setDescription("Sprawdź czy użytkownik jest wykluczony")
+              .addUser("user", (user) => user.setDescription("Użytkownik"))
+              .handle(async ({ prisma }, { user }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const exclusion = await prisma.dmPollExclusion.findFirst({
+                  where: { userId: user.id },
+                  include: { optedOutDuringPoll: true },
+                });
+
+                if (exclusion) {
+                  const lines = [
+                    `${userMention(user.id)} jest wykluczony z głosowań DM`,
+                    `Data wykluczenia: ${time(
+                      exclusion.createdAt,
+                      TimestampStyles.LongDateTime,
+                    )}`,
+                  ];
+                  if (exclusion.optedOutDuringPoll) {
+                    lines.push(
+                      `Wykluczono podczas głosowania: ${italic(exclusion.optedOutDuringPoll.title)} [${exclusion.optedOutDuringPoll.id}]`,
+                    );
+                  }
+                  await itx.editReply(lines.join("\n"));
+                } else {
+                  await itx.editReply(
+                    `${userMention(user.id)} nie jest wykluczony z głosowań DM`,
+                  );
+                }
+              }),
           ),
       ),
   )
