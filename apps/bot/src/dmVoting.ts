@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
 import {
   DatabasePaginator,
   type DiscordButtonStyle,
@@ -739,61 +739,90 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
         command
           .setDescription("Zakończ głosowanie")
           .addInteger("id", (id) => id.setDescription("ID głosowania"))
-          .handle(async ({ prisma }, { id }, itx) => {
+          .handle(async ({ prisma, lock }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
-
-            const poll = await prisma.$transaction(async (tx) => {
-              const poll = await tx.dmPoll.findFirst({
-                where: { id, startedAt: { not: null }, finishedAt: null },
-                include: { participants: true },
-              });
-              if (poll === null) {
-                await errorFollowUp(
-                  itx,
-                  "Nie znaleziono aktywnego głosowania o podanym ID",
-                );
-                return null;
-              }
-
-              await tx.dmPoll.update({
-                where: { id },
-                data: { finishedAt: itx.createdAt },
-              });
-
-              return poll;
-            });
-            if (!poll) return;
-
             await itx.deferReply();
-            // Remove buttons and add a footer to all outgoing messages
-            await Promise.all(
-              poll.participants.map(async ({ userId, messageId }) => {
-                if (messageId === null) return;
-                await discordTry(
-                  async () => {
-                    const user = await itx.client.users.fetch(userId);
-                    await user.createDM();
-                    if (!user.dmChannel) return;
-                    const message = await user.dmChannel.messages.fetch(messageId);
-                    const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
-                    await message.edit({ content, components: [] });
-                  },
-                  [
-                    RESTJSONErrorCodes.UnknownUser,
-                    RESTJSONErrorCodes.UnknownChannel,
-                    RESTJSONErrorCodes.UnknownMessage,
-                  ],
-                  () => {
-                    console.log(
-                      `Failed to delete message ${messageId} for user ${userId}`,
-                    );
-                  },
-                );
-              }),
-            );
 
-            await itx.editReply(
-              `Zakończono głosowanie ${italic(poll.title)} [${poll.id}]`,
+            const poll = await prisma.dmPoll.findFirst({
+              where: { id, startedAt: { not: null }, finishedAt: null },
+              include: { participants: true },
+            });
+            if (poll === null) {
+              return await errorFollowUp(
+                itx,
+                "Nie znaleziono aktywnego głosowania o podanym ID",
+              );
+            }
+
+            const dialog = new ConfirmationDialog(
+              `Czy na pewno chcesz zakończyć głosowanie ${italic(poll.title)} [${poll.id}]?`,
+              "Tak",
+              "Nie",
+              async () => {
+                await prisma.dmPoll.update({
+                  where: { id },
+                  data: { finishedAt: itx.createdAt },
+                });
+                await itx.editReply({
+                  content: `Zakończono głosowanie ${italic(poll.title)} [${poll.id}]. Usuwanie przycisków z wiadomości... (może to zająć parę minut)`,
+                  components: [],
+                });
+
+                // Remove buttons and add a footer to all outgoing messages
+                await Promise.all(
+                  poll.participants.map(async ({ userId, messageId }) => {
+                    if (messageId === null) return;
+                    await discordTry(
+                      async () => {
+                        const user = await itx.client.users.fetch(userId);
+                        await user.createDM();
+                        if (!user.dmChannel) return;
+                        const message = await user.dmChannel.messages.fetch(messageId);
+                        const content = `${message.content}\n\n*Głosowanie skończyło się ${time(itx.createdAt, TimestampStyles.RelativeTime)}*`;
+                        await message.edit({ content, components: [] });
+                      },
+                      [
+                        RESTJSONErrorCodes.UnknownUser,
+                        RESTJSONErrorCodes.UnknownChannel,
+                        RESTJSONErrorCodes.UnknownMessage,
+                      ],
+                      () => {
+                        console.log(
+                          `Failed to delete message ${messageId} for user ${userId}`,
+                        );
+                      },
+                    );
+                  }),
+                );
+
+                await itx.user.createDM();
+                if (!itx.user.dmChannel) return;
+                await itx.user.dmChannel.send(
+                  `Zakończono głosowanie ${italic(poll.title)} [${poll.id}] i usunięto przyciski z ${poll.participants.length} wiadomości.`,
+                );
+              },
+              async () => {
+                await itx.editReply({
+                  content: `Anulowano zakończenie głosowania ${italic(poll.title)} [${poll.id}]`,
+                  components: [],
+                });
+              },
+              (action) => action.user.id === itx.user.id,
+              async () => {
+                await itx.editReply({
+                  content: `Anulowano zakończenie głosowania ${italic(poll.title)} [${poll.id}]`,
+                  components: [],
+                });
+              },
+            );
+            await lock.run(
+              [`dmPollEnd_${poll.id}`],
+              async () => await dialog.render({ send: itx.editReply.bind(itx) }),
+              () =>
+                errorFollowUp(
+                  itx,
+                  "Ktoś już próbuje zakończyć to głosowanie. Spróbuj ponownie za chwilę.",
+                ),
             );
           }),
       )
