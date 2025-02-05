@@ -1,4 +1,4 @@
-import { prisma } from "@hashira/db";
+import { Prisma, prisma } from "@hashira/db";
 import {
   DEFAULT_LOG_CHANNELS,
   GUILD_IDS,
@@ -37,25 +37,29 @@ const setDefaultLogChannels = async (guildId: string) => {
     create: { guildId },
     update: {},
   });
-  // Set default log channels if none are set
-  await prisma.guildSettings.update({
-    data: {
-      logSettings: {
-        upsert: {
-          create: {
-            messageLogChannelId: defaultLogChannels.MESSAGE,
-            memberLogChannelId: defaultLogChannels.MEMBER,
-            roleLogChannelId: defaultLogChannels.ROLE,
-            moderationLogChannelId: defaultLogChannels.MODERATION,
-            profileLogChannelId: defaultLogChannels.PROFILE,
-            economyLogChannelId: defaultLogChannels.ECONOMY,
-          },
-          update: {},
-        },
+
+  // Create a default logSettings configuration only if it doesn't exist
+  try {
+    await prisma.logSettings.create({
+      data: {
+        guildSettingsId: settings.id,
+        messageLogChannelId: defaultLogChannels.MESSAGE,
+        memberLogChannelId: defaultLogChannels.MEMBER,
+        roleLogChannelId: defaultLogChannels.ROLE,
+        moderationLogChannelId: defaultLogChannels.MODERATION,
+        profileLogChannelId: defaultLogChannels.PROFILE,
+        economyLogChannelId: defaultLogChannels.ECONOMY,
       },
-    },
-    where: { id: settings.id },
-  });
+    });
+    console.log(`Created default logSettings for guild ${guildId}`);
+  } catch (e) {
+    // P2002: Unique constraint
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      console.log(`logSettings already exist for guild ${guildId}`);
+      return;
+    }
+    throw e;
+  }
 };
 
 if (isProduction) {
