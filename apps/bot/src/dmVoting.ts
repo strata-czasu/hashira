@@ -922,7 +922,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
       // vote-option:optionId
       if (!itx.customId.startsWith("vote-option:")) return;
 
-      await itx.deferReply({ ephemeral: true });
+      await itx.deferReply({ flags: "Ephemeral" });
 
       const [_, rawOptionId] = itx.customId.split(":");
       if (!rawOptionId) {
