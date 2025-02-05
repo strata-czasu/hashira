@@ -315,7 +315,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   include: { options: true },
                 }),
               () => prisma.dmPoll.count({ where }),
-              { pageSize: 3, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 4, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatPoll = (poll: DMPollWithOptions, _idx: number) => {
@@ -836,7 +836,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                       orderBy: { createdAt },
                     }),
                   () => prisma.dmPollExclusion.count(),
-                  { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+                  { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
                 );
 
                 const formatExclusion = (exclusion: DmPollExclusion, _idx: number) => {
