@@ -671,6 +671,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             await itx.deferReply();
+            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map(
+              (e) => e.userId,
+            );
             const members = await fetchMembers(
               itx.guild,
               poll.participants
@@ -680,6 +683,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                       .flatMap((o) => o.votes)
                       .some((v) => v.userId === p.userId),
                 )
+                .filter((p) => !excludedUserIds.includes(p.userId))
                 .map((p) => p.userId),
             );
             const messageSendStatuses = await Promise.all(
