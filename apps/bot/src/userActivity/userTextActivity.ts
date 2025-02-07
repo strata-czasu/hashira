@@ -10,7 +10,6 @@ import {
 import { noop } from "es-toolkit";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
-import { ensureUserExists } from "../util/ensureUsersExist";
 import { fetchMessages } from "../util/fetchMessages";
 import { isNotOwner } from "../util/isOwner";
 
@@ -120,14 +119,17 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
       ),
   )
   .handle("guildMessageCreate", async ({ prisma }, message) => {
-    await ensureUserExists(prisma, message.author);
-
     await prisma.userTextActivity.create({
       data: {
-        userId: message.author.id,
-        guildId: message.guild.id,
-        messageId: message.id,
+        user: {
+          connectOrCreate: {
+            create: { id: message.author.id },
+            where: { id: message.author.id },
+          },
+        },
+        guild: { connect: { id: message.guild.id } },
         channelId: message.channel.id,
+        messageId: message.id,
         timestamp: message.createdAt,
       },
     });
