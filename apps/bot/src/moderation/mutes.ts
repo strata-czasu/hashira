@@ -33,7 +33,6 @@ import { base } from "../base";
 import { getLatestUltimatum, isUltimatumActive } from "../strata/ultimatum";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
-import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -237,40 +236,32 @@ export const universalAddMute = async ({
 
   const endsAt = add(now, parsedDuration);
 
-  await ensureUsersExist(prisma, [userId, moderator.id]);
-
-  // Create mute and try to add the mute role
-
-  const mute = await prisma.$transaction(async (tx) => {
-    const mute = await tx.mute.create({
-      data: {
-        createdAt: now,
-        endsAt,
-        guildId,
-        moderatorId: moderator.id,
-        reason,
-        userId,
+  const mute = await prisma.mute.create({
+    data: {
+      createdAt: now,
+      endsAt,
+      guild: { connect: { id: guildId } },
+      moderator: {
+        connectOrCreate: {
+          create: { id: moderator.id },
+          where: { id: moderator.id },
+        },
       },
-    });
-
-    if (!mute) return null;
-
-    const appliedMute = await applyMute(
-      member,
-      muteRoleId,
-      `Wyciszenie: ${reason} [${mute.id}]`,
-    );
-    if (!appliedMute) {
-      await reply(
-        "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-      );
-
-      throw new Error(`Failed to apply mute for user ${userId} at guild ${guildId}`);
-    }
-    return mute;
+      reason,
+      user: {
+        connectOrCreate: {
+          create: { id: userId },
+          where: { id: userId },
+        },
+      },
+    },
   });
 
-  if (!mute) return;
+  const appliedMute = await applyMute(
+    member,
+    muteRoleId,
+    `Wyciszenie: ${reason} [${mute.id}]`,
+  );
 
   await messageQueue.push(
     "muteEnd",
@@ -287,6 +278,14 @@ export const universalAddMute = async ({
       reason,
     )}\nKoniec: ${time(endsAt, TimestampStyles.RelativeTime)}`,
   );
+
+  if (!appliedMute) {
+    await reply(
+      "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+    );
+
+    throw new Error(`Failed to apply mute for user ${userId} at guild ${guildId}`);
+  }
 
   const sentMessage = await sendDirectMessage(
     member.user,
