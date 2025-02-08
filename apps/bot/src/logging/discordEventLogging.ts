@@ -21,7 +21,9 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .handle("messageDelete", async ({ messageLog: log }, message) => {
     if (!message.inGuild()) return;
     if (!log.isRegistered(message.guild)) return;
-    if (message.author.bot) return;
+    // NOTE: Deleting an uncached message can still trigger this event with unexpected
+    //       null values leading to a TypeError evaluating `message.author.bot`
+    if (message?.author?.bot) return;
 
     log.push("messageDelete", message.guild, { message });
   })
