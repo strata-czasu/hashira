@@ -29,7 +29,7 @@ import { userComplaint } from "./userComplaint";
 if (env.SENTRY_DSN) {
   Sentry.init({
     dsn: env.SENTRY_DSN,
-    tracesSampleRate: 1.0, // Capture 100% of the transactions
+    tracesSampleRate: 0.1,
     integrations: [
       Sentry.prismaIntegration({
         // Override the default instrumentation that Sentry uses
