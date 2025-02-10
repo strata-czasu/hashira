@@ -26,14 +26,15 @@ export const base = new Hashira({ name: "base" })
           }
 
           if (itx.isCommand()) {
+            scope.setTag("command.name", itx.commandName);
             scope.setTag("command.type", itx.commandType);
+            scope.setTag("command.id", itx.commandId);
             scope.setExtra("command_deferred", itx.deferred);
             scope.setExtra("command_ephemeral", itx.ephemeral);
             scope.setExtra("command_replied", itx.replied);
           }
 
           if (itx.isChatInputCommand()) {
-            scope.setTag("command.name", itx.commandName);
             scope.setExtra("command", itx.toString());
           }
 
