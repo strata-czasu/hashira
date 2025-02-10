@@ -22,7 +22,6 @@ export const marriage = new Hashira({ name: "marriage" })
             id: itx.user.id,
           },
         });
-
         if (!user) return;
         if (user.marriedTo) {
           return await errorFollowUp(
@@ -40,7 +39,6 @@ export const marriage = new Hashira({ name: "marriage" })
             id: targetUserId,
           },
         });
-
         if (!targetUser) return;
         if (targetUser.marriedTo) {
           return await errorFollowUp(
@@ -113,7 +111,6 @@ export const marriage = new Hashira({ name: "marriage" })
         await itx.deferReply();
 
         await ensureUserExists(prisma, itx.user.id);
-
         const user = await prisma.user.findFirst({
           where: { id: itx.user.id },
         });
@@ -166,6 +163,6 @@ export const marriage = new Hashira({ name: "marriage" })
             });
           },
         );
-        await dialog.render({ send: itx.editReply });
+        await dialog.render({ send: itx.editReply.bind(itx) });
       }),
   );
