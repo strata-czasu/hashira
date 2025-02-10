@@ -51,7 +51,7 @@ export const settings = new Hashira({ name: "settings" })
             // TODO: Update the role on currently muted users
             await itx.reply({
               content: `Rola do wyciszeń została ustawiona na ${roleMention(role.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -71,7 +71,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Rola 18+ została ustawiona na ${roleMention(role.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -105,7 +105,7 @@ export const settings = new Hashira({ name: "settings" })
             log.updateGuild(itx.guild, channel);
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z wiadomościami został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -140,7 +140,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z użytkownikami został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -175,7 +175,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z rolami został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -212,7 +212,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z banami został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -249,7 +249,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z profilami użytkowników został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -284,7 +284,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Kanał do wysyłania logów związanych z ekonomią został ustawiony na ${channelMention(channel.id)}`,
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       )
@@ -309,7 +309,7 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: entries.join("\n"),
-              ephemeral: true,
+              flags: "Ephemeral",
             });
           }),
       ),

@@ -59,7 +59,7 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
           filter: (modal) => modal.customId === customId,
         });
 
-        await submitAction.deferReply({ ephemeral: true });
+        await submitAction.deferReply({ flags: "Ephemeral" });
 
         // TODO)) Abstract this into a helper/common util
         const content = submitAction.components

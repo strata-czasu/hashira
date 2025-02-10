@@ -705,7 +705,7 @@ export const mutes = new Hashira({ name: "mutes" })
       });
 
       // Any reply is needed in order to successfully finish the modal interaction
-      await submitAction.deferReply({ ephemeral: true });
+      await submitAction.deferReply({ flags: "Ephemeral" });
 
       // TODO)) Abstract this into a helper/common util
       const duration = submitAction.components

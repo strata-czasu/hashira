@@ -10,6 +10,7 @@ import {
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
 import { discordTry } from "./util/discordTry";
+import { errorFollowUp } from "./util/errorFollowUp";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
@@ -129,11 +130,7 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
               const [emoji] = emojis;
 
               if (emojis.length !== 1 || !emoji) {
-                await itx.reply({
-                  ephemeral: true,
-                  content: "Please provide only one emoji",
-                });
-                return;
+                return await errorFollowUp(itx, "Please provide exactly one emoji");
               }
 
               const after = parseDate(rawAfter, "start", () => new Date(0));
@@ -237,11 +234,10 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
             if (
               !itx.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)
             ) {
-              await itx.reply({
-                ephemeral: true,
-                content: "You do not have the required permissions to run this command",
-              });
-              return;
+              return await errorFollowUp(
+                itx,
+                "You do not have the required permissions to run this command",
+              );
             }
 
             const guildEmojis = itx.guild.emojis.cache;

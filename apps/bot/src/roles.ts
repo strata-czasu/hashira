@@ -20,7 +20,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
         .handle(async ({ roleLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
-          await itx.deferReply({ ephemeral: true });
+          await itx.deferReply({ flags: "Ephemeral" });
           const members = await fetchMembers(itx.guild, parseUserMentions(users));
           const toAdd = members.filter((m) => !m.roles.cache.has(role.id));
 
@@ -59,7 +59,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
         .handle(async ({ roleLog: log }, { role, users }, itx) => {
           if (!itx.inCachedGuild()) return;
 
-          await itx.deferReply({ ephemeral: true });
+          await itx.deferReply({ flags: "Ephemeral" });
           const members = await fetchMembers(itx.guild, parseUserMentions(users));
           const toRemove = members.filter((m) => m.roles.cache.has(role.id));
 

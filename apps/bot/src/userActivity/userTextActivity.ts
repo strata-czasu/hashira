@@ -10,6 +10,7 @@ import {
 import { noop } from "es-toolkit";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { fetchMessages } from "../util/fetchMessages";
 import { isNotOwner } from "../util/isOwner";
 
@@ -76,8 +77,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               const channel = rawChannel ?? itx.channel;
 
               if (!channel) {
-                await itx.reply({ content: "Channel not found", ephemeral: true });
-                return;
+                return await errorFollowUp(itx, "Channel not found");
               }
               const before =
                 rawBefore ??
@@ -86,7 +86,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
 
               await itx.reply({
                 content: "Preloading messages...",
-                ephemeral: true,
+                flags: "Ephemeral",
               });
 
               let i = 0;
@@ -103,10 +103,10 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 i += messageData.length;
 
                 await itx.followUp({
-                  ephemeral: true,
                   content: `Preloaded ${i}/${limit} messages. It's ${
                     (i / limit) * 100
                   }% done. Last message: ${messages.last()?.url}`,
+                  flags: "Ephemeral",
                 });
 
                 await prisma.$transaction([

@@ -40,12 +40,12 @@ export const autoRole = new Hashira({ name: "auto-role" })
             if (added.length === 0) {
               await itx.reply({
                 content: `${role.name} is already in the autorole list`,
-                ephemeral: true,
+                flags: "Ephemeral",
               });
             } else {
               await itx.reply({
                 content: `Added ${role.name} to autorole list`,
-                ephemeral: true,
+                flags: "Ephemeral",
               });
             }
           }),
@@ -63,12 +63,12 @@ export const autoRole = new Hashira({ name: "auto-role" })
             if (removed.count === 0) {
               await itx.reply({
                 content: `${role.name} is not in the autorole list`,
-                ephemeral: true,
+                flags: "Ephemeral",
               });
             } else {
               await itx.reply({
                 content: `Removed ${role.name} from autorole list`,
-                ephemeral: true,
+                flags: "Ephemeral",
               });
             }
           }),

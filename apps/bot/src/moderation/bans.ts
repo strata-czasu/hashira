@@ -68,7 +68,7 @@ const applyBan = async (
       if (!sentMessage) {
         await itx.followUp({
           content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-          ephemeral: true,
+          flags: "Ephemeral",
         });
       }
     },

@@ -39,7 +39,7 @@ export const prune = new Hashira({ name: "prune" }).command("prune", (command) =
       });
 
       const messages: Message[] = [];
-      await itx.deferReply({ ephemeral: true });
+      await itx.deferReply({ flags: "Ephemeral" });
       for (let i = 0; i < 10; i++) {
         const lastMessage = messages.at(-1);
         // NOTE: Fetched messages are latest to oldest

@@ -132,12 +132,11 @@ export const warns = new Hashira({ name: "warns" })
               )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
             );
             if (!sentMessage) {
-              await itx.followUp({
-                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
-                  user,
-                )}.`,
-                ephemeral: true,
-              });
+              await errorFollowUp(
+                itx,
+
+                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+              );
             }
           }),
       )
@@ -197,11 +196,7 @@ export const warns = new Hashira({ name: "warns" })
             const warn = await prisma.$transaction(async (tx) => {
               const warn = await getWarn(tx, id, itx.guildId);
               if (!warn) {
-                await itx.deleteReply();
-                await itx.followUp({
-                  content: "Nie znaleziono ostrzeżenia o podanym ID",
-                  ephemeral: true,
-                });
+                await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
                 return null;
               }
               const originalReason = warn.reason;

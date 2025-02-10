@@ -8,7 +8,7 @@ import type { RepliableInteraction } from "discord.js";
  */
 export const errorFollowUp = async (itx: RepliableInteraction, content: string) => {
   if (!itx.deferred && !itx.replied) {
-    await itx.reply({ content, ephemeral: true });
+    await itx.reply({ content, flags: "Ephemeral" });
     return;
   }
   if (itx.deferred && !itx.ephemeral) {
@@ -16,6 +16,6 @@ export const errorFollowUp = async (itx: RepliableInteraction, content: string) 
   }
   await itx.followUp({
     content,
-    ephemeral: true,
+    flags: "Ephemeral",
   });
 };
