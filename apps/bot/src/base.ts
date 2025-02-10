@@ -18,23 +18,23 @@ export const base = new Hashira({ name: "base" })
           scope.setTag("interaction_type", itx.type);
 
           if (itx.channel) {
-            scope.setExtra("channel_id", itx.channel.id);
-            scope.setExtra("channel_type", itx.channel.type);
-          }
-          if (itx.channel && itx.inGuild()) {
-            scope.setExtra("channel_name", itx.channel.name);
+            scope.setTag("channel.id", itx.channel.id);
+            scope.setTag("channel.type", itx.channel.type);
+            if (itx.inGuild()) {
+              scope.setExtra("channel.name", itx.channel.name);
+            }
           }
 
           if (itx.isCommand()) {
-            scope.setTag("command_type", itx.commandType);
+            scope.setTag("command.type", itx.commandType);
             scope.setExtra("command_deferred", itx.deferred);
             scope.setExtra("command_ephemeral", itx.ephemeral);
             scope.setExtra("command_replied", itx.replied);
           }
 
           if (itx.isChatInputCommand()) {
+            scope.setTag("command.name", itx.commandName);
             scope.setExtra("command", itx.toString());
-            scope.setTag("command_name", itx.commandName);
           }
 
           if (itx.isUserContextMenuCommand()) {
