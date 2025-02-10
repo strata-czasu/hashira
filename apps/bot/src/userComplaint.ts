@@ -15,7 +15,7 @@ import { errorFollowUp } from "./util/errorFollowUp";
 
 const COMPLAINT_CHANNEL_ID = "1285336622380093492" as const;
 
-export const userComplaint = new Hashira({ name: "anonymous-complaint" })
+export const userComplaint = new Hashira({ name: "user-complaint" })
   .use(base)
   .command("donos", (command) =>
     command
@@ -47,7 +47,7 @@ export const userComplaint = new Hashira({ name: "anonymous-complaint" })
           ),
         ];
 
-        const customId = `complaint-${itx.user.id}`;
+        const customId = `donos:${itx.user.id}`;
         const modal = new ModalBuilder()
           .setCustomId(customId)
           .setTitle("Zgłoś problem")
