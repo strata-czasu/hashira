@@ -104,11 +104,25 @@ export const colorRoles = new Hashira({ name: "color-role" })
 
               const role = await discordTry(
                 () => itx.guild.roles.create({ name, color: 0x000000 }),
-                [RESTJSONErrorCodes.MissingPermissions],
-                () => null,
+                [
+                  RESTJSONErrorCodes.MissingPermissions,
+                  RESTJSONErrorCodes.MaximumNumberOfGuildRolesReached,
+                ],
+                async (e) => {
+                  switch (e.code) {
+                    case RESTJSONErrorCodes.MissingPermissions:
+                      await errorFollowUp(itx, "Missing permissions");
+                      return null;
+                    case RESTJSONErrorCodes.MaximumNumberOfGuildRolesReached:
+                      await errorFollowUp(itx, "Maximum number of roles reached (250)");
+                      return null;
+                    default:
+                      await errorFollowUp(itx, "Failed to create role");
+                      return null;
+                  }
+                },
               );
-
-              if (!role) return await errorFollowUp(itx, "Failed to create role");
+              if (!role) return;
 
               await prisma.colorRole.create({
                 data: {
