@@ -23,7 +23,6 @@ import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -100,51 +99,47 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("add", (command) =>
         command
           .setDescription("Dodaj ostrzeżenie")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addString("reason", (reason) => reason.setDescription("Powód ostrzeżenia"))
-          .handle(
-            async ({ prisma, moderationLog: log }, { user: rawUser, reason }, itx) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
+          .handle(async ({ prisma, moderationLog: log }, { user, reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-              const user = await parseUserMentionWorkaround(rawUser, itx);
-              if (!user) return;
-              await ensureUsersExist(prisma, [user, itx.user]);
+            await ensureUsersExist(prisma, [user, itx.user]);
 
-              const warn = await prisma.warn.create({
-                data: {
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  moderatorId: itx.user.id,
-                  reason,
-                },
+            const warn = await prisma.warn.create({
+              data: {
+                guildId: itx.guildId,
+                userId: user.id,
+                moderatorId: itx.user.id,
+                reason,
+              },
+            });
+            log.push("warnCreate", itx.guild, { warn, moderator: itx.user });
+
+            const sentMessage = await sendDirectMessage(
+              user,
+              `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
+                itx.user.tag
+              }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
+                reason,
+              )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
+            );
+
+            await itx.editReply(
+              `Dodano ostrzeżenie [${inlineCode(
+                warn.id.toString(),
+              )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+            );
+            if (!sentMessage) {
+              await itx.followUp({
+                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
+                  user,
+                )}.`,
+                ephemeral: true,
               });
-              log.push("warnCreate", itx.guild, { warn, moderator: itx.user });
-
-              const sentMessage = await sendDirectMessage(
-                user,
-                `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-                  itx.user.tag
-                }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
-                  reason,
-                )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
-              );
-
-              await itx.editReply(
-                `Dodano ostrzeżenie [${inlineCode(
-                  warn.id.toString(),
-                )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-              );
-              if (!sentMessage) {
-                await itx.followUp({
-                  content: `Nie udało się wysłać wiadomości do ${formatUserWithId(
-                    user,
-                  )}.`,
-                  ephemeral: true,
-                });
-              }
-            },
-          ),
+            }
+          }),
       )
       .addCommand("remove", (command) =>
         command
@@ -256,15 +251,12 @@ export const warns = new Hashira({ name: "warns" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl ostrzeżenia użytkownika")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addBoolean("deleted", (deleted) =>
             deleted.setDescription("Pokaż usunięte ostrzeżenia").setRequired(false),
           )
-          .handle(async ({ prisma }, { user: rawUser, deleted }, itx) => {
+          .handle(async ({ prisma }, { user, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
-
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
 
             const paginatedView = getUserWarnsPaginatedView(
               prisma,

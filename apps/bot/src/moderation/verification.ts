@@ -15,6 +15,7 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
+  type User,
   channelMention,
   inlineCode,
   time,
@@ -25,7 +26,6 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds } from "../util/duration";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { parseUserMentionWorkaround } from "../util/parseUsers";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import {
   applyMute,
@@ -83,13 +83,7 @@ const get18PlusRoleId = async (prisma: ExtendedPrismaClient, guildId: string) =>
   return settings.plus18RoleId;
 };
 
-const readMember = async (
-  itx: ChatInputCommandInteraction<"cached">,
-  rawUser: string,
-) => {
-  const user = await parseUserMentionWorkaround(rawUser, itx);
-  if (!user) return null;
-
+const readMember = async (itx: ChatInputCommandInteraction<"cached">, user: User) => {
   return discordTry(
     async () => itx.guild.members.fetch(user.id),
     [RESTJSONErrorCodes.UnknownMember],
@@ -107,13 +101,13 @@ export const verification = new Hashira({ name: "verification" })
       .addCommand("rozpocznij", (command) =>
         command
           .setDescription("Rozpocznij weryfikację 16+")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           // TODO)) Add `force` parameter to start verification even if the user has a verification level
-          .handle(async ({ prisma, messageQueue }, { user: rawUser }, itx) => {
+          .handle(async ({ prisma, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const member = await readMember(itx, rawUser);
+            const member = await readMember(itx, user);
             if (!member)
               return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
 
@@ -259,7 +253,7 @@ export const verification = new Hashira({ name: "verification" })
       .addCommand("przyjmij", (command) =>
         command
           .setDescription("Przyjmij weryfikację")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addString("type", (type) =>
             type
               .setDescription("Typ weryfikacji")
@@ -268,109 +262,126 @@ export const verification = new Hashira({ name: "verification" })
                 { name: "18+", value: VerificationLevel.plus18 },
               ),
           )
-          .handle(
-            async ({ prisma, messageQueue }, { user: rawUser, type: rawType }, itx) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
-              const verificationType = rawType as VerificationLevel;
+          .handle(async ({ prisma, messageQueue }, { user, type: rawType }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+            const verificationType = rawType as VerificationLevel;
 
-              const user = await parseUserMentionWorkaround(rawUser, itx);
-              if (!user) return;
+            await ensureUsersExist(prisma, [user, itx.user]);
+            const dbUser = await prisma.user.findFirst({ where: { id: user.id } });
+            if (!dbUser) return;
 
-              await ensureUsersExist(prisma, [user, itx.user]);
-              const dbUser = await prisma.user.findFirst({ where: { id: user.id } });
-              if (!dbUser) return;
+            if (
+              satisfiesVerificationLevel(dbUser.verificationLevel, verificationType)
+            ) {
+              return await errorFollowUp(
+                itx,
+                `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
+                  verificationType,
+                )}`,
+              );
+            }
 
-              if (
-                satisfiesVerificationLevel(dbUser.verificationLevel, verificationType)
-              ) {
-                return await errorFollowUp(
-                  itx,
-                  `${userMention(user.id)} ma już weryfikację ${formatVerificationType(
-                    verificationType,
-                  )}`,
-                );
-              }
-
-              const currentVerificationLevel = dbUser.verificationLevel;
-              const active16PlusVerification = await prisma.$transaction(async (tx) => {
-                // Check for an active 16_plus verification even when accepting a 18_plus verification
-                const active16PlusVerification = await getActive16PlusVerification(
-                  tx,
-                  itx.guildId,
-                  user.id,
-                );
-                if (active16PlusVerification) {
-                  await tx.verification.update({
-                    where: { id: active16PlusVerification.id },
-                    data: { status: "accepted", acceptedAt: itx.createdAt },
-                  });
-
-                  await messageQueue.cancel(
-                    "verificationEnd",
-                    active16PlusVerification.id.toString(),
-                  );
-                  await cancelVerificationReminders(
-                    messageQueue,
-                    active16PlusVerification.id,
-                  );
-                } else if (currentVerificationLevel === null) {
-                  // Create a 16_plus verification if there is no active verification.
-                  await tx.verification.create({
-                    data: {
-                      createdAt: itx.createdAt,
-                      acceptedAt: itx.createdAt,
-                      guildId: itx.guildId,
-                      userId: user.id,
-                      moderatorId: itx.user.id,
-                      type: "plus16",
-                      status: "accepted",
-                    },
-                  });
-                }
-
-                if (verificationType === "plus18") {
-                  await tx.verification.create({
-                    data: {
-                      createdAt: itx.createdAt,
-                      acceptedAt: itx.createdAt,
-                      guildId: itx.guildId,
-                      userId: user.id,
-                      moderatorId: itx.user.id,
-                      type: "plus18",
-                      status: "accepted",
-                    },
-                  });
-                }
-
-                await tx.user.update({
-                  where: { id: user.id },
-                  data: { verificationLevel: verificationType },
+            const currentVerificationLevel = dbUser.verificationLevel;
+            const active16PlusVerification = await prisma.$transaction(async (tx) => {
+              // Check for an active 16_plus verification even when accepting a 18_plus verification
+              const active16PlusVerification = await getActive16PlusVerification(
+                tx,
+                itx.guildId,
+                user.id,
+              );
+              if (active16PlusVerification) {
+                await tx.verification.update({
+                  where: { id: active16PlusVerification.id },
+                  data: { status: "accepted", acceptedAt: itx.createdAt },
                 });
 
-                return active16PlusVerification;
+                await messageQueue.cancel(
+                  "verificationEnd",
+                  active16PlusVerification.id.toString(),
+                );
+                await cancelVerificationReminders(
+                  messageQueue,
+                  active16PlusVerification.id,
+                );
+              } else if (currentVerificationLevel === null) {
+                // Create a 16_plus verification if there is no active verification.
+                await tx.verification.create({
+                  data: {
+                    createdAt: itx.createdAt,
+                    acceptedAt: itx.createdAt,
+                    guildId: itx.guildId,
+                    userId: user.id,
+                    moderatorId: itx.user.id,
+                    type: "plus16",
+                    status: "accepted",
+                  },
+                });
+              }
+
+              if (verificationType === "plus18") {
+                await tx.verification.create({
+                  data: {
+                    createdAt: itx.createdAt,
+                    acceptedAt: itx.createdAt,
+                    guildId: itx.guildId,
+                    userId: user.id,
+                    moderatorId: itx.user.id,
+                    type: "plus18",
+                    status: "accepted",
+                  },
+                });
+              }
+
+              await tx.user.update({
+                where: { id: user.id },
+                data: { verificationLevel: verificationType },
               });
 
-              // Try to remove the mute role if the verification was in progress and there is no active mute
-              const activeMute = await prisma.mute.findFirst({
-                where: {
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  endsAt: { gte: itx.createdAt },
-                  deletedAt: null,
+              return active16PlusVerification;
+            });
+
+            // Try to remove the mute role if the verification was in progress and there is no active mute
+            const activeMute = await prisma.mute.findFirst({
+              where: {
+                guildId: itx.guildId,
+                userId: user.id,
+                endsAt: { gte: itx.createdAt },
+                deletedAt: null,
+              },
+            });
+            const shouldRemoveMute = active16PlusVerification && !activeMute;
+            let muteRemovalFailed = false;
+            if (shouldRemoveMute) {
+              muteRemovalFailed = await discordTry(
+                async () => {
+                  const muteRoleId = await getMuteRoleId(prisma, itx.guildId);
+                  if (!muteRoleId) return true;
+                  const member = await itx.guild.members.fetch(user.id);
+                  await member.roles.remove(
+                    muteRoleId,
+                    `Weryfikacja 16+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
+                  );
+                  return false;
                 },
-              });
-              const shouldRemoveMute = active16PlusVerification && !activeMute;
-              let muteRemovalFailed = false;
-              if (shouldRemoveMute) {
-                muteRemovalFailed = await discordTry(
+                [
+                  RESTJSONErrorCodes.UnknownMember,
+                  RESTJSONErrorCodes.MissingPermissions,
+                ],
+                () => true,
+              );
+            }
+
+            let plus18RoleAdditionFailed = false;
+            if (verificationType === "plus18") {
+              const plus18RoleId = await get18PlusRoleId(prisma, itx.guildId);
+              if (plus18RoleId) {
+                plus18RoleAdditionFailed = await discordTry(
                   async () => {
-                    const muteRoleId = await getMuteRoleId(prisma, itx.guildId);
-                    if (!muteRoleId) return true;
                     const member = await itx.guild.members.fetch(user.id);
-                    await member.roles.remove(
-                      muteRoleId,
-                      `Weryfikacja 16+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
+                    await member.roles.add(
+                      plus18RoleId,
+                      `Weryfikacja 18+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
                     );
                     return false;
                   },
@@ -378,96 +389,71 @@ export const verification = new Hashira({ name: "verification" })
                     RESTJSONErrorCodes.UnknownMember,
                     RESTJSONErrorCodes.MissingPermissions,
                   ],
-                  () => true,
+                  () => false,
                 );
               }
+            }
 
-              let plus18RoleAdditionFailed = false;
-              if (verificationType === "plus18") {
-                const plus18RoleId = await get18PlusRoleId(prisma, itx.guildId);
-                if (plus18RoleId) {
-                  plus18RoleAdditionFailed = await discordTry(
-                    async () => {
-                      const member = await itx.guild.members.fetch(user.id);
-                      await member.roles.add(
-                        plus18RoleId,
-                        `Weryfikacja 18+ przyjęta przez ${itx.user.tag} (${itx.user.id})`,
-                      );
-                      return false;
-                    },
-                    [
-                      RESTJSONErrorCodes.UnknownMember,
-                      RESTJSONErrorCodes.MissingPermissions,
-                    ],
-                    () => false,
-                  );
-                }
-              }
-
-              let directMessageContent: string;
-              if (verificationType === "plus16" && shouldRemoveMute) {
-                // any -> 16_plus with an active verification
-                directMessageContent = `Hej ${userMention(
-                  user.id,
-                )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
-              } else if (verificationType === "plus16" && !shouldRemoveMute) {
-                // any -> 16_plus with an active verification
-                directMessageContent = `Hej ${userMention(
-                  user.id,
-                )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
-              } else if (verificationType === "plus18" && shouldRemoveMute) {
-                // any -> 18_plus with an active verification
-                directMessageContent = `Hej ${userMention(
-                  user.id,
-                )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
-              } else if (verificationType === "plus18" && !shouldRemoveMute) {
-                // null -> 18_plus without starting a 16_plus verification
-                directMessageContent = `Hej ${userMention(
-                  user.id,
-                )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
-              } else {
-                throw new Error(
-                  `Invalid verification transition from ${currentVerificationLevel} to ${verificationType}`,
-                );
-              }
-              const sentMessage = await sendDirectMessage(user, directMessageContent);
-
-              await itx.editReply(
-                `Przyjęto weryfikację ${formatVerificationType(
-                  verificationType,
-                )} dla ${userMention(user.id)}`,
+            let directMessageContent: string;
+            if (verificationType === "plus16" && shouldRemoveMute) {
+              // any -> 16_plus with an active verification
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "plus16" && !shouldRemoveMute) {
+              // any -> 16_plus with an active verification
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 16 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "plus18" && shouldRemoveMute) {
+              // any -> 18_plus with an active verification
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Twój mute został usunięty i od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else if (verificationType === "plus18" && !shouldRemoveMute) {
+              // null -> 18_plus without starting a 16_plus verification
+              directMessageContent = `Hej ${userMention(
+                user.id,
+              )}! To znowu ja. Przed chwilą **Twoja weryfikacja wieku została pozytywnie rozpatrzona**. Od teraz będziemy jako administracja wiedzieć, że masz ukończone 18 lat i nie będziemy Cię w przyszłości weryfikować ponownie. Dodatkowo z uwagi na Twój wiek dałem Ci też rolę \`18+\` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do \`#rozmowy-niesforne\`. Życzę Ci miłego dnia i jeszcze raz pozdrawiam!`;
+            } else {
+              throw new Error(
+                `Invalid verification transition from ${currentVerificationLevel} to ${verificationType}`,
               );
-              if (shouldRemoveMute && muteRemovalFailed) {
-                await errorFollowUp(
-                  itx,
-                  `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
-                );
-              }
-              if (verificationType === "plus18" && plus18RoleAdditionFailed) {
-                await errorFollowUp(
-                  itx,
-                  `Nie udało się dodać roli 18+ dla ${formatUserWithId(user)}.`,
-                );
-              }
-              if (!sentMessage) {
-                await errorFollowUp(
-                  itx,
-                  `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-                );
-              }
-            },
-          ),
+            }
+            const sentMessage = await sendDirectMessage(user, directMessageContent);
+
+            await itx.editReply(
+              `Przyjęto weryfikację ${formatVerificationType(
+                verificationType,
+              )} dla ${userMention(user.id)}`,
+            );
+            if (shouldRemoveMute && muteRemovalFailed) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się usunąć roli wyciszenia dla ${formatUserWithId(user)}.`,
+              );
+            }
+            if (verificationType === "plus18" && plus18RoleAdditionFailed) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się dodać roli 18+ dla ${formatUserWithId(user)}.`,
+              );
+            }
+            if (!sentMessage) {
+              await errorFollowUp(
+                itx,
+                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+              );
+            }
+          }),
       )
       .addCommand("odrzuc", (command) =>
         command
           .setDescription("Odrzuć weryfikację 16+")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, messageQueue }, { user: rawUser }, itx) => {
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async ({ prisma, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-
-            const user = await parseUserMentionWorkaround(rawUser, itx);
-            if (!user) return;
 
             await ensureUsersExist(prisma, [user, itx.user]);
             const dbUser = await prisma.user.findFirst({ where: { id: user.id } });
@@ -542,12 +528,12 @@ export const verification = new Hashira({ name: "verification" })
       .addCommand("wycofaj", (command) =>
         command
           .setDescription("Wycofaj weryfikację, jeśli przypadkowo została rozpoczęta")
-          .addString("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, messageQueue }, { user: rawUser }, itx) => {
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .handle(async ({ prisma, messageQueue }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const member = await readMember(itx, rawUser);
+            const member = await readMember(itx, user);
             if (!member)
               return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
 
@@ -605,13 +591,10 @@ export const verification = new Hashira({ name: "verification" })
       .setDescription("Sprawdź kartotekę użytkownika")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-      .addString("user", (user) => user.setDescription("Użytkownik"))
-      .handle(async ({ prisma }, { user: rawUser }, itx) => {
+      .addUser("user", (user) => user.setDescription("Użytkownik"))
+      .handle(async ({ prisma }, { user }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
-
-        const user = await parseUserMentionWorkaround(rawUser, itx);
-        if (!user) return;
 
         await ensureUserExists(prisma, user);
         const dbUser = await prisma.user.findFirst({ where: { id: user.id } });

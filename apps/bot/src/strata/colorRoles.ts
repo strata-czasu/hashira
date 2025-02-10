@@ -11,7 +11,6 @@ import {
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { parseUserMentionWorkaround } from "../util/parseUsers";
 
 const preprocessColor = (color: string): `#${string}` => {
   if (color.startsWith("#")) {
@@ -59,7 +58,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
         command
           .setDescription("[MODERACYJNE] Dodaj nowy kolor")
           .addString("nazwa", (name) => name.setDescription("Nazwa koloru"))
-          .addString("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
+          .addUser("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
           .addString("wygaśnięcie", (expiration) =>
             expiration
               .setDescription("Czas po którym kolor wygaśnie")
@@ -87,7 +86,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
               { prisma },
               {
                 nazwa: name,
-                właściciel: rawOwner,
+                właściciel: owner,
                 wygaśnięcie: rawExpiration,
                 sloty: slots,
               },
@@ -96,9 +95,6 @@ export const colorRoles = new Hashira({ name: "color-role" })
               if (!itx.inCachedGuild()) return;
               if (!itx.memberPermissions.has(PermissionFlagsBits.ManageRoles)) return;
               await itx.deferReply();
-
-              const owner = await parseUserMentionWorkaround(rawOwner, itx);
-              if (!owner) return;
 
               const expiration = readExpiration(rawExpiration);
 
@@ -154,22 +150,19 @@ export const colorRoles = new Hashira({ name: "color-role" })
           .addRole("rola", (role) =>
             role.setDescription("Rola do dodania").setRequired(true),
           )
-          .addString("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
+          .addUser("właściciel", (owner) => owner.setDescription("Właściciel koloru"))
           .addInteger("sloty", (slots) =>
             slots.setDescription("Ilość slotów na użytkowników"),
           )
           .handle(
             async (
               { prisma },
-              { rola: role, właściciel: rawOwner, sloty: slots },
+              { rola: role, właściciel: owner, sloty: slots },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
               if (!itx.memberPermissions.has(PermissionFlagsBits.ManageRoles)) return;
               await itx.deferReply();
-
-              const owner = await parseUserMentionWorkaround(rawOwner, itx);
-              if (!owner) return;
 
               const colorRole = await prisma.colorRole.findFirst({
                 where: {
