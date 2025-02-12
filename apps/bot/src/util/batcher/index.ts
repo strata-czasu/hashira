@@ -64,3 +64,4 @@ export class Batcher<K, const T> {
 }
 
 export { InMemoryBackend } from "./inMemoryBackend";
+export { RedisBackend } from "./redisBackend";
