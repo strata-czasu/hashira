@@ -1,6 +1,6 @@
 import { type Mock, beforeEach, describe, expect, mock, test } from "bun:test";
 import { sleep } from "bun";
-import { Batcher } from "../src/util/batcher";
+import { Batcher, InMemoryBackend } from "../src/util/batcher";
 
 describe("Batcher", () => {
   let batcher: Batcher<string, number>;
@@ -11,6 +11,7 @@ describe("Batcher", () => {
     batcher = new Batcher<string, number>(processBatchMock, {
       interval: { seconds: 0.01 },
       batchSize: 2,
+      backend: new InMemoryBackend(),
     });
   });
 
@@ -63,6 +64,7 @@ describe("Batcher", () => {
     batcher = new Batcher<string, number>(processBatchMock, {
       interval: { seconds: 0.01 },
       batchSize: 20,
+      backend: new InMemoryBackend(),
     });
     batcher.start();
     for (let i = 1; i <= 20; i++) {

@@ -1,6 +1,6 @@
 import type { Prettify } from "@hashira/core";
 import type { Client, EmbedBuilder, Guild, TextBasedChannel } from "discord.js";
-import { Batcher } from "../../util/batcher";
+import { Batcher, InMemoryBackend } from "../../util/batcher";
 
 type LogMessageData = Record<string, unknown>;
 export type LogMessageType = Record<string, LogMessageData>;
@@ -22,6 +22,7 @@ export class Logger<
     this.#batcher = new Batcher(this.processBatch.bind(this), {
       interval: { seconds: 5 },
       batchSize: 5,
+      backend: new InMemoryBackend(),
     });
   }
 
