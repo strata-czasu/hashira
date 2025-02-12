@@ -12,6 +12,7 @@ services:
     command: sleep infinity
     networks:
       - db
+      - redis
 
     # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
     # (Adding the "ports" property to this file will not forward from a Codespace.)
@@ -34,9 +35,21 @@ services:
     volumes:
       - postgres-test-data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    networks:
+      - redis
+    volumes:
+      - redis-data:/data
+      - ../redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+
 networks:
   db:
+  redis:
 
 volumes:
   postgres-data:
   postgres-test-data:
+  redis-data:
