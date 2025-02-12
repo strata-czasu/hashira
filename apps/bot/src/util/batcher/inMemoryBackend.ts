@@ -3,6 +3,14 @@ import type { BatcherBackend } from "./base";
 export class InMemoryBackend<K, T> implements BatcherBackend<K, T> {
   #items: Map<K, T[]> = new Map();
 
+  initialize(): void {
+    return;
+  }
+
+  get initialized(): boolean {
+    return true;
+  }
+
   push(key: K, item: T): void {
     const itemsForKey = this.#items.get(key) ?? [];
     itemsForKey.push(item);

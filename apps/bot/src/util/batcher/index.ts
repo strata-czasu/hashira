@@ -26,8 +26,12 @@ export class Batcher<K, const T> {
     this.processBatch = processBatch;
   }
 
-  push(key: K, item: T): void {
-    this.backend.push(key, item);
+  async push(key: K, item: T): Promise<void> {
+    if (!this.backend.initialized) {
+      await this.backend.initialize();
+    }
+
+    await this.backend.push(key, item);
 
     if (!this.processing.get(key)) {
       this.startProcessing(key);
@@ -38,10 +42,10 @@ export class Batcher<K, const T> {
     if (!this.enabled) return;
     this.processing.set(key, true);
 
-    while (this.backend.size(key) > 0) {
+    while (await this.backend.size(key)) {
       await sleep(this.interval);
 
-      const batch = this.backend.popn(key, this.batchSize);
+      const batch = await this.backend.popn(key, this.batchSize);
       if (!batch) return;
 
       try {

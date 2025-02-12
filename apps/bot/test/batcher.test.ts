@@ -15,24 +15,24 @@ describe("Batcher", () => {
     });
   });
 
-  test("should not process items before start is called", () => {
-    batcher.push("key1", 1);
+  test("should not process items before start is called", async () => {
+    await batcher.push("key1", 1);
     expect(processBatchMock).not.toHaveBeenCalled();
   });
 
   test("should process items after start is called", async () => {
     batcher.start();
-    batcher.push("key1", 1);
-    batcher.push("key1", 2);
+    await batcher.push("key1", 1);
+    await batcher.push("key1", 2);
     await sleep(15);
     expect(processBatchMock).toHaveBeenCalledWith("key1", [1, 2]);
   });
 
   test("should batch items according to batchSize", async () => {
     batcher.start();
-    batcher.push("key1", 1);
-    batcher.push("key1", 2);
-    batcher.push("key1", 3);
+    await batcher.push("key1", 1);
+    await batcher.push("key1", 2);
+    await batcher.push("key1", 3);
     await sleep(15);
     expect(processBatchMock).toHaveBeenCalledWith("key1", [1, 2]);
     await sleep(35); // Wait for interval and processing time
@@ -41,7 +41,7 @@ describe("Batcher", () => {
 
   test("should respect the interval between processing batches", async () => {
     batcher.start();
-    batcher.push("key1", 1);
+    await batcher.push("key1", 1);
     const startTime = Date.now();
     await sleep(5);
     expect(processBatchMock).not.toHaveBeenCalled(); // Should not have processed yet
@@ -53,8 +53,8 @@ describe("Batcher", () => {
 
   test("should handle multiple keys separately", async () => {
     batcher.start();
-    batcher.push("key1", 1);
-    batcher.push("key2", 2);
+    await batcher.push("key1", 1);
+    await batcher.push("key2", 2);
     await sleep(15);
     expect(processBatchMock).toHaveBeenCalledWith("key1", [1]);
     expect(processBatchMock).toHaveBeenCalledWith("key2", [2]);
@@ -68,7 +68,7 @@ describe("Batcher", () => {
     });
     batcher.start();
     for (let i = 1; i <= 20; i++) {
-      batcher.push("key1", i);
+      await batcher.push("key1", i);
     }
     await sleep(15);
     expect(processBatchMock).toHaveBeenCalledWith(

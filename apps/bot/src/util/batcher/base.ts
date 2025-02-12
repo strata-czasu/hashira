@@ -1,5 +1,8 @@
 export interface BatcherBackend<K, T> {
-  push(key: K, item: T): void;
-  popn(key: K, n: number): T[];
-  size(key: K): number;
+  initialize(): void | Promise<void>;
+  get initialized(): boolean;
+
+  push(key: K, item: T): void | Promise<void>;
+  popn(key: K, n: number): T[] | Promise<T[]>;
+  size(key: K): number | Promise<number>;
 }
