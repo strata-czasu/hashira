@@ -118,20 +118,18 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
           ),
       ),
   )
-  .handle("guildMessageCreate", async ({ prisma }, message) => {
-    await prisma.userTextActivity.create({
-      data: {
-        user: {
-          connectOrCreate: {
-            create: { id: message.author.id },
-            where: { id: message.author.id },
-          },
+  .handle("guildMessageCreate", async ({ prisma, userTextActivityQueue }, message) => {
+    userTextActivityQueue.push(message.channel.id, {
+      user: {
+        connectOrCreate: {
+          create: { id: message.author.id },
+          where: { id: message.author.id },
         },
-        guild: { connect: { id: message.guild.id } },
-        channelId: message.channel.id,
-        messageId: message.id,
-        timestamp: message.createdAt,
       },
+      guild: { connect: { id: message.guild.id } },
+      messageId: message.id,
+      channelId: message.channel.id,
+      timestamp: message.createdAt,
     });
 
     await handleStickyMessage(prisma, message);
