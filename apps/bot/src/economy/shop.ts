@@ -8,8 +8,7 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { addBalance } from "./managers/transferManager";
 import { getDefaultWallet } from "./managers/walletManager";
-import { formatBalance } from "./strata/strataCurrency";
-import { getItem, getShopItem } from "./util";
+import { formatBalance, getItem, getShopItem } from "./util";
 
 const formatAmount = (amount: number) => {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;

@@ -1,23 +1,14 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, inlineCode } from "discord.js";
+import { PermissionFlagsBits } from "discord.js";
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
 import { fetchMembers } from "../../util/fetchMembers";
 import { parseUserMentions } from "../../util/parseUsers";
-import { createPluralize } from "../../util/pluralize";
 import { EconomyError } from "../economyError";
 import { addBalances, transferBalances } from "../managers/transferManager";
 import { getDefaultWallet } from "../managers/walletManager";
-
-const pluralizeUsers = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "użytkownikom",
-  1: "użytkownikowi",
-});
-
-export const formatBalance = (balance: number, currencySymbol: string) =>
-  inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);
+import { formatBalance, pluralizeUsers } from "../util";
 
 export const strataCurrency = new Hashira({ name: "strata-currency" })
   .use(base)
