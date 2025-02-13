@@ -156,6 +156,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 fromUser: itx.user,
                 toUsers: members.map((m) => m.user),
                 amount,
+                reason,
               });
 
               const amountFormatted = formatBalance(

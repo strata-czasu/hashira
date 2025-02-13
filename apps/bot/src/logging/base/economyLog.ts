@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { Item } from "@hashira/db";
-import { type User, bold, inlineCode, userMention } from "discord.js";
+import { type User, bold, inlineCode, italic, userMention } from "discord.js";
 import { formatBalance, pluralizeUsers } from "../../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { Logger } from "./logger";
@@ -10,6 +10,7 @@ type CurrencyTransferData = {
   fromUser: User;
   toUsers: User[];
   amount: number;
+  reason: string | null;
 };
 
 type ItemTransferData = {
@@ -28,29 +29,35 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
   new Logger()
     .addMessageType(
       "currencyTransfer",
-      async ({ timestamp }, { fromUser, toUsers, amount }: CurrencyTransferData) => {
+      async (
+        { timestamp },
+        { fromUser, toUsers, amount, reason }: CurrencyTransferData,
+      ) => {
         const formattedAmount = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
-        const embed = getLogMessageEmbed(fromUser, timestamp).setColor("Yellow");
 
+        const lines: string[] = [];
         if (toUsers.length === 1) {
           const [user] = toUsers;
           if (!user) throw new Error("Invalid state: user is undefined");
-          embed.setDescription(
-            `Przekazuje ${formattedAmount} dla ${userMention(user.id)}`,
-          );
+          lines.push(`Przekazuje ${formattedAmount} dla ${userMention(user.id)}`);
         } else {
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
           const totalAmount = amount * toUsers.length;
-          const lines = [
+          lines.push(
             `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizeUsers(
               toUsers.length,
             )}: ${userMentions}`,
-            `Razem: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
-          ];
-          embed.setDescription(lines.join("\n"));
+            `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
+          );
         }
 
-        return embed;
+        if (reason !== null) {
+          lines.push(`**Powód**: ${italic(reason)}`);
+        }
+
+        return getLogMessageEmbed(fromUser, timestamp)
+          .setColor("Yellow")
+          .setDescription(lines.join("\n"));
       },
     )
     .addMessageType(
