@@ -41,6 +41,6 @@ export class RedisBackend<K, T> implements BatcherBackend<K, T> {
   }
 
   private getKey(key: K) {
-    return `${this.#name}:${key}`;
+    return `batcher:${this.#name}:${key}`;
   }
 }
