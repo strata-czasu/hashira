@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
+import { Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+import { endOfMonth } from "date-fns";
 import {
   ChannelType,
   type Message,
@@ -9,10 +11,12 @@ import {
 } from "discord.js";
 import { noop } from "es-toolkit";
 import { base } from "../base";
+import { parseDate } from "../util/dateParsing";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { fetchMessages } from "../util/fetchMessages";
 import { isNotOwner } from "../util/isOwner";
+import { createPluralize } from "../util/pluralize";
 
 const handleStickyMessage = async (
   prisma: ExtendedPrismaClient,
@@ -41,6 +45,12 @@ const handleStickyMessage = async (
     data: { lastMessageId: newMessage.id },
   });
 };
+
+export const pluralizeMessages = createPluralize({
+  // FIXME: Keys should be sorted automatically
+  2: "wiadomości",
+  1: "wiadomość",
+});
 
 export const userTextActivity = new Hashira({ name: "user-text-activity" })
   .use(base)
@@ -116,6 +126,65 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               }
             },
           ),
+      ),
+  )
+  .group("ranking", (group) =>
+    group
+      .setDescription("Komendy związane z rankingami")
+      .addCommand("kanał", (command) =>
+        command
+          .setDescription("Ranking użytkowników na podstawie aktywności tekstowej")
+          .addChannel("kanał", (channel) =>
+            channel.setDescription("Kanał").setChannelType(ChannelType.GuildText),
+          )
+          .addString("okres", (period) =>
+            period.setDescription("Okres czasu, np. 2025-01"),
+          )
+          .handle(async ({ prisma }, { kanał: channel, okres: rawPeriod }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const periodStart = parseDate(rawPeriod, "start", null);
+            if (!periodStart) {
+              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
+            }
+            const periodEnd = endOfMonth(periodStart);
+
+            const where = {
+              guildId: itx.guild.id,
+              channelId: channel.id,
+              timestamp: {
+                gte: periodStart,
+                lte: periodEnd,
+              },
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.userTextActivity.groupBy({
+                  ...props,
+                  by: "userId",
+                  where,
+                  _count: true,
+                  orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                }),
+              async () => {
+                const count = await prisma.userTextActivity.groupBy({
+                  by: "userId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const paginator = new PaginatedView(
+              paginate,
+              `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
+              (item, idx) =>
+                `${idx}. <@${item.userId}> - ${item._count} ${pluralizeMessages(item._count)}`,
+              false,
+            );
+            await paginator.render(itx);
+          }),
       ),
   )
   .handle("guildMessageCreate", async ({ prisma, userTextActivityQueue }, message) => {
