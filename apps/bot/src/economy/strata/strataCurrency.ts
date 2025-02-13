@@ -61,7 +61,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           )
           .handle(
             async (
-              { prisma },
+              { prisma, economyLog: log },
               { ilość: amount, użytkownicy: rawMembers, powód: reason },
               itx,
             ) => {
@@ -96,6 +96,12 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 }
                 throw error;
               }
+              log.push("currencyAdd", itx.guild, {
+                moderator: itx.user,
+                toUsers: members.map((m) => m.user),
+                amount,
+                reason,
+              });
 
               const amountFormatted = formatBalance(
                 amount,
