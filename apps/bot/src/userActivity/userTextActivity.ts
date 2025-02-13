@@ -46,11 +46,16 @@ const handleStickyMessage = async (
   });
 };
 
-export const pluralizeMessages = createPluralize({
+const pluralizeMessages = createPluralize({
   // FIXME: Keys should be sorted automatically
   2: "wiadomości",
   1: "wiadomość",
 });
+
+const getMedal = (idx: number) => {
+  const medals = ["🥇", "🥈", "🥉"];
+  return medals[idx - 1] ?? null;
+};
 
 export const userTextActivity = new Hashira({ name: "user-text-activity" })
   .use(base)
@@ -133,7 +138,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
       .setDescription("Komendy związane z rankingami")
       .addCommand("kanał", (command) =>
         command
-          .setDescription("Ranking użytkowników na podstawie aktywności tekstowej")
+          .setDescription("Ranking użytkowników na kanale")
           .addChannel("kanał", (channel) =>
             channel.setDescription("Kanał").setChannelType(ChannelType.GuildText),
           )
@@ -196,8 +201,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 const parts: string[] = [`${idx}.`];
 
                 if (showMedals) {
-                  const medals = ["🥇", "🥈", "🥉"];
-                  const medal = medals[idx - 1];
+                  const medal = getMedal(idx);
                   if (medal) parts.push(medal);
                 }
 
@@ -216,6 +220,81 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               await paginator.render(itx);
             },
           ),
+      )
+      .addCommand("serwer", (command) =>
+        command
+          .setDescription("Ranking kanałów na serwerze")
+          .addString("okres", (period) =>
+            period.setDescription("Okres czasu, np. 2025-01"),
+          )
+          .addBoolean("medale", (medals) =>
+            medals
+              .setDescription("Wyświetl medale dla pierwszych trzech miejsc")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { okres: rawPeriod, medale: showMedals }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const periodStart = parseDate(rawPeriod, "start", null);
+            if (!periodStart) {
+              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
+            }
+            const periodEnd = endOfMonth(periodStart);
+
+            const where = {
+              guildId: itx.guild.id,
+              timestamp: {
+                gte: periodStart,
+                lte: periodEnd,
+              },
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.userTextActivity.groupBy({
+                  ...props,
+                  by: "channelId",
+                  where,
+                  _count: true,
+                  orderBy: [
+                    { _count: { channelId: ordering } },
+                    { channelId: ordering },
+                  ],
+                }),
+              async () => {
+                const count = await prisma.userTextActivity.groupBy({
+                  by: "channelId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const formatEntry = (
+              item: { channelId: string; _count: number },
+              idx: number,
+            ) => {
+              const parts: string[] = [`${idx}.`];
+
+              if (showMedals) {
+                const medal = getMedal(idx);
+                if (medal) parts.push(medal);
+              }
+
+              parts.push(
+                `<#${item.channelId}> - ${item._count} ${pluralizeMessages(item._count)}`,
+              );
+              return parts.join(" ");
+            };
+
+            const paginator = new PaginatedView(
+              paginate,
+              `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
+              formatEntry,
+              false,
+            );
+            await paginator.render(itx);
+          }),
       ),
   )
   .handle("guildMessageCreate", async ({ prisma, userTextActivityQueue }, message) => {
