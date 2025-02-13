@@ -140,51 +140,82 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
           .addString("okres", (period) =>
             period.setDescription("Okres czasu, np. 2025-01"),
           )
-          .handle(async ({ prisma }, { kanał: channel, okres: rawPeriod }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addBoolean("medale", (medals) =>
+            medals
+              .setDescription("Wyświetl medale dla pierwszych trzech miejsc")
+              .setRequired(false),
+          )
+          .handle(
+            async (
+              { prisma },
+              { kanał: channel, okres: rawPeriod, medale: showMedals },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            const periodStart = parseDate(rawPeriod, "start", null);
-            if (!periodStart) {
-              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
-            }
-            const periodEnd = endOfMonth(periodStart);
+              const periodStart = parseDate(rawPeriod, "start", null);
+              if (!periodStart) {
+                return await errorFollowUp(
+                  itx,
+                  "Nieprawidłowy okres. Przykład: 2025-01",
+                );
+              }
+              const periodEnd = endOfMonth(periodStart);
 
-            const where = {
-              guildId: itx.guild.id,
-              channelId: channel.id,
-              timestamp: {
-                gte: periodStart,
-                lte: periodEnd,
-              },
-            };
-            const paginate = new DatabasePaginator(
-              (props, ordering) =>
-                prisma.userTextActivity.groupBy({
-                  ...props,
-                  by: "userId",
-                  where,
-                  _count: true,
-                  orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
-                }),
-              async () => {
-                const count = await prisma.userTextActivity.groupBy({
-                  by: "userId",
-                  where,
-                });
-                return count.length;
-              },
-              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
-            );
+              const where = {
+                guildId: itx.guild.id,
+                channelId: channel.id,
+                timestamp: {
+                  gte: periodStart,
+                  lte: periodEnd,
+                },
+              };
+              const paginate = new DatabasePaginator(
+                (props, ordering) =>
+                  prisma.userTextActivity.groupBy({
+                    ...props,
+                    by: "userId",
+                    where,
+                    _count: true,
+                    orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                  }),
+                async () => {
+                  const count = await prisma.userTextActivity.groupBy({
+                    by: "userId",
+                    where,
+                  });
+                  return count.length;
+                },
+                { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              );
 
-            const paginator = new PaginatedView(
-              paginate,
-              `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
-              (item, idx) =>
-                `${idx}. <@${item.userId}> - ${item._count} ${pluralizeMessages(item._count)}`,
-              false,
-            );
-            await paginator.render(itx);
-          }),
+              const formatEntry = (
+                item: { userId: string; _count: number },
+                idx: number,
+              ) => {
+                const parts: string[] = [`${idx}.`];
+
+                if (showMedals) {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  const medal = medals[idx - 1];
+                  if (medal) parts.push(medal);
+                }
+
+                parts.push(
+                  `<@${item.userId}> - ${item._count} ${pluralizeMessages(item._count)}`,
+                );
+                return parts.join(" ");
+              };
+
+              const paginator = new PaginatedView(
+                paginate,
+                `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
+                formatEntry,
+                false,
+              );
+              await paginator.render(itx);
+            },
+          ),
       ),
   )
   .handle("guildMessageCreate", async ({ prisma, userTextActivityQueue }, message) => {
