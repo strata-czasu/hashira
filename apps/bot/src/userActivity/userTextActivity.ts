@@ -292,9 +292,12 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 if (medal) parts.push(medal);
               }
 
+              // Abbreviate unique members label to "uu" for the second and subsequent items
+              const uniqueMembersLabel =
+                idx === 1 ? pluralizeUniqueMembers(item.uniqueMembers) : "uu";
               parts.push(
                 `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizeMessages(item.total)}`,
-                `[${item.uniqueMembers} ${pluralizeUniqueMembers(item.uniqueMembers)}]`,
+                `[${item.uniqueMembers} ${uniqueMembersLabel}]`,
               );
               return parts.join(" ");
             };
