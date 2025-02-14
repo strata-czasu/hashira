@@ -52,11 +52,6 @@ const pluralizeMessages = createPluralize({
   1: "wiadomość",
 });
 
-const pluralizeUniqueMembers = createPluralize({
-  2: "unikalnych użytkowników",
-  1: "unikalny użytkownik",
-});
-
 const getMedal = (idx: number) => {
   const medals = ["🥇", "🥈", "🥉"];
   return medals[idx - 1] ?? null;
@@ -292,12 +287,9 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 if (medal) parts.push(medal);
               }
 
-              // Abbreviate unique members label to "uu" for the second and subsequent items
-              const uniqueMembersLabel =
-                idx === 1 ? pluralizeUniqueMembers(item.uniqueMembers) : "uu";
               parts.push(
                 `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizeMessages(item.total)}`,
-                `[${item.uniqueMembers} ${uniqueMembersLabel}]`,
+                `[${item.uniqueMembers} :busts_in_silhouette:]`,
               );
               return parts.join(" ");
             };
