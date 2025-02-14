@@ -198,7 +198,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 item: { userId: string; _count: number },
                 idx: number,
               ) => {
-                const parts: string[] = [`${idx}.`];
+                const parts: string[] = [`${idx}\\.`];
 
                 if (showMedals) {
                   const medal = getMedal(idx);
@@ -280,7 +280,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               item: { channelId: string; total: number; uniqueMembers: number },
               idx: number,
             ) => {
-              const parts: string[] = [`${idx}.`];
+              const parts: string[] = [`${idx}\\.`];
 
               if (showMedals) {
                 const medal = getMedal(idx);
