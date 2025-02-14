@@ -211,7 +211,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 }
 
                 parts.push(
-                  `<@${item.userId}> - ${item._count} ${pluralizeMessages(item._count)}`,
+                  `<@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizeMessages(item._count)}`,
                 );
                 return parts.join(" ");
               };
@@ -293,7 +293,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               }
 
               parts.push(
-                `<#${item.channelId}> - ${item.total} ${pluralizeMessages(item.total)}`,
+                `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizeMessages(item.total)}`,
                 `[${item.uniqueMembers} ${pluralizeUniqueMembers(item.uniqueMembers)}]`,
               );
               return parts.join(" ");
