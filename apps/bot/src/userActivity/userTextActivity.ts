@@ -52,6 +52,11 @@ const pluralizeMessages = createPluralize({
   1: "wiadomość",
 });
 
+const pluralizeUniqueMembers = createPluralize({
+  2: "unikalnych użytkowników",
+  1: "unikalny użytkownik",
+});
+
 const getMedal = (idx: number) => {
   const medals = ["🥇", "🥈", "🥉"];
   return medals[idx - 1] ?? null;
@@ -215,7 +220,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 paginate,
                 `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
                 formatEntry,
-                false,
+                false, // FIXME: Add ordering
               );
               await paginator.render(itx);
             },
@@ -249,17 +254,23 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               },
             };
             const paginate = new DatabasePaginator(
-              (props, ordering) =>
-                prisma.userTextActivity.groupBy({
-                  ...props,
-                  by: "channelId",
-                  where,
-                  _count: true,
-                  orderBy: [
-                    { _count: { channelId: ordering } },
-                    { channelId: ordering },
-                  ],
-                }),
+              (props, _ordering) =>
+                prisma.$queryRaw<
+                  { channelId: string; total: number; uniqueMembers: number }[]
+                >`
+                  select
+                    "channelId",
+                    count(*) as "total",
+                    count(distinct "userId") as "uniqueMembers"
+                  from "userTextActivity"
+                  where
+                    "guildId" = ${itx.guild.id}
+                    and "timestamp" between ${periodStart} and ${periodEnd}
+                  group by "channelId"
+                  order by "total" desc -- FIXME: Add ordering
+                  offset ${props.skip}
+                  limit ${props.take};
+                `,
               async () => {
                 const count = await prisma.userTextActivity.groupBy({
                   by: "channelId",
@@ -271,7 +282,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
             );
 
             const formatEntry = (
-              item: { channelId: string; _count: number },
+              item: { channelId: string; total: number; uniqueMembers: number },
               idx: number,
             ) => {
               const parts: string[] = [`${idx}.`];
@@ -282,7 +293,8 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               }
 
               parts.push(
-                `<#${item.channelId}> - ${item._count} ${pluralizeMessages(item._count)}`,
+                `<#${item.channelId}> - ${item.total} ${pluralizeMessages(item.total)}`,
+                `[${item.uniqueMembers} ${pluralizeUniqueMembers(item.uniqueMembers)}]`,
               );
               return parts.join(" ");
             };
@@ -291,7 +303,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               paginate,
               `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
               formatEntry,
-              false,
+              false, // FIXME: Add ordering
             );
             await paginator.render(itx);
           }),
