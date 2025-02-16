@@ -109,6 +109,7 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
           }
 
           // Wallet balances
+          await itx.followUp("Przenoszenie portfela...");
           await prisma.$transaction(async (tx) => {
             const oldWallet = await getDefaultWallet({
               prisma: nestedTransaction(tx),
