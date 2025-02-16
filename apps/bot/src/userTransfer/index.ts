@@ -1,9 +1,13 @@
 import { Hashira } from "@hashira/core";
 import type { Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import { PermissionFlagsBits, RESTJSONErrorCodes, userMention } from "discord.js";
 import { base } from "../base";
+import { transferBalances } from "../economy/managers/transferManager";
+import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatUserWithId } from "../moderation/util";
 import { formatVerificationType } from "../moderation/verification";
+import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 
@@ -104,7 +108,25 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
             });
           }
 
-          // TODO: Wallets and balances
+          // Wallet balances
+          await prisma.$transaction(async (tx) => {
+            const oldWallet = await getDefaultWallet({
+              prisma: nestedTransaction(tx),
+              userId: oldUser.id,
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            });
+            await transferBalances({
+              prisma: nestedTransaction(tx),
+              fromUserId: oldUser.id,
+              toUserIds: [newUser.id],
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              amount: oldWallet.balance,
+              reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
+            });
+          });
+          // TODO: Wallet transfer for custom currencies
 
           // Ultimatums
           {
