@@ -115,27 +115,42 @@ const transferWallets: TransferOperation = async ({
   return `Przeniesiono ${formatBalance(oldWallet.balance, STRATA_CZASU_CURRENCY.symbol)}`;
 };
 
-const transferUltimatum: TransferOperation = async ({ prisma, oldUser, newUser }) => {
+const transferUltimatum: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
   const { count } = await prisma.ultimatum.updateMany({
-    where: { userId: oldUser.id },
+    where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
   });
   if (!count) return null;
   return `Przeniesiono ${count} ultimatum`;
 };
 
-const transferMutes: TransferOperation = async ({ prisma, oldUser, newUser }) => {
+const transferMutes: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
   const { count } = await prisma.mute.updateMany({
-    where: { userId: oldUser.id },
+    where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
   });
   if (!count) return null;
   return `Przeniesiono ${count} wyciszeń`;
 };
 
-const transferWarns: TransferOperation = async ({ prisma, oldUser, newUser }) => {
+const transferWarns: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
   const { count } = await prisma.warn.updateMany({
-    where: { userId: oldUser.id },
+    where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
   });
   if (!count) return null;
