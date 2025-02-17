@@ -204,17 +204,42 @@ const transferMarriage: TransferOperation = async ({ prisma, oldDbUser }) => {
 // TODO: Voice activity
 // TODO: Experience and level
 
-export const TRANSFER_OPERATIONS: TransferOperation[] = [
-  transferRoles,
-  transferVerification,
-  transferTextActivity,
-  transferInventory,
-  transferWallets,
-  transferUltimatum,
-  transferMutes,
-  transferWarns,
-  transferDmPollParticipations,
-  transferDmPollVotes,
-  transferDmPollExclusion,
-  transferMarriage,
+type OperationDescriptor = {
+  name: string;
+  fn: TransferOperation;
+};
+export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
+  { name: "role", fn: transferRoles },
+  { name: "weryfikacja", fn: transferVerification },
+  { name: "aktywność tekstowa", fn: transferTextActivity },
+  { name: "ekwipunek", fn: transferInventory },
+  { name: "portfele", fn: transferWallets },
+  { name: "ultimatum", fn: transferUltimatum },
+  { name: "wyciszenia", fn: transferMutes },
+  { name: "ostrzeżenia", fn: transferWarns },
+  { name: "uczestnictwa w ankietach", fn: transferDmPollParticipations },
+  { name: "głosy w ankietach", fn: transferDmPollVotes },
+  { name: "wykluczenie z ankiet", fn: transferDmPollExclusion },
+  { name: "ślub", fn: transferMarriage },
 ] as const;
+
+type Ok = { type: "ok"; name: string; message: string };
+type Err = { type: "err"; name: string };
+type Noop = { type: "noop"; name: string };
+type OperationResult = Ok | Err | Noop;
+
+export const runOperations = async (
+  options: TransferOperationOptions,
+): Promise<OperationResult[]> =>
+  Promise.all(
+    TRANSFER_OPERATIONS.map(async ({ name, fn }) => {
+      try {
+        const message = await fn(options);
+        if (message === null) return { type: "noop", name };
+        return { type: "ok", name, message };
+      } catch (e) {
+        console.error(`Error running transfer operation ${name}:`, e);
+        return { type: "err", name };
+      }
+    }),
+  );

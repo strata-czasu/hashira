@@ -1,9 +1,9 @@
 import { Hashira } from "@hashira/core";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { PermissionFlagsBits } from "discord.js";
+import { PermissionFlagsBits, bold } from "discord.js";
 import { base } from "../base";
 import { ensureUsersExist } from "../util/ensureUsersExist";
-import { TRANSFER_OPERATIONS } from "./transfer";
+import { runOperations } from "./transfer";
 
 export const userTransfer = new Hashira({ name: "user-transfer" })
   .use(base)
@@ -35,23 +35,45 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
             });
             if (!oldDbUser || !newDbUser) return [];
 
-            return await Promise.all(
-              TRANSFER_OPERATIONS.map((op) =>
-                op({
-                  prisma: nestedTransaction(tx),
-                  oldUser,
-                  newUser,
-                  oldDbUser,
-                  newDbUser,
-                  guild: itx.guild,
-                  moderator: itx.user,
-                }),
-              ),
-            );
+            return await runOperations({
+              prisma: nestedTransaction(tx),
+              oldUser,
+              newUser,
+              oldDbUser,
+              newDbUser,
+              guild: itx.guild,
+              moderator: itx.user,
+            });
           });
 
-          const lines = ["Przeniesiono dane użytkownika:"];
-          lines.push(...responses.filter((r) => r !== null).map((r) => `- ${r}`));
+          const lines: string[] = [];
+
+          const okResponses = responses.filter((r) => r.type === "ok");
+          if (okResponses.length > 0) {
+            lines.push(
+              "Wykonane operacje:",
+              ...okResponses.map((r) => `- ${bold(r.name)}: ${r.message}`),
+              "",
+            );
+          }
+
+          const errorResponses = responses.filter((r) => r.type === "err");
+          if (errorResponses.length > 0) {
+            lines.push(
+              "Operacje z błędem (sprawdź konsolę):",
+              ...errorResponses.map((r) => `- ${bold(r.name)}`),
+              "",
+            );
+          }
+
+          const noopResponses = responses.filter((r) => r.type === "noop");
+          if (noopResponses.length > 0) {
+            lines.push(
+              "Pominięte operacje:",
+              ...noopResponses.map((r) => `- ${bold(r.name)}`),
+            );
+          }
+
           await itx.editReply(lines.join("\n"));
         },
       ),
