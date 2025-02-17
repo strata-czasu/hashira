@@ -23,12 +23,12 @@ type TransferOperationOptions = {
 };
 type TransferOperation = (options: TransferOperationOptions) => Promise<string | null>;
 
-export const transferRoles = async (
-  oldUser: DiscordUser,
-  newUser: DiscordUser,
-  guild: Guild,
-  moderator: DiscordUser,
-) => {
+export const transferRoles: TransferOperation = async ({
+  oldUser,
+  newUser,
+  guild,
+  moderator,
+}) => {
   const oldMember = await discordTry(
     async () => guild.members.fetch(oldUser.id),
     [RESTJSONErrorCodes.UnknownMember],
@@ -207,6 +207,7 @@ const transferMarriage: TransferOperation = async ({ prisma, oldDbUser }) => {
 // TODO: Experience and level
 
 export const TRANSFER_OPERATIONS: TransferOperation[] = [
+  transferRoles,
   transferVerification,
   transferTextActivity,
   transferInventory,
