@@ -25,26 +25,29 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
 
           // TODO: Log transfers to the appropriate loggers
 
-          const responses = await prisma.$transaction(async (tx) => {
-            await ensureUsersExist(nestedTransaction(tx), [oldUser.id, newUser.id]);
-            const oldDbUser = await tx.user.findUnique({
-              where: { id: oldUser.id },
-            });
-            const newDbUser = await tx.user.findUnique({
-              where: { id: newUser.id },
-            });
-            if (!oldDbUser || !newDbUser) return [];
+          const responses = await prisma.$transaction(
+            async (tx) => {
+              await ensureUsersExist(nestedTransaction(tx), [oldUser.id, newUser.id]);
+              const oldDbUser = await tx.user.findUnique({
+                where: { id: oldUser.id },
+              });
+              const newDbUser = await tx.user.findUnique({
+                where: { id: newUser.id },
+              });
+              if (!oldDbUser || !newDbUser) return [];
 
-            return await runOperations({
-              prisma: nestedTransaction(tx),
-              oldUser,
-              newUser,
-              oldDbUser,
-              newDbUser,
-              guild: itx.guild,
-              moderator: itx.user,
-            });
-          });
+              return await runOperations({
+                prisma: nestedTransaction(tx),
+                oldUser,
+                newUser,
+                oldDbUser,
+                newDbUser,
+                guild: itx.guild,
+                moderator: itx.user,
+              });
+            },
+            { timeout: 30_000 }, // 30 second timeout just to be safe
+          );
 
           const lines: string[] = [];
 
