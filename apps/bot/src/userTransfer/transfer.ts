@@ -1,4 +1,4 @@
-import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
+import type { User as DbUser, ExtendedPrismaClient } from "@hashira/db";
 import {
   type User as DiscordUser,
   type Guild,
@@ -72,27 +72,20 @@ const transferTextActivity: TransferOperation = async ({
   newUser,
   guild,
 }) => {
-  const where: Prisma.UserTextActivityWhereInput = {
-    userId: oldUser.id,
-    guildId: guild.id,
-  };
-  const count = await prisma.userTextActivity.count({ where });
-  if (!count) return null;
-  await prisma.userTextActivity.updateMany({
-    where,
+  const { count } = await prisma.userTextActivity.updateMany({
+    where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono aktywność tekstową (${count})...`;
 };
 
 const transferInventory: TransferOperation = async ({ prisma, oldUser, newUser }) => {
-  const where: Prisma.InventoryItemWhereInput = { userId: oldUser.id };
-  const count = await prisma.inventoryItem.count({ where });
-  if (!count) return null;
-  await prisma.inventoryItem.updateMany({
-    where,
+  const { count } = await prisma.inventoryItem.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono ${count} przedmioty`;
 };
 
@@ -123,35 +116,29 @@ const transferWallets: TransferOperation = async ({
 };
 
 const transferUltimatum: TransferOperation = async ({ prisma, oldUser, newUser }) => {
-  const where: Prisma.UltimatumWhereInput = { userId: oldUser.id };
-  const count = await prisma.ultimatum.count({ where });
-  if (!count) return null;
-  await prisma.ultimatum.updateMany({
-    where,
+  const { count } = await prisma.ultimatum.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono ${count} ultimatum`;
 };
 
 const transferMutes: TransferOperation = async ({ prisma, oldUser, newUser }) => {
-  const where: Prisma.MuteWhereInput = { userId: oldUser.id };
-  const count = await prisma.mute.count({ where });
-  if (!count) return null;
-  await prisma.mute.updateMany({
-    where,
+  const { count } = await prisma.mute.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono ${count} wyciszeń`;
 };
 
 const transferWarns: TransferOperation = async ({ prisma, oldUser, newUser }) => {
-  const where: Prisma.WarnWhereInput = { userId: oldUser.id };
-  const count = await prisma.warn.count({ where });
-  if (!count) return null;
-  await prisma.warn.updateMany({
-    where,
+  const { count } = await prisma.warn.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono ${count} ostrzeżeń`;
 };
 
@@ -160,24 +147,20 @@ const transferDmPollParticipations: TransferOperation = async ({
   oldUser,
   newUser,
 }) => {
-  const where: Prisma.DmPollParticipantWhereInput = { userId: oldUser.id };
-  const count = await prisma.dmPollParticipant.count({ where });
-  if (!count) return null;
-  await prisma.dmPollParticipant.updateMany({
-    where,
+  const { count } = await prisma.dmPollParticipant.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono uczestnictwo w ${count} ankietach`;
 };
 
 const transferDmPollVotes: TransferOperation = async ({ prisma, oldUser, newUser }) => {
-  const where: Prisma.DmPollVoteWhereInput = { userId: oldUser.id };
-  const count = await prisma.dmPollVote.count({ where });
-  if (!count) return null;
-  await prisma.dmPollVote.updateMany({
-    where,
+  const { count } = await prisma.dmPollVote.updateMany({
+    where: { userId: oldUser.id },
     data: { userId: newUser.id },
   });
+  if (!count) return null;
   return `Przeniesiono głosy w ${count} ankietach`;
 };
 
