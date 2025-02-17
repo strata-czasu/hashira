@@ -9,6 +9,7 @@ env:
   BOT_CLIENT_ID: "000000000000000000"
   BOT_DEVELOPER_GUILD_IDS: "000000000000000000"
   BOT_TOKEN: dummy
+  REDIS_URL: redis://localhost:6379
 
 jobs:
   lint-and-test:

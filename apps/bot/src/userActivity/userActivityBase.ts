@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma } from "@hashira/db";
-import { Batcher } from "../util/batcher";
+import { Batcher, RedisBackend } from "../util/batcher";
 
 export class UserTextActivityQueue {
   #batcher: Batcher<string, Prisma.UserTextActivityCreateInput>;
@@ -10,6 +10,7 @@ export class UserTextActivityQueue {
     this.#batcher = new Batcher(this.processBatch.bind(this), {
       interval: { seconds: 15 },
       batchSize: 50,
+      backend: new RedisBackend("userTextActivityQueue"),
     });
   }
 
