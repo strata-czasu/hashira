@@ -55,7 +55,7 @@ const satisfiesVerificationLevel = (
   return levels[level] >= levels[target];
 };
 
-const formatVerificationType = (type: VerificationLevel | null) => {
+export const formatVerificationType = (type: VerificationLevel | null) => {
   switch (type) {
     case "plus13":
       return "13+";

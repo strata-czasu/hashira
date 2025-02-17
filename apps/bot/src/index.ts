@@ -25,6 +25,7 @@ import { strataCzasu } from "./strata";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
+import { userTransfer } from "./userTransfer";
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -60,6 +61,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(brochure)
   .use(userActivity)
   .use(userComplaint)
+  .use(userTransfer)
   .use(inviteManagement)
   .use(dmVoting)
   .use(ping)
