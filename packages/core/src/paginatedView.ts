@@ -59,12 +59,12 @@ export class PaginatedView<T> {
 
     const defaultButtons = [
       new ButtonBuilder()
-        .setLabel("Previous")
+        .setEmoji("⬅️")
         .setCustomId("previous")
         .setDisabled(!this.#paginator.canPrevious)
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setLabel("Next")
+        .setEmoji("➡️")
         .setCustomId("next")
         .setDisabled(!this.#paginator.canNext)
         .setStyle(ButtonStyle.Primary),

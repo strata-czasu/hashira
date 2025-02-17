@@ -4,8 +4,7 @@ import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { formatBalance } from "./strata/strataCurrency";
-import { getItem } from "./util";
+import { formatBalance, getItem } from "./util";
 
 const formatItem = ({ name, id }: Item) =>
   `${bold(name)} [${inlineCode(id.toString())}]`;

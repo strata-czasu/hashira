@@ -1,6 +1,9 @@
 import { Hashira } from "@hashira/core";
 import { EmbedBuilder, TimestampStyles, time, userMention } from "discord.js";
 import { base } from "../base";
+import { getDefaultWallet } from "../economy/managers/walletManager";
+import { formatBalance } from "../economy/util";
+import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { marriage } from "./marriage";
 
@@ -23,16 +26,34 @@ export const profile = new Hashira({ name: "profile" })
             id: user.id,
           },
         });
-
         if (!dbUser) return;
+
+        const wallet = await getDefaultWallet({
+          prisma,
+          userId: user.id,
+          guildId: itx.guildId,
+          currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+        });
+        const formattedBalance = formatBalance(
+          wallet.balance,
+          STRATA_CZASU_CURRENCY.symbol,
+        );
 
         const embed = new EmbedBuilder()
           .setTitle(`Profil ${user.tag}`)
           .setThumbnail(user.displayAvatarURL({ size: 256 }))
-          .addFields({
-            name: "Data utworzenia konta",
-            value: time(user.createdAt, TimestampStyles.ShortDate),
-          })
+          .addFields(
+            {
+              name: "Stan konta",
+              value: formattedBalance,
+              inline: true,
+            },
+            {
+              name: "Data utworzenia konta",
+              value: time(user.createdAt, TimestampStyles.LongDate),
+              inline: true,
+            },
+          )
           .setFooter({ text: `ID: ${user.id}` });
         if (dbUser.marriedTo && dbUser.marriedAt) {
           const spouse = await itx.client.users.fetch(dbUser.marriedTo);

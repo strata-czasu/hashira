@@ -7,7 +7,7 @@ import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUsersExist } from "../../util/ensureUsersExist";
 import { addBalance } from "../managers/transferManager";
-import { formatBalance } from "./strataCurrency";
+import { formatBalance } from "../util";
 
 const calculateDailyAmount = (marriageBonus: boolean, targetNotSelf: boolean) => {
   if (!targetNotSelf) {
