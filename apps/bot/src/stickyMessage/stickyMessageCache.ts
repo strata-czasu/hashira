@@ -11,10 +11,7 @@ export class StickyMessageCache {
       );
 
     const cached = this.#cache.get(channelId);
-    console.log("Cache?", cached);
     if (cached) return cached;
-
-    console.log("Fetching sticky message from database");
 
     const stickyMessage = await this.#prisma.stickyMessage.findFirst({
       where: { channelId },
