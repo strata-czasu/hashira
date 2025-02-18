@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { DatabasePaginator } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
 import {
@@ -11,6 +11,7 @@ import {
 } from "discord.js";
 import { noop } from "es-toolkit";
 import { base } from "../base";
+import type { StickyMessageCache } from "../stickyMessage/stickyMessageCache";
 import { parseDate } from "../util/dateParsing";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -19,15 +20,12 @@ import { isNotOwner } from "../util/isOwner";
 import { createPluralize } from "../util/pluralize";
 
 const handleStickyMessage = async (
-  prisma: ExtendedPrismaClient,
+  stickyMessageCache: StickyMessageCache,
   message: Message<true>,
 ) => {
   if (message.author.id === message.client.user?.id) return;
 
-  const stickyMessage = await prisma.stickyMessage.findFirst({
-    where: { channelId: message.channel.id, enabled: true },
-  });
-
+  const stickyMessage = await stickyMessageCache.get(message.channel.id);
   if (!stickyMessage) return;
 
   discordTry(
@@ -40,10 +38,7 @@ const handleStickyMessage = async (
     stickyMessage.content as MessageCreateOptions,
   );
 
-  await prisma.stickyMessage.update({
-    where: { channelId: message.channel.id },
-    data: { lastMessageId: newMessage.id },
-  });
+  await stickyMessageCache.update(message.channel.id, newMessage.id);
 };
 
 const pluralizeMessages = createPluralize({
@@ -304,19 +299,22 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
           }),
       ),
   )
-  .handle("guildMessageCreate", async ({ prisma, userTextActivityQueue }, message) => {
-    userTextActivityQueue.push(message.channel.id, {
-      user: {
-        connectOrCreate: {
-          create: { id: message.author.id },
-          where: { id: message.author.id },
+  .handle(
+    "guildMessageCreate",
+    async ({ stickyMessageCache, userTextActivityQueue }, message) => {
+      userTextActivityQueue.push(message.channel.id, {
+        user: {
+          connectOrCreate: {
+            create: { id: message.author.id },
+            where: { id: message.author.id },
+          },
         },
-      },
-      guild: { connect: { id: message.guild.id } },
-      messageId: message.id,
-      channelId: message.channel.id,
-      timestamp: message.createdAt,
-    });
+        guild: { connect: { id: message.guild.id } },
+        messageId: message.id,
+        channelId: message.channel.id,
+        timestamp: message.createdAt,
+      });
 
-    await handleStickyMessage(prisma, message);
-  });
+      await handleStickyMessage(stickyMessageCache, message);
+    },
+  );

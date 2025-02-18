@@ -20,7 +20,7 @@ import { ping } from "./ping";
 import { profile } from "./profile";
 import { roles } from "./roles";
 import { settings } from "./settings";
-import { stickyMessage } from "./stickyMessage";
+import { stickyMessage } from "./stickyMessage/stickyMessage";
 import { strataCzasu } from "./strata";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";

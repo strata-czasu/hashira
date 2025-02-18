@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma } from "@hashira/db";
+import { StickyMessageCache } from "../stickyMessage/stickyMessageCache";
 import { Batcher, RedisBackend } from "../util/batcher";
 
 export class UserTextActivityQueue {
@@ -38,7 +39,6 @@ export class UserTextActivityQueue {
   }
 }
 
-export const userActivityBase = new Hashira({ name: "userActivityBase" }).const(
-  "userTextActivityQueue",
-  new UserTextActivityQueue(),
-);
+export const userActivityBase = new Hashira({ name: "userActivityBase" })
+  .const("userTextActivityQueue", new UserTextActivityQueue())
+  .const("stickyMessageCache", new StickyMessageCache());
