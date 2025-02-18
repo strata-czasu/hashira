@@ -9,11 +9,11 @@ import {
   messageLink,
 } from "discord.js";
 import { noop } from "es-toolkit";
-import { base } from "./base";
-import { discordTry } from "./util/discordTry";
-import { decodeJson, encodeJson } from "./util/embedBuilder";
-import { errorFollowUp } from "./util/errorFollowUp";
-import { getShortenedUrl } from "./util/getShortenedUrl";
+import { base } from "../base";
+import { discordTry } from "../util/discordTry";
+import { decodeJson, encodeJson } from "../util/embedBuilder";
+import { errorFollowUp } from "../util/errorFollowUp";
+import { getShortenedUrl } from "../util/getShortenedUrl";
 
 export const stickyMessage = new Hashira({ name: "sticky-message" })
   .use(base)
@@ -32,7 +32,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
           .addString("dataurl", (attachment) =>
             attachment.setDescription("Data URL of the message to set"),
           )
-          .handle(async ({ prisma }, { channel, dataurl }, itx) => {
+          .handle(async ({ prisma, stickyMessageCache }, { channel, dataurl }, itx) => {
             if (!itx.inCachedGuild()) return;
             const url = new URL(dataurl);
             const data = url.searchParams.get("data");
@@ -69,6 +69,8 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               },
             });
 
+            stickyMessageCache.invalidate(channel.id);
+
             await itx.reply(`Sticky message set in ${channel}`);
           }),
       )
@@ -103,7 +105,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               .setDescription("The channel to toggle the sticky message in")
               .setChannelType(ChannelType.GuildText),
           )
-          .handle(async ({ prisma }, { channel }, itx) => {
+          .handle(async ({ prisma, stickyMessageCache }, { channel }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const exists = await prisma.stickyMessage.findFirst({
@@ -116,6 +118,8 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               where: { channelId: channel.id },
               data: { enabled: !exists.enabled },
             });
+
+            stickyMessageCache.invalidate(channel.id);
 
             await itx.reply(
               `${channelMention(channel.id)}: ${
@@ -143,11 +147,34 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               paginator,
               "sticky messages",
 
-              (stickyMessage) =>
-                `${channelMention(stickyMessage.channelId)}: ${messageLink(stickyMessage.channelId, stickyMessage.lastMessageId, stickyMessage.guildId)} - ${stickyMessage.enabled ? "enabled" : "disabled"}`,
+              (stickyMessage) => {
+                const mention = channelMention(stickyMessage.channelId);
+                const link = messageLink(
+                  stickyMessage.channelId,
+                  stickyMessage.lastMessageId,
+                  stickyMessage.guildId,
+                );
+                const enabled = stickyMessage.enabled ? "enabled" : "disabled";
+                const cached = stickyMessage.enabled ? "cached" : "not cached";
+
+                return `${mention}: ${link} - ${enabled} (${cached})`;
+              },
             );
 
             await paginate.render(itx);
+          }),
+      )
+      .addCommand("refresh", (command) =>
+        command
+          .addChannel("channel", (channel) =>
+            channel.setDescription("The channel to refresh the sticky message in"),
+          )
+          .handle(async ({ stickyMessageCache }, { channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            stickyMessageCache.invalidate(channel.id);
+
+            await itx.reply(`Refreshed sticky message in ${channel}`);
           }),
       ),
   );
