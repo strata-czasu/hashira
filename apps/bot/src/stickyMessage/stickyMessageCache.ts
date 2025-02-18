@@ -5,7 +5,10 @@ export class StickyMessageCache {
   #prisma: ExtendedPrismaClient | null = null;
 
   async get(channelId: string): Promise<StickyMessage | null> {
-    if (!this.#prisma) throw new Error("Prisma client not initialized");
+    if (!this.#prisma)
+      throw new Error(
+        "Prisma client not initialized. Please call start() with a valid ExtendedPrismaClient instance.",
+      );
 
     const cached = this.#cache.get(channelId);
     console.log("Cache?", cached);
