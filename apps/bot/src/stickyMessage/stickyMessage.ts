@@ -166,6 +166,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
       )
       .addCommand("refresh", (command) =>
         command
+          .setDescription("Refresh a sticky message cache for a channel")
           .addChannel("channel", (channel) =>
             channel.setDescription("The channel to refresh the sticky message in"),
           )
