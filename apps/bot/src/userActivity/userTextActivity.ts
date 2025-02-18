@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { DatabasePaginator } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
 import {
@@ -20,7 +20,6 @@ import { isNotOwner } from "../util/isOwner";
 import { createPluralize } from "../util/pluralize";
 
 const handleStickyMessage = async (
-  prisma: ExtendedPrismaClient,
   stickyMessageCache: StickyMessageCache,
   message: Message<true>,
 ) => {
@@ -39,10 +38,7 @@ const handleStickyMessage = async (
     stickyMessage.content as MessageCreateOptions,
   );
 
-  await prisma.stickyMessage.update({
-    where: { channelId: message.channel.id },
-    data: { lastMessageId: newMessage.id },
-  });
+  await stickyMessageCache.update(message.channel.id, newMessage.id);
 };
 
 const pluralizeMessages = createPluralize({
@@ -305,7 +301,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
   )
   .handle(
     "guildMessageCreate",
-    async ({ prisma, stickyMessageCache, userTextActivityQueue }, message) => {
+    async ({ stickyMessageCache, userTextActivityQueue }, message) => {
       userTextActivityQueue.push(message.channel.id, {
         user: {
           connectOrCreate: {
@@ -319,6 +315,6 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
         timestamp: message.createdAt,
       });
 
-      await handleStickyMessage(prisma, stickyMessageCache, message);
+      await handleStickyMessage(stickyMessageCache, message);
     },
   );

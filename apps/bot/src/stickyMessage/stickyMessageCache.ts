@@ -22,6 +22,20 @@ export class StickyMessageCache {
     return stickyMessage;
   }
 
+  async update(channelId: string, lastMessageId: string) {
+    if (!this.#prisma)
+      throw new Error(
+        "Prisma client not initialized. Please call start() with a valid ExtendedPrismaClient instance.",
+      );
+
+    const stickyMessage = await this.#prisma.stickyMessage.update({
+      where: { channelId },
+      data: { lastMessageId },
+    });
+
+    this.#cache.set(channelId, stickyMessage);
+  }
+
   invalidate(channelId: string) {
     this.#cache.delete(channelId);
   }
