@@ -132,11 +132,10 @@ export const warns = new Hashira({ name: "warns" })
               )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
             );
             if (!sentMessage) {
-              await errorFollowUp(
-                itx,
-
-                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-              );
+              await itx.followUp({
+                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+                flags: "Ephemeral",
+              });
             }
           }),
       )
