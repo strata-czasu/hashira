@@ -35,6 +35,6 @@ export class UserTextActivityQueue {
   }
 }
 
-export const userActivityBase = new Hashira({ name: "userActivityBase" })
+export const userActivityBase = new Hashira({ name: "user-activity-base" })
   .const("userTextActivityQueue", new UserTextActivityQueue())
   .const("stickyMessageCache", new StickyMessageCache());
