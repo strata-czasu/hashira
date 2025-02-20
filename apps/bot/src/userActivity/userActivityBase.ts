@@ -1,28 +1,19 @@
 import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient, Prisma } from "@hashira/db";
+import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 import { StickyMessageCache } from "../stickyMessage/stickyMessageCache";
 import { Batcher, RedisBackend } from "../util/batcher";
 
+type Input = Prisma.UserTextActivityCreateInput;
 export class UserTextActivityQueue {
-  #batcher: Batcher<string, Prisma.UserTextActivityCreateInput>;
+  #batcher: Batcher<string, Input> | null = null;
   #prisma: ExtendedPrismaClient | null = null;
 
-  constructor() {
-    this.#batcher = new Batcher(this.processBatch.bind(this), {
-      interval: { seconds: 15 },
-      batchSize: 50,
-      backend: new RedisBackend("userTextActivityQueue"),
-    });
-  }
-
-  public push(channelId: string, message: Prisma.UserTextActivityCreateInput) {
+  public push(channelId: string, message: Input) {
+    if (!this.#batcher) throw new Error("Batcher not initialized");
     this.#batcher.push(channelId, message);
   }
 
-  private async processBatch(
-    _channelId: string,
-    messages: Prisma.UserTextActivityCreateInput[],
-  ) {
+  private async processBatch(_channelId: string, messages: Input[]) {
     const prisma = this.#prisma;
     if (!prisma) throw new Error("Prisma client not initialized");
 
@@ -33,8 +24,13 @@ export class UserTextActivityQueue {
     );
   }
 
-  public start(prisma: ExtendedPrismaClient) {
+  public start(prisma: ExtendedPrismaClient, redis: RedisClient) {
     this.#prisma = prisma;
+    this.#batcher = new Batcher(this.processBatch.bind(this), {
+      interval: { seconds: 15 },
+      batchSize: 50,
+      backend: new RedisBackend(redis, "userTextActivityQueue"),
+    });
     this.#batcher.start();
   }
 }

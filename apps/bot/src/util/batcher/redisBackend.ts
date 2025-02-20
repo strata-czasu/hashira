@@ -1,27 +1,24 @@
-import env from "@hashira/env";
-import { type RedisClientType, createClient } from "@redis/client";
+import type { RedisClient } from "@hashira/db";
 import type { BatcherBackend } from "./base";
 
 export class RedisBackend<K, T> implements BatcherBackend<K, T> {
-  #redis: RedisClientType;
+  #redis: RedisClient;
   #name: string;
 
   /**
+   * @param redis The Redis client to use for the queue
    * @param name The name of the queue. Used as a prefix for keys in Redis.
    * Must be unique to avoid conflicts with other batchers
    */
-  constructor(name: string) {
+  constructor(redis: RedisClient, name: string) {
+    this.#redis = redis;
     this.#name = name;
-    this.#redis = createClient({
-      url: env.REDIS_URL,
-    });
-    this.#redis.on("error", (err) => console.error("Redis client error:", err));
   }
 
-  async initialize() {
-    await this.#redis.connect();
-  }
+  // NOTE: Is this still needed?
+  async initialize() {}
 
+  // NOTE: Is this still needed?
   get initialized() {
     return this.#redis.isReady;
   }

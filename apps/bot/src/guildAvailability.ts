@@ -126,7 +126,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     ctx.profileLog.start(client);
     ctx.economyLog.start(client);
 
-    ctx.userTextActivityQueue.start(ctx.prisma);
+    ctx.userTextActivityQueue.start(ctx.prisma, ctx.redis);
     ctx.stickyMessageCache.start(ctx.prisma);
   })
   .handle("guildCreate", async (ctx, guild) => {
