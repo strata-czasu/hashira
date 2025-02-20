@@ -65,7 +65,8 @@ export const bot = new Hashira({ name: "bot" })
   .use(inviteManagement)
   .use(dmVoting)
   .use(ping)
-  .handle("ready", async () => {
+  .handle("ready", async ({ redis }) => {
+    await redis.connect();
     // TODO)) Use a proper logger
     console.log("Bot is ready");
   });

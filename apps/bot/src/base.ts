@@ -5,10 +5,12 @@ import { database } from "./db";
 import { LockManager } from "./lock";
 import { loggingBase } from "./logging/base";
 import { messageQueueBase } from "./messageQueueBase";
+import { redis } from "./redis";
 import { userActivityBase } from "./userActivity/userActivityBase";
 
 export const base = new Hashira({ name: "base" })
   .use(database)
+  .use(redis)
   .use(loggingBase)
   .use(messageQueueBase)
   .use(userActivityBase)
