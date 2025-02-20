@@ -10,7 +10,7 @@ import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
-import { emojiCounting } from "./emojiCounting";
+import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";

@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
 import { database } from "./db";
+import { emojiCountingBase } from "./emojiCounting/emojiCountingBase";
 import { LockManager } from "./lock";
 import { loggingBase } from "./logging/base";
 import { messageQueueBase } from "./messageQueueBase";
@@ -14,6 +15,7 @@ export const base = new Hashira({ name: "base" })
   .use(loggingBase)
   .use(messageQueueBase)
   .use(userActivityBase)
+  .use(emojiCountingBase)
   .addExceptionHandler("default", (e, itx) => {
     if (env.SENTRY_DSN) {
       Sentry.withScope((scope) => {

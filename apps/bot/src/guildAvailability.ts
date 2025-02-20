@@ -128,6 +128,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
 
     ctx.userTextActivityQueue.start(ctx.prisma, ctx.redis);
     ctx.stickyMessageCache.start(ctx.prisma);
+    ctx.emojiCountingQueue.start(ctx.prisma, ctx.redis);
   })
   .handle("guildCreate", async (ctx, guild) => {
     if (!ALLOWED_GUILDS.includes(guild.id)) {

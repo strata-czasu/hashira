@@ -7,10 +7,10 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
 } from "discord.js";
-import { base } from "./base";
-import { parseDate } from "./util/dateParsing";
-import { discordTry } from "./util/discordTry";
-import { errorFollowUp } from "./util/errorFollowUp";
+import { base } from "../base";
+import { parseDate } from "../util/dateParsing";
+import { discordTry } from "../util/discordTry";
+import { errorFollowUp } from "../util/errorFollowUp";
 
 const EMOJI_REGEX = /(?<!\\)<a?:[^:]+:(\d+)>/g;
 
@@ -30,10 +30,9 @@ const parseEmojis = (guildEmojiManager: GuildEmojiManager, content: string) => {
   return emojis;
 };
 
-export const emojiCounting = new Hashira({ name: "emoji-parsing" })
+export const emojiCounting = new Hashira({ name: "emoji-counting" })
   .use(base)
-  .handle("guildMessageCreate", async ({ prisma }, message) => {
-    // TODO: Consider adding a helper? an util? for easier checking of bots
+  .handle("guildMessageCreate", async ({ emojiCountingQueue }, message) => {
     if (message.author.bot) return;
 
     const matches = message.content.matchAll(EMOJI_REGEX);
@@ -42,13 +41,14 @@ export const emojiCounting = new Hashira({ name: "emoji-parsing" })
     const guildEmojis = parseEmojis(message.guild.emojis, message.content);
     if (guildEmojis.length === 0) return;
 
-    await prisma.emojiUsage.createMany({
-      data: guildEmojis.map((emoji) => ({
+    emojiCountingQueue.push(
+      message.channelId,
+      guildEmojis.map((emoji) => ({
         userId: message.author.id,
         emojiId: emoji.id,
-        guildId: message.guild.id,
+        guild: { connect: { id: message.guild.id } },
       })),
-    });
+    );
   })
   .group("emojistats", (group) =>
     group
