@@ -131,6 +131,71 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
   .group("ranking", (group) =>
     group
       .setDescription("Komendy związane z rankingami")
+      .addCommand("user", (command) =>
+        command
+          .setDescription("Ranking kanałów użytkownika")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("okres", (period) =>
+            period.setDescription("Okres czasu, np. 2025-01"),
+          )
+          .handle(async ({ prisma }, { user, okres: rawPeriod }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const periodStart = parseDate(rawPeriod, "start", null);
+            if (!periodStart) {
+              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
+            }
+            const periodEnd = endOfMonth(periodStart);
+
+            const where = {
+              guildId: itx.guild.id,
+              userId: user.id,
+              timestamp: {
+                gte: periodStart,
+                lte: periodEnd,
+              },
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.userTextActivity.groupBy({
+                  ...props,
+                  by: "channelId",
+                  where,
+                  _count: true,
+                  orderBy: [
+                    { _count: { channelId: ordering } },
+                    { channelId: ordering },
+                  ],
+                }),
+              async () => {
+                const count = await prisma.userTextActivity.groupBy({
+                  by: "channelId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const formatEntry = (
+              item: { channelId: string; _count: number },
+              idx: number,
+            ) => {
+              return (
+                `${idx}\\.` +
+                ` <#${item.channelId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizeMessages(item._count)}`
+              );
+            };
+
+            const paginator = new PaginatedView(
+              paginate,
+              `Ranking wiadomości tekstowych użytkownika ${user.tag} (${rawPeriod})`,
+              formatEntry,
+              false, // FIXME: Add ordering
+            );
+            await paginator.render(itx);
+          }),
+      )
       .addCommand("kanał", (command) =>
         command
           .setDescription("Ranking użytkowników na kanale")
