@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import {
   DatabasePaginator,
   type ExtendedPrismaClient,
@@ -7,9 +7,15 @@ import {
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import {
+  ActionRowBuilder,
+  type Guild,
   HeadingLevel,
+  type ModalActionRowComponentBuilder,
+  ModalBuilder,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  TextInputBuilder,
+  TextInputStyle,
   TimestampStyles,
   type User,
   heading,
@@ -25,6 +31,8 @@ import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
+
+type Context = ExtractContext<typeof base>;
 
 const getWarn = async (tx: PrismaTransaction, id: number, guildId: string) =>
   tx.warn.findFirst({ where: { guildId, id, deletedAt: null } });
@@ -89,6 +97,58 @@ const getUserWarnsPaginatedView = (
   );
 };
 
+const universalAddWarn = async ({
+  prisma,
+  log,
+  user,
+  moderator,
+  guild,
+  reason,
+  reply,
+  replyToModerator,
+}: {
+  prisma: ExtendedPrismaClient;
+  log: Context["moderationLog"];
+  user: User;
+  moderator: User;
+  guild: Guild;
+  reason: string;
+  reply: (content: string) => Promise<unknown>;
+  replyToModerator: (content: string) => Promise<unknown>;
+}) => {
+  await ensureUsersExist(prisma, [user, moderator]);
+
+  const warn = await prisma.warn.create({
+    data: {
+      guildId: guild.id,
+      userId: user.id,
+      moderatorId: moderator.id,
+      reason,
+    },
+  });
+  log.push("warnCreate", guild, { warn, moderator });
+
+  const sentMessage = await sendDirectMessage(
+    user,
+    `Hejka! Przed chwilą ${userMention(moderator.id)} (${
+      moderator.tag
+    }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
+      reason,
+    )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
+  );
+
+  await reply(
+    `Dodano ostrzeżenie [${inlineCode(
+      warn.id.toString(),
+    )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+  );
+  if (!sentMessage) {
+    await replyToModerator(
+      `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+    );
+  }
+};
+
 export const warns = new Hashira({ name: "warns" })
   .use(base)
   .group("warn", (group) =>
@@ -105,38 +165,17 @@ export const warns = new Hashira({ name: "warns" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUsersExist(prisma, [user, itx.user]);
-
-            const warn = await prisma.warn.create({
-              data: {
-                guildId: itx.guildId,
-                userId: user.id,
-                moderatorId: itx.user.id,
-                reason,
-              },
-            });
-            log.push("warnCreate", itx.guild, { warn, moderator: itx.user });
-
-            const sentMessage = await sendDirectMessage(
+            await universalAddWarn({
+              prisma,
+              log,
               user,
-              `Hejka! Przed chwilą ${userMention(itx.user.id)} (${
-                itx.user.tag
-              }) nałożył Ci karę ostrzeżenia (warn). Powodem Twojego ostrzeżenia jest: ${italic(
-                reason,
-              )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
-            );
-
-            await itx.editReply(
-              `Dodano ostrzeżenie [${inlineCode(
-                warn.id.toString(),
-              )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-            );
-            if (!sentMessage) {
-              await itx.followUp({
-                content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-                flags: "Ephemeral",
-              });
-            }
+              moderator: itx.user,
+              guild: itx.guild,
+              reason,
+              reply: (content) => itx.followUp(content),
+              replyToModerator: (content) =>
+                itx.followUp({ content, flags: "Ephemeral" }),
+            });
           }),
       )
       .addCommand("remove", (command) =>
@@ -279,4 +318,62 @@ export const warns = new Hashira({ name: "warns" })
             await paginatedView.render(itx);
           }),
       ),
+  )
+  .userContextMenu(
+    "warn",
+    PermissionFlagsBits.ModerateMembers,
+    async ({ prisma, moderationLog: log }, itx) => {
+      if (!itx.inCachedGuild()) return;
+
+      const rows = [
+        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+          new TextInputBuilder()
+            .setCustomId("reason")
+            .setLabel("Powód")
+            .setRequired(true)
+            .setPlaceholder("Grzeczniej")
+            .setMaxLength(500)
+            .setStyle(TextInputStyle.Paragraph),
+        ),
+      ];
+
+      const customId = `warn-${itx.targetId}`;
+      const modal = new ModalBuilder()
+        .setCustomId(customId)
+        .setTitle(`Ostrzeż ${itx.targetUser.tag}`)
+        .addComponents(...rows);
+      await itx.showModal(modal);
+
+      const moderatorDmChannel = await itx.user.createDM();
+
+      const submitAction = await itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      });
+
+      // Any reply is needed in order to successfully finish the modal interaction
+      await submitAction.deferReply({ flags: "Ephemeral" });
+
+      const reason = submitAction.components
+        .at(0)
+        ?.components.find((c) => c.customId === "reason")?.value;
+      if (!reason) {
+        await moderatorDmChannel.send(
+          "Nie podano wszystkich wymaganych danych do nałożenia ostrzeżenia!",
+        );
+        return;
+      }
+
+      await universalAddWarn({
+        prisma,
+        log,
+        user: itx.targetUser,
+        moderator: itx.user,
+        guild: itx.guild,
+        reason,
+        reply: (content) => moderatorDmChannel.send(content),
+        replyToModerator: (content) => moderatorDmChannel.send(content),
+      });
+      await submitAction.deleteReply();
+    },
   );
