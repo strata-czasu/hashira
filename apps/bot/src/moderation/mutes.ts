@@ -329,7 +329,7 @@ const addMute = async ({
     duration: rawDuration,
     reason,
     reply: (content) => itx.followUp({ content }),
-    replyToModerator: (content) => itx.user.send(content),
+    replyToModerator: (content) => itx.followUp({ content, flags: "Ephemeral" }),
   });
 };
 
