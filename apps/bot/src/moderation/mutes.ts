@@ -29,6 +29,7 @@ import {
   time,
   userMention,
 } from "discord.js";
+import { noop } from "es-toolkit";
 import { base } from "../base";
 import { getLatestUltimatum, isUltimatumActive } from "../strata/ultimatum";
 import { discordTry } from "../util/discordTry";
@@ -448,12 +449,12 @@ export const mutes = new Hashira({ name: "mutes" })
                 return;
               }
 
+              const duration = rawDuration ? parseDuration(rawDuration) : undefined;
+
               const result = await prisma.$transaction(async (tx) => {
                 const mute = await getMute(tx, id, itx.guildId);
-                if (!mute) {
-                  await errorFollowUp(itx, "Nie znaleziono wyciszenia o podanym ID");
-                  return null;
-                }
+                if (!mute) return { type: "error", reason: "mute-not-found" } as const;
+
                 const originalReason = mute.reason;
                 const hasOriginalEnded = mute.endsAt <= itx.createdAt;
                 const originalDuration = intervalToDuration({
@@ -461,22 +462,12 @@ export const mutes = new Hashira({ name: "mutes" })
                   end: mute.endsAt,
                 });
 
-                // null - parsing failed, undefined - no duration provided
-                const duration = rawDuration ? parseDuration(rawDuration) : undefined;
                 if (duration === null) {
-                  await errorFollowUp(
-                    itx,
-                    "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
-                  );
-                  return null;
+                  return { type: "error", reason: "invalid-duration" } as const;
                 }
 
                 if (duration && durationToSeconds(duration) === 0) {
-                  await errorFollowUp(
-                    itx,
-                    "Nie można ustawić czasu trwania wyciszenia na 0",
-                  );
-                  return null;
+                  return { type: "error", reason: "zero-duration" } as const;
                 }
 
                 const updates: Partial<Mute> = {};
@@ -488,71 +479,103 @@ export const mutes = new Hashira({ name: "mutes" })
                   data: updates,
                 });
 
-                if (!updatedMute) return null;
-
-                if (duration) {
-                  await messageQueue.updateDelay(
-                    "muteEnd",
-                    updatedMute.id.toString(),
-                    durationToSeconds(duration),
-                  );
-                }
-
-                log.push("muteEdit", itx.guild, {
-                  mute,
-                  moderator: itx.user,
-                  oldReason: originalReason,
-                  newReason: reason,
-                  oldDuration: originalDuration,
-                  newDuration: duration ?? null,
-                });
-
-                await discordTry(
-                  async () => {
-                    const member = await itx.guild.members.fetch(mute.userId);
-                    let content = `Twoje wyciszenie zostało zedytowane przez ${userMention(
-                      itx.user.id,
-                    )} (${itx.user.tag}).`;
-                    if (reason) {
-                      content += `\n\nPoprzedni powód wyciszenia: ${italic(
-                        originalReason,
-                      )}\nNowy powód wyciszenia: ${italic(reason)}`;
-                    }
-                    if (duration) {
-                      content += `\n\nPoprzednia długość kary: ${bold(
-                        formatDuration(originalDuration),
-                      )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
-                    }
-                    if (hasOriginalEnded) {
-                      content += `\nTwoje wyciszenie zakończyło się ${time(
-                        mute.endsAt,
-                        TimestampStyles.RelativeTime,
-                      )}, więc te zmiany nie wpłyną na długość Twojego wyciszenia.`;
-                    }
-                    await sendDirectMessage(member.user, content);
-                  },
-                  [RESTJSONErrorCodes.UnknownMember],
-                  async () => {},
-                );
-
-                return { updatedMute, hasOriginalEnded };
+                return {
+                  type: "ok",
+                  updatedMute,
+                  hasOriginalEnded,
+                  originalReason,
+                  originalDuration,
+                } as const;
               });
-              if (!result || !result.updatedMute) return;
-              const { updatedMute: mute, hasOriginalEnded } = result;
 
-              const content = [
-                `Zaktualizowano wyciszenie ${inlineCode(id.toString())}.`,
-              ];
-              if (reason) content.push(`Nowy powód: ${italic(reason)}`);
-              if (rawDuration) {
-                content.push(
-                  `Koniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}`,
+              if (result.type === "error") {
+                switch (result.reason) {
+                  case "mute-not-found":
+                    return await errorFollowUp(
+                      itx,
+                      "Nie znaleziono wyciszenia o podanym ID",
+                    );
+                  case "invalid-duration":
+                    return await errorFollowUp(
+                      itx,
+                      "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+                    );
+                  case "zero-duration":
+                    return await errorFollowUp(
+                      itx,
+                      "Nie można ustawić czasu trwania wyciszenia na 0",
+                    );
+                }
+              }
+
+              const {
+                updatedMute,
+                hasOriginalEnded,
+                originalReason,
+                originalDuration,
+              } = result;
+
+              if (duration) {
+                await messageQueue.updateDelay(
+                  "muteEnd",
+                  updatedMute.id.toString(),
+                  durationToSeconds(duration),
                 );
               }
+
+              log.push("muteEdit", itx.guild, {
+                mute: updatedMute,
+                moderator: itx.user,
+                oldReason: originalReason,
+                newReason: reason,
+                oldDuration: originalDuration,
+                newDuration: duration ?? null,
+              });
+
+              await discordTry(
+                async () => {
+                  const member = await itx.guild.members.fetch(updatedMute.userId);
+                  let content = `Twoje wyciszenie zostało zedytowane przez ${userMention(
+                    itx.user.id,
+                  )} (${itx.user.tag}).`;
+                  if (reason) {
+                    content += `\n\nPoprzedni powód wyciszenia: ${italic(
+                      originalReason,
+                    )}\nNowy powód wyciszenia: ${italic(reason)}`;
+                  }
+                  if (duration) {
+                    content += `\n\nPoprzednia długość kary: ${bold(
+                      formatDuration(originalDuration),
+                    )}\nNowa długość kary: ${bold(formatDuration(duration))}`;
+                  }
+                  if (hasOriginalEnded) {
+                    content += `\nTwoje wyciszenie zakończyło się ${time(
+                      updatedMute.endsAt,
+                      TimestampStyles.RelativeTime,
+                    )}, więc te zmiany nie wpłyną na długość Twojego wyciszenia.`;
+                  }
+                  await sendDirectMessage(member.user, content);
+                },
+                [RESTJSONErrorCodes.UnknownMember],
+                noop,
+              );
+
+              const content = [
+                `Zaktualizowano wyciszenie ${inlineCode(updatedMute.id.toString())}.`,
+              ];
+
+              if (reason) content.push(`Nowy powód: ${italic(reason)}`);
+
+              if (rawDuration) {
+                content.push(
+                  `Koniec: ${time(updatedMute.endsAt, TimestampStyles.RelativeTime)}`,
+                );
+              }
+
               if (hasOriginalEnded) {
                 content.push(
                   `To wyciszenie już się zakończyło ${time(
-                    mute.endsAt,
+                    updatedMute.endsAt,
                     TimestampStyles.RelativeTime,
                   )}, więc te zmiany nie wpłyną na długość wyciszenia.`,
                 );
