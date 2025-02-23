@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   AuditLogEvent,
   type ChatInputCommandInteraction,
+  DiscordjsErrorCodes,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   type ModalSubmitInteraction,
@@ -20,6 +21,7 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { hasHigherRole } from "../util/hasHigherRole";
+import { isDiscordjsError } from "../util/isDiscordjsError";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatBanReason, formatUserWithId } from "./util";
 
@@ -219,10 +221,17 @@ export const bans = new Hashira({ name: "bans" })
       .addComponents(...rows);
     await itx.showModal(modal);
 
-    const submitAction = await itx.awaitModalSubmit({
-      time: 60_000 * 5,
-      filter: (modal) => modal.customId === customId,
-    });
+    let submitAction: ModalSubmitInteraction<"cached">;
+    try {
+      submitAction = await itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      });
+    } catch (e) {
+      if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError)) return;
+      throw e;
+    }
+
     await submitAction.deferReply();
 
     // TODO)) Abstract this into a helper/common util

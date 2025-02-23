@@ -1,9 +1,11 @@
 import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
+  DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
+  type ModalSubmitInteraction,
   RESTJSONErrorCodes,
   TextInputBuilder,
   TextInputStyle,
@@ -12,6 +14,7 @@ import {
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { isDiscordjsError } from "./util/isDiscordjsError";
 
 const COMPLAINT_CHANNEL_ID = "1285336622380093492" as const;
 
@@ -54,10 +57,17 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
           .addComponents(actionRows);
         await itx.showModal(modal);
 
-        const submitAction = await itx.awaitModalSubmit({
-          time: 60_000 * 15,
-          filter: (modal) => modal.customId === customId,
-        });
+        let submitAction: ModalSubmitInteraction<"cached">;
+        try {
+          submitAction = await itx.awaitModalSubmit({
+            time: 60_000 * 15,
+            filter: (modal) => modal.customId === customId,
+          });
+        } catch (e) {
+          if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError))
+            return;
+          throw e;
+        }
 
         await submitAction.deferReply({ flags: "Ephemeral" });
 

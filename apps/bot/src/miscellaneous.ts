@@ -4,9 +4,11 @@ import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
+  DiscordjsErrorCodes,
   type GuildBasedChannel,
   HeadingLevel,
   ModalBuilder,
+  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TextInputBuilder,
@@ -26,6 +28,7 @@ import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
+import { isDiscordjsError } from "./util/isDiscordjsError";
 import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
 
@@ -328,6 +331,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .handle(async (ctx, { code: rawCode }, itx) => {
             if (await isNotOwner(itx.user)) return;
             let responder = itx.reply.bind(itx);
+
             let code: string;
             if (rawCode) code = rawCode;
             else {
@@ -348,13 +352,20 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
                   ),
               );
 
-              const response = await itx.awaitModalSubmit({
-                filter: (interaction) => interaction.customId === `eval-${itx.id}`,
-                time: 60000,
-              });
+              let submitAction: ModalSubmitInteraction;
+              try {
+                submitAction = await itx.awaitModalSubmit({
+                  filter: (interaction) => interaction.customId === `eval-${itx.id}`,
+                  time: 60_000,
+                });
+              } catch (e) {
+                if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError))
+                  return;
+                throw e;
+              }
 
-              responder = response.reply.bind(response);
-              code = response.fields.getTextInputValue(`code-${itx.id}`);
+              responder = submitAction.reply.bind(submitAction);
+              code = submitAction.fields.getTextInputValue(`code-${itx.id}`);
             }
 
             const lines = code.split("\n").map((line) => line.trim());

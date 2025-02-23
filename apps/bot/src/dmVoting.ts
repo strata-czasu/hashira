@@ -11,9 +11,11 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
+  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TextInputBuilder,
@@ -31,6 +33,7 @@ import { ensureUserExists, ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
+import { isDiscordjsError } from "./util/isDiscordjsError";
 import { numberToEmoji } from "./util/numberToEmoji";
 import { parseUserMentions } from "./util/parseUsers";
 import { createPluralize } from "./util/pluralize";
@@ -131,10 +134,18 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               .addComponents(...getPollCreateOrUpdateActionRows());
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({
-              time: 60_000 * 10,
-              filter: (modal) => modal.customId === customId,
-            });
+            let submitAction: ModalSubmitInteraction<"cached"> | null = null;
+            try {
+              submitAction = await itx.awaitModalSubmit({
+                time: 60_000 * 10,
+                filter: (modal) => modal.customId === customId,
+              });
+            } catch (e) {
+              if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError))
+                return;
+              throw e;
+            }
+            if (!submitAction) return;
 
             await submitAction.deferReply();
 
@@ -240,10 +251,18 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               .addComponents(...getPollCreateOrUpdateActionRows(poll));
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({
-              time: 60_000 * 10,
-              filter: (modal) => modal.customId === customId,
-            });
+            let submitAction: ModalSubmitInteraction<"cached">;
+            try {
+              submitAction = await itx.awaitModalSubmit({
+                time: 60_000 * 10,
+                filter: (modal) => modal.customId === customId,
+              });
+            } catch (e) {
+              if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError))
+                return;
+              throw e;
+            }
+
             await submitAction.deferReply();
 
             // TODO)) Abstract this into a helper/common util

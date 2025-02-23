@@ -8,10 +8,12 @@ import {
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
+  DiscordjsErrorCodes,
   type Guild,
   HeadingLevel,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
+  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TextInputBuilder,
@@ -29,6 +31,7 @@ import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { isDiscordjsError } from "../util/isDiscordjsError";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -344,15 +347,20 @@ export const warns = new Hashira({ name: "warns" })
         .addComponents(...rows);
       await itx.showModal(modal);
 
-      const moderatorDmChannel = await itx.user.createDM();
-
-      const submitAction = await itx.awaitModalSubmit({
-        time: 60_000 * 5,
-        filter: (modal) => modal.customId === customId,
-      });
+      let submitAction: ModalSubmitInteraction<"cached">;
+      try {
+        submitAction = await itx.awaitModalSubmit({
+          time: 60_000 * 5,
+          filter: (modal) => modal.customId === customId,
+        });
+      } catch (e) {
+        if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError)) return;
+        throw e;
+      }
 
       // Any reply is needed in order to successfully finish the modal interaction
       await submitAction.deferReply({ flags: "Ephemeral" });
+      const moderatorDmChannel = await itx.user.createDM();
 
       const reason = submitAction.components
         .at(0)
