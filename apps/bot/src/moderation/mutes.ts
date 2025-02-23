@@ -15,7 +15,6 @@ import {
   HeadingLevel,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
-  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type RepliableInteraction,
@@ -37,7 +36,6 @@ import { getLatestUltimatum, isUltimatumActive } from "../strata/ultimatum";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { isDiscordjsError } from "../util/isDiscordjsError";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { applyMute, formatMuteLength, getMuteRoleId } from "./util";
 
@@ -723,16 +721,16 @@ export const mutes = new Hashira({ name: "mutes" })
 
       await itx.showModal(modal);
 
-      let submitAction: ModalSubmitInteraction<"cached">;
-      try {
-        submitAction = await itx.awaitModalSubmit({
-          time: 60_000 * 5,
-          filter: (modal) => modal.customId === customId,
-        });
-      } catch (e) {
-        if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError)) return;
-        throw e;
-      }
+      const submitAction = await discordTry(
+        () =>
+          itx.awaitModalSubmit({
+            time: 60_000 * 5,
+            filter: (modal) => modal.customId === customId,
+          }),
+        [DiscordjsErrorCodes.InteractionCollectorError],
+        () => null,
+      );
+      if (!submitAction) return;
 
       // Any reply is needed in order to successfully finish the modal interaction
       await submitAction.deferReply({ flags: "Ephemeral" });

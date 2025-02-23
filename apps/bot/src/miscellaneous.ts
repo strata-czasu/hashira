@@ -8,7 +8,6 @@ import {
   type GuildBasedChannel,
   HeadingLevel,
   ModalBuilder,
-  type ModalSubmitInteraction,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TextInputBuilder,
@@ -28,7 +27,6 @@ import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
-import { isDiscordjsError } from "./util/isDiscordjsError";
 import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
 
@@ -335,10 +333,11 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             let code: string;
             if (rawCode) code = rawCode;
             else {
+              const customId = `eval-${itx.id}`;
               await itx.showModal(
                 new ModalBuilder()
                   .setTitle("Eval")
-                  .setCustomId(`eval-${itx.id}`)
+                  .setCustomId(customId)
                   .addComponents(
                     new ActionRowBuilder({
                       components: [
@@ -352,17 +351,16 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
                   ),
               );
 
-              let submitAction: ModalSubmitInteraction;
-              try {
-                submitAction = await itx.awaitModalSubmit({
-                  filter: (interaction) => interaction.customId === `eval-${itx.id}`,
-                  time: 60_000,
-                });
-              } catch (e) {
-                if (isDiscordjsError(e, DiscordjsErrorCodes.InteractionCollectorError))
-                  return;
-                throw e;
-              }
+              const submitAction = await discordTry(
+                () =>
+                  itx.awaitModalSubmit({
+                    time: 60_000,
+                    filter: (modal) => modal.customId === customId,
+                  }),
+                [DiscordjsErrorCodes.InteractionCollectorError],
+                () => null,
+              );
+              if (!submitAction) return;
 
               responder = submitAction.reply.bind(submitAction);
               code = submitAction.fields.getTextInputValue(`code-${itx.id}`);
