@@ -10,3 +10,26 @@ model UserTextActivity {
 
   @@map("userTextActivity")
 }
+
+model VoiceSession {
+  id        Int                      @id @default(autoincrement())
+  channelId String
+  userId    String
+  guildId   String
+  joinedAt  DateTime
+  leftAt    DateTime?
+  user      User                     @relation(fields: [userId], references: [id])
+  guild     Guild                    @relation(fields: [guildId], references: [id])
+  events    VoiceSessionStateEvent[]
+}
+
+model VoiceSessionStateEvent {
+  id             Int          @id @default(autoincrement())
+  voiceSessionId Int
+  timestamp      DateTime
+  isMuted        Boolean
+  isDeafened     Boolean
+  isStreaming    Boolean
+  isVideo        Boolean
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id])
+}
