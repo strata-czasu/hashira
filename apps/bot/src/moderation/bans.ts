@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   AuditLogEvent,
   type ChatInputCommandInteraction,
+  DiscordjsErrorCodes,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   type ModalSubmitInteraction,
@@ -219,10 +220,17 @@ export const bans = new Hashira({ name: "bans" })
       .addComponents(...rows);
     await itx.showModal(modal);
 
-    const submitAction = await itx.awaitModalSubmit({
-      time: 60_000 * 5,
-      filter: (modal) => modal.customId === customId,
-    });
+    const submitAction = await discordTry(
+      () =>
+        itx.awaitModalSubmit({
+          time: 60_000 * 5,
+          filter: (modal) => modal.customId === customId,
+        }),
+      [DiscordjsErrorCodes.InteractionCollectorError],
+      () => null,
+    );
+    if (!submitAction) return;
+
     await submitAction.deferReply();
 
     // TODO)) Abstract this into a helper/common util

@@ -11,6 +11,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -131,10 +132,16 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               .addComponents(...getPollCreateOrUpdateActionRows());
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({
-              time: 60_000 * 10,
-              filter: (modal) => modal.customId === customId,
-            });
+            const submitAction = await discordTry(
+              () =>
+                itx.awaitModalSubmit({
+                  time: 60_000 * 10,
+                  filter: (modal) => modal.customId === customId,
+                }),
+              [DiscordjsErrorCodes.InteractionCollectorError],
+              () => null,
+            );
+            if (!submitAction) return;
 
             await submitAction.deferReply();
 
@@ -240,10 +247,17 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               .addComponents(...getPollCreateOrUpdateActionRows(poll));
             await itx.showModal(modal);
 
-            const submitAction = await itx.awaitModalSubmit({
-              time: 60_000 * 10,
-              filter: (modal) => modal.customId === customId,
-            });
+            const submitAction = await discordTry(
+              () =>
+                itx.awaitModalSubmit({
+                  time: 60_000 * 10,
+                  filter: (modal) => modal.customId === customId,
+                }),
+              [DiscordjsErrorCodes.InteractionCollectorError],
+              () => null,
+            );
+            if (!submitAction) return;
+
             await submitAction.deferReply();
 
             // TODO)) Abstract this into a helper/common util

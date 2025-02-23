@@ -4,6 +4,7 @@ import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
+  DiscordjsErrorCodes,
   type GuildBasedChannel,
   HeadingLevel,
   ModalBuilder,
@@ -328,13 +329,15 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .handle(async (ctx, { code: rawCode }, itx) => {
             if (await isNotOwner(itx.user)) return;
             let responder = itx.reply.bind(itx);
+
             let code: string;
             if (rawCode) code = rawCode;
             else {
+              const customId = `eval-${itx.id}`;
               await itx.showModal(
                 new ModalBuilder()
                   .setTitle("Eval")
-                  .setCustomId(`eval-${itx.id}`)
+                  .setCustomId(customId)
                   .addComponents(
                     new ActionRowBuilder({
                       components: [
@@ -348,13 +351,19 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
                   ),
               );
 
-              const response = await itx.awaitModalSubmit({
-                filter: (interaction) => interaction.customId === `eval-${itx.id}`,
-                time: 60000,
-              });
+              const submitAction = await discordTry(
+                () =>
+                  itx.awaitModalSubmit({
+                    time: 60_000,
+                    filter: (modal) => modal.customId === customId,
+                  }),
+                [DiscordjsErrorCodes.InteractionCollectorError],
+                () => null,
+              );
+              if (!submitAction) return;
 
-              responder = response.reply.bind(response);
-              code = response.fields.getTextInputValue(`code-${itx.id}`);
+              responder = submitAction.reply.bind(submitAction);
+              code = submitAction.fields.getTextInputValue(`code-${itx.id}`);
             }
 
             const lines = code.split("\n").map((line) => line.trim());
@@ -369,6 +378,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               result = await fn(ctx, itx);
             } catch (error) {
               await responder({ content: `Error: ${error}`, flags: "Ephemeral" });
+              return;
             }
 
             const strVal =

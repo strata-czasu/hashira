@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
+  DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -54,10 +55,16 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
           .addComponents(actionRows);
         await itx.showModal(modal);
 
-        const submitAction = await itx.awaitModalSubmit({
-          time: 60_000 * 15,
-          filter: (modal) => modal.customId === customId,
-        });
+        const submitAction = await discordTry(
+          () =>
+            itx.awaitModalSubmit({
+              time: 60_000 * 15,
+              filter: (modal) => modal.customId === customId,
+            }),
+          [DiscordjsErrorCodes.InteractionCollectorError],
+          () => null,
+        );
+        if (!submitAction) return;
 
         await submitAction.deferReply({ flags: "Ephemeral" });
 
