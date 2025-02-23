@@ -380,6 +380,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               result = await fn(ctx, itx);
             } catch (error) {
               await responder({ content: `Error: ${error}`, flags: "Ephemeral" });
+              return;
             }
 
             const strVal =
