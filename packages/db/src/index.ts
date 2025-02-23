@@ -16,4 +16,5 @@ export const redis = await createClient({ url: env.REDIS_URL })
 export type RedisClient = typeof redis;
 
 export * from "@prisma/client";
+export * from "@prisma/client/sql";
 export { DatabasePaginator } from "./paginate";
