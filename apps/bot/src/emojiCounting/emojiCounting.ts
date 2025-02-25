@@ -1,5 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
 import {
   AttachmentBuilder,
   type GuildEmoji,
@@ -93,6 +94,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
                   });
                   return count.length;
                 },
+                { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
               );
 
               const paginator = new PaginatedView(
@@ -157,6 +159,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
                   });
                   return count.length;
                 },
+                { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
               );
 
               const paginator = new PaginatedView(
@@ -206,6 +209,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
                 });
                 return count.length;
               },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
             );
 
             const paginator = new PaginatedView(
