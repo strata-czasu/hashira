@@ -1,4 +1,4 @@
-import { type Paginator, PaginatorOrder } from "@hashira/paginate";
+import { type Paginator, PaginatorOrder, toggleOrder } from "@hashira/paginate";
 import type { Prisma } from "@prisma/client";
 
 type PaginateProps = {
@@ -86,8 +86,9 @@ export class DatabasePaginator<T> implements Paginator<T> {
     return result;
   }
 
-  public async reorder(orderBy: PaginatorOrder) {
-    this.#ordering = orderBy;
+  public async reorder(orderBy?: PaginatorOrder) {
+    if (orderBy) this.#ordering = orderBy;
+    else this.#ordering = toggleOrder(this.#ordering);
     this.#page = 0;
     return await this.current();
   }
