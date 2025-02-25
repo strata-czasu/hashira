@@ -107,9 +107,8 @@ const parseButtonStyle = (style: DiscordButtonStyle): ButtonStyle => {
 };
 
 const pluralizeUsers = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "użytkowników",
   1: "użytkownika",
+  2: "użytkowników",
 });
 
 export const dmVoting = new Hashira({ name: "dmVoting" })

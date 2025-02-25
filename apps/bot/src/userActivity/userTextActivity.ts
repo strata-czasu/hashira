@@ -42,9 +42,8 @@ const handleStickyMessage = async (
 };
 
 const pluralizeMessages = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "wiadomości",
   1: "wiadomość",
+  2: "wiadomości",
 });
 
 const getMedal = (idx: number) => {

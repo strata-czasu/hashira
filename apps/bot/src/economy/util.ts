@@ -39,7 +39,6 @@ export const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);
 
 export const pluralizeUsers = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "użytkownikom",
   1: "użytkownikowi",
+  2: "użytkownikom",
 });
