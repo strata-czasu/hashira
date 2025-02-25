@@ -8,7 +8,7 @@ import {
   VerificationType,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { type Duration, add } from "date-fns";
+import { addSeconds } from "date-fns";
 import {
   type ChatInputCommandInteraction,
   EmbedBuilder,
@@ -22,8 +22,8 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
+import { STRATA_CZASU } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
-import { durationToSeconds } from "../util/duration";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -38,11 +38,8 @@ import {
   sendVerificationFailedMessage,
 } from "./util";
 
-const TICKETS_CHANNEL = "1213901611836117052" as const;
-const VERIFICATION_DURATION: Duration = { hours: 72 } as const;
-
 const get16PlusVerificationEnd = (createdAt: Date) => {
-  return add(createdAt, VERIFICATION_DURATION);
+  return addSeconds(createdAt, STRATA_CZASU.VERIFICATION_DURATION);
 };
 
 const satisfiesVerificationLevel = (
@@ -188,7 +185,7 @@ export const verification = new Hashira({ name: "verification" })
             await messageQueue.push(
               "verificationEnd",
               { verificationId: verification.id },
-              durationToSeconds(VERIFICATION_DURATION),
+              STRATA_CZASU.VERIFICATION_DURATION,
               verification.id.toString(),
             );
             await scheduleVerificationReminders(messageQueue, verification.id);
@@ -200,7 +197,7 @@ export const verification = new Hashira({ name: "verification" })
               )}! Na podstawie Twojego zachowania na serwerze lub którejś z Twoich wiadomości uznaliśmy, że **możesz mieć mniej niż 16 lat**. Dlatego przed chwilą jedna z osób z administracji (${userMention(
                 itx.user.id,
               )}) **rozpoczęła weryfikację Twojego wieku**.\n\n**Masz teraz 72 godziny na otwarcie ticketa na kanale \`#wyslij-ticket\`: ${channelMention(
-                TICKETS_CHANNEL,
+                STRATA_CZASU.TICKETS_CHANNEL_ID,
               )}** (musisz kliknąć przycisk "Wiek"). Po utworzeniu ticketa musisz przejść pozytywnie przez proces weryfikacji. Najczęściej sprowadza się to do wysłania jednego zdjęcia. Instrukcje co masz wysłać znajdziesz w na kanale z linka. Brak weryfikacji w ciągu 72 godzin **zakończy się banem**, dlatego proszę nie ignoruj tej wiadomości. Pozdrawiam!`,
             );
 

@@ -25,16 +25,19 @@ export const STRATA_CZASU_BROCHURE_ROLES = {
   rdn: "1320194743774347335", // @RDN
 } as const;
 
-export const STRATA_BAN_APPEAL_URL = "https://bit.ly/unban_na_stracie";
-
-// TODO: Convert all above constant into this format
 export const STRATA_CZASU = {
   GUILD_ID: GUILD_IDS.StrataCzasu,
   ULTIMATUM_ROLE: "452888858934378497",
   ULTIMATUM_DURATION: durationToSeconds({ days: 60 }),
   MOD_LOG_CHANNEL_ID: "1285004804602593301",
+  DM_FORWARD_CHANNEL_ID: "1240038565275238430",
+  COMPLAINT_CHANNEL_ID: "1285336622380093492",
+  TICKETS_CHANNEL_ID: "1213901611836117052",
+  VERIFICATION_DURATION: durationToSeconds({ hours: 72 }),
+  BAN_APPEAL_URL: "https://bit.ly/unban_na_stracie",
 } as const;
 
+// Used for seeding log settings for development
 export const DEFAULT_LOG_CHANNELS = {
   [GUILD_IDS.Piwnica]: {
     MESSAGE: "1284518749315006536",
