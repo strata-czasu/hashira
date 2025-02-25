@@ -19,12 +19,6 @@ export const STRATA_CZASU_CURRENCY = {
   defaultWalletName: "Portfel",
 } as const;
 
-export const STRATA_CZASU_BROCHURE_ROLES = {
-  female: "412324847423717378", // @Kobieta
-  male: "427454159747547136", // @Facet
-  rdn: "1320194743774347335", // @RDN
-} as const;
-
 export const STRATA_CZASU = {
   GUILD_ID: GUILD_IDS.StrataCzasu,
   ULTIMATUM_ROLE: "452888858934378497",
@@ -35,6 +29,19 @@ export const STRATA_CZASU = {
   TICKETS_CHANNEL_ID: "1213901611836117052",
   VERIFICATION_DURATION: durationToSeconds({ hours: 72 }),
   BAN_APPEAL_URL: "https://bit.ly/unban_na_stracie",
+} as const;
+
+export const BROCHURE_ROLES = {
+  [GUILD_IDS.Piwnica]: {
+    FEMALE: "1344071005319987312", // @k
+    MALE: "1344071031681318942", // @f
+    RDN: "1326664971739725887", // @RDN
+  },
+  [GUILD_IDS.StrataCzasu]: {
+    FEMALE: "412324847423717378", // @Kobieta
+    MALE: "427454159747547136", // @Facet
+    RDN: "1320194743774347335", // @RDN
+  },
 } as const;
 
 // Used for seeding log settings for development
