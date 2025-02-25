@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { type GuildMember, type PartialGuildMember, userMention } from "discord.js";
-import { STRATA_CZASU_BROCHURE_ROLES } from "./specializedConstants";
+import { BROCHURE_ROLES } from "./specializedConstants";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 const addedRole = (
@@ -20,19 +20,29 @@ Nie tolerujemy takich obrzydliwych zachowań na Stracie Czasu[.](${imageUrl}) Ni
 export const brochure = new Hashira({ name: "brochure" }).handle(
   "guildMemberUpdate",
   async (_, oldMember, newMember) => {
-    if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.female)) {
+    const brochureRoles =
+      BROCHURE_ROLES[newMember.guild.id as keyof typeof BROCHURE_ROLES];
+    if (!brochureRoles) return;
+
+    if (addedRole(oldMember, newMember, brochureRoles.FEMALE)) {
       const message = formatGenderChannelMessage(
         newMember,
         "https://i.imgur.com/qETLkML.png",
       );
       await sendDirectMessage(newMember.user, message);
-    } else if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.male)) {
+      return;
+    }
+
+    if (addedRole(oldMember, newMember, brochureRoles.MALE)) {
       const message = formatGenderChannelMessage(
         newMember,
         "https://i.imgur.com/h97Vub1.png",
       );
       await sendDirectMessage(newMember.user, message);
-    } else if (addedRole(oldMember, newMember, STRATA_CZASU_BROCHURE_ROLES.rdn)) {
+      return;
+    }
+
+    if (addedRole(oldMember, newMember, brochureRoles.RDN)) {
       await sendDirectMessage(newMember.user, {
         content: userMention(newMember.id),
         embeds: [
@@ -50,6 +60,7 @@ export const brochure = new Hashira({ name: "brochure" }).handle(
           },
         ],
       });
+      return;
     }
   },
 );

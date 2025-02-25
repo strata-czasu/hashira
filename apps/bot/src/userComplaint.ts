@@ -11,10 +11,9 @@ import {
   channelMention,
 } from "discord.js";
 import { base } from "./base";
+import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
-
-const COMPLAINT_CHANNEL_ID = "1285336622380093492" as const;
 
 export const userComplaint = new Hashira({ name: "user-complaint" })
   .use(base)
@@ -83,7 +82,7 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
         }
 
         const channel = await discordTry(
-          async () => itx.client.channels.fetch(COMPLAINT_CHANNEL_ID),
+          async () => itx.client.channels.fetch(STRATA_CZASU.COMPLAINT_CHANNEL_ID),
           [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
           () => null,
         );

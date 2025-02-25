@@ -74,7 +74,7 @@ export class PaginatedView<T> {
       ? [
           new ButtonBuilder()
             .setLabel("Order by")
-            .setCustomId("orderBy")
+            .setCustomId("reorder")
             .setStyle(ButtonStyle.Secondary),
         ]
       : [];
@@ -132,7 +132,7 @@ export class PaginatedView<T> {
   private async getNewItems(buttonType: string) {
     if (buttonType === "previous") return await this.#paginator.previous();
     if (buttonType === "next") return await this.#paginator.next();
-    if (buttonType === "reoder") return await this.#paginator.reorder();
+    if (buttonType === "reorder") return await this.#paginator.reorder();
 
     throw new Error(`Unknown button type: ${buttonType}`);
   }

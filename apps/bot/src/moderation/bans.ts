@@ -16,7 +16,7 @@ import {
   italic,
 } from "discord.js";
 import { base } from "../base";
-import { GUILD_IDS, STRATA_BAN_APPEAL_URL } from "../specializedConstants";
+import { GUILD_IDS, STRATA_CZASU } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -48,7 +48,7 @@ const applyBan = async (
     `Hejka! Przed chwilą nałożyłem Ci karę bana. Powodem Twojego bana jest ${italic(
       reason,
     )}\n\nOd bana możesz odwołać się wypełniając formularz z tego linka: ${hideLinkEmbed(
-      STRATA_BAN_APPEAL_URL,
+      STRATA_CZASU.BAN_APPEAL_URL,
     )}.`,
   );
   const banReason = formatBanReason(reason, itx.user, itx.createdAt);

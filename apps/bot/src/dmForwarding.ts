@@ -10,11 +10,10 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "./base";
+import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { sendDirectMessage } from "./util/sendDirectMessage";
-
-const DM_FORWARD_CHANNEL_ID = "1240038565275238430";
 
 export const dmForwarding = new Hashira({ name: "dmForwarding" })
   .use(base)
@@ -23,7 +22,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
     if (!message.channel.isDMBased()) return;
 
     const channel = await discordTry(
-      async () => message.client.channels.fetch(DM_FORWARD_CHANNEL_ID),
+      async () => message.client.channels.fetch(STRATA_CZASU.DM_FORWARD_CHANNEL_ID),
       [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
       () => null,
     );
@@ -58,7 +57,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
             }
 
             const logChannel = await discordTry(
-              async () => itx.client.channels.fetch(DM_FORWARD_CHANNEL_ID),
+              async () => itx.client.channels.fetch(STRATA_CZASU.DM_FORWARD_CHANNEL_ID),
               [RESTJSONErrorCodes.UnknownChannel, RESTJSONErrorCodes.MissingAccess],
               () => null,
             );

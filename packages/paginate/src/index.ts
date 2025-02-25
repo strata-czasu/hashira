@@ -3,6 +3,9 @@ export enum PaginatorOrder {
   DESC = "desc",
 }
 
+export const toggleOrder = (order: PaginatorOrder) =>
+  order === PaginatorOrder.ASC ? PaginatorOrder.DESC : PaginatorOrder.ASC;
+
 export interface Paginator<T> {
   count: number | null;
   currentOffset: number;
@@ -70,8 +73,9 @@ export class StaticPaginator<T> implements Paginator<T> {
     return this.#items.slice(this.currentOffset, end);
   }
 
-  async reorder(orderBy: PaginatorOrder): Promise<T[]> {
-    this.#ordering = orderBy;
+  async reorder(orderBy?: PaginatorOrder): Promise<T[]> {
+    if (orderBy) this.#ordering = orderBy;
+    else this.#ordering = toggleOrder(this.#ordering);
     this.#items.reverse();
     this.#page = 0;
     return await this.current();

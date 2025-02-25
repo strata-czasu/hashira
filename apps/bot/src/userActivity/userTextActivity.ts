@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
 import {
@@ -42,9 +42,8 @@ const handleStickyMessage = async (
 };
 
 const pluralizeMessages = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "wiadomości",
   1: "wiadomość",
+  2: "wiadomości",
 });
 
 const getMedal = (idx: number) => {
@@ -191,7 +190,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               paginate,
               `Ranking wiadomości tekstowych użytkownika ${user.tag} (${rawPeriod})`,
               formatEntry,
-              false, // FIXME: Add ordering
+              true,
             );
             await paginator.render(itx);
           }),
@@ -275,7 +274,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 paginate,
                 `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
                 formatEntry,
-                false, // FIXME: Add ordering
+                true,
               );
               await paginator.render(itx);
             },
@@ -308,9 +307,11 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 lte: periodEnd,
               },
             };
+            Prisma.SortOrder;
             const paginate = new DatabasePaginator(
-              (props, _ordering) =>
-                prisma.$queryRaw<
+              (props, ordering) => {
+                const sqlOrdering = Prisma.sql([ordering]);
+                return prisma.$queryRaw<
                   { channelId: string; total: number; uniqueMembers: number }[]
                 >`
                   select
@@ -322,10 +323,11 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                     "guildId" = ${itx.guild.id}
                     and "timestamp" between ${periodStart} and ${periodEnd}
                   group by "channelId"
-                  order by "total" desc -- FIXME: Add ordering
+                  order by "total" ${sqlOrdering}
                   offset ${props.skip}
                   limit ${props.take};
-                `,
+                `;
+              },
               async () => {
                 const count = await prisma.userTextActivity.groupBy({
                   by: "channelId",
@@ -358,7 +360,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               paginate,
               `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
               formatEntry,
-              false, // FIXME: Add ordering
+              true,
             );
             await paginator.render(itx);
           }),

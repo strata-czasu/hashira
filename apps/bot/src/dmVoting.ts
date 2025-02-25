@@ -107,9 +107,8 @@ const parseButtonStyle = (style: DiscordButtonStyle): ButtonStyle => {
 };
 
 const pluralizeUsers = createPluralize({
-  // FIXME: Keys should be sorted automatically
-  2: "użytkowników",
   1: "użytkownika",
+  2: "użytkowników",
 });
 
 export const dmVoting = new Hashira({ name: "dmVoting" })
@@ -371,7 +370,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               paginator,
               "Głosowania DM",
               formatPoll,
-              false,
+              true,
             );
             await view.render(itx);
           }),
@@ -894,7 +893,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   paginator,
                   "Wykluczenia z głosowań DM",
                   formatExclusion,
-                  false,
+                  true,
                 );
                 await view.render(itx);
               }),
