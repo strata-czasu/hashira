@@ -370,7 +370,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               paginator,
               "Głosowania DM",
               formatPoll,
-              false,
+              true,
             );
             await view.render(itx);
           }),
@@ -893,7 +893,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   paginator,
                   "Wykluczenia z głosowań DM",
                   formatExclusion,
-                  false,
+                  true,
                 );
                 await view.render(itx);
               }),
