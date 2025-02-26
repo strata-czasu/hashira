@@ -9,6 +9,7 @@ export type PrismaTransaction = Omit<ExtendedPrismaClient, ITXClientDenyList>;
 
 export const redis = await createClient({ url: env.REDIS_URL })
   .on("connect", () => console.log("Connected to Redis"))
+  .on("end", () => console.log("Disconnected from Redis"))
   .on("error", (err) => console.error("Redis client error:", err))
   .connect();
 

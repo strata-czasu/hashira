@@ -1,4 +1,4 @@
-import { Prisma, prisma } from "@hashira/db";
+import { Prisma, prisma, redis } from "@hashira/db";
 import {
   DEFAULT_LOG_CHANNELS,
   GUILD_IDS,
@@ -76,3 +76,4 @@ if (isProduction) {
 console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);
 
 await prisma.$disconnect();
+await redis.disconnect();
