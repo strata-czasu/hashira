@@ -64,12 +64,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(userTransfer)
   .use(inviteManagement)
   .use(dmVoting)
-  .use(ping)
-  .handle("ready", async ({ redis }) => {
-    await redis.connect();
-    // TODO)) Use a proper logger
-    console.log("Bot is ready");
-  });
+  .use(ping);
 
 if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't

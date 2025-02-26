@@ -7,9 +7,11 @@ export const prisma = new PrismaClient();
 export type ExtendedPrismaClient = typeof prisma;
 export type PrismaTransaction = Omit<ExtendedPrismaClient, ITXClientDenyList>;
 
-export const redis = createClient({ url: env.REDIS_URL })
+export const redis = await createClient({ url: env.REDIS_URL })
   .on("connect", () => console.log("Connected to Redis"))
-  .on("error", (err) => console.error("Redis client error:", err));
+  .on("error", (err) => console.error("Redis client error:", err))
+  .connect();
+
 export type RedisClient = typeof redis;
 
 export * from "@prisma/client";
