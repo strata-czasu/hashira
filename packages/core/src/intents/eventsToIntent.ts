@@ -4,7 +4,7 @@ import { createEventsToIntent } from "./util";
 
 export const guildEmojisAndStickersEventsToIntent = createEventsToIntent(
   events.guildEmojisAndStickersEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildEmojisAndStickers],
+  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildExpressions],
 );
 
 export const autoModerationActionExecutionEventsToIntent = createEventsToIntent(
@@ -19,6 +19,7 @@ export const guildIntegrationsEventsToIntent = createEventsToIntent(
 
 export const guildsEventsToIntent = createEventsToIntent(events.guildsEvents, [
   GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildVoiceStates,
 ]);
 
 export const autoModerationConfigurationEventsToIntent = createEventsToIntent(

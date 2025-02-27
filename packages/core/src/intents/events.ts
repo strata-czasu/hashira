@@ -14,6 +14,7 @@ export const guildEmojisAndStickersEvents = [
 ] as const;
 
 export const guildsEvents = [
+  "guildAvailable",
   "guildCreate",
   "guildUpdate",
   "guildDelete",
