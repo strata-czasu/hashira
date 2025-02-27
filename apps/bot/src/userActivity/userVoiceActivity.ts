@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 import { differenceInSeconds } from "date-fns";
-import type { VoiceState } from "discord.js";
+import type { Guild, VoiceState } from "discord.js";
 import * as v from "valibot";
 import { base } from "../base";
 
@@ -95,10 +95,7 @@ async function startVoiceSession(
     totalVideoTime: 0,
   };
 
-  await redis.hSet(
-    `voiceSession:${guildId}:${userId}`,
-    serializeVoiceSession(voiceSession),
-  );
+  await redis.hSet(getSessionKey(guildId, userId), serializeVoiceSession(voiceSession));
 }
 
 async function updateVoiceSession(
@@ -107,11 +104,11 @@ async function updateVoiceSession(
   userId: string,
   newState: VoiceState,
 ) {
-  const key = `voiceSession:${guildId}:${userId}`;
+  const key = getSessionKey(guildId, userId);
   const sessionRaw = await redis.hGetAll(key);
 
   // If no session exists, start a new one
-  if (Object.keys(sessionRaw).length === 0 && newState.channel) {
+  if (!sessionExists(sessionRaw) && newState.channel) {
     await startVoiceSession(redis, guildId, newState.channel.id, userId, newState);
     return;
   }
@@ -190,62 +187,99 @@ async function endVoiceSession(
   await redis.del(key);
 }
 
+const getSessionKey = (guildId: string, userId: string) =>
+  `voiceSession:${guildId}:${userId}`;
+
+const sessionExists = (rawSession: Record<string, string>) =>
+  Object.keys(rawSession).length > 0;
+
+async function handleNewGuild(
+  { redis, prisma }: { redis: RedisClient; prisma: ExtendedPrismaClient },
+  guild: Guild,
+) {
+  console.log("sus");
+  const foundSessions: string[] = [];
+  for (const vs of guild.voiceStates.cache.values()) {
+    if (!vs.channel) continue;
+    // check if the user was registered in redis
+    const key = getSessionKey(guild.id, vs.id);
+    const sessionRaw = await redis.hGetAll(key);
+
+    if (!sessionExists(sessionRaw)) {
+      await startVoiceSession(redis, guild.id, vs.channel.id, vs.id, vs);
+      foundSessions.push(key);
+      continue;
+    }
+
+    const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+    if (!sessionResult.success) {
+      const flatIssues = v.flatten(sessionResult.issues);
+      throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
+    }
+
+    const session = sessionResult.output;
+
+    if (session.channelId === vs.channel.id) {
+      await updateVoiceSession(redis, guild.id, vs.id, vs);
+      foundSessions.push(key);
+    } else {
+      // NOTE: We don't have a way to get the leftAt time, so we use the lastUpdate time
+      await endVoiceSession(redis, prisma, guild.id, vs.id, session.lastUpdate);
+      await startVoiceSession(redis, guild.id, vs.channel.id, vs.id, vs);
+      foundSessions.push(key);
+    }
+  }
+
+  // Delete all sessions that were not found
+  const sessionPattern = `voiceSession:${guild.id}:*`;
+  const allSessionKeys = await redis.keys(sessionPattern);
+  console.log(
+    `Found ${foundSessions.length} active voice sessions for guild ${guild.id}`,
+  );
+  console.log(`Found ${allSessionKeys.length} voice sessions for guild ${guild.id}`);
+
+  // Filter out the keys that weren't found in the active voice states
+  const orphanedSessions = allSessionKeys.filter((key) => !foundSessions.includes(key));
+
+  // End each orphaned session and persist to database before deleting
+  for (const key of orphanedSessions) {
+    console.log(`Found orphaned voice session for ${key}`);
+    const [, , userId] = key.split(":");
+    try {
+      const sessionRaw = await redis.hGetAll(key);
+      if (sessionExists(sessionRaw) && userId) {
+        const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+        if (sessionResult.success) {
+          const session = sessionResult.output;
+          console.log(`Ending orphaned voice session for ${userId} in ${guild.id}`);
+          const voiceSessionRecord = serializeVoiceSessionRecord(
+            session,
+            userId,
+            guild.id,
+            session.lastUpdate,
+          );
+          await prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
+        }
+      }
+      // Delete the session regardless of whether we could parse it
+      await redis.del(key);
+    } catch (error) {
+      console.error(`Failed to process orphaned session ${key}:`, error);
+      // Continue with other sessions even if one fails
+    }
+  }
+
+  if (orphanedSessions.length > 0) {
+    console.log(
+      `Cleaned up ${orphanedSessions.length} orphaned voice sessions in guild ${guild.id}`,
+    );
+  }
+}
+
 export const userVoiceActivity = new Hashira({ name: "user-voice-activity" })
   .use(base)
-  // Add logic to handle all active voice sessions on ready
-  .handle("ready", async ({ redis, prisma }, client) => {
-    redis.on("connect", async () => {
-      // Gather all active voice states from all guilds
-      const activeVoiceStates = new Map();
-      for (const guild of client.guilds.cache.values()) {
-        for (const vs of guild.voiceStates.cache.values()) {
-          if (vs.channel) {
-            const key = `voiceSession:${guild.id}:${vs.id}`;
-            activeVoiceStates.set(key, vs);
-          }
-        }
-      }
-
-      // Get all redis keys for active voice sessions
-      const keys = await redis.keys("voiceSession:*");
-
-      for (const key of keys) {
-        if (activeVoiceStates.has(key)) {
-          // Update session if active voice state exists
-          const vs = activeVoiceStates.get(key);
-          const parts = key.split(":"); // ["voiceSession", guildId, userId]
-          const guildId = parts[1];
-          const userId = parts[2];
-          await updateVoiceSession(redis, guildId, userId, vs);
-          activeVoiceStates.delete(key);
-        } else {
-          // End session if no active voice state is found
-          const sessionRaw = await redis.hGetAll(key);
-          const parseResult = v.safeParse(voiceSessionSchema, sessionRaw);
-          if (!parseResult.success) {
-            console.error(
-              `Invalid session data for key ${key}`,
-              v.flatten(parseResult.issues),
-            );
-            continue;
-          }
-          const session = parseResult.output;
-          const parts = key.split(":");
-          const guildId = parts[1];
-          const userId = parts[2];
-          await endVoiceSession(redis, prisma, guildId, userId, session.lastUpdate);
-        }
-      }
-
-      // Start new sessions for remaining active voice states not found in redis
-      for (const [key, vs] of activeVoiceStates) {
-        const parts = key.split(":");
-        const guildId = parts[1];
-        const userId = parts[2];
-        await startVoiceSession(redis, guildId, vs.channel.id, userId, vs);
-      }
-    });
-  })
+  .handle("guildAvailable", handleNewGuild)
+  .handle("guildCreate", handleNewGuild)
   .handle("voiceStateUpdate", async ({ prisma, redis }, oldState, newState) => {
     const guildId = newState.guild.id;
     const userId = newState.id;
