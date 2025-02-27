@@ -12,16 +12,16 @@ model UserTextActivity {
 }
 
 model VoiceSessionRecord {
-  id                 Int      @id @default(autoincrement())
-  channelId          String
-  joinedAt           DateTime
-  leftAt             DateTime
-  userId             String
-  guildId            String
-  totalMutedTime     Int // duration in seconds
-  totalDeafenedTime  Int // duration in seconds
-  totalStreamingTime Int // duration in seconds
-  totalVideoTime     Int // duration in seconds
-  user               User     @relation(fields: [userId], references: [id])
-  guild              Guild    @relation(fields: [guildId], references: [id])
+  id                    Int      @id @default(autoincrement())
+  channelId             String
+  joinedAt              DateTime
+  leftAt                DateTime
+  userId                String
+  guildId               String
+  totalMutedSeconds     Int
+  totalDeafenedSeconds  Int
+  totalStreamingSeconds Int
+  totalVideoSeconds     Int
+  user                  User     @relation(fields: [userId], references: [id])
+  guild                 Guild    @relation(fields: [guildId], references: [id])
 }
