@@ -1,6 +1,6 @@
 import { type ExtractContext, Hashira } from "@hashira/core";
 import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
-import type { Guild } from "discord.js";
+import { DiscordAPIError, type Guild } from "discord.js";
 import { partition } from "es-toolkit";
 import { base } from "./base";
 import type { LogMessageType, Logger } from "./logging/base/logger";
@@ -116,7 +116,13 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
       );
       ctx.strataCzasuLog.start(client);
     } catch (e) {
-      console.error("Failed to register Strata Czasu logger", e);
+      if (!(e instanceof DiscordAPIError)) {
+        return console.error("Failed to register Strata Czasu logger", e);
+      }
+
+      return console.error(
+        `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
+      );
     }
 
     ctx.messageLog.start(client);
