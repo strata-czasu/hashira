@@ -117,12 +117,12 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
       ctx.strataCzasuLog.start(client);
     } catch (e) {
       if (!(e instanceof DiscordAPIError)) {
-        return console.error("Failed to register Strata Czasu logger", e);
+        console.error("Failed to register Strata Czasu logger", e);
+      } else {
+        console.error(
+          `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
+        );
       }
-
-      return console.error(
-        `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
-      );
     }
 
     ctx.messageLog.start(client);
