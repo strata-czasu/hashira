@@ -1,5 +1,5 @@
 import type { ExtractContext } from "@hashira/core";
-import type { ExtendedPrismaClient, Mute } from "@hashira/db";
+import type { ExtendedPrismaClient, Mute, PrismaTransaction } from "@hashira/db";
 import { formatDate, intervalToDuration } from "date-fns";
 import {
   GuildMember,
@@ -119,12 +119,13 @@ export const scheduleVerificationReminders = async (
 };
 
 export const cancelVerificationReminders = async (
+  tx: PrismaTransaction,
   messageQueue: BaseContext["messageQueue"],
   verificationId: number,
 ) =>
   await Promise.all([
-    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-24h`),
-    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-48h`),
+    messageQueue.cancelTx(tx, "verificationReminder", `${verificationId}-reminder-24h`),
+    messageQueue.cancelTx(tx, "verificationReminder", `${verificationId}-reminder-48h`),
   ]);
 
 export const sendVerificationFailedMessage = async (user: User) =>
