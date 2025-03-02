@@ -98,9 +98,7 @@ export class MessageQueue<
     delay?: number | Date,
     identifier?: string,
   ) {
-    await this.#prisma.$transaction((tx) =>
-      this.pushTx(tx, type, data, delay, identifier),
-    );
+    await this.pushTx(this.#prisma, type, data, delay, identifier);
   }
 
   async pushTx<T extends keyof HandleTypes>(
@@ -135,9 +133,7 @@ export class MessageQueue<
     identifier: string,
     options?: TaskFindOptions,
   ) {
-    await this.#prisma.$transaction((tx) =>
-      this.cancelTx(tx, type, identifier, options),
-    );
+    await this.cancelTx(this.#prisma, type, identifier, options);
   }
 
   /**
@@ -189,9 +185,7 @@ export class MessageQueue<
     delay: number | Date,
     options?: TaskFindOptions,
   ) {
-    await this.#prisma.$transaction((tx) =>
-      this.updateDelayTx(tx, type, identifier, delay, options),
-    );
+    await this.updateDelayTx(this.#prisma, type, identifier, delay, options);
   }
 
   async updateDelayTx<T extends keyof HandleTypes>(
