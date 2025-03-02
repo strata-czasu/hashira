@@ -48,7 +48,9 @@ const satisfiesVerificationLevel = (
 ) => {
   if (level === null) return false;
   if (target === null) return true;
+
   const levels = { plus13: 0, plus16: 1, plus18: 2 };
+
   return levels[level] >= levels[target];
 };
 
@@ -76,7 +78,9 @@ const getActive16PlusVerification = async (
 
 const get18PlusRoleId = async (prisma: ExtendedPrismaClient, guildId: string) => {
   const settings = await prisma.guildSettings.findFirst({ where: { guildId } });
+
   if (!settings) return null;
+
   return settings.plus18RoleId;
 };
 
@@ -126,6 +130,7 @@ export const verification = new Hashira({ name: "verification" })
               itx.guildId,
               member.id,
             );
+
             if (verificationInProgress) {
               return await errorFollowUp(
                 itx,
@@ -152,35 +157,31 @@ export const verification = new Hashira({ name: "verification" })
               return;
             }
 
-            // Create verification and try to add the mute role
-            // If adding the role fails, rollback the transaction
-            const verification = await prisma.$transaction(async (tx) => {
-              const verification = await tx.verification.create({
-                data: {
-                  guildId: itx.guildId,
-                  userId: member.id,
-                  moderatorId: itx.user.id,
-                  type: "plus16",
-                  status: "in_progress",
-                },
-              });
-
-              const appliedMute = await applyMute(
-                member,
-                muteRoleId,
-                `Weryfikacja 16+, moderator: ${itx.user.tag} (${itx.user.id})`,
-              );
-              if (!appliedMute) {
-                await errorFollowUp(
-                  itx,
-                  "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
-                );
-
-                throw new Error(`Failed to apply mute role to ${member.id}`);
-              }
-              return verification;
+            const verification = await prisma.verification.create({
+              data: {
+                guildId: itx.guildId,
+                userId: member.id,
+                moderatorId: itx.user.id,
+                type: "plus16",
+                status: "in_progress",
+              },
             });
-            if (!verification) return;
+
+            const appliedMute = await applyMute(
+              member,
+              muteRoleId,
+              `Weryfikacja 16+, moderator: ${itx.user.tag} (${itx.user.id})`,
+            );
+
+            if (!appliedMute) {
+              await errorFollowUp(
+                itx,
+                "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
+              );
+
+              await prisma.verification.delete({ where: { id: verification.id } });
+              return;
+            }
 
             await messageQueue.push(
               "verificationEnd",
@@ -188,6 +189,7 @@ export const verification = new Hashira({ name: "verification" })
               STRATA_CZASU.VERIFICATION_DURATION,
               verification.id.toString(),
             );
+
             await scheduleVerificationReminders(messageQueue, verification.id);
 
             const sentMessage = await sendDirectMessage(
@@ -293,11 +295,14 @@ export const verification = new Hashira({ name: "verification" })
                   data: { status: "accepted", acceptedAt: itx.createdAt },
                 });
 
-                await messageQueue.cancel(
+                await messageQueue.cancelTx(
+                  tx,
                   "verificationEnd",
                   active16PlusVerification.id.toString(),
                 );
+
                 await cancelVerificationReminders(
+                  tx,
                   messageQueue,
                   active16PlusVerification.id,
                 );
@@ -461,22 +466,29 @@ export const verification = new Hashira({ name: "verification" })
               itx.guildId,
               user.id,
             );
-            if (verificationInProgress) {
-              await prisma.verification.update({
-                where: { id: verificationInProgress.id },
-                data: { status: "rejected", rejectedAt: itx.createdAt },
-              });
 
-              await messageQueue.cancel(
-                "verificationEnd",
-                verificationInProgress.id.toString(),
-              );
-              await cancelVerificationReminders(
-                messageQueue,
-                verificationInProgress.id,
-              );
-            } else {
-              await prisma.verification.create({
+            const verificationUpdated = await prisma.$transaction(async (tx) => {
+              if (verificationInProgress) {
+                await tx.verification.update({
+                  where: { id: verificationInProgress.id },
+                  data: { status: "rejected", rejectedAt: itx.createdAt },
+                });
+
+                await messageQueue.cancelTx(
+                  tx,
+                  "verificationEnd",
+                  verificationInProgress.id.toString(),
+                );
+                await cancelVerificationReminders(
+                  tx,
+                  messageQueue,
+                  verificationInProgress.id,
+                );
+
+                return verificationInProgress.id;
+              }
+
+              const newVerification = await tx.verification.create({
                 data: {
                   createdAt: itx.createdAt,
                   rejectedAt: itx.createdAt,
@@ -487,16 +499,18 @@ export const verification = new Hashira({ name: "verification" })
                   status: "rejected",
                 },
               });
-            }
+
+              return newVerification.id;
+            });
 
             const sentMessage = await sendVerificationFailedMessage(user);
             const banned = await discordTry(
               async () => {
-                let baseReason = "Nieudana weryfikacja 16+";
-                if (verificationInProgress) {
-                  baseReason += ` [${verificationInProgress.id}]`;
-                }
-                const reason = formatBanReason(baseReason, itx.user, itx.createdAt);
+                const reason = formatBanReason(
+                  `Nieudana weryfikacja 16+ [${verificationUpdated}]`,
+                  itx.user,
+                  itx.createdAt,
+                );
                 await itx.guild.bans.create(user, { reason });
                 return true;
               },
@@ -551,7 +565,8 @@ export const verification = new Hashira({ name: "verification" })
                 data: { status: "cancelled", cancelledAt: itx.createdAt },
               });
 
-              await messageQueue.cancel(
+              await messageQueue.cancelTx(
+                tx,
                 "verificationEnd",
                 verificationInProgress.id.toString(),
               );
