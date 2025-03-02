@@ -157,16 +157,6 @@ export const verification = new Hashira({ name: "verification" })
               return;
             }
 
-            const verification = await prisma.verification.create({
-              data: {
-                guildId: itx.guildId,
-                userId: member.id,
-                moderatorId: itx.user.id,
-                type: "plus16",
-                status: "in_progress",
-              },
-            });
-
             const appliedMute = await applyMute(
               member,
               muteRoleId,
@@ -178,10 +168,18 @@ export const verification = new Hashira({ name: "verification" })
                 itx,
                 "Nie można dodać roli wyciszenia lub rozłączyć użytkownika. Sprawdź uprawnienia bota.",
               );
-
-              await prisma.verification.delete({ where: { id: verification.id } });
               return;
             }
+
+            const verification = await prisma.verification.create({
+              data: {
+                guildId: itx.guildId,
+                userId: member.id,
+                moderatorId: itx.user.id,
+                type: "plus16",
+                status: "in_progress",
+              },
+            });
 
             await messageQueue.push(
               "verificationEnd",
