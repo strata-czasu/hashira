@@ -86,7 +86,7 @@ export class MessageQueue<
   }
 
   /**
-   * Enqueue a message to be handled later by the message queue
+   * Enqueue a message to be handled later by the message queue using a new transaction
    * @param type {string} The type of message to be handled
    * @param data {unknown} The data to be handled
    * @param delay {number|Date} The delay in seconds before the message is handled
@@ -98,12 +98,24 @@ export class MessageQueue<
     delay?: number | Date,
     identifier?: string,
   ) {
+    await this.#prisma.$transaction((tx) =>
+      this.pushTx(tx, type, data, delay, identifier),
+    );
+  }
+
+  async pushTx<T extends keyof HandleTypes>(
+    tx: PrismaTransaction,
+    type: T,
+    data: HandleTypes[T],
+    delay?: number | Date,
+    identifier?: string,
+  ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
     const handleAfter = delay ? handleDelay(delay) : new Date();
 
-    await this.#prisma.task.create({
+    await tx.task.create({
       data: {
         data: { type, data },
         handleAfter,
@@ -112,7 +124,31 @@ export class MessageQueue<
     });
   }
 
+  /**
+   * Cancel a task with the given identifier and type creating a transaction
+   * @param type {string} The type of message to be handled
+   * @param identifier {string} The identifier of the task
+   * @param options {TaskFindOptions} Options for finding the task
+   */
   async cancel<T extends keyof HandleTypes>(
+    type: T,
+    identifier: string,
+    options?: TaskFindOptions,
+  ) {
+    await this.#prisma.$transaction((tx) =>
+      this.cancelTx(tx, type, identifier, options),
+    );
+  }
+
+  /**
+   * Cancel a task with the given identifier and type
+   * @param tx {PrismaTransaction} The transaction to use
+   * @param type {string} The type of message to be handled
+   * @param identifier {string} The identifier of the task
+   * @param options {TaskFindOptions} Options for finding the task
+   */
+  async cancelTx<T extends keyof HandleTypes>(
+    tx: PrismaTransaction,
     type: T,
     identifier: string,
     options?: TaskFindOptions,
@@ -120,27 +156,23 @@ export class MessageQueue<
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    await this.#prisma.$transaction(async (tx) => {
-      const task = await tx.task.findFirst({
-        where: {
-          identifier,
-          status: "pending",
-          data: { path: ["type"], equals: type },
-        },
-      });
+    const task = await tx.task.findFirst({
+      where: {
+        identifier,
+        status: "pending",
+        data: { path: ["type"], equals: type },
+      },
+    });
 
-      if (!task) {
-        if (options?.throwIfNotFound)
-          throw new Error(
-            `Task not found for identifier ${identifier} for type ${type}`,
-          );
-        return;
-      }
+    if (!task) {
+      if (options?.throwIfNotFound)
+        throw new Error(`Task not found for identifier ${identifier} for type ${type}`);
+      return;
+    }
 
-      await tx.task.update({
-        where: { id: task.id },
-        data: { status: "cancelled" },
-      });
+    await tx.task.update({
+      where: { id: task.id },
+      data: { status: "cancelled" },
     });
   }
 
@@ -157,31 +189,39 @@ export class MessageQueue<
     delay: number | Date,
     options?: TaskFindOptions,
   ) {
+    await this.#prisma.$transaction((tx) =>
+      this.updateDelayTx(tx, type, identifier, delay, options),
+    );
+  }
+
+  async updateDelayTx<T extends keyof HandleTypes>(
+    tx: PrismaTransaction,
+    type: T,
+    identifier: string,
+    delay: number | Date,
+    options?: TaskFindOptions,
+  ) {
     // This should never happen, but somehow typescript doesn't understand that
     if (typeof type !== "string") throw new Error("Type must be a string");
 
-    await this.#prisma.$transaction(async (tx) => {
-      const task = await tx.task.findFirst({
-        where: {
-          identifier,
-          status: "pending",
-          data: { path: ["type"], equals: type },
-        },
-      });
+    const task = await tx.task.findFirst({
+      where: {
+        identifier,
+        status: "pending",
+        data: { path: ["type"], equals: type },
+      },
+    });
 
-      if (!task) {
-        if (options?.throwIfNotFound)
-          throw new Error(
-            `Task not found for identifier ${identifier} for type ${type}`,
-          );
-        return;
-      }
+    if (!task) {
+      if (options?.throwIfNotFound)
+        throw new Error(`Task not found for identifier ${identifier} for type ${type}`);
+      return;
+    }
 
-      const handleAfter = handleDelay(delay, task.createdAt);
-      await tx.task.update({
-        where: { id: task.id },
-        data: { handleAfter },
-      });
+    const handleAfter = handleDelay(delay, task.createdAt);
+    await tx.task.update({
+      where: { id: task.id },
+      data: { handleAfter },
     });
   }
 
