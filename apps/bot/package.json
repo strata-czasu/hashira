@@ -19,6 +19,7 @@
     "@hashira/paginate": "workspace:*",
     "@sentry/bun": "^8.53.0",
     "date-fns": "4.1.0",
-    "openai": "4.67.3"
+    "openai": "4.67.3",
+    "sharp": "^0.33.5"
   }
 }

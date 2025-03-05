@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { EmbedBuilder, TimestampStyles, time, userMention } from "discord.js";
+import sharp from "sharp";
 import { base } from "../base";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
@@ -65,6 +66,11 @@ export const profile = new Hashira({ name: "profile" })
             )}`,
           });
         }
-        await itx.reply({ embeds: [embed] });
+
+        const image = await sharp(`${__dirname}/profile.svg`).png().toBuffer();
+
+        await itx.reply({
+          files: [{ name: `profil-${user.tag}.png`, attachment: image }],
+        });
       }),
   );
