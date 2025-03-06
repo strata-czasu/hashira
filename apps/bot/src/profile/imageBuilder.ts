@@ -1,6 +1,14 @@
 import type * as cheerio from "cheerio";
 import sharp from "sharp";
 
+/**
+ * Profile image builder for generating user profile images.
+ *
+ * Figma export options:
+ * - Format: SVG
+ * - Ignore overlapping export layers
+ * - Include "id" attribute
+ */
 export class ProfileImageBuilder {
   #svg: cheerio.CheerioAPI;
 
