@@ -71,6 +71,7 @@ export const profile = new Hashira({ name: "profile" })
         const file = Bun.file(`${__dirname}/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
+        image.nickname(user.displayName).title(user.tag);
 
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
