@@ -26,6 +26,11 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public balance(value: string) {
+    this.#svg("text[id='Stats Caps Value'] > tspan").text(value);
+    return this;
+  }
+
   public avatarImage(value: string) {
     this.#svg("image[data-name='discordyellow.png']").attr("href", value);
     return this;

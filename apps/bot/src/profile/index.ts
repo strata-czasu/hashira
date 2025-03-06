@@ -19,6 +19,15 @@ function formatPNGDataURL(data: string) {
   return `data:image/png;base64,${data}`;
 }
 
+/**
+ * Formats balance as a locale string with a space instead of a non-breaking space.
+ * &nbsp; doesn't seem to work in SVG <tspan> elements, so we're using a regular space.
+ */
+function formatBalanceForSVG(balance: number) {
+  const nbspRe = new RegExp(String.fromCharCode(160), "g");
+  return balance.toLocaleString("pl-PL").replace(nbspRe, " ");
+}
+
 export const profile = new Hashira({ name: "profile" })
   .use(base)
   .use(marriage)
@@ -71,7 +80,10 @@ export const profile = new Hashira({ name: "profile" })
         const file = Bun.file(`${__dirname}/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
-        image.nickname(user.displayName).title(user.tag);
+        image
+          .nickname(user.displayName)
+          .title(user.tag)
+          .balance(formatBalanceForSVG(wallet.balance));
 
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
