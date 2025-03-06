@@ -1,12 +1,23 @@
 import { Hashira } from "@hashira/core";
+import * as cheerio from "cheerio";
 import { EmbedBuilder, TimestampStyles, time, userMention } from "discord.js";
-import sharp from "sharp";
 import { base } from "../base";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
+
+async function fetchAsBase64(url: string | URL) {
+  const res = await fetch(url);
+  const arrbuf = await res.arrayBuffer();
+  return Buffer.from(arrbuf).toString("base64");
+}
+
+function formatPNGDataURL(data: string) {
+  return `data:image/png;base64,${data}`;
+}
 
 export const profile = new Hashira({ name: "profile" })
   .use(base)
@@ -56,6 +67,17 @@ export const profile = new Hashira({ name: "profile" })
             },
           )
           .setFooter({ text: `ID: ${user.id}` });
+
+        const file = Bun.file(`${__dirname}/profile.svg`);
+        const svg = cheerio.load(await file.text());
+        const image = new ProfileImageBuilder(svg);
+
+        const avatarImageURL =
+          user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
+          user.defaultAvatarURL;
+        const encodedData = await fetchAsBase64(avatarImageURL);
+        image.avatarImage(formatPNGDataURL(encodedData));
+
         if (dbUser.marriedTo && dbUser.marriedAt) {
           const spouse = await itx.client.users.fetch(dbUser.marriedTo);
           embed.addFields({
@@ -65,12 +87,20 @@ export const profile = new Hashira({ name: "profile" })
               TimestampStyles.LongDate,
             )}`,
           });
+
+          const avatarImageURL =
+            spouse.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
+            spouse.defaultAvatarURL;
+          const encodedData = await fetchAsBase64(avatarImageURL);
+          image.marriageImage(formatPNGDataURL(encodedData)).marriageOpacity(1);
+        } else {
+          image.marriageOpacity(0);
         }
 
-        const image = await sharp(`${__dirname}/profile.svg`).png().toBuffer();
-
+        const attachment = await image.toSharp().png().toBuffer();
         await itx.reply({
-          files: [{ name: `profil-${user.tag}.png`, attachment: image }],
+          // embeds: [embed],
+          files: [{ name: `profil-${user.tag}.png`, attachment }],
         });
       }),
   );
