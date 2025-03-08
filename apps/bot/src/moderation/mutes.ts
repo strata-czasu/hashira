@@ -60,7 +60,7 @@ const composeMuteMessage = (
   reason: string,
 ) =>
   MUTE_TEMPLATE.replace("{{user}}", user.toString())
-    .replace("{{moderator}}", moderator.toString())
+    .replace("{{moderator}}", `${moderator} (${moderator.tag})`)
     .replace("{{duration}}", formatDuration(duration))
     .replace("{{reason}}", italic(reason));
 
