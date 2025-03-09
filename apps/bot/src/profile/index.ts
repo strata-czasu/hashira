@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import * as cheerio from "cheerio";
-import { format } from "date-fns";
+import { format, sub } from "date-fns";
 import {
   EmbedBuilder,
   RESTJSONErrorCodes,
@@ -78,6 +78,15 @@ export const profile = new Hashira({ name: "profile" })
           wallet.balance,
           STRATA_CZASU_CURRENCY.symbol,
         );
+        const textActivity = await prisma.userTextActivity.count({
+          where: {
+            userId: user.id,
+            guildId: itx.guildId,
+            timestamp: {
+              gte: sub(itx.createdAt, { days: 30 }),
+            },
+          },
+        });
 
         const embed = new EmbedBuilder()
           .setTitle(`Profil ${user.tag}`)
@@ -109,9 +118,11 @@ export const profile = new Hashira({ name: "profile" })
           .balance(formatBalanceForSVG(wallet.balance))
           .rep("??? rep") // TODO)) Rep value
           .items(dbUser.inventoryItems.length.toString())
+          .voiceActivity("123h") // TODO)) Voice activity value
+          .textActivity(textActivity.toString())
           .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
-          .level(42)
-          .backgroundImage(formatPNGDataURL(backgroundImage));
+          .level(42) // TODO)) Level value
+          .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
@@ -122,6 +133,7 @@ export const profile = new Hashira({ name: "profile" })
           image.guildJoinDate(format(member.joinedAt, PROFILE_DATE_FORMAT));
         }
 
+        // TODO)) Customizable badges
         const smirkIcon = await loadFileAsBase64(`${__dirname}/res/badge/smirk.png`);
         const smirkBigIcon = await loadFileAsBase64(
           `${__dirname}/res/badge/smirk-big.png`,

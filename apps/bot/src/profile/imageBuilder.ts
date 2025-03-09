@@ -78,6 +78,22 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public voiceActivity(value: string) {
+    const group = "g[id='Activity Voice Value']";
+    this.#svg(`${group} > text:nth(0) > tspan`).text(value);
+    // TODO: Display the second text element and offset it correctly
+    this.#svg(`${group} > text:nth(1)`).attr("opacity", "0");
+    return this;
+  }
+
+  public textActivity(value: string) {
+    const group = "g[id='Activity Text Value']";
+    this.#svg(`${group} > text:nth(0) > tspan`).text(value);
+    // TODO: Display the second text element and offset it correctly
+    this.#svg(`${group} > text:nth(1)`).attr("opacity", "0");
+    return this;
+  }
+
   public guildJoinDate(value: string) {
     this.#svg("text[id='Guild Join Value'] > tspan").text(value);
     return this;
