@@ -111,6 +111,11 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public backgroundImage(value: string) {
+    this.#svg("image[data-name='background.png']").attr("href", value);
+    return this;
+  }
+
   /**
    * Set the image of a showcase badge and make it visible.
    *

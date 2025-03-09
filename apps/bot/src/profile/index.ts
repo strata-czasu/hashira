@@ -99,6 +99,9 @@ export const profile = new Hashira({ name: "profile" })
         const file = Bun.file(`${__dirname}/res/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
+        const backgroundImage = await loadFileAsBase64(
+          `${__dirname}/res/background/summit.png`,
+        );
         image
           .tintColor("#aa85a4")
           .nickname(user.displayName)
@@ -107,7 +110,8 @@ export const profile = new Hashira({ name: "profile" })
           .rep("??? rep") // TODO)) Rep value
           .items(dbUser.inventoryItems.length.toString())
           .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
-          .level(42);
+          .level(42)
+          .backgroundImage(formatPNGDataURL(backgroundImage));
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
