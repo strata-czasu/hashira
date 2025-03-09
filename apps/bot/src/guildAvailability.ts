@@ -1,7 +1,6 @@
 import { type ExtractContext, Hashira } from "@hashira/core";
 import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
 import { DiscordAPIError, type Guild } from "discord.js";
-import { partition } from "es-toolkit";
 import { base } from "./base";
 import type { LogMessageType, Logger } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
@@ -85,46 +84,53 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
 async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
   await createGuildSettings(ctx.prisma, guild.id);
   await registerGuildLoggers(ctx, guild);
+  await guild.members.fetch();
+}
+
+async function leaveGuild(guild: Guild) {
+  console.log(`Leaving guild: ${guild.name}, owner: ${guild.ownerId}`);
+  guild.leave();
 }
 
 export const guildAvailability = new Hashira({ name: "guild-availability" })
   .use(base)
-  .handle("ready", async (ctx, client) => {
-    const [allowedGuilds, unallowedGuilds] = partition(
-      [...client.guilds.cache.values()],
-      (guild) => ALLOWED_GUILDS.includes(guild.id),
-    );
-    const creationPromises = allowedGuilds.map((guild) =>
-      processAllowedGuild(ctx, guild),
-    );
-    // Fetch all guild members to ensure we have fully saturated caches
-    const membersFetchPromises = allowedGuilds.map((guild) => guild.members.fetch());
-
-    const leavePromises = unallowedGuilds.map((guild) => {
-      console.log(`Leaving guild: ${guild.name}, owner: ${guild.ownerId}`);
-      return guild.leave();
-    });
-
-    await Promise.all([...creationPromises, ...membersFetchPromises, ...leavePromises]);
-
-    // TODO: Decouple logger registration from guild creation, we should not rely on try/catch
-    try {
-      await registerGuildLogger(
-        ctx.strataCzasuLog,
-        await client.guilds.fetch(STRATA_CZASU.GUILD_ID),
-        STRATA_CZASU.MOD_LOG_CHANNEL_ID,
-      );
-      ctx.strataCzasuLog.start(client);
-    } catch (e) {
-      if (!(e instanceof DiscordAPIError)) {
-        console.error("Failed to register Strata Czasu logger", e);
-      } else {
-        console.error(
-          `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
-        );
-      }
+  .handle("guildAvailable", async (ctx, guild) => {
+    if (!ALLOWED_GUILDS.includes(guild.id)) {
+      await leaveGuild(guild);
+      return;
     }
 
+    await processAllowedGuild(ctx, guild);
+
+    if (guild.id === STRATA_CZASU.GUILD_ID) {
+      // TODO: Decouple logger registration from guild creation, we should not rely on try/catch
+      try {
+        await registerGuildLogger(
+          ctx.strataCzasuLog,
+          guild,
+          STRATA_CZASU.MOD_LOG_CHANNEL_ID,
+        );
+        ctx.strataCzasuLog.start(guild.client);
+      } catch (e) {
+        if (!(e instanceof DiscordAPIError)) {
+          console.error("Failed to register Strata Czasu logger", e);
+        } else {
+          console.error(
+            `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
+          );
+        }
+      }
+    }
+  })
+  .handle("guildCreate", async (ctx, guild) => {
+    if (!ALLOWED_GUILDS.includes(guild.id)) {
+      await leaveGuild(guild);
+      return;
+    }
+
+    await processAllowedGuild(ctx, guild);
+  })
+  .handle("ready", async (ctx, client) => {
     ctx.messageLog.start(client);
     ctx.memberLog.start(client);
     ctx.roleLog.start(client);
@@ -135,13 +141,4 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     ctx.userTextActivityQueue.start(ctx.prisma, ctx.redis);
     ctx.stickyMessageCache.start(ctx.prisma);
     ctx.emojiCountingQueue.start(ctx.prisma, ctx.redis);
-  })
-  .handle("guildCreate", async (ctx, guild) => {
-    if (!ALLOWED_GUILDS.includes(guild.id)) {
-      console.log(`Leaving guild: ${guild.name}, owner: ${guild.ownerId}`);
-      guild.leave();
-      return;
-    }
-
-    await processAllowedGuild(ctx, guild);
   });
