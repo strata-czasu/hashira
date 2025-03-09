@@ -77,7 +77,7 @@ export const profile = new Hashira({ name: "profile" })
           )
           .setFooter({ text: `ID: ${user.id}` });
 
-        const file = Bun.file(`${__dirname}/profile.svg`);
+        const file = Bun.file(`${__dirname}/res/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
         image
