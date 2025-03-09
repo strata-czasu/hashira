@@ -106,6 +106,11 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public level(value: number) {
+    this.#svg("text[id='Level Value'] > tspan").text(value.toString());
+    return this;
+  }
+
   /**
    * Set the image of a showcase badge and make it visible.
    *
@@ -210,6 +215,17 @@ export class ProfileImageBuilder {
   }
 
   public result() {
+    // Fix text alignment for 'Level Value'
+    const levelValueX = 408; // From Figma: 'Level Value' -> Position -> X
+    const levelValueWidth = 259; // From Figma: 'Level Value' -> Layout -> Width
+    // Create a bounding box and center the text
+    this.#svg("text[id='Level Value']")
+      .attr("x", (levelValueX + levelValueWidth / 2).toString())
+      .attr("width", levelValueWidth.toString())
+      .attr("text-anchor", "middle");
+    // Remove absolute x position from the tspan
+    this.#svg("text[id='Level Value'] > tspan").removeAttr("x");
+
     return this.#svg
       .html()
       .replace("<html>", "")

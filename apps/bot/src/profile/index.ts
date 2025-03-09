@@ -106,7 +106,8 @@ export const profile = new Hashira({ name: "profile" })
           .balance(formatBalanceForSVG(wallet.balance))
           .rep("??? rep") // TODO)) Rep value
           .items(dbUser.inventoryItems.length.toString())
-          .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT));
+          .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
+          .level(42);
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
