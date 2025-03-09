@@ -85,6 +85,14 @@ export const profile = new Hashira({ name: "profile" })
           .title(user.tag)
           .balance(formatBalanceForSVG(wallet.balance));
 
+        // Tests
+        image
+          .allShowcaseBadgesOpacity(0)
+          .showcaseBadgeOpacity(1, 1, 1)
+          .showcaseBadgeOpacity(1, 2, 1)
+          .showcaseBadgeOpacity(2, 4, 1)
+          .showcaseBadgeOpacity(3, 5, 1);
+
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
           user.defaultAvatarURL;

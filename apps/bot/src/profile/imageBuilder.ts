@@ -49,6 +49,35 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  /**
+   * Set the opacity of a showcase badge.
+   * Incorrect row or column values will be ignored.
+   * @param row Row index (1-3)
+   * @param col Column index (1-5)
+   * @param value Opacity value (0-1)
+   */
+  public showcaseBadgeOpacity(row: number, col: number, value: number) {
+    const elementId = `Showcase Badge ${row}:${col}`;
+    this.showcaseBadgeContainer()
+      .children(`circle[id='${elementId}']`)
+      .attr("opacity", value.toString());
+    return this;
+  }
+
+  /**
+   * Set the opacity of all showcase badges.
+   * This will override individual badge opacities.
+   * @param value Opacity value (0-1)
+   */
+  public allShowcaseBadgesOpacity(value: number) {
+    this.showcaseBadgeContainer().children("circle").attr("opacity", value.toString());
+    return this;
+  }
+
+  private showcaseBadgeContainer() {
+    return this.#svg("g[id='Showcase Badges']");
+  }
+
   public result() {
     return this.#svg
       .html()
