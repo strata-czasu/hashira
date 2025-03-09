@@ -78,6 +78,16 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public guildJoinDate(value: string) {
+    this.#svg("text[id='Guild Join Value'] > tspan").text(value);
+    return this;
+  }
+
+  public accountCreationDate(value: string) {
+    this.#svg("text[id='Account Creation Value'] > tspan").text(value);
+    return this;
+  }
+
   public avatarImage(value: string) {
     this.#svg("image[data-name='discordyellow.png']").attr("href", value);
     return this;

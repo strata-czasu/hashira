@@ -1,10 +1,18 @@
 import { Hashira } from "@hashira/core";
 import * as cheerio from "cheerio";
-import { EmbedBuilder, TimestampStyles, time, userMention } from "discord.js";
+import { format } from "date-fns";
+import {
+  EmbedBuilder,
+  RESTJSONErrorCodes,
+  TimestampStyles,
+  time,
+  userMention,
+} from "discord.js";
 import { base } from "../base";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
@@ -24,6 +32,8 @@ async function loadFileAsBase64(path: string) {
 function formatPNGDataURL(data: string) {
   return `data:image/png;base64,${data}`;
 }
+
+const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
 
 /**
  * Formats balance as a locale string with a space instead of a non-breaking space.
@@ -95,7 +105,17 @@ export const profile = new Hashira({ name: "profile" })
           .title(user.tag)
           .balance(formatBalanceForSVG(wallet.balance))
           .rep("??? rep") // TODO)) Rep value
-          .items(dbUser.inventoryItems.length.toString());
+          .items(dbUser.inventoryItems.length.toString())
+          .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT));
+
+        const member = await discordTry(
+          () => itx.guild.members.fetch(user.id),
+          [RESTJSONErrorCodes.UnknownMember],
+          () => null,
+        );
+        if (member?.joinedAt) {
+          image.guildJoinDate(format(member.joinedAt, PROFILE_DATE_FORMAT));
+        }
 
         const smirkIcon = await loadFileAsBase64(`${__dirname}/res/badge/smirk.png`);
         const smirkBigIcon = await loadFileAsBase64(
