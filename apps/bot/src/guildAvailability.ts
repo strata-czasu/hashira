@@ -129,6 +129,8 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
         }
       }
     }
+
+    console.log(`Guild available: ${guild.name}, owner: ${guild.ownerId}`);
   })
   .handle("guildCreate", async (ctx, guild) => {
     if (!ALLOWED_GUILDS.includes(guild.id)) {
@@ -137,6 +139,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     }
 
     await processAllowedGuild(ctx, guild);
+    console.log(`New guild: ${guild.name}, owner: ${guild.ownerId}`);
   })
   .handle("ready", async (ctx, client) => {
     ctx.messageLog.start(client);
@@ -145,8 +148,10 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     ctx.moderationLog.start(client);
     ctx.profileLog.start(client);
     ctx.economyLog.start(client);
+    console.log("Loggers started");
 
     ctx.userTextActivityQueue.start(ctx.prisma, ctx.redis);
     ctx.stickyMessageCache.start(ctx.prisma);
     ctx.emojiCountingQueue.start(ctx.prisma, ctx.redis);
+    console.log("Queues started");
   });
