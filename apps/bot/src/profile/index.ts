@@ -87,6 +87,7 @@ export const profile = new Hashira({ name: "profile" })
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
         image
+          .tintColor("#aa85a4")
           .nickname(user.displayName)
           .title(user.tag)
           .balance(formatBalanceForSVG(wallet.balance));

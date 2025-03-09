@@ -16,6 +16,42 @@ export class ProfileImageBuilder {
     this.#svg = svg;
   }
 
+  /**
+   * Apply a tint color to all elements that support tinting.
+   *
+   * @param value Color value in a SVG-supported format (e.g. `#ff0000`)
+   */
+  public tintColor(value: string) {
+    const elements = [
+      // Left
+      this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
+      this.#svg('path[id="Activity Text Icon"]'),
+      this.#svg('rect[id="Stats Bar"]'),
+      this.#svg('path[id="Stats Caps Icon"]'),
+      this.#svg('path[id="Nick + Title Background"]'),
+      // TODO: Clean up marriage text
+      this.#svg('g[id="Marriage Status Text"]:nth-child(1)'),
+      this.#svg('g[id="Marriage Status Text"]:nth-child(2)'),
+      this.#svg('text[id="Account Creation Value"]'),
+      this.#svg('text[id="Guild Join Value"]'),
+      // Middle
+      this.#svg('text[id="Exp Value"]'),
+      this.#svg('path[id="Exp Icon"]'),
+      this.#svg('text[id="Exp Text"]'),
+      this.#svg('path[id="Level Background Wave 1 Level"]'),
+      this.#svg('path[id="Level Background Wave 1 Mask"]'),
+      this.#svg('path[id="Level Background Wave 2 Level"]'),
+      this.#svg('path[id="Level Background Wave 2 Mask"]'),
+      // Right
+      this.#svg('rect[id="Showcase Header Background"]'),
+    ];
+
+    for (const element of elements) {
+      element.attr("fill", value);
+    }
+    return this;
+  }
+
   public nickname(value: string) {
     this.#svg("text[id='Nickname Value'] > tspan").text(value);
     return this;
