@@ -84,7 +84,15 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
 async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
   await createGuildSettings(ctx.prisma, guild.id);
   await registerGuildLoggers(ctx, guild);
-  await guild.members.fetch();
+
+  try {
+    await guild.members.fetch();
+  } catch (e) {
+    if (!(e instanceof DiscordAPIError)) throw e;
+    console.error(
+      `Failed to prefetch members for guild ${guild.id}: ${e.code} - ${e.message}`,
+    );
+  }
 }
 
 async function leaveGuild(guild: Guild) {
