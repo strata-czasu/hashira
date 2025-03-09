@@ -52,6 +52,9 @@ export const profile = new Hashira({ name: "profile" })
           where: {
             id: user.id,
           },
+          include: {
+            inventoryItems: true,
+          },
         });
         if (!dbUser) return;
 
@@ -90,7 +93,9 @@ export const profile = new Hashira({ name: "profile" })
           .tintColor("#aa85a4")
           .nickname(user.displayName)
           .title(user.tag)
-          .balance(formatBalanceForSVG(wallet.balance));
+          .balance(formatBalanceForSVG(wallet.balance))
+          .rep("??? rep") // TODO)) Rep value
+          .items(dbUser.inventoryItems.length.toString());
 
         const smirkIcon = await loadFileAsBase64(`${__dirname}/res/badge/smirk.png`);
         const smirkBigIcon = await loadFileAsBase64(

@@ -24,11 +24,12 @@ export class ProfileImageBuilder {
   public tintColor(value: string) {
     const elements = [
       // Left
-      this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
-      this.#svg('path[id="Activity Text Icon"]'),
+      this.#svg('path[id="Nick + Title Background"]'),
       this.#svg('rect[id="Stats Bar"]'),
       this.#svg('path[id="Stats Caps Icon"]'),
-      this.#svg('path[id="Nick + Title Background"]'),
+      this.#svg('path[id="Stats Items Icon"]'),
+      this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
+      this.#svg('path[id="Activity Text Icon"]'),
       // TODO: Clean up marriage text
       this.#svg('g[id="Marriage Status Text"]:nth-child(1)'),
       this.#svg('g[id="Marriage Status Text"]:nth-child(2)'),
@@ -64,6 +65,16 @@ export class ProfileImageBuilder {
 
   public balance(value: string) {
     this.#svg("text[id='Stats Caps Value'] > tspan").text(value);
+    return this;
+  }
+
+  public rep(value: string) {
+    this.#svg("text[id='Stats Rep Value'] > tspan").text(value);
+    return this;
+  }
+
+  public items(value: string) {
+    this.#svg("text[id='Stats Items Value'] > tspan").text(value);
     return this;
   }
 
