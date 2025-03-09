@@ -50,8 +50,81 @@ export class ProfileImageBuilder {
   }
 
   /**
-   * Set the opacity of a showcase badge.
+   * Set the image of a showcase badge and make it visible.
+   *
    * Incorrect row or column values will be ignored.
+   *
+   * This is a convenience shortcut for
+   * `showcaseBadgeImage(row, col, value)` and `showcaseBadgeOpacity(row, col, 1)`.
+   *
+   * @param row Row index (1-3)
+   * @param col Column index (1-5)
+   * @param value Image data URL
+   */
+  public showcaseBadge(row: number, col: number, value: string) {
+    return this.showcaseBadgeImage(row, col, value).showcaseBadgeOpacity(row, col, 1);
+  }
+
+  /**
+   * Set the image of a showcase badge.
+   *
+   * Incorrect row or column values will be ignored.
+   *
+   * WARN: Calling this multiple times on the same row and column
+   * is undefined behavior and may not work as expected.
+   *
+   * @param row Row index (1-3)
+   * @param col Column index (1-5)
+   * @param value Image data URL
+   */
+  public showcaseBadgeImage(row: number, col: number, value: string) {
+    const elementId = `Showcase Badge ${row}:${col}`;
+
+    // <circle id="${elementId}" fill="url(#...)"/>
+    const fill = this.showcaseBadgeContainer()
+      .children(`circle[id='${elementId}']`)
+      .first()
+      .attr("fill");
+    if (!fill) {
+      console.error(`\`fill\` attribute not found for badge '${elementId}'`);
+      return this;
+    }
+
+    // `url(#...)` -> `...`
+    const fillUrl = fill.replace("url(#", "").replace(")", "");
+    // <pattern id="${fillUrl}>
+    const patternElement = this.#svg(`defs > pattern[id='${fillUrl}']`).first();
+    if (!patternElement) {
+      console.error(`Pattern fill element not found for badge '${elementId}'`);
+      return this;
+    }
+
+    // <use xlink:href="..."/>
+    const imageHref = patternElement.children("use").first().attr("href");
+    if (!imageHref) {
+      console.error(`Image href not found for badge '${elementId}'`);
+      return this;
+    }
+    const imageId = imageHref.replace("#", "");
+
+    const defs = this.#svg("defs").first();
+    // Find the placeholder image element
+    const image = defs.children(`image[id='${imageId}']`).first();
+
+    const newImageId = `badge_image_${row}_${col}`;
+    // Clone the placeholder image with a new ID and href
+    image.clone().attr("id", newImageId).attr("href", value).appendTo(defs);
+    // Update the pattern to use the new image
+    patternElement.children("use").first().attr("href", `#${newImageId}`);
+
+    return this;
+  }
+
+  /**
+   * Set the opacity of a showcase badge.
+   *
+   * Incorrect row or column values will be ignored.
+   *
    * @param row Row index (1-3)
    * @param col Column index (1-5)
    * @param value Opacity value (0-1)
@@ -60,6 +133,7 @@ export class ProfileImageBuilder {
     const elementId = `Showcase Badge ${row}:${col}`;
     this.showcaseBadgeContainer()
       .children(`circle[id='${elementId}']`)
+      .first()
       .attr("opacity", value.toString());
     return this;
   }

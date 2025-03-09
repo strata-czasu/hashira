@@ -15,6 +15,12 @@ async function fetchAsBase64(url: string | URL) {
   return Buffer.from(arrbuf).toString("base64");
 }
 
+async function loadFileAsBase64(path: string) {
+  const file = Bun.file(path);
+  const arrbuf = await file.arrayBuffer();
+  return Buffer.from(arrbuf).toString("base64");
+}
+
 function formatPNGDataURL(data: string) {
   return `data:image/png;base64,${data}`;
 }
@@ -85,13 +91,16 @@ export const profile = new Hashira({ name: "profile" })
           .title(user.tag)
           .balance(formatBalanceForSVG(wallet.balance));
 
-        // Tests
+        const smirkIcon = await loadFileAsBase64(`${__dirname}/res/badge/smirk.png`);
+        const smirkBigIcon = await loadFileAsBase64(
+          `${__dirname}/res/badge/smirk-big.png`,
+        );
         image
           .allShowcaseBadgesOpacity(0)
-          .showcaseBadgeOpacity(1, 1, 1)
-          .showcaseBadgeOpacity(1, 2, 1)
-          .showcaseBadgeOpacity(2, 4, 1)
-          .showcaseBadgeOpacity(3, 5, 1);
+          .showcaseBadge(1, 1, formatPNGDataURL(smirkIcon))
+          .showcaseBadge(2, 4, formatPNGDataURL(smirkIcon))
+          .showcaseBadge(2, 5, formatPNGDataURL(smirkBigIcon))
+          .showcaseBadge(3, 4, formatPNGDataURL(smirkBigIcon));
 
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
