@@ -122,6 +122,11 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public exp(value: string) {
+    this.#svg("text[id='Exp Value'] > tspan").text(value);
+    return this;
+  }
+
   public level(value: number) {
     this.#svg("text[id='Level Value'] > tspan").text(value.toString());
     return this;
@@ -236,6 +241,17 @@ export class ProfileImageBuilder {
   }
 
   public result() {
+    // Fix text alignment for 'Exp Value'
+    const expValueX = 402.5; // From Figma: 'Exp Value' -> Position -> X
+    const expValueWidth = 270; // From Figma: 'Exp Value' -> Layout -> Width
+    // Create a bounding box and center the text
+    this.#svg("text[id='Exp Value']")
+      .attr("x", (expValueX + expValueWidth / 2).toString())
+      .attr("width", expValueWidth.toString())
+      .attr("text-anchor", "middle");
+    // Remove absolute x position from the tspan
+    this.#svg("text[id='Exp Value'] > tspan").removeAttr("x");
+
     // Fix text alignment for 'Level Value'
     const levelValueX = 408; // From Figma: 'Level Value' -> Position -> X
     const levelValueWidth = 259; // From Figma: 'Level Value' -> Layout -> Width

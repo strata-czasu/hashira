@@ -121,6 +121,7 @@ export const profile = new Hashira({ name: "profile" })
           .voiceActivity("123h") // TODO)) Voice activity value
           .textActivity(textActivity.toString())
           .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
+          .exp("1234/23001") // TODO)) Exp value
           .level(42) // TODO)) Level value
           .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
 
