@@ -118,8 +118,8 @@
 <g id="Activity">
 <g id="Activity Text">
 <g id="Activity Text Value">
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="32" font-weight="500" letter-spacing="0em"><tspan x="237" y="418.1">0 </tspan></text>
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="20" font-weight="500" letter-spacing="0em"><tspan x="268.688" y="418.1">wiad.</tspan></text>
+<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="32" font-weight="500" letter-spacing="0em"><tspan x="237" y="418.1">0</tspan></text>
+<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="20" font-weight="500" letter-spacing="0em"><tspan x="259.094" y="418.1"> wiad.</tspan></text>
 </g>
 <path id="Activity Text Icon" d="M217.125 385L229 396.875L224.25 401.625V413.5L198.125 423L196.242 421.117L206.395 410.964C206.787 411.069 207.199 411.125 207.625 411.125C210.248 411.125 212.375 408.998 212.375 406.375C212.375 403.752 210.248 401.625 207.625 401.625C205.002 401.625 202.875 403.752 202.875 406.375C202.875 406.801 202.931 407.213 203.036 407.605L192.883 417.758L191 415.875L200.5 389.75H212.375L217.125 385Z" fill="#3C3E43"/>
 </g>
