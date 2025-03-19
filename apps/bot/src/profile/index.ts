@@ -171,10 +171,14 @@ export const profile = new Hashira({ name: "profile" })
           image.marriageOpacity(0);
         }
 
-        const attachment = await image.toSharp().png().toBuffer();
+        const attachmentPng = await image.toSharp().png().toBuffer();
+        const attachmentSvg = Buffer.from(image.result());
         await itx.reply({
           // embeds: [embed],
-          files: [{ name: `profil-${user.tag}.png`, attachment }],
+          files: [
+            { name: `profil-${user.tag}.png`, attachment: attachmentPng },
+            { name: `profil-${user.tag}.svg`, attachment: attachmentSvg },
+          ],
         });
       }),
   );
