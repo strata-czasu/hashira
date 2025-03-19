@@ -116,10 +116,10 @@ export const profile = new Hashira({ name: "profile" })
           .nickname(user.displayName)
           .title(user.tag)
           .balance(formatBalanceForSVG(wallet.balance))
-          .rep("??? rep") // TODO)) Rep value
+          .rep("0 rep") // TODO)) Rep value
           .items(dbUser.inventoryItems.length.toString())
-          .voiceActivity("123h") // TODO)) Voice activity value
-          .textActivity(textActivity.toString())
+          .voiceActivity(123) // TODO)) Voice activity value
+          .textActivity(textActivity)
           .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
           .exp("1234/23001") // TODO)) Exp value
           .level(42) // TODO)) Level value

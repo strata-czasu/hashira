@@ -14,6 +14,58 @@ export class ProfileImageBuilder {
 
   constructor(svg: cheerio.CheerioAPI) {
     this.#svg = svg;
+
+    // Combine 'Activity Voice Value' into a single <text> element
+    this.combineTextElements("g[id='Activity Voice Value'] > text");
+
+    // Combine 'Activity Voice Value' into a single <text> element
+    this.combineTextElements("g[id='Activity Text Value'] > text");
+  }
+
+  /**
+   * Combine text elements matching a selector into a single element
+   * with multiple <tspan> children.
+   *
+   * Move the `x` and `y` attributes from the first matched <text> element,
+   * but remove them from all <tspan> elements afterwards.
+   *
+   * Move the value of `font-size` to individual <tspan> elements and remove
+   * it from the <text> element.
+   *
+   * @param selector Selector for <text> elements which should be combined
+   */
+  private combineTextElements(selector: string) {
+    // First <text> element - all <tspan> elements will be moved here
+    const firstTextElement = this.#svg(selector).first();
+
+    // First <tspan> element - we keep its position
+    const firstTspan = firstTextElement.children("tspan").first();
+
+    // Copy the position from <tspan> to <text>
+    const x = firstTspan.attr("x");
+    const y = firstTspan.attr("y");
+    firstTextElement.attr("x", x).attr("y", y);
+
+    const allTspanElements = this.#svg(selector).children("tspan");
+
+    // Copy the `font-size` attr to individual <tspan> elements
+    for (const element of allTspanElements) {
+      const tspan = this.#svg(element);
+      const fontSize = tspan.parent().attr("font-size");
+      tspan.attr("font-size", fontSize);
+    }
+
+    // Remove `font-size` from <text> elements
+    this.#svg(selector).removeAttr("font-size");
+
+    // Remove the inline x and y attributes from the <tspan> element
+    allTspanElements.removeAttr("x").removeAttr("y");
+
+    // Move all <tspan> elements to the first <text> element
+    allTspanElements.appendTo(firstTextElement);
+
+    // Remove all other <text> elements
+    this.#svg(selector).slice(1).remove();
   }
 
   /**
@@ -78,19 +130,15 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public voiceActivity(value: string) {
+  public voiceActivity(value: number) {
     const group = "g[id='Activity Voice Value']";
-    this.#svg(`${group} > text:nth(0) > tspan`).text(value);
-    // TODO: Display the second text element and offset it correctly
-    this.#svg(`${group} > text:nth(1)`).attr("opacity", "0");
+    this.#svg(`${group} > text > tspan:nth(0)`).text(value.toString());
     return this;
   }
 
-  public textActivity(value: string) {
+  public textActivity(value: number) {
     const group = "g[id='Activity Text Value']";
-    this.#svg(`${group} > text:nth(0) > tspan`).text(value);
-    // TODO: Display the second text element and offset it correctly
-    this.#svg(`${group} > text:nth(1)`).attr("opacity", "0");
+    this.#svg(`${group} > text > tspan:nth(0)`).text(value.toString());
     return this;
   }
 
