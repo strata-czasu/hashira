@@ -68,6 +68,7 @@ export const profile = new Hashira({ name: "profile" })
           },
         });
         if (!dbUser) return;
+        await itx.deferReply();
 
         const wallet = await getDefaultWallet({
           prisma,
@@ -182,7 +183,7 @@ export const profile = new Hashira({ name: "profile" })
 
         try {
           const attachment = await image.toSharp().png().toBuffer();
-          await itx.reply({
+          await itx.editReply({
             files: [{ name: `profil-${user.tag}.png`, attachment }],
           });
         } catch (e) {
@@ -196,7 +197,7 @@ export const profile = new Hashira({ name: "profile" })
               `Failed to generate user profile image for user ${user.tag}: ${e.code} - ${e.message}`,
             );
           }
-          await itx.reply({ embeds: [embed] });
+          await itx.editReply({ embeds: [embed] });
         }
       }),
   );
