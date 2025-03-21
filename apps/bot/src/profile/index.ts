@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import * as cheerio from "cheerio";
 import { differenceInDays, format, sub } from "date-fns";
 import {
+  DiscordAPIError,
   EmbedBuilder,
   RESTJSONErrorCodes,
   TimestampStyles,
@@ -179,14 +180,23 @@ export const profile = new Hashira({ name: "profile" })
             .marriageOpacity(0);
         }
 
-        const attachmentPng = await image.toSharp().png().toBuffer();
-        const attachmentSvg = Buffer.from(image.result());
-        await itx.reply({
-          // embeds: [embed],
-          files: [
-            { name: `profil-${user.tag}.png`, attachment: attachmentPng },
-            { name: `profil-${user.tag}.svg`, attachment: attachmentSvg },
-          ],
-        });
+        try {
+          const attachment = await image.toSharp().png().toBuffer();
+          await itx.reply({
+            files: [{ name: `profil-${user.tag}.png`, attachment }],
+          });
+        } catch (e) {
+          if (!(e instanceof DiscordAPIError)) {
+            console.error(
+              `Failed to generate user profile image for user ${user.tag}`,
+              e,
+            );
+          } else {
+            console.error(
+              `Failed to generate user profile image for user ${user.tag}: ${e.code} - ${e.message}`,
+            );
+          }
+          await itx.reply({ embeds: [embed] });
+        }
       }),
   );
