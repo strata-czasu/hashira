@@ -31,8 +31,10 @@ export class ProfileImageBuilder {
     this.combineTextElements("g[id='Marriage Status Text Top'] > text", {
       sortTspanElements: true,
     });
-    // TODO)) Remove unnecessary whitespace between "z" and "User"
     this.combineTextElements("g[id='Marriage Status Text Bottom'] > text");
+    // HACK)) Should this whitepace even be there?
+    // FIXME)) If possible, fix in Figma and remove this hack
+    this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:nth(1)").remove();
 
     // Fix text alignment for 'Exp Value'
     this.createTextBoundingBox(
