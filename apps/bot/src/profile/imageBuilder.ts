@@ -20,6 +20,13 @@ export class ProfileImageBuilder {
 
     // Combine 'Activity Voice Value' into a single <text> element
     this.combineTextElements("g[id='Activity Text Value'] > text");
+
+    // TODO)) Marriage text fill
+    this.combineTextElements("g[id='Marriage Status Text Top'] > text", {
+      sortTspanElements: true,
+    });
+    // TODO)) Remove unnecessary whitespace between "z" and "User"
+    this.combineTextElements("g[id='Marriage Status Text Bottom'] > text");
   }
 
   /**
@@ -31,10 +38,14 @@ export class ProfileImageBuilder {
    *
    * Move the value of `font-size` to individual <tspan> elements and remove
    * it from the <text> element.
+   * TODO)) Move `fill`
    *
    * @param selector Selector for <text> elements which should be combined
    */
-  private combineTextElements(selector: string) {
+  private combineTextElements(
+    selector: string,
+    options?: { sortTspanElements?: boolean },
+  ) {
     // First <text> element - all <tspan> elements will be moved here
     const firstTextElement = this.#svg(selector).first();
 
@@ -45,6 +56,21 @@ export class ProfileImageBuilder {
     const x = firstTspan.attr("x");
     const y = firstTspan.attr("y");
     firstTextElement.attr("x", x).attr("y", y);
+
+    // Sort
+    if (options?.sortTspanElements ?? false) {
+      const sortedTspanElements = this.#svg(selector)
+        .children("tspan")
+        .get()
+        .sort((a, b) => {
+          const aX = this.#svg(a).attr("x");
+          const bX = this.#svg(b).attr("x");
+          if (!aX || !bX) return 0;
+          return +aX - +bX;
+        });
+      // Replace <tspan> elements with the same, but sorted elements
+      this.#svg(selector).children("tspan").replaceWith(sortedTspanElements);
+    }
 
     const allTspanElements = this.#svg(selector).children("tspan");
 

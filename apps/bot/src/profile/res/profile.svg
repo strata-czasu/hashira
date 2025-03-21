@@ -102,9 +102,15 @@
 <g id="Marriage Status">
 <path id="Marriage Status Icon" d="M47.9513 482.107L64 499L80.0488 482.107C81.9384 480.117 83 477.42 83 474.607V474.131C83 468.536 78.691 464 73.3758 464C70.4519 464 67.6868 465.399 65.8604 467.802L64 470.25L62.1396 467.802C60.3132 465.399 57.548 464 54.6243 464C49.309 464 45 468.536 45 474.131V474.607C45 477.42 46.0616 480.117 47.9513 482.107Z" fill="#C83131"/>
 <g id="Marriage Status Text">
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="92" y="479.7">Od </tspan><tspan x="197.281" y="479.7">w zwi&#x105;zku&#10;</tspan><tspan x="92" y="503.7">z </tspan><tspan x="224.094" y="503.7">  </tspan></text>
-<text fill="#3C3E43" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="145.812" y="479.7"> dni </tspan><tspan x="111.219" y="503.7">User2025</tspan></text>
-<text fill="#3C3E43" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="136.203" y="479.7">1</tspan></text>
+<g id="Marriage Status Text Top">
+<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="92" y="474.2">Od </tspan><tspan x="190.086" y="474.2"> w zwi&#x105;zku</tspan></text>
+<text fill="#3C3E43" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="145.812" y="474.2"> dni</tspan></text>
+<text fill="#3C3E43" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="136.203" y="474.2">1</tspan></text>
+</g>
+<g id="Marriage Status Text Bottom">
+<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="92" y="503.2">z </tspan><tspan x="224.094" y="503.2">  </tspan></text>
+<text fill="#3C3E43" xml:space="preserve" style="white-space: pre" font-family="Now" font-size="24" font-weight="500" letter-spacing="0em"><tspan x="111.219" y="503.2">User2025</tspan></text>
+</g>
 </g>
 </g>
 <g id="Account Creation">
