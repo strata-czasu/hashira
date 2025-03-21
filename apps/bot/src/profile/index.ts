@@ -168,7 +168,10 @@ export const profile = new Hashira({ name: "profile" })
           const encodedData = await fetchAsBase64(avatarImageURL);
           image.marriageImage(formatPNGDataURL(encodedData)).marriageOpacity(1);
         } else {
-          image.marriageOpacity(0);
+          image
+            .marriageStatusIconFill("gray")
+            .marriageStatusTextOpacity(0)
+            .marriageOpacity(0);
         }
 
         const attachmentPng = await image.toSharp().png().toBuffer();

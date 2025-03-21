@@ -169,6 +169,21 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  /**
+   * Set fill color of the marriage status heart icon
+   *
+   * @param value Color value in a SVG-supported format (e.g. `#ff0000`)
+   */
+  public marriageStatusIconFill(value: string) {
+    this.#svg("path[id='Marriage Status Icon']").attr("fill", value);
+    return this;
+  }
+
+  public marriageStatusTextOpacity(value: number) {
+    this.#svg("g[id='Marriage Status Text']").attr("opacity", value.toString());
+    return this;
+  }
+
   public guildJoinDate(value: string) {
     this.#svg("text[id='Guild Join Value'] > tspan").text(value);
     return this;
