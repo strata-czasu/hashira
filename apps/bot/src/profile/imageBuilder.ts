@@ -96,9 +96,13 @@ export class ProfileImageBuilder {
   /**
    * Apply a tint color to all elements that support tinting.
    *
+   * NOTE: This function's behavior depends on the default (placeholder) tint color
+   *       staying constant. See `defaultTintColor` and its upsage in the function's body.
+   *
    * @param value Color value in a SVG-supported format (e.g. `#ff0000`)
    */
   public tintColor(value: string) {
+    const defaultTintColor = "#3C3E43";
     const elements = [
       // Left
       this.#svg('path[id="Nick + Title Background"]'),
@@ -107,8 +111,7 @@ export class ProfileImageBuilder {
       this.#svg('path[id="Stats Items Icon"]'),
       this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
       this.#svg('path[id="Activity Text Icon"]'),
-      this.#svg('g[id="Marriage Status Text"]:nth-child(1)'),
-      this.#svg('g[id="Marriage Status Text"]:nth-child(2)'),
+      this.#svg(`g[id="Marriage Status Text"] tspan[fill="${defaultTintColor}"]`),
       this.#svg('text[id="Account Creation Value"]'),
       this.#svg('text[id="Guild Join Value"]'),
       // Middle
