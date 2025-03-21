@@ -33,6 +33,20 @@ export class ProfileImageBuilder {
     });
     // TODO)) Remove unnecessary whitespace between "z" and "User"
     this.combineTextElements("g[id='Marriage Status Text Bottom'] > text");
+
+    // Fix text alignment for 'Exp Value'
+    this.createTextBoundingBox(
+      "text[id='Exp Value']",
+      402.5, // From Figma: 'Exp Value' -> Position -> X
+      270, // From Figma: 'Exp Value' -> Layout -> Width
+    );
+
+    // Fix text alignment for 'Level Value'
+    this.createTextBoundingBox(
+      "text[id='Level Value']",
+      408, // From Figma: 'Level Value' -> Position -> X
+      259, // From Figma: 'Level Value' -> Layout -> Width
+    );
   }
 
   /**
@@ -98,6 +112,24 @@ export class ProfileImageBuilder {
 
     // Remove all other <text> elements
     this.#svg(selector).slice(1).remove();
+  }
+
+  /**
+   * Resize a <text> element's bounding box to the given position and witdh
+   * and center its contents.
+   *
+   * @param selector Selector for the <text> element
+   * @param x Horizontal position of the text bounding box
+   * @param width Width of the text bounding box
+   */
+  private createTextBoundingBox(selector: string, x: number, width: number) {
+    // Create a bounding box and center the text
+    this.#svg(selector)
+      .attr("x", (x + width / 2).toString())
+      .attr("width", width.toString())
+      .attr("text-anchor", "middle");
+    // Remove absolute x position from the <tspan>
+    this.#svg(selector).children("tspan").removeAttr("x");
   }
 
   /**
@@ -351,28 +383,6 @@ export class ProfileImageBuilder {
   }
 
   public result() {
-    // Fix text alignment for 'Exp Value'
-    const expValueX = 402.5; // From Figma: 'Exp Value' -> Position -> X
-    const expValueWidth = 270; // From Figma: 'Exp Value' -> Layout -> Width
-    // Create a bounding box and center the text
-    this.#svg("text[id='Exp Value']")
-      .attr("x", (expValueX + expValueWidth / 2).toString())
-      .attr("width", expValueWidth.toString())
-      .attr("text-anchor", "middle");
-    // Remove absolute x position from the tspan
-    this.#svg("text[id='Exp Value'] > tspan").removeAttr("x");
-
-    // Fix text alignment for 'Level Value'
-    const levelValueX = 408; // From Figma: 'Level Value' -> Position -> X
-    const levelValueWidth = 259; // From Figma: 'Level Value' -> Layout -> Width
-    // Create a bounding box and center the text
-    this.#svg("text[id='Level Value']")
-      .attr("x", (levelValueX + levelValueWidth / 2).toString())
-      .attr("width", levelValueWidth.toString())
-      .attr("text-anchor", "middle");
-    // Remove absolute x position from the tspan
-    this.#svg("text[id='Level Value'] > tspan").removeAttr("x");
-
     return this.#svg
       .html()
       .replace("<html>", "")
