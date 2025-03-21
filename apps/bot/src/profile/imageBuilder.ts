@@ -150,8 +150,8 @@ export class ProfileImageBuilder {
       this.#svg('rect[id="Stats Bar"]'),
       this.#svg('path[id="Stats Caps Icon"]'),
       this.#svg('path[id="Stats Items Icon"]'),
-      this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
-      this.#svg('path[id="Activity Text Icon"]'),
+      this.#svg('g[id="Activity Voice Icon"] path'),
+      this.#svg('g[id="Activity Text Icon"] path'),
       this.#svg(`g[id="Marriage Status Text"] tspan[fill="${defaultTintColor}"]`),
       this.#svg('text[id="Account Creation Value"]'),
       this.#svg('text[id="Guild Join Value"]'),
