@@ -210,17 +210,7 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  /**
-   * Set fill color of the marriage status heart icon
-   *
-   * @param value Color value in a SVG-supported format (e.g. `#ff0000`)
-   */
-  public marriageStatusIconFill(value: string) {
-    this.#svg("path[id='Marriage Status Icon']").attr("fill", value);
-    return this;
-  }
-
-  public marriageStatusTextDays(value: number) {
+  public marriageStatusDays(value: number) {
     const group = this.#svg("g[id='Marriage Status Text Top'] > text");
     group.children("tspan:nth(1)").text(value.toString());
     // Leave a space beteen day amount and text
@@ -228,13 +218,14 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public marriageStatusTextUsername(value: string) {
+  public marriageStatusUsername(value: string) {
     this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:last").text(value);
     return this;
   }
 
-  public marriageStatusTextOpacity(value: number) {
+  public marriageStatusOpacity(value: number) {
     this.#svg("g[id='Marriage Status Text']").attr("opacity", value.toString());
+    this.#svg("path[id='Marriage Status Icon']").attr("opacity", value.toString());
     return this;
   }
 
@@ -253,7 +244,7 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public marriageImage(value: string) {
+  public marriageAvatarImage(value: string) {
     this.#svg("image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']").attr(
       "href",
       value,
@@ -261,7 +252,7 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public marriageOpacity(value: number) {
+  public marriageAvatarOpacity(value: number) {
     this.#svg("g[id='Marriage']").attr("opacity", value.toString());
     return this;
   }

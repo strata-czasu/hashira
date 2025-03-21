@@ -171,15 +171,13 @@ export const profile = new Hashira({ name: "profile" })
             spouse.defaultAvatarURL;
           const encodedData = await fetchAsBase64(avatarImageURL);
           image
-            .marriageStatusTextDays(marriedDays)
-            .marriageStatusTextUsername(spouse.tag)
-            .marriageImage(formatPNGDataURL(encodedData))
-            .marriageOpacity(1);
+            .marriageStatusOpacity(1)
+            .marriageStatusDays(marriedDays)
+            .marriageStatusUsername(spouse.tag)
+            .marriageAvatarOpacity(1)
+            .marriageAvatarImage(formatPNGDataURL(encodedData));
         } else {
-          image
-            .marriageStatusIconFill("gray")
-            .marriageStatusTextOpacity(0)
-            .marriageOpacity(0);
+          image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
         }
 
         try {
