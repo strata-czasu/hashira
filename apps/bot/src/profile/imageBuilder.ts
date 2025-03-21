@@ -1,5 +1,12 @@
 import type * as cheerio from "cheerio";
 import sharp from "sharp";
+import { createPluralize } from "../util/pluralize";
+
+const pluralizeDays = createPluralize({
+  0: "dni",
+  1: "dnia",
+  2: "dni",
+});
 
 /**
  * Profile image builder for generating user profile images.
@@ -180,10 +187,10 @@ export class ProfileImageBuilder {
   }
 
   public marriageStatusTextDays(value: number) {
-    // TODO)) Pluralize "days" text
-    this.#svg("g[id='Marriage Status Text Top'] > text > tspan:nth(1)").text(
-      value.toString(),
-    );
+    const group = this.#svg("g[id='Marriage Status Text Top'] > text");
+    group.children("tspan:nth(1)").text(value.toString());
+    // Leave a space beteen day amount and text
+    group.children("tspan:nth(2)").text(` ${pluralizeDays(value)}`);
     return this;
   }
 
