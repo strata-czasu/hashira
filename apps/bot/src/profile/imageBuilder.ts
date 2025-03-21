@@ -21,7 +21,6 @@ export class ProfileImageBuilder {
     // Combine 'Activity Voice Value' into a single <text> element
     this.combineTextElements("g[id='Activity Text Value'] > text");
 
-    // TODO)) Marriage text fill
     this.combineTextElements("g[id='Marriage Status Text Top'] > text", {
       sortTspanElements: true,
     });
@@ -36,9 +35,8 @@ export class ProfileImageBuilder {
    * Move the `x` and `y` attributes from the first matched <text> element,
    * but remove them from all <tspan> elements afterwards.
    *
-   * Move the value of `font-size` to individual <tspan> elements and remove
-   * it from the <text> element.
-   * TODO)) Move `fill`
+   * Move values of `font-size` and `fill` to individual <tspan> elements
+   * and remove them from the <text> element.
    *
    * @param selector Selector for <text> elements which should be combined
    */
@@ -50,6 +48,8 @@ export class ProfileImageBuilder {
     const firstTextElement = this.#svg(selector).first();
 
     // First <tspan> element - we keep its position
+    // FIXME)) This could be incorrect when <text> or <tspan> elements
+    //         aren't ordered correctly.
     const firstTspan = firstTextElement.children("tspan").first();
 
     // Copy the position from <tspan> to <text>
@@ -57,9 +57,23 @@ export class ProfileImageBuilder {
     const y = firstTspan.attr("y");
     firstTextElement.attr("x", x).attr("y", y);
 
-    // Sort
+    const allTspanElements = this.#svg(selector).children("tspan");
+
+    // Move `font-size` and `fill` attrs to individual <tspan> elements
+    for (const element of allTspanElements) {
+      const tspan = this.#svg(element);
+      const parent = tspan.parent();
+      tspan.attr("font-size", parent.attr("font-size"));
+      tspan.attr("fill", parent.attr("fill"));
+    }
+    this.#svg(selector).removeAttr("font-size").removeAttr("fill");
+
+    // Move all <tspan> elements to the first <text> element
+    allTspanElements.appendTo(firstTextElement);
+
+    // Sort <tspan> elements after consolidating them into a single <text> element
     if (options?.sortTspanElements ?? false) {
-      const sortedTspanElements = this.#svg(selector)
+      const sortedTspanElements = firstTextElement
         .children("tspan")
         .get()
         .sort((a, b) => {
@@ -69,26 +83,11 @@ export class ProfileImageBuilder {
           return +aX - +bX;
         });
       // Replace <tspan> elements with the same, but sorted elements
-      this.#svg(selector).children("tspan").replaceWith(sortedTspanElements);
+      firstTextElement.children("tspan").replaceWith(sortedTspanElements);
     }
 
-    const allTspanElements = this.#svg(selector).children("tspan");
-
-    // Copy the `font-size` attr to individual <tspan> elements
-    for (const element of allTspanElements) {
-      const tspan = this.#svg(element);
-      const fontSize = tspan.parent().attr("font-size");
-      tspan.attr("font-size", fontSize);
-    }
-
-    // Remove `font-size` from <text> elements
-    this.#svg(selector).removeAttr("font-size");
-
-    // Remove the inline x and y attributes from the <tspan> element
-    allTspanElements.removeAttr("x").removeAttr("y");
-
-    // Move all <tspan> elements to the first <text> element
-    allTspanElements.appendTo(firstTextElement);
+    // Remove inline x and y attributes from <tspan> elements
+    firstTextElement.children("tspan").removeAttr("x").removeAttr("y");
 
     // Remove all other <text> elements
     this.#svg(selector).slice(1).remove();
@@ -108,7 +107,6 @@ export class ProfileImageBuilder {
       this.#svg('path[id="Stats Items Icon"]'),
       this.#svg('g[id="Activity Voice Icon"] > path'), // Voice icon has multiple paths
       this.#svg('path[id="Activity Text Icon"]'),
-      // TODO: Clean up marriage text
       this.#svg('g[id="Marriage Status Text"]:nth-child(1)'),
       this.#svg('g[id="Marriage Status Text"]:nth-child(2)'),
       this.#svg('text[id="Account Creation Value"]'),
