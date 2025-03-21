@@ -6,6 +6,7 @@ import {
   EmbedBuilder,
   RESTJSONErrorCodes,
   TimestampStyles,
+  subtext,
   time,
   userMention,
 } from "discord.js";
@@ -197,7 +198,12 @@ export const profile = new Hashira({ name: "profile" })
               `Failed to generate user profile image for user ${user.tag}: ${e.code} - ${e.message}`,
             );
           }
-          await itx.editReply({ embeds: [embed] });
+          await itx.editReply({
+            content: subtext(
+              "Coś poszło nie tak przy generowaniu graficznego profilu! Spróbuj jeszcze raz lub zgłoś problem developerom.",
+            ),
+            embeds: [embed],
+          });
         }
       }),
   );
