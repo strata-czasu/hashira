@@ -179,6 +179,19 @@ export class ProfileImageBuilder {
     return this;
   }
 
+  public marriageStatusTextDays(value: number) {
+    // TODO)) Pluralize "days" text
+    this.#svg("g[id='Marriage Status Text Top'] > text > tspan:nth(1)").text(
+      value.toString(),
+    );
+    return this;
+  }
+
+  public marriageStatusTextUsername(value: string) {
+    this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:last").text(value);
+    return this;
+  }
+
   public marriageStatusTextOpacity(value: number) {
     this.#svg("g[id='Marriage Status Text']").attr("opacity", value.toString());
     return this;

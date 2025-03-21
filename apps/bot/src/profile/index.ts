@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import * as cheerio from "cheerio";
-import { format, sub } from "date-fns";
+import { differenceInDays, format, sub } from "date-fns";
 import {
   EmbedBuilder,
   RESTJSONErrorCodes,
@@ -162,11 +162,16 @@ export const profile = new Hashira({ name: "profile" })
             )}`,
           });
 
+          const marriedDays = differenceInDays(itx.createdAt, dbUser.marriedAt);
           const avatarImageURL =
             spouse.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
             spouse.defaultAvatarURL;
           const encodedData = await fetchAsBase64(avatarImageURL);
-          image.marriageImage(formatPNGDataURL(encodedData)).marriageOpacity(1);
+          image
+            .marriageStatusTextDays(marriedDays)
+            .marriageStatusTextUsername(spouse.tag)
+            .marriageImage(formatPNGDataURL(encodedData))
+            .marriageOpacity(1);
         } else {
           image
             .marriageStatusIconFill("gray")
