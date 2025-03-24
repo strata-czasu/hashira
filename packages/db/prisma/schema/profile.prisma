@@ -22,9 +22,49 @@ model OwnedProfileTitle {
   @@unique([titleId, userId])
 }
 
+model ProfileBadge {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+  createdBy String
+  name      String
+  image     Bytes // PNG binary data, 128x128px
+
+  ownedBadges     OwnedProfileBadge[]
+  displayedBadges DisplayedProfileBadge[]
+}
+
+model OwnedProfileBadge {
+  badgeId   Int
+  userId    String
+  createdAt DateTime @default(now())
+
+  badge ProfileBadge @relation(fields: [badgeId], references: [id])
+  user  User         @relation(fields: [userId], references: [id])
+
+  @@id([badgeId, userId])
+  @@unique([badgeId, userId])
+}
+
+model DisplayedProfileBadge {
+  badgeId Int
+  userId  String
+  row     Int    @map("y")
+  col     Int    @map("x")
+
+  badge ProfileBadge @relation(fields: [badgeId], references: [id])
+  user  User         @relation(fields: [userId], references: [id])
+
+  @@id([badgeId, userId])
+  @@unique([badgeId, userId, row, col])
+}
+
 model ProfileSettings {
   userId  String @id @unique
   titleId Int?
+  // TODO)) Tint color
+  // TODO)) Background image
 
   user  User          @relation(fields: [userId], references: [id])
   title ProfileTitle? @relation(fields: [titleId], references: [id])

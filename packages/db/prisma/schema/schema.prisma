@@ -228,6 +228,8 @@ model User {
   participatingInDmPolls            DmPollParticipant[]
   dmPollExclusion                   DmPollExclusion?
   ownedProfileTitles                OwnedProfileTitle[]
+  ownedProfileBadges                OwnedProfileBadge[]
+  displayedProfileBadges            DisplayedProfileBadge[]
   settings                          ProfileSettings?
 
   @@map("users")
