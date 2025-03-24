@@ -227,6 +227,8 @@ model User {
   dmPollVotes                       DmPollVote[]
   participatingInDmPolls            DmPollParticipant[]
   dmPollExclusion                   DmPollExclusion?
+  ownedProfileTitles                OwnedProfileTitle[]
+  settings                          ProfileSettings?
 
   @@map("users")
 }
