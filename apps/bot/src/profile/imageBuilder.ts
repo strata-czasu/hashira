@@ -127,7 +127,7 @@ export class ProfileImageBuilder {
           const aX = this.#svg(a).attr("x");
           const bX = this.#svg(b).attr("x");
           if (!aX || !bX) return 0;
-          return +aX - +bX;
+          return Number(aX) - Number(bX);
         });
       // Replace <tspan> elements with the same, but sorted elements
       firstTextElement.children("tspan").replaceWith(sortedTspanElements);
