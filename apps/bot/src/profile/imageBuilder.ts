@@ -327,8 +327,7 @@ export class ProfileImageBuilder {
       .first()
       .attr("fill");
     if (!fill) {
-      console.error(`\`fill\` attribute not found for badge '${elementId}'`);
-      return this;
+      throw new Error(`\`fill\` attribute not found for badge '${elementId}'`);
     }
 
     // `url(#...)` -> `...`
@@ -336,15 +335,13 @@ export class ProfileImageBuilder {
     // <pattern id="${fillUrl}>
     const patternElement = this.#svg(`defs > pattern[id='${fillUrl}']`).first();
     if (!patternElement) {
-      console.error(`Pattern fill element not found for badge '${elementId}'`);
-      return this;
+      throw new Error(`Pattern element not found for badge '${elementId}'`);
     }
 
     // <use xlink:href="..."/>
     const imageHref = patternElement.children("use").first().attr("href");
     if (!imageHref) {
-      console.error(`Image href not found for badge '${elementId}'`);
-      return this;
+      throw new Error(`Pattern element href not found for badge '${elementId}'`);
     }
     const imageId = imageHref.replace("#", "");
 
