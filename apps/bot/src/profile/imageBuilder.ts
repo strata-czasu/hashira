@@ -32,7 +32,7 @@ export class ProfileImageBuilder {
       sortTspanElements: true,
     });
     this.combineTextElements("g[id='Marriage Status Text Bottom'] > text");
-    // HACK)) Should this whitepace even be there?
+    // HACK)) Should this whitespace even be there?
     // FIXME)) If possible, fix in Figma and remove this hack
     this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:nth(1)").remove();
 
@@ -117,7 +117,7 @@ export class ProfileImageBuilder {
   }
 
   /**
-   * Resize a <text> element's bounding box to the given position and witdh
+   * Resize a <text> element's bounding box to the given position and width
    * and center its contents.
    *
    * @param selector Selector for the <text> element
@@ -213,7 +213,7 @@ export class ProfileImageBuilder {
   public marriageStatusDays(value: number) {
     const group = this.#svg("g[id='Marriage Status Text Top'] > text");
     group.children("tspan:nth(1)").text(value.toString());
-    // Leave a space beteen day amount and text
+    // Leave a space between day amount and text
     group.children("tspan:nth(2)").text(` ${pluralizeDays(value)}`);
     return this;
   }
