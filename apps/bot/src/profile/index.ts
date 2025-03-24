@@ -139,7 +139,8 @@ export const profile = new Hashira({ name: "profile" })
               .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
               .exp("1234/23001") // TODO)) Exp value
               .level(42) // TODO)) Level value
-              .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
+              .backgroundImage(formatPNGDataURL(backgroundImage)) // TODO)) Customizable background image
+              .allShowcaseBadgesOpacity(0);
 
             if (profileSettings?.title) {
               image.title(profileSettings.title.name);
@@ -157,19 +158,14 @@ export const profile = new Hashira({ name: "profile" })
               image.guildJoinDate(format(member.joinedAt, PROFILE_DATE_FORMAT));
             }
 
-            // TODO)) Customizable badges
-            const smirkIcon = await loadFileAsBase64(
-              `${__dirname}/res/badge/smirk.png`,
-            );
-            const smirkBigIcon = await loadFileAsBase64(
-              `${__dirname}/res/badge/smirk-big.png`,
-            );
-            image
-              .allShowcaseBadgesOpacity(0)
-              .showcaseBadge(1, 1, formatPNGDataURL(smirkIcon))
-              .showcaseBadge(2, 4, formatPNGDataURL(smirkIcon))
-              .showcaseBadge(2, 5, formatPNGDataURL(smirkBigIcon))
-              .showcaseBadge(3, 4, formatPNGDataURL(smirkBigIcon));
+            const displayedBadges = await prisma.displayedProfileBadge.findMany({
+              where: { userId: user.id },
+              include: { badge: true },
+            });
+            for (const { row, col, badge } of displayedBadges) {
+              const imageData = Buffer.from(badge.image).toString("base64");
+              image.showcaseBadge(row, col, formatPNGDataURL(imageData));
+            }
 
             const avatarImageURL =
               user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
