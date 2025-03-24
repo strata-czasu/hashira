@@ -391,14 +391,7 @@ export class ProfileImageBuilder {
   }
 
   public result() {
-    return this.#svg
-      .html()
-      .replace("<html>", "")
-      .replace("</html>", "")
-      .replace("<body>", "")
-      .replace("</body>", "")
-      .replace("<head>", "")
-      .replace("</head>", "");
+    return this.#svg.html("svg");
   }
 
   public toSharp() {
