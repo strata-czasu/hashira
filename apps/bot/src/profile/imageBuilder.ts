@@ -202,13 +202,13 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public rep(value: string) {
-    this.#svg("text[id='Stats Rep Value'] > tspan").text(value);
+  public rep(value: number) {
+    this.#svg("text[id='Stats Rep Value'] > tspan").text(`${value} rep`);
     return this;
   }
 
-  public items(value: string) {
-    this.#svg("text[id='Stats Items Value'] > tspan").text(value);
+  public items(value: number) {
+    this.#svg("text[id='Stats Items Value'] > tspan").text(value.toString());
     return this;
   }
 
@@ -275,8 +275,8 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public exp(value: string) {
-    this.#svg("text[id='Exp Value'] > tspan").text(value);
+  public exp(current: number, target: number) {
+    this.#svg("text[id='Exp Value'] > tspan").text(`${current}/${target}`);
     return this;
   }
 

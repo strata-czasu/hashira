@@ -108,12 +108,12 @@ export const profile = new Hashira({ name: "profile" })
           .nickname(user.displayName)
           .title(user.tag)
           .balance(wallet.balance)
-          .rep("0 rep") // TODO)) Rep value
-          .items(dbUser.inventoryItems.length.toString())
+          .rep(0) // TODO)) Rep value
+          .items(dbUser.inventoryItems.length)
           .voiceActivity(123) // TODO)) Voice activity value
           .textActivity(textActivity)
           .accountCreationDate(user.createdAt)
-          .exp("1234/23001") // TODO)) Exp value
+          .exp(1234, 23001) // TODO)) Exp value
           .level(42) // TODO)) Level value
           .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
 
