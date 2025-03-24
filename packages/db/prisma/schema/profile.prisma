@@ -1,0 +1,31 @@
+model ProfileTitle {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+  createdBy String
+  name      String
+
+  ownedTitles     OwnedProfileTitle[]
+  profileSettings ProfileSettings[]
+}
+
+model OwnedProfileTitle {
+  titleId   Int
+  userId    String
+  createdAt DateTime @default(now())
+
+  title ProfileTitle @relation(fields: [titleId], references: [id])
+  user  User         @relation(fields: [userId], references: [id])
+
+  @@id([titleId, userId])
+  @@unique([titleId, userId])
+}
+
+model ProfileSettings {
+  userId  String @id @unique
+  titleId Int?
+
+  user  User          @relation(fields: [userId], references: [id])
+  title ProfileTitle? @relation(fields: [titleId], references: [id])
+}
