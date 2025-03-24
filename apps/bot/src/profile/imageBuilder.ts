@@ -1,6 +1,9 @@
 import type * as cheerio from "cheerio";
+import { format as formatDate } from "date-fns";
 import sharp from "sharp";
 import { createPluralize } from "../util/pluralize";
+
+const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
 
 const pluralizeDays = createPluralize({
   0: "dni",
@@ -240,13 +243,17 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public guildJoinDate(value: string) {
-    this.#svg("text[id='Guild Join Value'] > tspan").text(value);
+  public guildJoinDate(value: Date) {
+    this.#svg("text[id='Guild Join Value'] > tspan").text(
+      formatDate(value, PROFILE_DATE_FORMAT),
+    );
     return this;
   }
 
-  public accountCreationDate(value: string) {
-    this.#svg("text[id='Account Creation Value'] > tspan").text(value);
+  public accountCreationDate(value: Date) {
+    this.#svg("text[id='Account Creation Value'] > tspan").text(
+      formatDate(value, PROFILE_DATE_FORMAT),
+    );
     return this;
   }
 

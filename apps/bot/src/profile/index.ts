@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import * as cheerio from "cheerio";
-import { differenceInDays, format, sub } from "date-fns";
+import { differenceInDays, sub } from "date-fns";
 import {
   DiscordAPIError,
   EmbedBuilder,
@@ -34,8 +34,6 @@ async function loadFileAsBase64(path: string) {
 function formatPNGDataURL(data: string) {
   return `data:image/png;base64,${data}`;
 }
-
-const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
 
 export const profile = new Hashira({ name: "profile" })
   .use(base)
@@ -114,7 +112,7 @@ export const profile = new Hashira({ name: "profile" })
           .items(dbUser.inventoryItems.length.toString())
           .voiceActivity(123) // TODO)) Voice activity value
           .textActivity(textActivity)
-          .accountCreationDate(format(user.createdAt, PROFILE_DATE_FORMAT))
+          .accountCreationDate(user.createdAt)
           .exp("1234/23001") // TODO)) Exp value
           .level(42) // TODO)) Level value
           .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
@@ -125,7 +123,7 @@ export const profile = new Hashira({ name: "profile" })
           () => null,
         );
         if (member?.joinedAt) {
-          image.guildJoinDate(format(member.joinedAt, PROFILE_DATE_FORMAT));
+          image.guildJoinDate(member.joinedAt);
         }
 
         // TODO)) Customizable badges
