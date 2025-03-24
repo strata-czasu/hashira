@@ -19,20 +19,16 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
 
-async function fetchAsBase64(url: string | URL) {
+async function fetchAsBuffer(url: string | URL) {
   const res = await fetch(url);
   const arrbuf = await res.arrayBuffer();
-  return Buffer.from(arrbuf).toString("base64");
+  return Buffer.from(arrbuf);
 }
 
-async function loadFileAsBase64(path: string) {
+async function openAsBuffer(path: string) {
   const file = Bun.file(path);
   const arrbuf = await file.arrayBuffer();
-  return Buffer.from(arrbuf).toString("base64");
-}
-
-function formatPNGDataURL(data: string) {
-  return `data:image/png;base64,${data}`;
+  return Buffer.from(arrbuf);
 }
 
 export const profile = new Hashira({ name: "profile" })
@@ -100,7 +96,7 @@ export const profile = new Hashira({ name: "profile" })
         const file = Bun.file(`${__dirname}/res/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
-        const backgroundImage = await loadFileAsBase64(
+        const backgroundImage = await openAsBuffer(
           `${__dirname}/res/background/summit.png`,
         );
         image
@@ -115,7 +111,7 @@ export const profile = new Hashira({ name: "profile" })
           .accountCreationDate(user.createdAt)
           .exp(1234, 23001) // TODO)) Exp value
           .level(42) // TODO)) Level value
-          .backgroundImage(formatPNGDataURL(backgroundImage)); // TODO)) Customizable background image
+          .backgroundImage(backgroundImage); // TODO)) Customizable background image
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
@@ -127,22 +123,19 @@ export const profile = new Hashira({ name: "profile" })
         }
 
         // TODO)) Customizable badges
-        const smirkIcon = await loadFileAsBase64(`${__dirname}/res/badge/smirk.png`);
-        const smirkBigIcon = await loadFileAsBase64(
-          `${__dirname}/res/badge/smirk-big.png`,
-        );
+        const smirkIcon = await openAsBuffer(`${__dirname}/res/badge/smirk.png`);
+        const smirkBigIcon = await openAsBuffer(`${__dirname}/res/badge/smirk-big.png`);
         image
           .allShowcaseBadgesOpacity(0)
-          .showcaseBadge(1, 1, formatPNGDataURL(smirkIcon))
-          .showcaseBadge(2, 4, formatPNGDataURL(smirkIcon))
-          .showcaseBadge(2, 5, formatPNGDataURL(smirkBigIcon))
-          .showcaseBadge(3, 4, formatPNGDataURL(smirkBigIcon));
+          .showcaseBadge(1, 1, smirkIcon)
+          .showcaseBadge(2, 4, smirkIcon)
+          .showcaseBadge(2, 5, smirkBigIcon)
+          .showcaseBadge(3, 4, smirkBigIcon);
 
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
           user.defaultAvatarURL;
-        const encodedData = await fetchAsBase64(avatarImageURL);
-        image.avatarImage(formatPNGDataURL(encodedData));
+        image.avatarImage(await fetchAsBuffer(avatarImageURL));
 
         if (dbUser.marriedTo && dbUser.marriedAt) {
           const spouse = await itx.client.users.fetch(dbUser.marriedTo);
@@ -155,16 +148,15 @@ export const profile = new Hashira({ name: "profile" })
           });
 
           const marriedDays = differenceInDays(itx.createdAt, dbUser.marriedAt);
-          const avatarImageURL =
+          const spouseAvatarImageURL =
             spouse.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
             spouse.defaultAvatarURL;
-          const encodedData = await fetchAsBase64(avatarImageURL);
           image
             .marriageStatusOpacity(1)
             .marriageStatusDays(marriedDays)
             .marriageStatusUsername(spouse.tag)
             .marriageAvatarOpacity(1)
-            .marriageAvatarImage(formatPNGDataURL(encodedData));
+            .marriageAvatarImage(await fetchAsBuffer(spouseAvatarImageURL));
         } else {
           image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
         }

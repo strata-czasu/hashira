@@ -23,6 +23,16 @@ function formatBalance(balance: number) {
 }
 
 /**
+ * Formats a PNG image buffer into a base64 data URL.
+ *
+ * @param data Buffer containing PNG data
+ */
+function pngBufferToDataURL(data: Buffer) {
+  const encodedData = data.toString("base64");
+  return `data:image/png;base64,${encodedData}`;
+}
+
+/**
  * Profile image builder for generating user profile images.
  *
  * Figma export options:
@@ -257,15 +267,18 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public avatarImage(value: string) {
-    this.#svg("image[data-name='discordyellow.png']").attr("href", value);
+  public avatarImage(image: Buffer) {
+    this.#svg("image[data-name='discordyellow.png']").attr(
+      "href",
+      pngBufferToDataURL(image),
+    );
     return this;
   }
 
-  public marriageAvatarImage(value: string) {
+  public marriageAvatarImage(image: Buffer) {
     this.#svg("image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']").attr(
       "href",
-      value,
+      pngBufferToDataURL(image),
     );
     return this;
   }
@@ -285,8 +298,11 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public backgroundImage(value: string) {
-    this.#svg("image[data-name='background.png']").attr("href", value);
+  public backgroundImage(image: Buffer) {
+    this.#svg("image[data-name='background.png']").attr(
+      "href",
+      pngBufferToDataURL(image),
+    );
     return this;
   }
 
@@ -302,8 +318,12 @@ export class ProfileImageBuilder {
    * @param col Column index (1-5)
    * @param value Image data URL
    */
-  public showcaseBadge(row: number, col: number, value: string) {
-    return this.showcaseBadgeImage(row, col, value).showcaseBadgeOpacity(row, col, 1);
+  public showcaseBadge(row: number, col: number, image: Buffer) {
+    return this.showcaseBadgeImage(
+      row,
+      col,
+      pngBufferToDataURL(image),
+    ).showcaseBadgeOpacity(row, col, 1);
   }
 
   /**
