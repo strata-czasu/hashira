@@ -3,6 +3,7 @@ import { DatabasePaginator } from "@hashira/db";
 import * as cheerio from "cheerio";
 import { differenceInDays, format, sub } from "date-fns";
 import {
+  AttachmentBuilder,
   DiscordAPIError,
   EmbedBuilder,
   PermissionFlagsBits,
@@ -259,7 +260,7 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Ustaw wyświetlany tytuł profilu")
-              .addInteger("id", (command) => command.setDescription("ID tytułu"))
+              .addInteger("id", (id) => id.setDescription("ID tytułu"))
               .handle(async ({ prisma }, { id }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
@@ -341,6 +342,7 @@ export const profile = new Hashira({ name: "profile" })
             );
           }),
       )
+      // TODO)) Edit title
       .addCommand("dodaj-userowi", (command) =>
         command
           .setDescription("Dodaj tytuł profilu userowi")
@@ -372,6 +374,135 @@ export const profile = new Hashira({ name: "profile" })
             });
 
             await itx.editReply(`Dodano tytuł ${italic(title.name)} dla ${user.tag}`);
+          }),
+      ),
+  )
+  .group("profil-odznaki", (group) =>
+    group
+      .setDescription("Zarządzanie odznakami")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+      .addCommand("lista", (command) =>
+        command
+          .setDescription("Wyświetl wszystkie dostępne odznaki")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const paginator = new DatabasePaginator(
+              (props) => prisma.profileBadge.findMany({ ...props }),
+              () => prisma.profileBadge.count(),
+            );
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Odznaki",
+              ({ id, name }) => `${name} [${inlineCode(id.toString())}]`,
+              true,
+            );
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("utwórz", (command) =>
+        command
+          .setDescription("Utwórz nową odznakę")
+          .addString("name", (name) => name.setDescription("Nazwa"))
+          .addAttachment("image", (image) =>
+            image.setDescription("Obrazek odznaki (PNG, 128x128px)"),
+          )
+          .handle(async ({ prisma }, { name, image }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const existingBadge = await prisma.profileBadge.findFirst({
+              where: { name },
+            });
+            if (existingBadge) {
+              await itx.editReply("Odznaka o tej nazwie już istnieje!");
+              return;
+            }
+
+            if (image.contentType !== "image/png") {
+              await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
+              return;
+            }
+            if (image.width !== 128 || image.height !== 128) {
+              await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
+              return;
+            }
+
+            const imageData = await fetch(image.url);
+            const { id } = await prisma.profileBadge.create({
+              data: {
+                createdBy: itx.user.id,
+                name,
+                image: new Uint8Array(await imageData.arrayBuffer()),
+              },
+            });
+
+            await itx.editReply(
+              `Utworzono nową odznakę ${italic(name)} [${inlineCode(id.toString())}]`,
+            );
+          }),
+      )
+      // TODO)) Edit badge name/image
+      .addCommand("sprawdź", (command) =>
+        command
+          .setDescription("Sprawdź obrazek odznaki")
+          .addInteger("id", (id) => id.setDescription("ID odznaki"))
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const badge = await prisma.profileBadge.findFirst({ where: { id } });
+            if (!badge) {
+              await itx.editReply("Odznaka o tym ID nie istnieje!");
+              return;
+            }
+
+            const attachment = new AttachmentBuilder(Buffer.from(badge.image))
+              .setName(`odznaka-${badge.id}.png`)
+              .setDescription(`Odznaka ${badge.name} (${badge.id})`);
+
+            const embed = new EmbedBuilder()
+              .setTitle(`Odznaka ${badge.name}`)
+              .setImage(`attachment://${attachment.name}`)
+              .setFooter({ text: `ID: ${badge.id}` });
+
+            await itx.editReply({ embeds: [embed], files: [attachment] });
+          }),
+      )
+      .addCommand("dodaj-userowi", (command) =>
+        command
+          .setDescription("Dodaj odznakę użytkownikowi")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addInteger("id", (id) => id.setDescription("ID odznaki"))
+          .handle(async ({ prisma }, { user, id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const badge = await prisma.profileBadge.findFirst({ where: { id } });
+            if (!badge) {
+              await itx.editReply("Odznaka o tym ID nie istnieje!");
+              return;
+            }
+
+            const existingOwnedBadge = await prisma.ownedProfileBadge.findFirst({
+              where: { badge, userId: user.id },
+            });
+            if (existingOwnedBadge) {
+              await itx.editReply(
+                `${user.tag} ma już odznakę [${inlineCode(id.toString())}]`,
+              );
+              return;
+            }
+
+            await ensureUserExists(prisma, user);
+            await prisma.ownedProfileBadge.create({
+              data: { badgeId: badge.id, userId: user.id },
+            });
+
+            await itx.editReply(`Dodano odznakę ${italic(badge.name)} dla ${user.tag}`);
           }),
       ),
   );
