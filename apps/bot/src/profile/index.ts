@@ -287,6 +287,91 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.editReply(`Ustawiono tytuł ${italic(title.name)}`);
               }),
           ),
+      )
+      .addGroup("odznaki", (group) =>
+        group
+          .setDescription("Odznaki profilu")
+          .addCommand("lista", (command) =>
+            command
+              .setDescription("Wyświetl swoje odznaki")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+
+                const where = { userId: itx.user.id };
+                const paginator = new DatabasePaginator(
+                  (props) =>
+                    prisma.ownedProfileBadge.findMany({
+                      where,
+                      select: { createdAt: true, badge: true },
+                      ...props,
+                    }),
+                  () => prisma.ownedProfileBadge.count({ where }),
+                );
+
+                const paginatedView = new PaginatedView(
+                  paginator,
+                  "Posiadane odznaki",
+                  ({ badge: { name, id }, createdAt }) =>
+                    `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${id}]`,
+                  false,
+                );
+                await paginatedView.render(itx);
+              }),
+          )
+          .addCommand("ustaw", (command) =>
+            command
+              .setDescription("Ustaw wyświetlaną odznakę profilu")
+              .addInteger("id", (id) => id.setDescription("ID odznaki"))
+              .addInteger("wiersz", (row) =>
+                row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
+              )
+              .addInteger("kolumna", (column) =>
+                column
+                  .setDescription("Numer kolumny (1-5)")
+                  .setMinValue(1)
+                  .setMaxValue(5),
+              )
+              .handle(async ({ prisma }, { id, wiersz: row, kolumna: col }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const ownedBadge = await prisma.ownedProfileBadge.findFirst({
+                  where: { badgeId: id, userId: itx.user.id },
+                  include: { badge: true },
+                });
+                if (!ownedBadge) {
+                  await itx.editReply(
+                    "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
+                  );
+                  return;
+                }
+                const { badge, badgeId } = ownedBadge;
+
+                await ensureUserExists(prisma, itx.user);
+                const pkWhere = {
+                  badgeId_userId: { badgeId, userId: itx.user.id },
+                };
+                await prisma.$transaction(async (tx) => {
+                  // TODO)) Remove displayed badge from previous position
+                  // await tx.displayedProfileBadge.delete({  // FIXME)) Only remove if it exists
+                  //   where: {
+                  //     ...pkWhere,
+                  //     row,
+                  //     col,
+                  //   },
+                  // });
+                  await tx.displayedProfileBadge.upsert({
+                    create: { badgeId, userId: itx.user.id, row, col },
+                    update: { badgeId },
+                    where: pkWhere,
+                  });
+                });
+
+                await itx.editReply(
+                  `Ustawiono odznakę ${italic(badge.name)} na pozycji ${row}:${col}`,
+                );
+              }),
+          ),
       ),
   )
   .group("profil-tytuły", (group) =>
