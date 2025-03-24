@@ -37,15 +37,6 @@ function formatPNGDataURL(data: string) {
 
 const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
 
-/**
- * Formats balance as a locale string with a space instead of a non-breaking space.
- * &nbsp; doesn't seem to work in SVG <tspan> elements, so we're using a regular space.
- */
-function formatBalanceForSVG(balance: number) {
-  const nbspRe = new RegExp(String.fromCharCode(160), "g");
-  return balance.toLocaleString("pl-PL").replace(nbspRe, " ");
-}
-
 export const profile = new Hashira({ name: "profile" })
   .use(base)
   .use(marriage)
@@ -118,7 +109,7 @@ export const profile = new Hashira({ name: "profile" })
           .tintColor("#aa85a4")
           .nickname(user.displayName)
           .title(user.tag)
-          .balance(formatBalanceForSVG(wallet.balance))
+          .balance(wallet.balance)
           .rep("0 rep") // TODO)) Rep value
           .items(dbUser.inventoryItems.length.toString())
           .voiceActivity(123) // TODO)) Voice activity value

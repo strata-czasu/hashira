@@ -9,6 +9,17 @@ const pluralizeDays = createPluralize({
 });
 
 /**
+ * Formats balance as a locale string with a space
+ * instead of a non-breaking space.
+ * &nbsp; doesn't seem to work in SVG <tspan> elements,
+ * so we're using a regular space.
+ */
+function formatBalance(balance: number) {
+  const nbspRe = new RegExp(String.fromCharCode(160), "g");
+  return balance.toLocaleString("pl-PL").replace(nbspRe, " ");
+}
+
+/**
  * Profile image builder for generating user profile images.
  *
  * Figma export options:
@@ -183,8 +194,8 @@ export class ProfileImageBuilder {
     return this;
   }
 
-  public balance(value: string) {
-    this.#svg("text[id='Stats Caps Value'] > tspan").text(value);
+  public balance(value: number) {
+    this.#svg("text[id='Stats Caps Value'] > tspan").text(formatBalance(value));
     return this;
   }
 
