@@ -25,12 +25,6 @@ async function fetchAsBuffer(url: string | URL) {
   return Buffer.from(arrbuf);
 }
 
-async function openAsBuffer(path: string) {
-  const file = Bun.file(path);
-  const arrbuf = await file.arrayBuffer();
-  return Buffer.from(arrbuf);
-}
-
 export const profile = new Hashira({ name: "profile" })
   .use(base)
   .use(marriage)
@@ -96,9 +90,7 @@ export const profile = new Hashira({ name: "profile" })
         const file = Bun.file(`${__dirname}/res/profile.svg`);
         const svg = cheerio.load(await file.text());
         const image = new ProfileImageBuilder(svg);
-        const backgroundImage = await openAsBuffer(
-          `${__dirname}/res/background/summit.png`,
-        );
+        // TODO)) Customizable background image
         image
           .tintColor("#aa85a4")
           .nickname(user.displayName)
@@ -110,8 +102,7 @@ export const profile = new Hashira({ name: "profile" })
           .textActivity(textActivity)
           .accountCreationDate(user.createdAt)
           .exp(1234, 23001) // TODO)) Exp value
-          .level(42) // TODO)) Level value
-          .backgroundImage(backgroundImage); // TODO)) Customizable background image
+          .level(42); // TODO)) Level value
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
@@ -123,14 +114,7 @@ export const profile = new Hashira({ name: "profile" })
         }
 
         // TODO)) Customizable badges
-        const smirkIcon = await openAsBuffer(`${__dirname}/res/badge/smirk.png`);
-        const smirkBigIcon = await openAsBuffer(`${__dirname}/res/badge/smirk-big.png`);
-        image
-          .allShowcaseBadgesOpacity(0)
-          .showcaseBadge(1, 1, smirkIcon)
-          .showcaseBadge(2, 4, smirkIcon)
-          .showcaseBadge(2, 5, smirkBigIcon)
-          .showcaseBadge(3, 4, smirkBigIcon);
+        image.allShowcaseBadgesOpacity(0);
 
         const avatarImageURL =
           user.avatarURL({ extension: "png", size: 256, forceStatic: true }) ??
