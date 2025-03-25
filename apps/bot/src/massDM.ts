@@ -1,7 +1,6 @@
-import { Hashira } from "@hashira/core";
+import { Hashira, waitForConfirmation } from "@hashira/core";
 import { RESTJSONErrorCodes, bold, italic } from "discord.js";
 import { partition } from "es-toolkit";
-import { waitForConfirmation } from "../../../packages/core/src/confirmationDialog";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";

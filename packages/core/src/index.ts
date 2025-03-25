@@ -508,7 +508,7 @@ class Hashira<
   }
 }
 
-export { ConfirmationDialog } from "./confirmationDialog";
+export { ConfirmationDialog, waitForConfirmation } from "./confirmationDialog";
 export { PaginatedView } from "./paginatedView";
 export type { Prettify } from "./types";
 export { Hashira, decoratorInitBase };
