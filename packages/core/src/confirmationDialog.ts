@@ -82,9 +82,9 @@ export class ConfirmationDialog {
       // Handle timeout
       if (this.#timeoutCallback) {
         await this.#timeoutCallback();
-      } else {
-        await this.#message.edit({ components: [] });
       }
+
+      await this.#message.edit({ components: [] });
     }
   }
 
@@ -93,4 +93,53 @@ export class ConfirmationDialog {
 
     return await this.#declineCallback();
   }
+}
+
+/**
+ * Displays a confirmation dialog to the user and waits for their response.
+ *
+ * @example
+ * // Example usage with Discord.js interaction
+ * const confirmation = await waitForConfirmation(
+ *   { send: interaction.editReply.bind(interaction) },
+ *   "Are you sure you want to send this message?",
+ *   "Yes",
+ *   "No",
+ *   (action) => action.user.id === interaction.user.id
+ * );
+ *
+ * if (confirmation) {
+ *   await interaction.editReply("Proceeding with operation...");
+ * } else {
+ *   await interaction.editReply("Operation cancelled.");
+ * }
+ */
+export function waitForConfirmation(
+  interaction: StubInteraction,
+  title: string,
+  acceptMessage: string,
+  declineMessage: string,
+  filter: DialogFilter,
+) {
+  return new Promise((resolve) => {
+    const acceptCallback = async () => {
+      resolve(true);
+    };
+
+    const declineCallback = async () => {
+      resolve(false);
+    };
+
+    const confirmationDialog = new ConfirmationDialog(
+      title,
+      acceptMessage,
+      declineMessage,
+      acceptCallback,
+      declineCallback,
+      filter,
+      declineCallback,
+    );
+
+    confirmationDialog.render(interaction);
+  });
 }

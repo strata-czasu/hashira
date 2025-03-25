@@ -14,6 +14,7 @@ import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
+import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { ping } from "./ping";
@@ -67,6 +68,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(dmVoting)
   .use(ping)
   .use(ticketReminder)
+  .use(massDM)
   .handle("ready", async () => {
     console.log("Bot is ready!");
   });
