@@ -32,6 +32,7 @@ export const massDM = new Hashira({ name: "massDM" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            await itx.guild.members.fetch();
             const eligibleMembers = role.members;
 
             if (eligibleMembers.size === 0) {
