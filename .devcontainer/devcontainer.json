@@ -3,6 +3,14 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "mounts": [
+    {
+      "source": "${localWorkspaceFolder}/fonts",
+      "target": "/usr/local/share/fonts",
+      "type": "bind"
+    }
+  ],
+  "postCreateCommand": "bun install && fc-cache -f -v",
   "features": {
     "ghcr.io/devcontainers/features/github-cli": {}
   },

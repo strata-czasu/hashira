@@ -3,17 +3,12 @@ ARG BUN_VERSION=1.2.0
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends ca-certificates wget unzip fontconfig \
+    && apt-get -y install --no-install-recommends fontconfig \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://www.1001fonts.com/download/now.zip \
-    && unzip -d now/ now.zip \
-    && mkdir -p /usr/share/fonts/opentype/ \
-    && cp -r $PWD/now/ /usr/share/fonts/opentype/ \
-    && rm -f now.zip \
-    && rm -rf $PWD/now/ \
-    && fc-cache -f -v
+COPY fonts/ /usr/local/share/fonts/
+RUN fc-cache -f -v
 
 WORKDIR /app
 
