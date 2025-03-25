@@ -91,8 +91,11 @@ export class ProfileImageBuilder {
     selector: string,
     options?: { sortTspanElements?: boolean },
   ) {
+    // All <text> elements matching the selector
+    const allTextElements = this.#svg(selector);
+
     // First <text> element - all <tspan> elements will be moved here
-    const firstTextElement = this.#svg(selector).first();
+    const firstTextElement = allTextElements.first();
 
     // First <tspan> element - we keep its position
     // FIXME)) This could be incorrect when <text> or <tspan> elements
@@ -104,7 +107,7 @@ export class ProfileImageBuilder {
     const y = firstTspan.attr("y");
     firstTextElement.attr("x", x).attr("y", y);
 
-    const allTspanElements = this.#svg(selector).children("tspan");
+    const allTspanElements = allTextElements.children("tspan");
 
     // Move `font-size` and `fill` attrs to individual <tspan> elements
     for (const element of allTspanElements) {
@@ -113,31 +116,29 @@ export class ProfileImageBuilder {
       tspan.attr("font-size", parent.attr("font-size"));
       tspan.attr("fill", parent.attr("fill"));
     }
-    this.#svg(selector).removeAttr("font-size").removeAttr("fill");
+    allTextElements.removeAttr("font-size").removeAttr("fill");
 
     // Move all <tspan> elements to the first <text> element
     allTspanElements.appendTo(firstTextElement);
+    // allTspanElements is now the same as firstTextElement.children("tspan")
 
     // Sort <tspan> elements after consolidating them into a single <text> element
     if (options?.sortTspanElements ?? false) {
-      const sortedTspanElements = firstTextElement
-        .children("tspan")
-        .get()
-        .sort((a, b) => {
-          const aX = this.#svg(a).attr("x");
-          const bX = this.#svg(b).attr("x");
-          if (!aX || !bX) return 0;
-          return Number(aX) - Number(bX);
-        });
+      const sortedTspanElements = allTspanElements.get().sort((a, b) => {
+        const aX = this.#svg(a).attr("x");
+        const bX = this.#svg(b).attr("x");
+        if (!aX || !bX) return 0;
+        return Number(aX) - Number(bX);
+      });
       // Replace <tspan> elements with the same, but sorted elements
-      firstTextElement.children("tspan").replaceWith(sortedTspanElements);
+      allTspanElements.replaceWith(sortedTspanElements);
     }
 
     // Remove inline x and y attributes from <tspan> elements
-    firstTextElement.children("tspan").removeAttr("x").removeAttr("y");
+    allTspanElements.removeAttr("x").removeAttr("y");
 
     // Remove all other <text> elements
-    this.#svg(selector).slice(1).remove();
+    allTextElements.slice(1).remove();
   }
 
   /**
