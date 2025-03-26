@@ -5,7 +5,11 @@ import { type Duration, formatDuration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { database } from "./db";
 import { loggingBase } from "./logging/base";
-import { formatBanReason, sendVerificationFailedMessage } from "./moderation/util";
+import {
+  formatBanReason,
+  formatUserWithId,
+  sendVerificationFailedMessage,
+} from "./moderation/util";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { sendDirectMessage } from "./util/sendDirectMessage";
@@ -182,9 +186,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             );
 
             // Notify the moderator about the verification end
-            let directMessageContent = `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
-              verification.userId,
-            )}) [${inlineCode(verificationId.toString())}] dobiegła końca.`;
+            let directMessageContent = `Weryfikacja 16+ ${formatUserWithId(
+              user,
+            )} [${inlineCode(verificationId.toString())}] dobiegła końca.`;
             if (banned) {
               directMessageContent += " Użytkownik został zbanowany.";
             } else {
@@ -213,18 +217,24 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             if (!verification) return;
 
+            const user = await discordTry(
+              async () => client.users.fetch(verification.userId),
+              [RESTJSONErrorCodes.UnknownMember],
+              async () => null,
+            );
             const moderator = await discordTry(
               async () => client.users.fetch(verification.moderatorId),
               [RESTJSONErrorCodes.UnknownMember],
               async () => null,
             );
-            if (!moderator) return;
+
+            if (!moderator || !user) return;
 
             await sendDirectMessage(
               moderator,
-              `Weryfikacja 16+ ${userMention(verification.userId)} (${inlineCode(
-                verification.userId,
-              )}) [${inlineCode(verificationId.toString())}] trwa już ${formatDuration(
+              `Weryfikacja 16+ ${formatUserWithId(user)} [${inlineCode(
+                verificationId.toString(),
+              )}] trwa już ${formatDuration(
                 elapsed,
               )}. Pozostało ${formatDuration(remaining)}. Nie zapomnij o niej!`,
             );
