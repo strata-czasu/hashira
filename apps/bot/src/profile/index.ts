@@ -21,6 +21,12 @@ import { marriage } from "./marriage";
 
 async function fetchAsBuffer(url: string | URL) {
   const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch image from ${url}`);
+  }
+  if (res.headers.get("content-type") !== "image/png") {
+    throw new Error(`Invalid content type: ${res.headers.get("content-type")}`);
+  }
   const arrbuf = await res.arrayBuffer();
   return Buffer.from(arrbuf);
 }
