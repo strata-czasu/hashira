@@ -31,10 +31,10 @@ const voiceSessionSchema = v.object({
   isDeafened: BooleanString,
   isStreaming: BooleanString,
   isVideo: BooleanString,
-  totalDeafenedTime: NumberString,
-  totalMutedTime: NumberString,
-  totalStreamingTime: NumberString,
-  totalVideoTime: NumberString,
+  totalDeafenedSeconds: NumberString,
+  totalMutedSeconds: NumberString,
+  totalStreamingSeconds: NumberString,
+  totalVideoSeconds: NumberString,
 });
 
 type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
@@ -51,10 +51,10 @@ function serializeVoiceSessionRecord(
     guildId,
     joinedAt: session.joinedAt,
     leftAt: leftAt,
-    totalMutedTime: session.totalMutedTime,
-    totalDeafenedTime: session.totalDeafenedTime,
-    totalStreamingTime: session.totalStreamingTime,
-    totalVideoTime: session.totalVideoTime,
+    totalMutedSeconds: session.totalMutedSeconds,
+    totalDeafenedSeconds: session.totalDeafenedSeconds,
+    totalStreamingSeconds: session.totalStreamingSeconds,
+    totalVideoSeconds: session.totalVideoSeconds,
   };
 }
 
@@ -66,17 +66,15 @@ const serializeVoiceSession = (session: VoiceSession) => ({
   isDeafened: String(session.isDeafened),
   isStreaming: String(session.isStreaming),
   isVideo: String(session.isVideo),
-  totalMutedTime: String(session.totalMutedTime),
-  totalDeafenedTime: String(session.totalDeafenedTime),
-  totalStreamingTime: String(session.totalStreamingTime),
-  totalVideoTime: String(session.totalVideoTime),
+  totalMutedSeconds: String(session.totalMutedSeconds),
+  totalDeafenedSeconds: String(session.totalDeafenedSeconds),
+  totalStreamingSeconds: String(session.totalStreamingSeconds),
+  totalVideoSeconds: String(session.totalVideoSeconds),
 });
 
 async function startVoiceSession(
   redis: RedisClient,
-  guildId: string,
   channelId: string,
-  userId: string,
   state: VoiceState,
 ) {
   const now = new Date();
@@ -89,27 +87,33 @@ async function startVoiceSession(
     isDeafened: Boolean(state.deaf),
     isStreaming: Boolean(state.streaming),
     isVideo: Boolean(state.selfVideo),
-    totalMutedTime: 0,
-    totalDeafenedTime: 0,
-    totalStreamingTime: 0,
-    totalVideoTime: 0,
+    totalMutedSeconds: 0,
+    totalDeafenedSeconds: 0,
+    totalStreamingSeconds: 0,
+    totalVideoSeconds: 0,
   };
 
-  await redis.hSet(getSessionKey(guildId, userId), serializeVoiceSession(voiceSession));
+  await redis.hSet(
+    getSessionKey(state.guild.id, state.id),
+    serializeVoiceSession(voiceSession),
+  );
 }
 
-async function updateVoiceSession(
-  redis: RedisClient,
-  guildId: string,
-  userId: string,
-  newState: VoiceState,
-) {
+function updateSessionTimes(session: VoiceSession, delta: number) {
+  if (session.isMuted) session.totalMutedSeconds += delta;
+  if (session.isDeafened) session.totalDeafenedSeconds += delta;
+  if (session.isStreaming) session.totalStreamingSeconds += delta;
+  if (session.isVideo) session.totalVideoSeconds += delta;
+}
+
+async function updateVoiceSession(redis: RedisClient, newState: VoiceState) {
+  const guildId = newState.guild.id;
+  const userId = newState.id;
   const key = getSessionKey(guildId, userId);
   const sessionRaw = await redis.hGetAll(key);
 
-  // If no session exists, start a new one
   if (!sessionExists(sessionRaw) && newState.channel) {
-    await startVoiceSession(redis, guildId, newState.channel.id, userId, newState);
+    await startVoiceSession(redis, newState.channel.id, newState);
     return;
   }
 
@@ -123,18 +127,7 @@ async function updateVoiceSession(
   const now = new Date();
   const delta = differenceInSeconds(now, session.lastUpdate);
 
-  if (session.isMuted) {
-    session.totalMutedTime += delta;
-  }
-  if (session.isDeafened) {
-    session.totalDeafenedTime += delta;
-  }
-  if (session.isStreaming) {
-    session.totalStreamingTime += delta;
-  }
-  if (session.isVideo) {
-    session.totalVideoTime += delta;
-  }
+  updateSessionTimes(session, delta);
 
   session.isMuted = Boolean(newState.mute);
   session.isDeafened = Boolean(newState.deaf);
@@ -148,34 +141,24 @@ async function updateVoiceSession(
 async function endVoiceSession(
   redis: RedisClient,
   prisma: ExtendedPrismaClient,
-  guildId: string,
-  userId: string,
+  state: VoiceState,
   leftAt: Date,
 ) {
+  const guildId = state.guild.id;
+  const userId = state.id;
   const key = `voiceSession:${guildId}:${userId}`;
   const sessionRaw = await redis.hGetAll(key);
   const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+
   if (!sessionResult.success) {
     const flatIssues = v.flatten(sessionResult.issues);
     throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
   }
 
-  console.log(`Ending voice session for ${userId} in ${guildId}`);
-
   const session = sessionResult.output;
   const delta = differenceInSeconds(leftAt, session.lastUpdate);
-  if (session.isMuted) {
-    session.totalMutedTime += delta;
-  }
-  if (session.isDeafened) {
-    session.totalDeafenedTime += delta;
-  }
-  if (session.isStreaming) {
-    session.totalStreamingTime += delta;
-  }
-  if (session.isVideo) {
-    session.totalVideoTime += delta;
-  }
+
+  updateSessionTimes(session, delta);
 
   const voiceSessionRecord = serializeVoiceSessionRecord(
     session,
@@ -183,6 +166,7 @@ async function endVoiceSession(
     guildId,
     leftAt,
   );
+
   await prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
   await redis.del(key);
 }
@@ -193,86 +177,93 @@ const getSessionKey = (guildId: string, userId: string) =>
 const sessionExists = (rawSession: Record<string, string>) =>
   Object.keys(rawSession).length > 0;
 
-async function handleNewGuild(
-  { redis, prisma }: { redis: RedisClient; prisma: ExtendedPrismaClient },
-  guild: Guild,
+async function handleVoiceState(
+  redis: RedisClient,
+  prisma: ExtendedPrismaClient,
+  voiceState: VoiceState,
+): Promise<[string] | []> {
+  if (!voiceState.channel) return [];
+
+  const key = getSessionKey(voiceState.guild.id, voiceState.id);
+  const sessionRaw = await redis.hGetAll(key);
+
+  if (!sessionExists(sessionRaw)) {
+    await startVoiceSession(redis, voiceState.channel.id, voiceState);
+    return [key];
+  }
+
+  const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+  if (!sessionResult.success) {
+    const flatIssues = v.flatten(sessionResult.issues);
+    throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
+  }
+
+  const session = sessionResult.output;
+
+  if (session.channelId === voiceState.channel.id) {
+    await updateVoiceSession(redis, voiceState);
+  } else {
+    // We don't have a way to get the leftAt time, so we use the lastUpdate time
+    await endVoiceSession(redis, prisma, voiceState, session.lastUpdate);
+    await startVoiceSession(redis, voiceState.channel.id, voiceState);
+  }
+
+  return [key];
+}
+
+async function handleOrphanedSession(
+  redis: RedisClient,
+  prisma: ExtendedPrismaClient,
+  key: string,
 ) {
-  console.log("sus");
-  const foundSessions: string[] = [];
-  for (const vs of guild.voiceStates.cache.values()) {
-    if (!vs.channel) continue;
-    // check if the user was registered in redis
-    const key = getSessionKey(guild.id, vs.id);
-    const sessionRaw = await redis.hGetAll(key);
+  const [, guildId, userId] = key.split(":");
 
-    if (!sessionExists(sessionRaw)) {
-      await startVoiceSession(redis, guild.id, vs.channel.id, vs.id, vs);
-      foundSessions.push(key);
-      continue;
+  try {
+    if (!guildId || !userId) {
+      throw new Error(`Invalid session key: ${key}`);
     }
-
+    const sessionRaw = await redis.hGetAll(key);
+    if (!sessionExists(sessionRaw)) return;
     const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+
     if (!sessionResult.success) {
       const flatIssues = v.flatten(sessionResult.issues);
       throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
     }
 
     const session = sessionResult.output;
+    const voiceSessionRecord = serializeVoiceSessionRecord(
+      session,
+      userId,
+      guildId,
+      session.lastUpdate,
+    );
 
-    if (session.channelId === vs.channel.id) {
-      await updateVoiceSession(redis, guild.id, vs.id, vs);
-      foundSessions.push(key);
-    } else {
-      // NOTE: We don't have a way to get the leftAt time, so we use the lastUpdate time
-      await endVoiceSession(redis, prisma, guild.id, vs.id, session.lastUpdate);
-      await startVoiceSession(redis, guild.id, vs.channel.id, vs.id, vs);
-      foundSessions.push(key);
-    }
+    await prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
+    await redis.del(key);
+  } catch (error) {
+    console.error(`Failed to process orphaned session ${key}:`, error);
+  }
+}
+
+async function handleNewGuild(
+  { redis, prisma }: { redis: RedisClient; prisma: ExtendedPrismaClient },
+  guild: Guild,
+) {
+  const foundSessions: string[] = [];
+
+  for (const voiceState of guild.voiceStates.cache.values()) {
+    foundSessions.push(...(await handleVoiceState(redis, prisma, voiceState)));
   }
 
-  // Delete all sessions that were not found
   const sessionPattern = `voiceSession:${guild.id}:*`;
   const allSessionKeys = await redis.keys(sessionPattern);
-  console.log(
-    `Found ${foundSessions.length} active voice sessions for guild ${guild.id}`,
-  );
-  console.log(`Found ${allSessionKeys.length} voice sessions for guild ${guild.id}`);
-
-  // Filter out the keys that weren't found in the active voice states
   const orphanedSessions = allSessionKeys.filter((key) => !foundSessions.includes(key));
 
-  // End each orphaned session and persist to database before deleting
-  for (const key of orphanedSessions) {
-    console.log(`Found orphaned voice session for ${key}`);
-    const [, , userId] = key.split(":");
-    try {
-      const sessionRaw = await redis.hGetAll(key);
-      if (sessionExists(sessionRaw) && userId) {
-        const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
-        if (sessionResult.success) {
-          const session = sessionResult.output;
-          console.log(`Ending orphaned voice session for ${userId} in ${guild.id}`);
-          const voiceSessionRecord = serializeVoiceSessionRecord(
-            session,
-            userId,
-            guild.id,
-            session.lastUpdate,
-          );
-          await prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
-        }
-      }
-      // Delete the session regardless of whether we could parse it
-      await redis.del(key);
-    } catch (error) {
-      console.error(`Failed to process orphaned session ${key}:`, error);
-      // Continue with other sessions even if one fails
-    }
-  }
+  orphanedSessions.map((key) => handleOrphanedSession(redis, prisma, key));
 
-  if (orphanedSessions.length > 0) {
-    console.log(
-      `Cleaned up ${orphanedSessions.length} orphaned voice sessions in guild ${guild.id}`,
-    );
+  for (const key of orphanedSessions) {
+    await handleOrphanedSession(redis, prisma, key);
   }
 }
 
@@ -281,30 +272,24 @@ export const userVoiceActivity = new Hashira({ name: "user-voice-activity" })
   .handle("guildAvailable", handleNewGuild)
   .handle("guildCreate", handleNewGuild)
   .handle("voiceStateUpdate", async ({ prisma, redis }, oldState, newState) => {
-    const guildId = newState.guild.id;
-    const userId = newState.id;
-
     if (!oldState.channel && newState.channel) {
-      await startVoiceSession(redis, guildId, newState.channel.id, userId, newState);
-      return;
+      return await startVoiceSession(redis, newState.channel.id, newState);
     }
 
     // User moves between channels or updates voice state within a channel
     if (oldState.channel && newState.channel) {
       if (oldState.channel.id !== newState.channel.id) {
-        await endVoiceSession(redis, prisma, guildId, userId, new Date());
-        await startVoiceSession(redis, guildId, newState.channel.id, userId, newState);
+        await endVoiceSession(redis, prisma, newState, new Date());
+        await startVoiceSession(redis, newState.channel.id, newState);
         return;
       }
 
       // Same channel update
-      await updateVoiceSession(redis, guildId, userId, newState);
-      return;
+      return await updateVoiceSession(redis, newState);
     }
 
     // User leaves a voice channel
     if (oldState.channel && !newState.channel) {
-      await endVoiceSession(redis, prisma, guildId, userId, new Date());
-      return;
+      return await endVoiceSession(redis, prisma, newState, new Date());
     }
   });
