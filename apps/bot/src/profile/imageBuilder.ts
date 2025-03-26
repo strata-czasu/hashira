@@ -269,6 +269,7 @@ export class ProfileImageBuilder {
   }
 
   public avatarImage(image: Buffer) {
+    // TODO)) Resolve this image via the final avatar element
     this.#svg("image[data-name='discordyellow.png']").attr(
       "href",
       pngBufferToDataURL(image),
@@ -277,6 +278,7 @@ export class ProfileImageBuilder {
   }
 
   public marriageAvatarImage(image: Buffer) {
+    // TODO)) Resolve this image via the final avatar element
     this.#svg("image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']").attr(
       "href",
       pngBufferToDataURL(image),
@@ -300,6 +302,7 @@ export class ProfileImageBuilder {
   }
 
   public backgroundImage(image: Buffer) {
+    // TODO)) Resolve this image via the final background element
     this.#svg("image[data-name='background.png']").attr(
       "href",
       pngBufferToDataURL(image),
@@ -317,14 +320,10 @@ export class ProfileImageBuilder {
    *
    * @param row Row index (1-3)
    * @param col Column index (1-5)
-   * @param value Image data URL
+   * @param image PNG image data buffer
    */
   public showcaseBadge(row: number, col: number, image: Buffer) {
-    return this.showcaseBadgeImage(
-      row,
-      col,
-      pngBufferToDataURL(image),
-    ).showcaseBadgeOpacity(row, col, 1);
+    return this.showcaseBadgeImage(row, col, image).showcaseBadgeOpacity(row, col, 1);
   }
 
   /**
@@ -337,11 +336,10 @@ export class ProfileImageBuilder {
    *
    * @param row Row index (1-3)
    * @param col Column index (1-5)
-   * @param value Image data URL
+   * @param image PNG image data buffer
    */
-  public showcaseBadgeImage(row: number, col: number, value: string) {
-    const elementId = `Showcase Badge ${row}:${col}`;
-
+  public showcaseBadgeImage(row: number, col: number, image: Buffer) {
+    const elementId = this.showcaseBadgeElementId(row, col);
     // <circle id="${elementId}" fill="url(#...)"/>
     const fill = this.showcaseBadgeContainer()
       .children(`circle[id='${elementId}']`)
@@ -351,10 +349,12 @@ export class ProfileImageBuilder {
       throw new Error(`\`fill\` attribute not found for badge '${elementId}'`);
     }
 
+    const defs = this.#svg("defs").first();
+
     // `url(#...)` -> `...`
     const fillUrl = fill.replace("url(#", "").replace(")", "");
     // <pattern id="${fillUrl}>
-    const patternElement = this.#svg(`defs > pattern[id='${fillUrl}']`).first();
+    const patternElement = defs.children(`pattern[id='${fillUrl}']`).first();
     if (!patternElement) {
       throw new Error(`Pattern element not found for badge '${elementId}'`);
     }
@@ -366,13 +366,17 @@ export class ProfileImageBuilder {
     }
     const imageId = imageHref.replace("#", "");
 
-    const defs = this.#svg("defs").first();
     // Find the placeholder image element
-    const image = defs.children(`image[id='${imageId}']`).first();
+    const imageElement = defs.children(`image[id='${imageId}']`).first();
 
     const newImageId = `badge_image_${row}_${col}`;
     // Clone the placeholder image with a new ID and href
-    image.clone().attr("id", newImageId).attr("href", value).appendTo(defs);
+    imageElement
+      .clone()
+      .attr("id", newImageId)
+      .attr("href", pngBufferToDataURL(image))
+      .appendTo(defs);
+
     // Update the pattern to use the new image
     patternElement.children("use").first().attr("href", `#${newImageId}`);
 
@@ -405,6 +409,10 @@ export class ProfileImageBuilder {
   public allShowcaseBadgesOpacity(value: number) {
     this.showcaseBadgeContainer().children("circle").attr("opacity", value.toString());
     return this;
+  }
+
+  private showcaseBadgeElementId(row: number, col: number) {
+    return `Showcase Badge ${row}:${col}`;
   }
 
   private showcaseBadgeContainer() {
