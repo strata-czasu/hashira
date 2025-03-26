@@ -2,6 +2,14 @@ ARG BUN_VERSION=1.2.0
 
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
+RUN apt-get update \
+    && apt-get -y install --no-install-recommends fontconfig \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY fonts/ /usr/local/share/fonts/
+RUN fc-cache -f -v
+
 WORKDIR /app
 
 COPY --link bun.lockb package.json ./
