@@ -37,7 +37,7 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, formatMuteLength, getMuteRoleId } from "./util";
+import { applyMute, formatMuteLength, formatUserWithId, getMuteRoleId } from "./util";
 
 type Context = ExtractContext<typeof base>;
 
@@ -142,7 +142,7 @@ const handleUltimatum = async (
 
   if (isUltimatumActive(latestUltimatum)) {
     await replyToModerator(
-      `Użytkownik ${userMention(member.id)} ma aktywne ultimatum. Należy nałożyć bana.`,
+      `Użytkownik ${formatUserWithId(member)} ma aktywne ultimatum. Należy nałożyć bana.`,
     );
   }
 
@@ -151,10 +151,10 @@ const handleUltimatum = async (
       intervalToDuration({ start: latestUltimatum.endedAt, end: new Date() }).days ?? 0;
     if (daysSinceEnd < 30) {
       await replyToModerator(
-        `Ostatnie ultimatum użytkownika ${userMention(member.id)} zakończyło się ${time(
+        `Ostatnie ultimatum użytkownika ${formatUserWithId(member)} zakończyło się ${time(
           latestUltimatum.endedAt,
           TimestampStyles.RelativeTime,
-        )}. Należy nałożyć przedłużyć ultimatum.`,
+        )}. Należy nałożyć ponownie ultimatum.`,
       );
     }
   }
