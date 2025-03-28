@@ -39,6 +39,31 @@ const voiceSessionSchema = v.object({
 
 type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
 
+const getSessionKey = (guildId: string, userId: string) =>
+  `voiceSession:${guildId}:${userId}`;
+
+const sessionExists = (rawSession: Record<string, string>) =>
+  Object.keys(rawSession).length > 0;
+
+function parseVoiceSession(sessionRaw: Record<string, string>): VoiceSession {
+  const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+
+  if (!sessionResult.success) {
+    const flatIssues = v.flatten(sessionResult.issues);
+    throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
+  }
+
+  return sessionResult.output;
+}
+
+function parseVoiceSessionOrNull(
+  sessionRaw: Record<string, string>,
+): VoiceSession | null {
+  if (!sessionExists(sessionRaw)) return null;
+
+  return parseVoiceSession(sessionRaw);
+}
+
 function serializeVoiceSessionRecord(
   session: VoiceSession,
   userId: string,
@@ -72,6 +97,13 @@ const serializeVoiceSession = (session: VoiceSession) => ({
   totalVideoSeconds: String(session.totalVideoSeconds),
 });
 
+function updateSessionTimes(session: VoiceSession, delta: number) {
+  if (session.isMuted) session.totalMutedSeconds += delta;
+  if (session.isDeafened) session.totalDeafenedSeconds += delta;
+  if (session.isStreaming) session.totalStreamingSeconds += delta;
+  if (session.isVideo) session.totalVideoSeconds += delta;
+}
+
 async function startVoiceSession(
   redis: RedisClient,
   channelId: string,
@@ -99,13 +131,6 @@ async function startVoiceSession(
   );
 }
 
-function updateSessionTimes(session: VoiceSession, delta: number) {
-  if (session.isMuted) session.totalMutedSeconds += delta;
-  if (session.isDeafened) session.totalDeafenedSeconds += delta;
-  if (session.isStreaming) session.totalStreamingSeconds += delta;
-  if (session.isVideo) session.totalVideoSeconds += delta;
-}
-
 async function updateVoiceSession(redis: RedisClient, newState: VoiceState) {
   const guildId = newState.guild.id;
   const userId = newState.id;
@@ -117,13 +142,7 @@ async function updateVoiceSession(redis: RedisClient, newState: VoiceState) {
     return;
   }
 
-  const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
-  if (!sessionResult.success) {
-    const flatIssues = v.flatten(sessionResult.issues);
-    throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
-  }
-
-  const session = sessionResult.output;
+  const session = parseVoiceSession(sessionRaw);
   const now = new Date();
   const delta = differenceInSeconds(now, session.lastUpdate);
 
@@ -148,14 +167,7 @@ async function endVoiceSession(
   const userId = state.id;
   const key = `voiceSession:${guildId}:${userId}`;
   const sessionRaw = await redis.hGetAll(key);
-  const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
-
-  if (!sessionResult.success) {
-    const flatIssues = v.flatten(sessionResult.issues);
-    throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
-  }
-
-  const session = sessionResult.output;
+  const session = parseVoiceSession(sessionRaw);
   const delta = differenceInSeconds(leftAt, session.lastUpdate);
 
   updateSessionTimes(session, delta);
@@ -171,12 +183,6 @@ async function endVoiceSession(
   await redis.del(key);
 }
 
-const getSessionKey = (guildId: string, userId: string) =>
-  `voiceSession:${guildId}:${userId}`;
-
-const sessionExists = (rawSession: Record<string, string>) =>
-  Object.keys(rawSession).length > 0;
-
 async function handleVoiceState(
   redis: RedisClient,
   prisma: ExtendedPrismaClient,
@@ -187,18 +193,12 @@ async function handleVoiceState(
   const key = getSessionKey(voiceState.guild.id, voiceState.id);
   const sessionRaw = await redis.hGetAll(key);
 
-  if (!sessionExists(sessionRaw)) {
+  const session = parseVoiceSessionOrNull(sessionRaw);
+
+  if (!session) {
     await startVoiceSession(redis, voiceState.channel.id, voiceState);
     return [key];
   }
-
-  const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
-  if (!sessionResult.success) {
-    const flatIssues = v.flatten(sessionResult.issues);
-    throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
-  }
-
-  const session = sessionResult.output;
 
   if (session.channelId === voiceState.channel.id) {
     await updateVoiceSession(redis, voiceState);
@@ -222,16 +222,12 @@ async function handleOrphanedSession(
     if (!guildId || !userId) {
       throw new Error(`Invalid session key: ${key}`);
     }
+
     const sessionRaw = await redis.hGetAll(key);
-    if (!sessionExists(sessionRaw)) return;
-    const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+    const session = parseVoiceSessionOrNull(sessionRaw);
 
-    if (!sessionResult.success) {
-      const flatIssues = v.flatten(sessionResult.issues);
-      throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
-    }
+    if (!session) return;
 
-    const session = sessionResult.output;
     const voiceSessionRecord = serializeVoiceSessionRecord(
       session,
       userId,
@@ -250,21 +246,21 @@ async function handleNewGuild(
   { redis, prisma }: { redis: RedisClient; prisma: ExtendedPrismaClient },
   guild: Guild,
 ) {
-  const foundSessions: string[] = [];
+  const allFoundSessions = await Promise.all(
+    guild.voiceStates.cache.map((voiceState) =>
+      handleVoiceState(redis, prisma, voiceState),
+    ),
+  );
 
-  for (const voiceState of guild.voiceStates.cache.values()) {
-    foundSessions.push(...(await handleVoiceState(redis, prisma, voiceState)));
-  }
+  const foundSessions = allFoundSessions.flat();
 
   const sessionPattern = `voiceSession:${guild.id}:*`;
   const allSessionKeys = await redis.keys(sessionPattern);
   const orphanedSessions = allSessionKeys.filter((key) => !foundSessions.includes(key));
 
-  orphanedSessions.map((key) => handleOrphanedSession(redis, prisma, key));
-
-  for (const key of orphanedSessions) {
-    await handleOrphanedSession(redis, prisma, key);
-  }
+  await Promise.all(
+    orphanedSessions.map((key) => handleOrphanedSession(redis, prisma, key)),
+  );
 }
 
 export const userVoiceActivity = new Hashira({ name: "user-voice-activity" })
@@ -272,8 +268,14 @@ export const userVoiceActivity = new Hashira({ name: "user-voice-activity" })
   .handle("guildAvailable", handleNewGuild)
   .handle("guildCreate", handleNewGuild)
   .handle("voiceStateUpdate", async ({ prisma, redis }, oldState, newState) => {
+    // User joins a voice channel
     if (!oldState.channel && newState.channel) {
       return await startVoiceSession(redis, newState.channel.id, newState);
+    }
+
+    // User leaves a voice channel
+    if (oldState.channel && !newState.channel) {
+      return await endVoiceSession(redis, prisma, newState, new Date());
     }
 
     // User moves between channels or updates voice state within a channel
@@ -286,10 +288,5 @@ export const userVoiceActivity = new Hashira({ name: "user-voice-activity" })
 
       // Same channel update
       return await updateVoiceSession(redis, newState);
-    }
-
-    // User leaves a voice channel
-    if (oldState.channel && !newState.channel) {
-      return await endVoiceSession(redis, prisma, newState, new Date());
     }
   });
