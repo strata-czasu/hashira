@@ -21,7 +21,7 @@ const DateString = v.pipe(
   v.transform((v) => new Date(v)),
 );
 
-export const voiceSessionSchema = v.object({
+const voiceSessionSchemaV1 = v.object({
   channelId: v.string(),
   joinedAt: DateString,
   lastUpdate: DateString,
@@ -33,9 +33,16 @@ export const voiceSessionSchema = v.object({
   totalMutedSeconds: NumberString,
   totalStreamingSeconds: NumberString,
   totalVideoSeconds: NumberString,
+  version: v.literal("1"),
 });
 
-export type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
+const AnyVersionVoiceSessionSchema = v.union([voiceSessionSchemaV1]);
+type AnyVersionVoiceSessionSchema = v.InferOutput<typeof AnyVersionVoiceSessionSchema>;
+
+const VERSION: VoiceSession["version"] = "1";
+
+const voiceSessionSchema = voiceSessionSchemaV1;
+type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
 
 export class VoiceSessionManager {
   private redis: RedisClient;
@@ -50,24 +57,49 @@ export class VoiceSessionManager {
     return `voiceSession:${guildId}:${userId}`;
   }
 
-  private parseVoiceSession(sessionRaw: Record<string, string>): VoiceSession {
-    const sessionResult = v.safeParse(voiceSessionSchema, sessionRaw);
+  private tryUpdateSession(session: AnyVersionVoiceSessionSchema): VoiceSession {
+    // Currently we only have one version, but this will be used for future migrations
+    return session as VoiceSession;
+  }
+
+  async getVoiceSession(guildId: string, userId: string): Promise<VoiceSession | null> {
+    const key = this.getSessionKey(guildId, userId);
+    const sessionRaw = await this.redis.hGetAll(key);
+
+    // If the session is empty, then it doesn't exist
+    if (Object.keys(sessionRaw).length === 0) return null;
+
+    const sessionResult = v.safeParse(AnyVersionVoiceSessionSchema, sessionRaw);
 
     if (!sessionResult.success) {
       const flatIssues = v.flatten(sessionResult.issues);
       throw new Error(`Invalid voice session data: ${JSON.stringify(flatIssues)}`);
     }
 
-    return sessionResult.output;
+    const updatedSession = this.tryUpdateSession(sessionResult.output);
+
+    if (sessionResult.output.version !== VERSION) {
+      await this.redis.hSet(key, this.serializeVoiceSession(updatedSession));
+    }
+
+    return updatedSession;
   }
 
-  private parseVoiceSessionOrNull(
-    sessionRaw: Record<string, string>,
-  ): VoiceSession | null {
-    //  If the session is empty, then it doesn't exist
-    if (Object.keys(sessionRaw).length === 0) return null;
+  async updateVoiceSessionData(
+    guildId: string,
+    userId: string,
+    updates: Partial<Omit<VoiceSession, "version">>,
+  ): Promise<VoiceSession | null> {
+    const session = await this.getVoiceSession(guildId, userId);
+    if (!session) return null;
 
-    return this.parseVoiceSession(sessionRaw);
+    const updatedSession = { ...session, ...updates };
+    await this.redis.hSet(
+      this.getSessionKey(guildId, userId),
+      this.serializeVoiceSession(updatedSession),
+    );
+
+    return updatedSession;
   }
 
   private serializeVoiceSessionRecord(
@@ -92,6 +124,7 @@ export class VoiceSessionManager {
       totalDeafenedSeconds: String(session.totalDeafenedSeconds),
       totalStreamingSeconds: String(session.totalStreamingSeconds),
       totalVideoSeconds: String(session.totalVideoSeconds),
+      version: session.version,
     };
   }
 
@@ -106,6 +139,7 @@ export class VoiceSessionManager {
     const now = new Date();
 
     const voiceSession: VoiceSession = {
+      version: "1",
       channelId,
       joinedAt: now,
       lastUpdate: now,
@@ -129,8 +163,7 @@ export class VoiceSessionManager {
     const guildId = newState.guild.id;
     const userId = newState.id;
     const key = this.getSessionKey(guildId, userId);
-    const sessionRaw = await this.redis.hGetAll(key);
-    const session = this.parseVoiceSessionOrNull(sessionRaw);
+    const session = await this.getVoiceSession(guildId, userId);
 
     if (!session) {
       if (!newState.channel) return;
@@ -155,8 +188,12 @@ export class VoiceSessionManager {
     const guildId = state.guild.id;
     const userId = state.id;
     const key = this.getSessionKey(guildId, userId);
-    const sessionRaw = await this.redis.hGetAll(key);
-    const session = this.parseVoiceSession(sessionRaw);
+    const session = await this.getVoiceSession(guildId, userId);
+
+    if (!session) {
+      throw new Error(`Session for ending not found: ${key}. This should not happen.`);
+    }
+
     const delta = differenceInSeconds(leftAt, session.lastUpdate);
 
     this.updateSessionTimes(session, delta);
@@ -176,9 +213,7 @@ export class VoiceSessionManager {
     if (!voiceState.channel) return [];
 
     const key = this.getSessionKey(voiceState.guild.id, voiceState.id);
-    const sessionRaw = await this.redis.hGetAll(key);
-
-    const session = this.parseVoiceSessionOrNull(sessionRaw);
+    const session = await this.getVoiceSession(voiceState.guild.id, voiceState.id);
 
     if (!session) {
       await this.startVoiceSession(voiceState.channel.id, voiceState);
@@ -204,8 +239,7 @@ export class VoiceSessionManager {
         throw new Error(`Invalid session key: ${key}`);
       }
 
-      const sessionRaw = await this.redis.hGetAll(key);
-      const session = this.parseVoiceSessionOrNull(sessionRaw);
+      const session = await this.getVoiceSession(guildId, userId);
 
       if (!session) return;
 
