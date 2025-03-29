@@ -87,6 +87,7 @@ model Guild {
   protectedInvites   ProtectedInvite[]
   ultimatums         Ultimatum[]
   stickyMessages     StickyMessage[]
+  voiceSessions      VoiceSession[]
 
   @@map("guild")
 }
@@ -227,6 +228,7 @@ model User {
   dmPollVotes                       DmPollVote[]
   participatingInDmPolls            DmPollParticipant[]
   dmPollExclusion                   DmPollExclusion?
+  voiceSessions                     VoiceSession[]
 
   @@map("users")
 }
