@@ -128,8 +128,7 @@ export const profile = new Hashira({ name: "profile" })
             if (profileSettings?.title) {
               image.title(profileSettings.title.name);
             } else {
-              // TODO)) Should we display something else by default?
-              image.title("");
+              image.title("Użytkownik");
             }
 
             const member = await discordTry(
