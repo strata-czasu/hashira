@@ -3,11 +3,11 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@hashira/tsconfig": "workspace:*",
-    "@types/bun": "^1.2.0",
-    "expect-type": "^1.1.0",
-    "knip": "^5.43.3",
-    "lefthook": "^1.10.10",
-    "typescript": "^5.7.3"
+    "@types/bun": "^1.2.8",
+    "expect-type": "^1.2.0",
+    "knip": "^5.46.3",
+    "lefthook": "^1.11.5",
+    "typescript": "^5.8.2"
   },
   "scripts": {
     "fix": "biome check --write",
@@ -36,8 +36,8 @@
   "type": "module",
   "workspaces": ["tooling/*", "packages/*", "apps/*"],
   "dependencies": {
-    "discord.js": "^14.17.3",
-    "es-toolkit": "^1.31.0",
-    "valibot": "^1.0.0-rc.2"
+    "discord.js": "^14.18.0",
+    "es-toolkit": "^1.34.1",
+    "valibot": "^1.0.0"
   }
 }
