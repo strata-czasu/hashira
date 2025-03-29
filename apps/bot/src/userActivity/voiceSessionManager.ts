@@ -1,6 +1,7 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 import { differenceInSeconds } from "date-fns";
 import type { Guild, VoiceState } from "discord.js";
+import { pick } from "es-toolkit";
 import * as v from "valibot";
 
 const BooleanString = v.pipe(
@@ -94,10 +95,9 @@ export class VoiceSessionManager {
     if (!session) return null;
 
     const updatedSession = { ...session, ...updates };
-    await this.redis.hSet(
-      this.getSessionKey(guildId, userId),
-      this.serializeVoiceSession(updatedSession),
-    );
+    const key = this.getSessionKey(guildId, userId);
+    console.log(`[Redis Update] Updating session data for ${key}`, updates);
+    await this.redis.hSet(key, this.serializeVoiceSession(updatedSession));
 
     return updatedSession;
   }
@@ -108,7 +108,16 @@ export class VoiceSessionManager {
     guildId: string,
     leftAt: Date,
   ): Prisma.VoiceSessionRecordUncheckedCreateInput {
-    return { ...session, userId, guildId, leftAt };
+    const cleanedSession = pick(session, [
+      "channelId",
+      "joinedAt",
+      "totalDeafenedSeconds",
+      "totalMutedSeconds",
+      "totalStreamingSeconds",
+      "totalVideoSeconds",
+    ]);
+
+    return { ...cleanedSession, userId, guildId, leftAt };
   }
 
   private serializeVoiceSession(session: VoiceSession): Record<string, string> {
@@ -137,6 +146,7 @@ export class VoiceSessionManager {
 
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
     const now = new Date();
+    const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
       version: "1",
@@ -153,10 +163,7 @@ export class VoiceSessionManager {
       totalVideoSeconds: 0,
     };
 
-    await this.redis.hSet(
-      this.getSessionKey(state.guild.id, state.id),
-      this.serializeVoiceSession(voiceSession),
-    );
+    await this.redis.hSet(key, this.serializeVoiceSession(voiceSession));
   }
 
   async updateVoiceSession(newState: VoiceState): Promise<void> {
