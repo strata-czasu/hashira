@@ -72,22 +72,22 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                  String               @id(map: "core_guild_pkey")
-  autoRole            AutoRole[]
-  colorRole           ColorRole[]
-  currency            Currency[]
-  dailyPointsRedeems  DailyPointsRedeems[]
-  emojiUsage          EmojiUsage[]
-  guildSettings       GuildSettings?
-  mute                Mute[]
-  userTextActivity    UserTextActivity[]
-  verification        Verification[]
-  wallet              Wallet[]
-  warn                Warn[]
-  protectedInvites    ProtectedInvite[]
-  ultimatums          Ultimatum[]
-  stickyMessages      StickyMessage[]
-  voiceSessionRecords VoiceSessionRecord[]
+  id                 String               @id(map: "core_guild_pkey")
+  autoRole           AutoRole[]
+  colorRole          ColorRole[]
+  currency           Currency[]
+  dailyPointsRedeems DailyPointsRedeems[]
+  emojiUsage         EmojiUsage[]
+  guildSettings      GuildSettings?
+  mute               Mute[]
+  userTextActivity   UserTextActivity[]
+  verification       Verification[]
+  wallet             Wallet[]
+  warn               Warn[]
+  protectedInvites   ProtectedInvite[]
+  ultimatums         Ultimatum[]
+  stickyMessages     StickyMessage[]
+  voiceSessions      VoiceSession[]
 
   @@map("guild")
 }
@@ -228,7 +228,7 @@ model User {
   dmPollVotes                       DmPollVote[]
   participatingInDmPolls            DmPollParticipant[]
   dmPollExclusion                   DmPollExclusion?
-  voiceSessionRecords               VoiceSessionRecord[]
+  voiceSessions                     VoiceSession[]
 
   @@map("users")
 }

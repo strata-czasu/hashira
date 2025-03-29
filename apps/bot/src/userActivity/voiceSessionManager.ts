@@ -33,7 +33,9 @@ const voiceSessionSchemaV1 = v.object({
   totalDeafenedSeconds: NumberString,
   totalMutedSeconds: NumberString,
   totalStreamingSeconds: NumberString,
+  totalActiveStreamingSeconds: NumberString,
   totalVideoSeconds: NumberString,
+  totalActiveVideoSeconds: NumberString,
   version: v.literal("1"),
 });
 
@@ -80,7 +82,7 @@ export class VoiceSessionManager {
     const updatedSession = this.tryUpdateSession(sessionResult.output);
 
     if (sessionResult.output.version !== VERSION) {
-      await this.redis.hSet(key, this.serializeVoiceSession(updatedSession));
+      await this.redis.hSet(key, this.serializeVoiceSessionForRedis(updatedSession));
     }
 
     return updatedSession;
@@ -97,30 +99,32 @@ export class VoiceSessionManager {
     const updatedSession = { ...session, ...updates };
     const key = this.getSessionKey(guildId, userId);
     console.log(`[Redis Update] Updating session data for ${key}`, updates);
-    await this.redis.hSet(key, this.serializeVoiceSession(updatedSession));
+    await this.redis.hSet(key, this.serializeVoiceSessionForRedis(updatedSession));
 
     return updatedSession;
   }
 
-  private serializeVoiceSessionRecord(
+  private serializeVoiceSessionForPrisma(
     session: VoiceSession,
     userId: string,
     guildId: string,
     leftAt: Date,
-  ): Prisma.VoiceSessionRecordUncheckedCreateInput {
+  ): Prisma.VoiceSessionUncheckedCreateInput {
     const cleanedSession = pick(session, [
       "channelId",
       "joinedAt",
       "totalDeafenedSeconds",
       "totalMutedSeconds",
       "totalStreamingSeconds",
+      "totalActiveStreamingSeconds",
       "totalVideoSeconds",
+      "totalActiveVideoSeconds",
     ]);
 
     return { ...cleanedSession, userId, guildId, leftAt };
   }
 
-  private serializeVoiceSession(session: VoiceSession): Record<string, string> {
+  private serializeVoiceSessionForRedis(session: VoiceSession): Record<string, string> {
     return {
       channelId: session.channelId,
       joinedAt: session.joinedAt.toISOString(),
@@ -140,8 +144,21 @@ export class VoiceSessionManager {
   private updateSessionTimes(session: VoiceSession, delta: number): void {
     if (session.isMuted) session.totalMutedSeconds += delta;
     if (session.isDeafened) session.totalDeafenedSeconds += delta;
-    if (session.isStreaming) session.totalStreamingSeconds += delta;
-    if (session.isVideo) session.totalVideoSeconds += delta;
+
+    if (session.isStreaming) {
+      if (!session.isMuted && !session.isDeafened) {
+        session.totalActiveStreamingSeconds += delta;
+      }
+
+      session.totalStreamingSeconds += delta;
+    }
+    if (session.isVideo) {
+      if (!session.isMuted && !session.isDeafened) {
+        session.totalActiveVideoSeconds += delta;
+      }
+
+      session.totalVideoSeconds += delta;
+    }
   }
 
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
@@ -160,10 +177,12 @@ export class VoiceSessionManager {
       totalMutedSeconds: 0,
       totalDeafenedSeconds: 0,
       totalStreamingSeconds: 0,
+      totalActiveStreamingSeconds: 0,
       totalVideoSeconds: 0,
+      totalActiveVideoSeconds: 0,
     };
 
-    await this.redis.hSet(key, this.serializeVoiceSession(voiceSession));
+    await this.redis.hSet(key, this.serializeVoiceSessionForRedis(voiceSession));
   }
 
   async updateVoiceSession(newState: VoiceState): Promise<void> {
@@ -188,7 +207,7 @@ export class VoiceSessionManager {
     session.isVideo = Boolean(newState.selfVideo);
     session.lastUpdate = now;
 
-    await this.redis.hSet(key, this.serializeVoiceSession(session));
+    await this.redis.hSet(key, this.serializeVoiceSessionForRedis(session));
   }
 
   async endVoiceSession(state: VoiceState, leftAt: Date): Promise<void> {
@@ -205,14 +224,14 @@ export class VoiceSessionManager {
 
     this.updateSessionTimes(session, delta);
 
-    const voiceSessionRecord = this.serializeVoiceSessionRecord(
+    const voiceSessionRecord = this.serializeVoiceSessionForPrisma(
       session,
       userId,
       guildId,
       leftAt,
     );
 
-    await this.prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
+    await this.prisma.voiceSession.create({ data: voiceSessionRecord });
     await this.redis.del(key);
   }
 
@@ -250,14 +269,14 @@ export class VoiceSessionManager {
 
       if (!session) return;
 
-      const voiceSessionRecord = this.serializeVoiceSessionRecord(
+      const voiceSession = this.serializeVoiceSessionForPrisma(
         session,
         userId,
         guildId,
         session.lastUpdate,
       );
 
-      await this.prisma.voiceSessionRecord.create({ data: voiceSessionRecord });
+      await this.prisma.voiceSession.create({ data: voiceSession });
       await this.redis.del(key);
     } catch (error) {
       console.error(`Failed to process orphaned session ${key}:`, error);
