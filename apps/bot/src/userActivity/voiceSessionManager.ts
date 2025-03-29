@@ -3,6 +3,7 @@ import { differenceInSeconds } from "date-fns";
 import type { Guild, VoiceState } from "discord.js";
 import { pick } from "es-toolkit";
 import * as v from "valibot";
+import { ensureUserExists } from "../util/ensureUsersExist";
 
 const BooleanString = v.pipe(
   v.string(),
@@ -33,19 +34,37 @@ const voiceSessionSchemaV1 = v.object({
   totalDeafenedSeconds: NumberString,
   totalMutedSeconds: NumberString,
   totalStreamingSeconds: NumberString,
-  totalActiveStreamingSeconds: NumberString,
   totalVideoSeconds: NumberString,
-  totalActiveVideoSeconds: NumberString,
   version: v.literal("1"),
 });
 
-const AnyVersionVoiceSessionSchema = v.union([voiceSessionSchemaV1]);
+const voiceSessionSchemaV2 = v.object({
+  channelId: v.string(),
+  joinedAt: DateString,
+  lastUpdate: DateString,
+  isMuted: BooleanString,
+  isDeafened: BooleanString,
+  isStreaming: BooleanString,
+  isVideo: BooleanString,
+  totalDeafenedSeconds: NumberString,
+  totalMutedSeconds: NumberString,
+  totalStreamingSeconds: NumberString,
+  totalActiveStreamingSeconds: NumberString,
+  totalVideoSeconds: NumberString,
+  totalActiveVideoSeconds: NumberString,
+  version: v.literal("2"),
+});
+
+const AnyVersionVoiceSessionSchema = v.union([
+  voiceSessionSchemaV1,
+  voiceSessionSchemaV2,
+]);
 type AnyVersionVoiceSessionSchema = v.InferOutput<typeof AnyVersionVoiceSessionSchema>;
 
-const VERSION: VoiceSession["version"] = "1";
-
-const voiceSessionSchema = voiceSessionSchemaV1;
+const voiceSessionSchema = voiceSessionSchemaV2;
 type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
+
+const VERSION: VoiceSession["version"] = "2";
 
 export class VoiceSessionManager {
   private redis: RedisClient;
@@ -61,8 +80,19 @@ export class VoiceSessionManager {
   }
 
   private tryUpdateSession(session: AnyVersionVoiceSessionSchema): VoiceSession {
-    // Currently we only have one version, but this will be used for future migrations
-    return session as VoiceSession;
+    let updatedSession = session;
+
+    // Fix invalid data from version 1
+    if (updatedSession.version === "1") {
+      updatedSession = {
+        ...updatedSession,
+        totalActiveStreamingSeconds: 0,
+        totalActiveVideoSeconds: 0,
+        version: VERSION,
+      };
+    }
+
+    return updatedSession;
   }
 
   async getVoiceSession(guildId: string, userId: string): Promise<VoiceSession | null> {
@@ -124,7 +154,9 @@ export class VoiceSessionManager {
     return { ...cleanedSession, userId, guildId, leftAt };
   }
 
-  private serializeVoiceSessionForRedis(session: VoiceSession): Record<string, string> {
+  private serializeVoiceSessionForRedis(
+    session: VoiceSession,
+  ): v.InferInput<typeof voiceSessionSchema> {
     return {
       channelId: session.channelId,
       joinedAt: session.joinedAt.toISOString(),
@@ -136,7 +168,9 @@ export class VoiceSessionManager {
       totalMutedSeconds: String(session.totalMutedSeconds),
       totalDeafenedSeconds: String(session.totalDeafenedSeconds),
       totalStreamingSeconds: String(session.totalStreamingSeconds),
+      totalActiveStreamingSeconds: String(session.totalActiveStreamingSeconds),
       totalVideoSeconds: String(session.totalVideoSeconds),
+      totalActiveVideoSeconds: String(session.totalActiveVideoSeconds),
       version: session.version,
     };
   }
@@ -161,12 +195,13 @@ export class VoiceSessionManager {
     }
   }
 
+  // Currently we only have one version, but this will be used for future migrations
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
     const now = new Date();
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
-      version: "1",
+      version: "2",
       channelId,
       joinedAt: now,
       lastUpdate: now,
@@ -231,6 +266,7 @@ export class VoiceSessionManager {
       leftAt,
     );
 
+    await ensureUserExists(this.prisma, state.id);
     await this.prisma.voiceSession.create({ data: voiceSessionRecord });
     await this.redis.del(key);
   }
@@ -276,6 +312,7 @@ export class VoiceSessionManager {
         session.lastUpdate,
       );
 
+      await ensureUserExists(this.prisma, userId);
       await this.prisma.voiceSession.create({ data: voiceSession });
       await this.redis.del(key);
     } catch (error) {
