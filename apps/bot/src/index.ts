@@ -72,7 +72,8 @@ export const bot = new Hashira({ name: "bot" })
   .use(massDM)
   .handle("ready", async () => {
     console.log("Bot is ready!");
-    setInterval(writeHealthCheck, 1000 * 60);
+    await writeHealthCheck(); // Initial write on startup
+    setInterval(writeHealthCheck, 1000 * 60); // Write heartbeat every minute
   });
 
 if (import.meta.main) {
