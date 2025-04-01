@@ -12,6 +12,7 @@ import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { guildAvailability } from "./guildAvailability";
+import { writeHealthCheck } from "./healthcheck";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
@@ -71,6 +72,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(massDM)
   .handle("ready", async () => {
     console.log("Bot is ready!");
+    setInterval(writeHealthCheck, 1000 * 60);
   });
 
 if (import.meta.main) {
