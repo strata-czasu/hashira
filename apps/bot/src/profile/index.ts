@@ -108,7 +108,7 @@ export const profile = new Hashira({ name: "profile" })
           .textActivity(textActivity)
           .accountCreationDate(user.createdAt)
           .exp(1234, 23001) // TODO)) Exp value
-          .level(42); // TODO)) Level value
+          .level(0); // TODO)) Level value
 
         const member = await discordTry(
           () => itx.guild.members.fetch(user.id),
