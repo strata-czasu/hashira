@@ -10,10 +10,17 @@ import { addBalance } from "./managers/transferManager";
 import { getDefaultWallet } from "./managers/walletManager";
 import { formatBalance, formatItem, getItem, getShopItem } from "./util";
 
-// FIXME)) This doesn't display an accurate value when the amount isn't divisible by 1000
+/**
+ * Format amount to K/M, keeping up to one decimal if needed
+ */
 const formatAmount = (amount: number) => {
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;
-  if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
+  const divideAndRound = (num: number, divisor: number) => {
+    const divided = num / divisor;
+    return divided % 1 ? divided.toFixed(1) : divided.toFixed(0);
+  };
+
+  if (amount >= 1_000_000) return `${divideAndRound(amount, 1_000_000)}M`;
+  if (amount >= 1_000) return `${divideAndRound(amount, 1_000)}K`;
   return amount.toString();
 };
 
