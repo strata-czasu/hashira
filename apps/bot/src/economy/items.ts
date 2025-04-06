@@ -1,14 +1,11 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item } from "@hashira/db";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { formatBalance, getItem } from "./util";
-
-const formatItem = ({ name, id }: Item) =>
-  `${bold(name)} [${inlineCode(id.toString())}]`;
+import { formatBalance, formatItem, getItem } from "./util";
 
 const formatItemInList = ({ id, name, description, type }: Item) => {
   let typeName = "";

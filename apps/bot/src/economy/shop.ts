@@ -1,15 +1,16 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { PermissionFlagsBits, inlineCode } from "discord.js";
+import { PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { addBalance } from "./managers/transferManager";
 import { getDefaultWallet } from "./managers/walletManager";
-import { formatBalance, getItem, getShopItem } from "./util";
+import { formatBalance, formatItem, getItem, getShopItem } from "./util";
 
+// FIXME)) This doesn't display an accurate value when the amount isn't divisible by 1000
 const formatAmount = (amount: number) => {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(0)}M`;
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
@@ -42,9 +43,18 @@ export const shop = new Hashira({ name: "shop" })
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ id, price, item: { name, description } }) =>
-                `### ${name} - ${formatAmount(price as number)} [${id}]\n${description}`,
+              ({ id, price, item: { name, description, type } }) => {
+                let typeName = "";
+                if (type === "profileTitle") typeName = "(T)";
+
+                const lines = [];
+                lines.push(`### ${name} - ${formatAmount(price)} [${id}] ${typeName}`);
+                if (description) lines.push(description);
+
+                return lines.join("\n");
+              },
               true,
+              "T - tytuł profilu",
             );
             await paginatedView.render(itx);
           }),
@@ -72,7 +82,7 @@ export const shop = new Hashira({ name: "shop" })
               if (!shopItem) {
                 await errorFollowUp(
                   itx,
-                  "Nie znaleziono przedmiotu w sklepie o podanym ID",
+                  "Nie znaleziono przedmiotu o podanym ID w sklepie",
                 );
                 return false;
               }
@@ -132,30 +142,26 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, id);
-              if (!item) {
-                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
-                return null;
-              }
+            const item = await getItem(prisma, id);
+            if (!item) {
+              await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
+              return;
+            }
 
-              await tx.shopItem.create({
-                data: {
-                  itemId: id,
-                  price,
-                  createdBy: itx.user.id,
-                },
-              });
-
-              return item;
+            await prisma.shopItem.create({
+              data: {
+                itemId: id,
+                price,
+                createdBy: itx.user.id,
+              },
             });
 
-            if (!item) return;
-
-            await itx.editReply(`Wystawiono ${item.name} za ${formatAmount(price)}`);
+            await itx.editReply(
+              `Wystawiono ${formatItem(item)} za ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`,
+            );
           }),
       )
-      .addCommand("zdejmij", (command) =>
+      .addCommand("usuń", (command) =>
         command
           .setDescription("Usuń przedmiot ze sklepu")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
@@ -163,23 +169,21 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const removed = await prisma.$transaction(async (tx) => {
-              const shopItem = await getShopItem(tx, id);
-              if (!shopItem) {
-                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
-                return false;
-              }
+            const shopItem = await getShopItem(prisma, id);
+            if (!shopItem) {
+              await errorFollowUp(
+                itx,
+                "Nie znaleziono przedmiotu w sklepie o podanym ID",
+              );
+              return;
+            }
 
-              await tx.shopItem.update({
-                where: { id },
-                data: { deletedAt: itx.createdAt },
-              });
-
-              return true;
+            await prisma.shopItem.update({
+              where: { id },
+              data: { deletedAt: itx.createdAt },
             });
-            if (!removed) return;
 
-            await itx.editReply("Przedmiot usunięty ze sklepu");
+            await itx.editReply(`Usunięto ${formatItem(shopItem.item)} ze sklepu`);
           }),
       )
       .addCommand("edytuj", (command) =>
@@ -191,24 +195,22 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const updated = await prisma.$transaction(async (tx) => {
-              const shopItem = await getShopItem(tx, id);
-              if (!shopItem) {
-                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
-                return false;
-              }
+            const shopItem = await getShopItem(prisma, id);
+            if (!shopItem) {
+              await errorFollowUp(
+                itx,
+                "Nie znaleziono przedmiotu w sklepie o podanym ID",
+              );
+              return;
+            }
 
-              await tx.shopItem.update({
-                where: { id },
-                data: { price, editedAt: itx.createdAt },
-              });
-
-              return true;
+            await prisma.shopItem.update({
+              where: { id },
+              data: { price, editedAt: itx.createdAt },
             });
-            if (!updated) return;
 
             await itx.editReply(
-              `Zaktualizowano cenę przedmiotu ${inlineCode(id.toString())}`,
+              `Zmieniono cenę ${formatItem(shopItem.item)} na ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`,
             );
           }),
       ),
