@@ -1,11 +1,10 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
 import * as cheerio from "cheerio";
 import { differenceInDays, sub } from "date-fns";
 import {
   DiscordAPIError,
   EmbedBuilder,
-  PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
   inlineCode,
@@ -60,15 +59,16 @@ export const profile = new Hashira({ name: "profile" })
               },
               include: {
                 inventoryItems: true,
+                profileSettings: {
+                  include: {
+                    title: true,
+                  },
+                },
               },
             });
             if (!dbUser) return;
             await itx.deferReply();
 
-            const profileSettings = await prisma.profileSettings.findFirst({
-              where: { userId: user.id },
-              select: { title: true },
-            });
             const wallet = await getDefaultWallet({
               prisma,
               userId: user.id,
@@ -125,8 +125,8 @@ export const profile = new Hashira({ name: "profile" })
             // TODO)) Customizable badges
             image.allShowcaseBadgesOpacity(0);
 
-            if (profileSettings?.title) {
-              image.title(profileSettings.title.name);
+            if (dbUser.profileSettings?.title) {
+              image.title(dbUser.profileSettings.title.name);
             } else {
               image.title("Użytkownik");
             }
@@ -203,21 +203,25 @@ export const profile = new Hashira({ name: "profile" })
               .handle(async ({ prisma }, _, itx) => {
                 if (!itx.inCachedGuild()) return;
 
-                const where = { userId: itx.user.id };
+                const where: Prisma.InventoryItemWhereInput = {
+                  item: { type: "profileTitle" },
+                  userId: itx.user.id,
+                  deletedAt: null,
+                };
                 const paginator = new DatabasePaginator(
                   (props) =>
-                    prisma.ownedProfileTitle.findMany({
+                    prisma.inventoryItem.findMany({
                       where,
-                      select: { createdAt: true, title: true },
+                      include: { item: true },
                       ...props,
                     }),
-                  () => prisma.ownedProfileTitle.count({ where }),
+                  () => prisma.inventoryItem.count({ where }),
                 );
 
                 const paginatedView = new PaginatedView(
                   paginator,
                   "Posiadane tytuły",
-                  ({ title: { name, id }, createdAt }) =>
+                  ({ item: { name, id }, createdAt }) =>
                     `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
                   false,
                 );
@@ -232,9 +236,13 @@ export const profile = new Hashira({ name: "profile" })
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const ownedTitle = await prisma.ownedProfileTitle.findFirst({
-                  where: { titleId: id, userId: itx.user.id },
-                  select: { title: true },
+                const ownedTitle = await prisma.inventoryItem.findFirst({
+                  where: {
+                    item: { id, type: "profileTitle" },
+                    userId: itx.user.id,
+                    deletedAt: null,
+                  },
+                  include: { item: true },
                 });
                 if (!ownedTitle) {
                   await itx.editReply(
@@ -242,104 +250,19 @@ export const profile = new Hashira({ name: "profile" })
                   );
                   return;
                 }
-                const { title } = ownedTitle;
+                const {
+                  item: { id: titleId, name },
+                } = ownedTitle;
 
                 await ensureUserExists(prisma, itx.user);
                 await prisma.profileSettings.upsert({
-                  create: { titleId: title.id, userId: itx.user.id },
-                  update: { titleId: title.id },
+                  create: { titleId, userId: itx.user.id },
+                  update: { titleId },
                   where: { userId: itx.user.id },
                 });
 
-                await itx.editReply(`Ustawiono tytuł ${italic(title.name)}`);
+                await itx.editReply(`Ustawiono tytuł ${italic(name)}`);
               }),
           ),
-      ),
-  )
-  .group("profil-tytuły", (group) =>
-    group
-      .setDescription("Zarządzanie tytułami profili")
-      .setDMPermission(false)
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-      .addCommand("lista", (command) =>
-        command
-          .setDescription("Wyświetl wszystkie dostępne tytuły")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            const where = { deletedAt: null };
-            const paginator = new DatabasePaginator(
-              (props) => prisma.profileTitle.findMany({ where, ...props }),
-              () => prisma.profileTitle.count({ where }),
-            );
-
-            const paginatedView = new PaginatedView(
-              paginator,
-              "Tytuły profili",
-              ({ id, name }) => `${name} [${inlineCode(id.toString())}]`,
-              true,
-            );
-            await paginatedView.render(itx);
-          }),
-      )
-      .addCommand("utwórz", (command) =>
-        command
-          .setDescription("Utwórz nowy tytuł")
-          .addString("name", (name) => name.setDescription("Nazwa"))
-          .handle(async ({ prisma }, { name }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            const existingTitle = await prisma.profileTitle.findFirst({
-              where: { name, deletedAt: null },
-            });
-            if (existingTitle) {
-              await itx.editReply("Tytuł o tej nazwie już istnieje!");
-              return;
-            }
-
-            await ensureUserExists(prisma, itx.user);
-            const { id } = await prisma.profileTitle.create({
-              data: { name, createdBy: itx.user.id },
-            });
-
-            await itx.editReply(
-              `Utworzono nowy tytuł ${italic(name)} [${inlineCode(id.toString())}]`,
-            );
-          }),
-      )
-      .addCommand("dodaj-userowi", (command) =>
-        command
-          .setDescription("Dodaj tytuł profilu userowi")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addInteger("id", (id) => id.setDescription("ID tytułu"))
-          .handle(async ({ prisma }, { user, id }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            const title = await prisma.profileTitle.findFirst({ where: { id } });
-            if (!title) {
-              await itx.editReply("Tytuł o tym ID nie istnieje!");
-              return;
-            }
-
-            const existingOwnedTitle = await prisma.ownedProfileTitle.findFirst({
-              where: { title, userId: user.id },
-            });
-            if (existingOwnedTitle) {
-              await itx.editReply(
-                `${user.tag} ma już tytuł [${inlineCode(id.toString())}]`,
-              );
-              return;
-            }
-
-            await ensureUserExists(prisma, user);
-            await prisma.ownedProfileTitle.create({
-              data: { titleId: title.id, userId: user.id },
-            });
-
-            await itx.editReply(`Dodano tytuł ${italic(title.name)} dla ${user.tag}`);
-          }),
       ),
   );

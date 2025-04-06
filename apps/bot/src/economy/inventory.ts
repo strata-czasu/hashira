@@ -83,9 +83,18 @@ export const inventory = new Hashira({ name: "inventory" })
                 );
               }
 
-              const item = await getItem(prisma, itemId);
+              const item = await prisma.item.findFirst({
+                where: {
+                  id: itemId,
+                  type: "item",
+                  deletedAt: null,
+                },
+              });
               if (!item) {
-                return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                return await errorFollowUp(
+                  itx,
+                  "Przedmiot o podanym ID nie istnieje lub nie możesz go przekazać!",
+                );
               }
 
               await ensureUsersExist(prisma, [targetUser, itx.user]);
