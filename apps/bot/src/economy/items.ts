@@ -115,7 +115,6 @@ export const items = new Hashira({ name: "items" })
                 type: "profileTitle",
               },
             });
-            if (!item) return;
 
             await itx.editReply(`Utworzono tytuł ${formatItem(item)}`);
             // TODO)) Logs of title creation
