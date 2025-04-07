@@ -1,4 +1,4 @@
-import type { Item, PrismaTransaction } from "@hashira/db";
+import type { Item, ItemType, PrismaTransaction } from "@hashira/db";
 import { bold, inlineCode } from "discord.js";
 import { createPluralize } from "../util/pluralize";
 
@@ -48,3 +48,12 @@ export const pluralizeUsers = createPluralize({
   1: "użytkownikowi",
   2: "użytkownikom",
 });
+
+export const getTypeNameForList = (type: ItemType): string => {
+  switch (type) {
+    case "profileTitle":
+      return "(T)";
+    case "item":
+      return "";
+  }
+};

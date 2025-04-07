@@ -8,7 +8,13 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { addBalance } from "./managers/transferManager";
 import { getDefaultWallet } from "./managers/walletManager";
-import { formatBalance, formatItem, getItem, getShopItem } from "./util";
+import {
+  formatBalance,
+  formatItem,
+  getItem,
+  getShopItem,
+  getTypeNameForList,
+} from "./util";
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -51,11 +57,10 @@ export const shop = new Hashira({ name: "shop" })
               paginator,
               "Sklep",
               ({ id, price, item: { name, description, type } }) => {
-                let typeName = "";
-                if (type === "profileTitle") typeName = "(T)";
-
                 const lines = [];
-                lines.push(`### ${name} - ${formatAmount(price)} [${id}] ${typeName}`);
+                lines.push(
+                  `### ${name} - ${formatAmount(price)} [${id}] ${getTypeNameForList(type)}`,
+                );
                 if (description) lines.push(description);
 
                 return lines.join("\n");

@@ -5,14 +5,11 @@ import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { formatBalance, formatItem, getItem } from "./util";
+import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
 const formatItemInList = ({ id, name, description, type }: Item) => {
-  let typeName = "";
-  if (type === "profileTitle") typeName = "(T)";
-
   const lines = [];
-  lines.push(`### ${name} [${id}] ${typeName}`);
+  lines.push(`### ${name} [${id}] ${getTypeNameForList(type)}`);
   if (description) lines.push(description);
 
   return lines.join("\n");
