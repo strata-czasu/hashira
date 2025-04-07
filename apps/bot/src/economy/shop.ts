@@ -21,7 +21,7 @@ const formatAmount = (amount: number) => {
 
   if (amount >= 1_000_000) return `${divideAndRound(amount, 1_000_000)}M`;
   if (amount >= 1_000) return `${divideAndRound(amount, 1_000)}K`;
-  return amount.toString();
+  return divideAndRound(amount, 1);
 };
 
 export const shop = new Hashira({ name: "shop" })
