@@ -328,6 +328,4 @@ enum DiscordButtonStyle {
 enum ItemType {
   item
   profileTitle
-
-  @@map("item_type")
 }

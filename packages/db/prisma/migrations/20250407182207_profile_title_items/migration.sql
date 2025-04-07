@@ -1,8 +1,8 @@
 -- CreateEnum
-CREATE TYPE "item_type" AS ENUM ('item', 'profileTitle');
+CREATE TYPE "ItemType" AS ENUM ('item', 'profileTitle');
 
 -- AlterTable
-ALTER TABLE "item" ADD COLUMN     "type" "item_type" NOT NULL DEFAULT 'item';
+ALTER TABLE "item" ADD COLUMN     "type" "ItemType" NOT NULL DEFAULT 'item';
 
 -- CreateTable
 CREATE TABLE "ProfileSettings" (
