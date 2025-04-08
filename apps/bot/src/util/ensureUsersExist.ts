@@ -1,4 +1,4 @@
-import type { ExtendedPrismaClient } from "@hashira/db";
+import type { PrismaTransaction } from "@hashira/db";
 import {
   GuildMember,
   Message,
@@ -21,12 +21,12 @@ const resolveId = (userResolvable: UserResolvable) => {
 };
 
 export async function ensureUsersExist(
-  prisma: ExtendedPrismaClient,
+  prisma: PrismaTransaction,
   users: UserResolvable[],
 ) {
   await prisma.user.createMany({ data: users.map(resolveId), skipDuplicates: true });
 }
 
-export async function ensureUserExists(db: ExtendedPrismaClient, user: User | string) {
+export async function ensureUserExists(db: PrismaTransaction, user: User | string) {
   await ensureUsersExist(db, [user]);
 }

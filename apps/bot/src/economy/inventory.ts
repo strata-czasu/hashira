@@ -15,14 +15,17 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl ekwipunek użytkownika")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma }, { user }, itx) => {
+          .addUser("user", (user) =>
+            user.setDescription("Użytkownik").setRequired(false),
+          )
+          .handle(async ({ prisma }, { user: rawUser }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            const user = rawUser ?? itx.user;
+
             const items = await prisma.item.findMany({
               select: { id: true, name: true },
-              where: { deletedAt: null },
             });
             const itemNames = new Map(items.map((item) => [item.id, item.name]));
 
@@ -50,8 +53,7 @@ export const inventory = new Hashira({ name: "inventory" })
               `Ekwipunek ${user.tag}`,
               ({ _count, itemId }) => {
                 const idString = `[${inlineCode(itemId.toString())}]`;
-                const itemName =
-                  itemNames.get(itemId) ?? `Nieznany przedmiot ${idString}`;
+                const itemName = itemNames.get(itemId) ?? "Nieznany przedmiot";
                 if (_count === 1) return `- ${itemName} ${idString}`;
                 return `- ${itemName} (x${bold(_count.toString())}) ${idString}`;
               },
@@ -81,9 +83,18 @@ export const inventory = new Hashira({ name: "inventory" })
                 );
               }
 
-              const item = await getItem(prisma, itemId);
+              const item = await prisma.item.findFirst({
+                where: {
+                  id: itemId,
+                  type: "item",
+                  deletedAt: null,
+                },
+              });
               if (!item) {
-                return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                return await errorFollowUp(
+                  itx,
+                  "Przedmiot o podanym ID nie istnieje lub nie możesz go przekazać!",
+                );
               }
 
               await ensureUsersExist(prisma, [targetUser, itx.user]);

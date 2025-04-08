@@ -1,0 +1,7 @@
+model ProfileSettings {
+  userId  String @id @unique
+  titleId Int?
+
+  user  User  @relation(fields: [userId], references: [id])
+  title Item? @relation(fields: [titleId], references: [id])
+}

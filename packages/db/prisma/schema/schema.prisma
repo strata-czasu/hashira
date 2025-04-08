@@ -129,23 +129,30 @@ model InventoryItem {
   userId    String
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
-  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
-  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
 
   @@map("inventoryItem")
 }
 
+// TODO)) `canBeTraded` or something like that to limit trading of items.
+// For the time being, all `profileTitle` items are untradeable.
+// TODO)) Some items (like type=`profileTitle`) should be unique per user.
 model Item {
-  id            Int             @id(map: "core_item_pkey") @default(autoincrement())
-  name          String
-  description   String?
-  createdAt     DateTime        @default(now()) @db.Timestamp(6)
-  editedAt      DateTime?       @db.Timestamp(6)
-  deletedAt     DateTime?       @db.Timestamp(6)
-  createdBy     String
-  inventoryItem InventoryItem[]
-  creator       User            @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
-  shopItem      ShopItem[]
+  id          Int       @id(map: "core_item_pkey") @default(autoincrement())
+  description String?
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  editedAt    DateTime? @db.Timestamp(6)
+  deletedAt   DateTime? @db.Timestamp(6)
+  createdBy   String
+  type        ItemType  @default(item)
+  name        String
+
+  inventoryItem   InventoryItem[]
+  creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
+  shopItem        ShopItem[]
+  ProfileSettings ProfileSettings[]
 
   @@map("item")
 }
@@ -229,6 +236,7 @@ model User {
   participatingInDmPolls            DmPollParticipant[]
   dmPollExclusion                   DmPollExclusion?
   voiceSessions                     VoiceSession[]
+  profileSettings                   ProfileSettings?
 
   @@map("users")
 }
@@ -315,4 +323,9 @@ enum DiscordButtonStyle {
   premium
 
   @@map("button_style")
+}
+
+enum ItemType {
+  item
+  profileTitle
 }

@@ -1,5 +1,5 @@
-import type { PrismaTransaction } from "@hashira/db";
-import { inlineCode } from "discord.js";
+import type { Item, ItemType, PrismaTransaction } from "@hashira/db";
+import { bold, inlineCode } from "discord.js";
 import { createPluralize } from "../util/pluralize";
 
 export type GetCurrencyConditionOptions =
@@ -20,6 +20,9 @@ export const getShopItem = async (prisma: PrismaTransaction, id: number) =>
       id,
       deletedAt: null,
     },
+    include: {
+      item: true,
+    },
   });
 
 export const getInventoryItem = async (
@@ -35,6 +38,9 @@ export const getInventoryItem = async (
     },
   });
 
+export const formatItem = ({ name, id }: Item) =>
+  `${bold(name)} [${inlineCode(id.toString())}]`;
+
 export const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);
 
@@ -42,3 +48,12 @@ export const pluralizeUsers = createPluralize({
   1: "użytkownikowi",
   2: "użytkownikom",
 });
+
+export const getTypeNameForList = (type: ItemType): string => {
+  switch (type) {
+    case "profileTitle":
+      return "(T)";
+    case "item":
+      return "";
+  }
+};

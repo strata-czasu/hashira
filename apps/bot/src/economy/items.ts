@@ -1,13 +1,19 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item } from "@hashira/db";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { formatBalance, getItem } from "./util";
+import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
-const formatItem = ({ name, id }: Item) =>
-  `${bold(name)} [${inlineCode(id.toString())}]`;
+const formatItemInList = ({ id, name, description, type }: Item) => {
+  const lines = [];
+  lines.push(`### ${name} [${id}] ${getTypeNameForList(type)}`);
+  if (description) lines.push(description);
+
+  return lines.join("\n");
+};
 
 export const items = new Hashira({ name: "items" })
   .use(base)
@@ -33,15 +39,16 @@ export const items = new Hashira({ name: "items" })
             const paginatedView = new PaginatedView(
               paginator,
               "Przedmioty",
-              ({ id, name, description }) => `### ${name} [${id}]\n${description}`,
+              formatItemInList,
               true,
+              "T - tytuł profilu",
             );
             await paginatedView.render(itx);
           }),
       )
-      .addCommand("dodaj", (command) =>
+      .addCommand("utwórz", (command) =>
         command
-          .setDescription("Utwórz przedmiot")
+          .setDescription("Utwórz nowy przedmiot")
           .addString("name", (name) => name.setDescription("Nazwa przedmiotu"))
           .addString("description", (name) => name.setDescription("Opis przedmiotu"))
           .addInteger("price", (name) =>
@@ -56,11 +63,13 @@ export const items = new Hashira({ name: "items" })
             await itx.deferReply();
 
             const item = await prisma.$transaction(async (tx) => {
+              await ensureUserExists(tx, itx.user);
               const item = await tx.item.create({
                 data: {
                   name,
                   description,
                   createdBy: itx.user.id,
+                  type: "item",
                 },
               });
 
@@ -83,6 +92,32 @@ export const items = new Hashira({ name: "items" })
               message += ` i dodano go do sklepu za ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`;
             }
             await itx.editReply(message);
+            // TODO)) Logs of item creation
+          }),
+      )
+      .addCommand("utwórz-tytuł", (command) =>
+        command
+          .setDescription("Utwórz nowy tytuł")
+          .addString("name", (name) => name.setDescription("Nazwa tytułu"))
+          .addString("description", (description) =>
+            description.setDescription("Opis tytułu").setRequired(false),
+          )
+          .handle(async ({ prisma }, { name, description }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            await ensureUserExists(prisma, itx.user);
+            const item = await prisma.item.create({
+              data: {
+                name,
+                description,
+                createdBy: itx.user.id,
+                type: "profileTitle",
+              },
+            });
+
+            await itx.editReply(`Utworzono tytuł ${formatItem(item)}`);
+            // TODO)) Logs of title creation
           }),
       )
       .addCommand("edytuj", (command) =>
@@ -123,6 +158,7 @@ export const items = new Hashira({ name: "items" })
             if (!item) return;
 
             await itx.editReply(`Edytowano przedmiot ${inlineCode(id.toString())}`);
+            // TODO)) Logs of item edits
           }),
       )
       .addCommand("usun", (command) =>
@@ -155,6 +191,7 @@ export const items = new Hashira({ name: "items" })
             if (!item) return;
 
             await itx.editReply(`Usunięto przedmiot ${inlineCode(id.toString())}`);
+            // TODO)) Logs of item deletion
           }),
       ),
   );
