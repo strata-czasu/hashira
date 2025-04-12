@@ -632,10 +632,22 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 (m) => m.messageId === null,
               );
               lines.push(
-                `Nie udało się wysłać wiadomości do:\n${failedToSendMessages
-                  .map(({ member }) => `${member.user.tag} ${member.user.id}`)
-                  .join("\n")}`,
+                `Nie udało się wysłać wiadomości do ${failedToSendMessages.length} użytkowników:`,
               );
+              if (failedToSendMessages.length <= 20) {
+                lines.push(
+                  failedToSendMessages
+                    .map(({ member }) => `${member.user.tag} ${member.user.id}`)
+                    .join("\n"),
+                );
+              } else {
+                const failedToSendMembersHastebinUrl = await hastebin(
+                  failedToSendMessages
+                    .map(({ member }) => `${member.user.tag} ${member.user.id}`)
+                    .join("\n"),
+                );
+                lines.push(failedToSendMembersHastebinUrl);
+              }
             }
 
             await itx.user.createDM();
