@@ -3,6 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "exports": {
-    "./types": "./types.ts"
+    "./types": "./types.ts",
+    "./range": "./range.ts"
   }
 }
