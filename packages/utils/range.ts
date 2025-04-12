@@ -60,7 +60,7 @@ export function range<Start extends number, End extends number>(
   return result as Range<Start, End>;
 }
 
-type RangeUnion<Start extends number, End extends number> = Start extends End
+export type RangeUnion<Start extends number, End extends number> = Start extends End
   ? never
   : Start | RangeUnion<Increment<Start>, End>;
 
@@ -84,7 +84,7 @@ type RangeObjectType<Start extends number, End extends number, T> = {
 export function rangeObject<Start extends number, End extends number, T>(
   start: Start,
   end: End,
-  mapper: (i: number) => T,
+  mapper: (i: RangeUnion<Start, End>) => T,
 ): RangeObjectType<Start, End, T> {
   if (start < 0 || end < 0) {
     throw new Error("Range bounds must be non-negative integers");
@@ -92,8 +92,8 @@ export function rangeObject<Start extends number, End extends number, T>(
 
   const result = {} as RangeObjectType<Start, End, T>;
 
-  for (let i = start; i < end; i++) {
-    result[i as RangeUnion<Start, End>] = mapper(i);
+  for (let i = start as RangeUnion<Start, End>; i < end; i++) {
+    result[i] = mapper(i);
   }
 
   return result;
