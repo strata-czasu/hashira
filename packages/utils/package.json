@@ -1,0 +1,8 @@
+{
+  "name": "@hashira/utils",
+  "module": "index.ts",
+  "type": "module",
+  "exports": {
+    "./types": "./types.ts"
+  }
+}

@@ -1,5 +1,4 @@
-import type { Prettify } from "@hashira/core";
-
+import type { Prettify } from "@hashira/utils/types";
 import { addSeconds } from "date-fns";
 import type { ExtendedPrismaClient, PrismaTransaction, Task } from ".";
 

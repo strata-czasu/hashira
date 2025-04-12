@@ -1,3 +1,4 @@
+import type { Prettify } from "@hashira/utils/types";
 import {
   ApplicationCommandType,
   type AutocompleteInteraction,
@@ -25,7 +26,6 @@ import type {
   HashiraCommands,
   HashiraContext,
   HashiraDecorators,
-  Prettify,
   UnknownContext,
   UnknownDerive,
   UnknownEventWithContext,
@@ -510,6 +510,5 @@ class Hashira<
 
 export { ConfirmationDialog, waitForConfirmation } from "./confirmationDialog";
 export { PaginatedView } from "./paginatedView";
-export type { Prettify } from "./types";
 export { Hashira, decoratorInitBase };
 export type { BaseDecorator, ExtractContext, HashiraContext, HashiraDecorators };

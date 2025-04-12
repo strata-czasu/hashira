@@ -1,3 +1,4 @@
+import type { Prettify } from "@hashira/utils/types";
 import {
   type ChatInputCommandInteraction,
   type Permissions,
@@ -16,7 +17,6 @@ import type {
   If,
   OptionBuilder,
   OptionDataType,
-  Prettify,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
