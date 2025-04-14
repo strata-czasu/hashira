@@ -1,12 +1,9 @@
+import type { Prettify } from "@hashira/utils/types";
 import type {
   ChatInputCommandInteraction,
   ToAPIApplicationCommandOptions,
 } from "discord.js";
 import type { AllEventsHandling } from "./intents";
-
-export type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
 
 export type EventsWithContext<Context extends HashiraContext<HashiraDecorators>> = {
   [K in keyof AllEventsHandling]: (

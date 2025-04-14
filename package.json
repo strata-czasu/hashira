@@ -38,6 +38,7 @@
   "dependencies": {
     "discord.js": "^14.18.0",
     "es-toolkit": "^1.34.1",
-    "valibot": "^1.0.0"
+    "valibot": "^1.0.0",
+    "@hashira/utils": "workspace:*"
   }
 }

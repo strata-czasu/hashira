@@ -1,4 +1,4 @@
-import type { Prettify } from "@hashira/core";
+import type { Prettify } from "@hashira/utils/types";
 import type { Client, EmbedBuilder, Guild, TextBasedChannel } from "discord.js";
 import { Batcher, InMemoryBackend } from "../../util/batcher";
 
