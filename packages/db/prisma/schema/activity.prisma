@@ -15,18 +15,13 @@ model UserTextActivity {
 /// Created when a user leaves a voice channel or moves to a different channel
 /// This record should not be modified after creation
 model VoiceSession {
-  id                          Int      @id @default(autoincrement())
-  channelId                   String
-  joinedAt                    DateTime
-  leftAt                      DateTime
-  userId                      String
-  guildId                     String
-  totalMutedSeconds           Int
-  totalDeafenedSeconds        Int
-  totalStreamingSeconds       Int
-  totalVideoSeconds           Int
-  totalActiveStreamingSeconds Int
-  totalActiveVideoSeconds     Int
-  user                        User     @relation(fields: [userId], references: [id])
-  guild                       Guild    @relation(fields: [guildId], references: [id])
+  id        Int      @id @default(autoincrement())
+  channelId String
+  joinedAt  DateTime
+  leftAt    DateTime
+  userId    String
+  guildId   String
+  totals    Int[] // Array of total time spent in a combination of each state (muted, deafened, video, streaming).
+  user      User     @relation(fields: [userId], references: [id])
+  guild     Guild    @relation(fields: [guildId], references: [id])
 }
