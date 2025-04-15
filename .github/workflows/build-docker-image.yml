@@ -1,16 +1,53 @@
-name: Create and publish a Docker image
+name: Build and publish a Docker image
 
 on:
   push:
     branches:
-      - main
+      - '**'
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build-docker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=long
+            ${{ github.ref_name == 'main' && 'latest' || '' }}
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=docker,dest=/tmp/docker-image.tar
+
+      - name: Upload Docker image as artifact
+        if: github.ref_name == 'main'
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp/docker-image.tar
+          retention-days: 1
+
+  push-and-deploy:
+    needs: build-docker-image
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
 
     permissions:
@@ -20,9 +57,16 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      # Download the Docker image from the previous job
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp
 
-      # https://github.com/docker/login-action
+      - name: Load Docker image
+        run: docker load --input /tmp/docker-image.tar
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -30,7 +74,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # https://github.com/docker/metadata-action
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -40,18 +83,17 @@ jobs:
             type=sha,format=long
             latest
 
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
+      - name: Push Docker image
         id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+        run: |
+          # Push all tags from the metadata
+          for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' '); do
+            docker push $tag
+          done
+          # Get the digest of the pushed image
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' ${tag% *} | cut -d'@' -f2)
+          echo "digest=$digest" >> $GITHUB_OUTPUT
 
-      # https://github.com/actions/attest-build-provenance
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
