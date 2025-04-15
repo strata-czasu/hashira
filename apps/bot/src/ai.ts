@@ -202,7 +202,7 @@ export const ai = new Hashira({ name: "ai" })
         "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
         "You cannot interact with the moderator, only provide them with information and perform actions.",
         "If not given snowflake, respond that you need a user to be mentioned or their id.",
-        `Current time: ${format(new Date(), "yyyy-MM-dd HH:mm:ss")}`,
+        `Current time: ${format(new Date(), "EEEE yyyy-MM-dd HH:mm:ss XXX")}`,
       ];
 
       const runner = ai.beta.chat.completions
