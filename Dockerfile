@@ -25,7 +25,7 @@ RUN bun install --production
 
 COPY --link . .
 
-RUN bun prisma-generate --sql
+RUN bun prisma-generate
 
 USER bun
 CMD ["bun", "start:prod"]

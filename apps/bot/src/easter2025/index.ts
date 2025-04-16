@@ -5,7 +5,6 @@ import {
   type Easter2025Team,
   type ExtendedPrismaClient,
   type PrismaTransaction,
-  easter2025getTeamActivity,
 } from "@hashira/db";
 import {
   type Client,
@@ -18,12 +17,35 @@ import {
   hyperlink,
   userMention,
 } from "discord.js";
-import { sample } from "es-toolkit";
+import { sample, take } from "es-toolkit";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import safeSendCode from "../util/safeSendCode";
+
+const getTeamActivity = async (
+  prisma: PrismaTransaction,
+  teamId: number,
+): Promise<{ userId: string; activity_count: bigint }[]> => {
+  return prisma.$queryRaw`SELECT
+  uta."userId",
+  COUNT(*) AS activity_count
+FROM "userTextActivity" uta
+INNER JOIN "Easter2025TeamMember" tm
+  ON uta."userId" = tm."userId"
+LEFT JOIN "Easter2025DisabledChannels" dc
+  ON uta."channelId" = dc."channelId"
+WHERE
+  tm."teamId" = ${teamId}
+  AND uta."timestamp" >= tm."joinedAt"
+  AND dc."channelId" IS NULL
+GROUP BY
+  uta."userId"
+ORDER BY
+  activity_count;
+`;
+};
 
 const getRandomTeam = async (prisma: PrismaTransaction) => {
   const existingTeams = await prisma.easter2025Team.findMany();
@@ -33,15 +55,18 @@ const getRandomTeam = async (prisma: PrismaTransaction) => {
 
 const formatMilestoneProgress = (
   totalPoints: number | bigint,
+  currentMilestone: Easter2025Stage | null,
   nextMilestone: Easter2025Stage | null,
 ) => {
-  if (!nextMilestone) {
-    return `${bold("Wszystkie etapy ukończone!")} Zebrano ${bold(totalPoints.toString())} wiadomości.`;
+  const neededPoints = nextMilestone?.neededPoints ?? currentMilestone?.neededPoints;
+
+  if (!neededPoints) {
+    return "Nie znaleziono progu!";
   }
 
-  const progress = (Number(totalPoints) / nextMilestone.neededPoints) * 100;
+  const progress = (Number(totalPoints) / neededPoints) * 100;
 
-  return `${bold(totalPoints.toString())}/${nextMilestone.neededPoints} wiadomości (${progress.toFixed(1)}%)`;
+  return `${bold(totalPoints.toString())}/${neededPoints} wiadomości (${progress.toFixed(1)}%)`;
 };
 
 const updateMembership = async (
@@ -93,7 +118,7 @@ const getTeamEmbed = async (
   prisma: ExtendedPrismaClient,
   team: Pick<Easter2025Team, "id" | "name" | "color">,
 ) => {
-  const activities = await prisma.$queryRawTyped(easter2025getTeamActivity(team.id));
+  const activities = await getTeamActivity(prisma, team.id);
 
   const totalActivity = activities.reduce(
     // biome-ignore lint/style/noNonNullAssertion: This is some quirk of Prisma
@@ -122,7 +147,7 @@ const getTeamEmbed = async (
   const embed = new EmbedBuilder()
     .setTitle(`Drużyna: ${team.name}`)
     .setDescription(
-      `**Postęp drużyny:**\n${formatMilestoneProgress(totalActivity, nextMilestone)}`,
+      `**Postęp drużyny:** ${formatMilestoneProgress(totalActivity, currentMilestone, nextMilestone)}`,
     )
     .setColor(team.color);
 
@@ -130,14 +155,16 @@ const getTeamEmbed = async (
     embed.setImage(currentMilestone.linkedImageUrl);
   }
 
-  const top10 = activities.map((activity, index) => {
+  const top10 = take(activities, 10).map((activity, index) => {
     return `${index + 1}. ${userMention(activity.userId)}: ${activity.activity_count} wiadomości`;
   });
 
-  embed.addFields({
-    name: "Top 10 najbardziej aktywnych członków:",
-    value: top10.join("\n"),
-  });
+  if (top10.length > 0) {
+    embed.addFields({
+      name: "Top 10 najbardziej aktywnych członków:",
+      value: top10.join("\n"),
+    });
+  }
 
   return embed;
 };
