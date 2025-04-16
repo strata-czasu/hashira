@@ -18,7 +18,7 @@ import {
   hyperlink,
   userMention,
 } from "discord.js";
-import { sample, take } from "es-toolkit";
+import { isNil, sample, take } from "es-toolkit";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -61,7 +61,7 @@ const formatMilestoneProgress = (
 ) => {
   const neededPoints = nextMilestone?.neededPoints ?? currentMilestone?.neededPoints;
 
-  if (!neededPoints) {
+  if (isNil(neededPoints)) {
     return "Nie znaleziono progu!";
   }
 
