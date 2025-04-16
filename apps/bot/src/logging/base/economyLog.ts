@@ -1,8 +1,9 @@
 import { Hashira } from "@hashira/core";
 import type { Item } from "@hashira/db";
 import { type User, bold, inlineCode, italic, userMention } from "discord.js";
-import { formatBalance, pluralizeUsers } from "../../economy/util";
+import { formatBalance } from "../../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
+import { pluralizers } from "../../util/pluralize";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
@@ -50,7 +51,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
           const totalAmount = amount * toUsers.length;
           lines.push(
-            `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizeUsers(
+            `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizers.users(
               toUsers.length,
             )}: ${userMentions}`,
             `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
@@ -84,7 +85,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
           const totalAmount = amount * toUsers.length;
           lines.push(
-            `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizeUsers(
+            `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizers.users(
               toUsers.length,
             )}: ${userMentions}`,
             `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,

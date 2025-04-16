@@ -34,7 +34,7 @@ import { fetchMembers } from "./util/fetchMembers";
 import { hastebin } from "./util/hastebin";
 import { numberToEmoji } from "./util/numberToEmoji";
 import { parseUserMentions } from "./util/parseUsers";
-import { createPluralize } from "./util/pluralize";
+import { pluralizers } from "./util/pluralize";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -105,11 +105,6 @@ const parseButtonStyle = (style: DiscordButtonStyle): ButtonStyle => {
     premium: ButtonStyle.Premium,
   }[style];
 };
-
-const pluralizeUsers = createPluralize({
-  1: "użytkownika",
-  2: "użytkowników",
-});
 
 export const dmVoting = new Hashira({ name: "dmVoting" })
   .use(base)
@@ -937,7 +932,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   });
                 }
                 await itx.editReply(
-                  `Dodano ${users.size} ${pluralizeUsers(users.size)} do wykluczeń z głosowań DM`,
+                  `Dodano ${users.size} ${pluralizers.users(users.size)} do wykluczeń z głosowań DM`,
                 );
               }),
           )
@@ -964,7 +959,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   await prisma.dmPollExclusion.delete({ where: { userId: user.id } });
                 }
                 await itx.editReply(
-                  `Usunięto ${users.size} ${pluralizeUsers(users.size)} z wykluczeń z głosowań DM`,
+                  `Usunięto ${users.size} ${pluralizers.users(users.size)} z wykluczeń z głosowań DM`,
                 );
               }),
           )

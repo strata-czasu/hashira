@@ -4,13 +4,8 @@ import { partition } from "es-toolkit";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
-import { createPluralize } from "./util/pluralize";
+import { pluralizers } from "./util/pluralize";
 import safeSendCode from "./util/safeSendCode";
-
-const pluralizeUsers = createPluralize({
-  1: "użytkownika",
-  2: "użytkowników",
-});
 
 export const massDM = new Hashira({ name: "massDM" })
   .use(base)
@@ -44,7 +39,7 @@ export const massDM = new Hashira({ name: "massDM" })
               { send: itx.editReply.bind(itx) },
               `Czy na pewno chcesz wysłać wiadomość do ${bold(
                 eligibleMembers.size.toString(),
-              )} ${pluralizeUsers(eligibleMembers.size)}?\n\nTreść: ${italic(content)}`,
+              )} ${pluralizers.users(eligibleMembers.size)}?\n\nTreść: ${italic(content)}`,
               "Tak",
               "Nie",
               (action) => action.user.id === itx.user.id,

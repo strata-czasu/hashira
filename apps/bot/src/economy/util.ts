@@ -1,6 +1,5 @@
 import type { Item, ItemType, PrismaTransaction } from "@hashira/db";
 import { bold, inlineCode } from "discord.js";
-import { createPluralize } from "../util/pluralize";
 
 export type GetCurrencyConditionOptions =
   | { currencySymbol: string }
@@ -43,11 +42,6 @@ export const formatItem = ({ name, id }: Item) =>
 
 export const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);
-
-export const pluralizeUsers = createPluralize({
-  1: "użytkownikowi",
-  2: "użytkownikom",
-});
 
 export const getTypeNameForList = (type: ItemType): string => {
   switch (type) {

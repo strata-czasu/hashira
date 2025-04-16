@@ -17,7 +17,7 @@ import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { fetchMessages } from "../util/fetchMessages";
 import { isNotOwner } from "../util/isOwner";
-import { createPluralize } from "../util/pluralize";
+import { pluralizers } from "../util/pluralize";
 
 const handleStickyMessage = async (
   stickyMessageCache: StickyMessageCache,
@@ -40,11 +40,6 @@ const handleStickyMessage = async (
 
   await stickyMessageCache.update(message.channel.id, newMessage.id);
 };
-
-const pluralizeMessages = createPluralize({
-  1: "wiadomość",
-  2: "wiadomości",
-});
 
 const getMedal = (idx: number) => {
   const medals = ["🥇", "🥈", "🥉"];
@@ -182,7 +177,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
             ) => {
               return (
                 `${idx}\\.` +
-                ` <#${item.channelId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizeMessages(item._count)}`
+                ` <#${item.channelId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
               );
             };
 
@@ -265,7 +260,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
                 }
 
                 parts.push(
-                  `<@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizeMessages(item._count)}`,
+                  `<@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`,
                 );
                 return parts.join(" ");
               };
@@ -350,7 +345,7 @@ export const userTextActivity = new Hashira({ name: "user-text-activity" })
               }
 
               parts.push(
-                `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizeMessages(item.total)}`,
+                `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}`,
                 `[${item.uniqueMembers} :busts_in_silhouette:]`,
               );
               return parts.join(" ");

@@ -1,15 +1,9 @@
 import type * as cheerio from "cheerio";
 import { format as formatDate } from "date-fns";
 import sharp from "sharp";
-import { createPluralize } from "../util/pluralize";
+import { pluralizers } from "../util/pluralize";
 
 const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
-
-const pluralizeDays = createPluralize({
-  0: "dni",
-  1: "dnia",
-  2: "dni",
-});
 
 /**
  * Formats balance as a locale string with a space
@@ -239,7 +233,7 @@ export class ProfileImageBuilder {
     const group = this.#svg("g[id='Marriage Status Text Top'] > text");
     group.children("tspan:nth(1)").text(value.toString());
     // Leave a space between day amount and text
-    group.children("tspan:nth(2)").text(` ${pluralizeDays(value)}`);
+    group.children("tspan:nth(2)").text(` ${pluralizers.days(value)}`);
     return this;
   }
 

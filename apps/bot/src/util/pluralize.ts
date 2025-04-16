@@ -30,3 +30,21 @@ export const createPluralize = (declinations: Record<number, string>) => {
 
   return (count: number) => internalPluralize(count, declinationsArray);
 };
+
+export const pluralizers = {
+  users: createPluralize({
+    0: "użytkowników",
+    1: "użytkownik",
+    2: "użytkowników",
+  }),
+  messages: createPluralize({
+    0: "wiadomości",
+    1: "wiadomość",
+    2: "wiadomości",
+  }),
+  days: createPluralize({
+    0: "dni",
+    1: "dzień",
+    2: "dni",
+  }),
+};

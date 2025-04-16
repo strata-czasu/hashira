@@ -5,10 +5,11 @@ import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
 import { fetchMembers } from "../../util/fetchMembers";
 import { parseUserMentions } from "../../util/parseUsers";
+import { pluralizers } from "../../util/pluralize";
 import { EconomyError } from "../economyError";
 import { addBalances, transferBalances } from "../managers/transferManager";
 import { getDefaultWallet } from "../managers/walletManager";
-import { formatBalance, pluralizeUsers } from "../util";
+import { formatBalance } from "../util";
 
 export const strataCurrency = new Hashira({ name: "strata-currency" })
   .use(base)
@@ -109,7 +110,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               );
 
               await itx.reply(
-                `Dodano ${amountFormatted} ${members.size} ${pluralizeUsers(members.size)}.`,
+                `Dodano ${amountFormatted} ${members.size} ${pluralizers.users(members.size)}.`,
               );
             },
           ),
@@ -175,7 +176,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 .join(", ");
 
               await itx.reply(
-                `Przekazano ${amountFormatted} ${members.size} ${pluralizeUsers(members.size)}: ${memberMentions}.`,
+                `Przekazano ${amountFormatted} ${members.size} ${pluralizers.users(members.size)}: ${memberMentions}.`,
               );
             },
           ),
