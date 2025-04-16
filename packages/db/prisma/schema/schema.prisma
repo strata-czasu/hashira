@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["prismaSchemaFolder"]
+  previewFeatures = ["prismaSchemaFolder", "typedSql"]
 }
 
 datasource db {
@@ -237,6 +237,7 @@ model User {
   dmPollExclusion                   DmPollExclusion?
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
+  Easter2025TeamMember              Easter2025TeamMember[]
 
   @@map("users")
 }
