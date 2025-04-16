@@ -1,11 +1,11 @@
-import { Hashira, waitForConfirmation } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import {
+  DatabasePaginator,
   type Easter2025Stage,
   type Easter2025Team,
   type ExtendedPrismaClient,
   type PrismaTransaction,
   easter2025getTeamActivity,
-  easter2025getTeamPerPersonActivity,
 } from "@hashira/db";
 import {
   type Client,
@@ -14,7 +14,8 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   bold,
-  heading,
+  channelMention,
+  hyperlink,
   userMention,
 } from "discord.js";
 import { sample } from "es-toolkit";
@@ -88,6 +89,59 @@ const getCurrentMilestone = (prisma: PrismaTransaction, teamId: number) => {
   });
 };
 
+const getTeamEmbed = async (
+  prisma: ExtendedPrismaClient,
+  team: Pick<Easter2025Team, "id" | "name" | "color">,
+) => {
+  const activities = await prisma.$queryRawTyped(easter2025getTeamActivity(team.id));
+
+  const totalActivity = activities.reduce(
+    // biome-ignore lint/style/noNonNullAssertion: This is some quirk of Prisma
+    (sum, activity) => sum + activity.activity_count!,
+    0n,
+  );
+
+  const [currentMilestone, nextMilestone] = await prisma.$transaction([
+    getCurrentMilestone(prisma, team.id),
+    getNextMilestone(prisma, team.id),
+  ]);
+
+  if (nextMilestone && nextMilestone.neededPoints <= totalActivity) {
+    // This will be updated in the next update
+    await prisma.easter2025Stage.update({
+      where: {
+        teamId_neededPoints: {
+          teamId: team.id,
+          neededPoints: nextMilestone.neededPoints,
+        },
+      },
+      data: { completedAt: new Date() },
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Drużyna: ${team.name}`)
+    .setDescription(
+      `**Postęp drużyny:**\n${formatMilestoneProgress(totalActivity, nextMilestone)}`,
+    )
+    .setColor(team.color);
+
+  if (currentMilestone) {
+    embed.setImage(currentMilestone.linkedImageUrl);
+  }
+
+  const top10 = activities.map((activity, index) => {
+    return `${index + 1}. ${userMention(activity.userId)}: ${activity.activity_count} wiadomości`;
+  });
+
+  embed.addFields({
+    name: "Top 10 najbardziej aktywnych członków:",
+    value: top10.join("\n"),
+  });
+
+  return embed;
+};
+
 export const easter2025 = new Hashira({ name: "easter2025" })
   .use(base)
   .group("rozbij-jajco", (group) =>
@@ -129,97 +183,47 @@ export const easter2025 = new Hashira({ name: "easter2025" })
               )}! Od teraz Twoja aktywność tekstowa liczy się do ogólnej puli eventu Rozbij jajco!`,
             });
           }),
-      ),
-  )
-  .group("rozbij-jajco-admin", (group) =>
-    group
-      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-      .setDescription("Zarządzanie eventem Rozbij Jajco 2025")
+      )
       .addCommand("info", (command) =>
         command
           .setDescription("Wyświetl informacje o evencie Rozbij Jajco 2025")
           .handle(async (_, __, itx) => {
+            const lines = [
+              "Trwa event event wielkanocny! Dołącz do jednej z drużyn i rozbijajcie jajo razem!",
+              "Każda wiadomość wysłana na serwerze przez członka drużyny liczy się do ogólnego wyniku.",
+              "Każdy próg odblokowuje nową zawartość, a drużyna, która osiągnie wszystkie progi jako pierwsza, wygrywa!",
+            ];
+
             const embed = new EmbedBuilder()
-              .setTitle("🥚 Rozbij jajco! Event Wielkanocny 2025 🥚")
-              .setDescription(
-                "Trwa wielki event wielkanocny! Dołącz do jednej z drużyn i wspólnie pomagaj rozwijać event.\n\n" +
-                  "Każda wiadomość wysłana na serwerze przez członka drużyny liczy się do ogólnego wyniku. " +
-                  "Gdy osiągniemy kolejny próg, odblokujemy nową zawartość!",
-              )
+              .setTitle("🥚 Rozbij jajco! 🥚")
+              .setDescription(lines.join("\n"))
               .addFields(
                 { name: "Jak dołączyć?", value: "Użyj komendy `/rozbij-jajco dolacz`" },
                 {
                   name: "Jak sprawdzić postęp?",
-                  value: "Użyj komendy `/rozbij-jajco druzyna`",
+                  value: "Spójrz na kanał swojej drużyny.",
                 },
               )
               .setColor("#FF9933");
 
             await itx.reply({ embeds: [embed] });
           }),
-      )
-      .addCommand("druzyna", (command) =>
-        command
-          .setDescription("Sprawdź swoją drużynę i leaderboard zaangażowania")
-          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
-          .handle(async ({ prisma }, { druzyna }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
-
-            const team = await prisma.easter2025Team.findUnique({
-              where: { roleId: druzyna.id },
-              select: { id: true, name: true },
-            });
-
-            if (!team) {
-              return await errorFollowUp(itx, "Nie znaleziono podanej drużyny!");
-            }
-
-            const memberActivities = await prisma.$queryRawTyped(
-              easter2025getTeamPerPersonActivity(team.id),
-            );
-
-            const totalActivity = memberActivities.reduce(
-              // biome-ignore lint/style/noNonNullAssertion: This is some quirk of Prisma
-              (sum, activity) => sum + activity.activity_count!,
-              0n,
-            );
-
-            const nextMilestone = await getNextMilestone(prisma, team.id);
-
-            const embed = new EmbedBuilder()
-              .setTitle(`Drużyna: ${team.name}`)
-              .setDescription(
-                `**Postęp drużyny:**\n${formatMilestoneProgress(
-                  totalActivity,
-                  nextMilestone,
-                )}`,
-              )
-              .setColor("#FF9933");
-
-            const top10 = memberActivities.map((activity, index) => {
-              const user = itx.client.users.cache.get(activity.userId);
-              return `${index + 1}. ${user ? userMention(user.id) : activity.userId}: ${activity.activity_count} wiadomości`;
-            });
-
-            embed.addFields({
-              name: "Top 10 najbardziej aktywnych członków:",
-              value: top10.join("\n"),
-            });
-
-            await itx.editReply({ embeds: [embed] });
-          }),
-      )
+      ),
+  )
+  .group("rozbij-jajco-admin", (group) =>
+    group
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .setDescription("Zarządzanie eventem Rozbij Jajco 2025")
       .addCommand("ping-druzyna", (command) =>
         command
           .setDescription("Wygeneruj listę ID członków drużyny do pingowania")
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
-          .handle(async ({ prisma }, { druzyna }, itx) => {
+          .handle(async ({ prisma }, { druzyna: teamRole }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const team = await prisma.easter2025Team.findUnique({
-              where: { roleId: druzyna.id },
+              where: { roleId: teamRole.id },
               include: { teamMembers: true },
             });
 
@@ -237,12 +241,12 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           .setDescription("Zmień drużynę użytkownika (tylko dla moderatorów)")
           .addUser("user", (option) => option.setDescription("Użytkownik"))
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
-          .handle(async ({ prisma }, { user, druzyna }, itx) => {
+          .handle(async ({ prisma }, { user, druzyna: teamRole }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const newTeam = await prisma.easter2025Team.findUnique({
-              where: { roleId: druzyna.id },
+              where: { roleId: teamRole.id },
             });
 
             if (!newTeam) {
@@ -303,35 +307,49 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           .addChannel("kanal", (option) =>
             option.setDescription("Kanal ze statusem drużyny"),
           )
-          .handle(async ({ prisma }, { nazwa, rola, kanal }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addString("kolor", (option) => option.setDescription("Kolor drużyny (hex)"))
+          .handle(
+            async (
+              { prisma },
+              { nazwa: name, rola: teamRole, kanal: channel, kolor: colorHex },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            if (!kanal.isTextBased()) {
-              return await errorFollowUp(itx, "Podany kanał nie jest tekstowy!");
-            }
+              const color = Bun.color(colorHex, "number");
 
-            await itx.deferReply();
+              if (!color) {
+                return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
+              }
 
-            const existingTeam = await prisma.easter2025Team.findUnique({
-              where: { roleId: rola.id },
-            });
+              if (!channel.isTextBased()) {
+                return await errorFollowUp(itx, "Podany kanał nie jest tekstowy!");
+              }
 
-            if (existingTeam) {
-              return await errorFollowUp(itx, "Drużyna z tą rolą już istnieje!");
-            }
+              await itx.deferReply();
 
-            const newTeam = await prisma.easter2025Team.create({
-              data: {
-                name: nazwa,
-                roleId: rola.id,
-                statusChannelId: kanal.id,
-              },
-            });
+              const existingTeam = await prisma.easter2025Team.findUnique({
+                where: { roleId: teamRole.id },
+              });
 
-            await itx.editReply({
-              content: `Pomyślnie dodano drużynę ${bold(newTeam.name)}!`,
-            });
-          }),
+              if (existingTeam) {
+                return await errorFollowUp(itx, "Drużyna z tą rolą już istnieje!");
+              }
+
+              const newTeam = await prisma.easter2025Team.create({
+                data: {
+                  name: name,
+                  roleId: teamRole.id,
+                  statusChannelId: channel.id,
+                  color,
+                },
+              });
+
+              await itx.editReply({
+                content: `Pomyślnie dodano drużynę ${bold(newTeam.name)}!`,
+              });
+            },
+          ),
       )
       .addCommand("dodaj-etap", (command) =>
         command
@@ -341,30 +359,153 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           )
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .addString("obrazek", (option) => option.setDescription("Link do obrazka"))
-          .handle(async ({ prisma }, { punkty, druzyna, obrazek }, itx) => {
+          .handle(
+            async (
+              { prisma },
+              { punkty: points, druzyna: teamRole, obrazek: image },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
+
+              const team = await prisma.easter2025Team.findUnique({
+                where: { roleId: teamRole.id },
+              });
+
+              if (!team) {
+                return await errorFollowUp(itx, "Nie znaleziono podanej drużyny!");
+              }
+
+              const newStage = await prisma.easter2025Stage.create({
+                data: {
+                  neededPoints: points,
+                  linkedImageUrl: image,
+                  teamId: team.id,
+                },
+              });
+
+              await itx.editReply({
+                content: `Pomyślnie dodano nowy etap do drużyny ${bold(
+                  team.name,
+                )}: ${bold(newStage.neededPoints.toString())} wiadomości!`,
+              });
+            },
+          ),
+      )
+      .addCommand("dodaj-wylaczone-kanal", (command) =>
+        command
+          .setDescription("Dodaj kanał, który nie będzie liczony do eventu")
+          .addString("kanaly", (option) =>
+            option.setDescription("Kanał do wykluczenia"),
+          )
+          .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const channels = rawChannels.split(",").map((channel) => channel.trim());
+
+            const { count } = await prisma.easter2025DisabledChannels.createMany({
+              data: channels.map((channel) => ({ channelId: channel })),
+            });
+
+            await itx.editReply({
+              content: `Pomyślnie dodano ${count} kanałów do listy wykluczonych!`,
+            });
+          }),
+      )
+      .addCommand("wylaczone-kanaly", (command) =>
+        command
+          .setDescription("Wyświetl listę wykluczonych kanałów")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const paginator = new DatabasePaginator(
+              (props) => prisma.easter2025DisabledChannels.findMany(props),
+              () => prisma.easter2025DisabledChannels.count(),
+            );
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Wykluczone kanały",
+              (channel) => {
+                return `Kanał ${channelMention(channel.channelId)} (${channel.channelId})`;
+              },
+              true,
+            );
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("etapy", (command) =>
+        command
+          .setDescription("Wyświetl etapy eventu")
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .handle(async ({ prisma }, { druzyna: teamRole }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const where = { team: { roleId: teamRole.id } };
+            const paginator = new DatabasePaginator(
+              (props, order) =>
+                prisma.easter2025Stage.findMany({
+                  where,
+                  orderBy: { neededPoints: order },
+                  ...props,
+                }),
+              () => prisma.easter2025Stage.count({ where }),
+            );
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Etapy eventu dla drużyny",
+              (stage, idx) => {
+                const imageLink = hyperlink("[OBRAZEK]", stage.linkedImageUrl);
+                return `${idx}. ${bold(stage.neededPoints.toString())} wiadomości ${imageLink}`;
+              },
+              true,
+            );
+
+            await paginatedView.render(itx);
+          }),
+      )
+      .addCommand("wyczysc-etapy", (command) =>
+        command
+          .setDescription("Wyczyść etapy eventu")
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .handle(async ({ prisma }, { druzyna: teamRole }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const team = await prisma.easter2025Team.findUnique({
-              where: { roleId: druzyna.id },
+              where: { roleId: teamRole.id },
             });
 
             if (!team) {
               return await errorFollowUp(itx, "Nie znaleziono podanej drużyny!");
             }
 
-            const newStage = await prisma.easter2025Stage.create({
-              data: {
-                neededPoints: punkty,
-                linkedImageUrl: obrazek,
-                teamId: team.id,
-              },
+            const confirmation = await waitForConfirmation(
+              { send: itx.editReply.bind(itx) },
+              `Czy na pewno chcesz usunąć wszystkie etapy drużyny ${bold(team.name)}?`,
+              "Tak",
+              "Nie",
+              (action) => action.user.id === itx.user.id,
+            );
+
+            if (!confirmation) {
+              await itx.editReply({
+                content: "Anulowano usunięcie etapów.",
+                components: [],
+              });
+              return;
+            }
+
+            await prisma.easter2025Stage.deleteMany({
+              where: { teamId: team.id },
             });
 
             await itx.editReply({
-              content: `Pomyślnie dodano nowy etap do drużyny ${bold(
-                team.name,
-              )}: ${bold(newStage.neededPoints.toString())} wiadomości!`,
+              content: `Pomyślnie usunięto wszystkie etapy drużyny ${bold(team.name)}!`,
             });
           }),
       ),
@@ -407,48 +548,7 @@ async function updateTeamStatus(
   const channel = client.channels.cache.get(team.statusChannelId);
   if (!channel || !channel.isSendable()) return;
 
-  const [teamActivity] = await prisma.$queryRawTyped(
-    easter2025getTeamActivity(team.id),
-  );
-
-  if (!teamActivity) {
-    console.error(`No activity data found for team ${team.name}`);
-    return;
-  }
-
-  const totalActivity = teamActivity.total_activity_count ?? 0;
-
-  const [currentMilestone, nextMilestone] = await prisma.$transaction([
-    getCurrentMilestone(prisma, team.id),
-    getNextMilestone(prisma, team.id),
-  ]);
-
-  if (!currentMilestone) {
-    console.error(`No current milestone found for team ${team.name}`);
-    return;
-  }
-
-  if (nextMilestone && nextMilestone.neededPoints <= totalActivity) {
-    await prisma.easter2025Stage.update({
-      where: {
-        teamId_neededPoints: {
-          teamId: team.id,
-          neededPoints: nextMilestone.neededPoints,
-        },
-      },
-      data: { completedAt: new Date() },
-    });
-  }
-
-  const progressDescription = formatMilestoneProgress(totalActivity, nextMilestone);
-
-  const lines = [heading(`Status drużyny: ${team.name}`), progressDescription];
-
-  const embed = new EmbedBuilder()
-    .setDescription(lines.join("\n"))
-    .setImage(currentMilestone.linkedImageUrl)
-    .setColor("#FF9933");
-
+  const embed = await getTeamEmbed(prisma, team);
   const message = await getTeamMessage(client, team);
 
   if (message) {
@@ -457,6 +557,7 @@ async function updateTeamStatus(
   }
 
   const sentMessage = await channel.send({ embeds: [embed] });
+
   await prisma.easter2025Team.update({
     where: { id: team.id },
     data: { statusLastMessageId: sentMessage.id },

@@ -3,6 +3,7 @@ model Easter2025Team {
   name                String                 @unique
   roleId              String                 @unique
   statusChannelId     String
+  color           Int
   statusLastMessageId String?
   teamMembers         Easter2025TeamMember[]
   stages              Easter2025Stage[]
@@ -24,4 +25,8 @@ model Easter2025Stage {
   team           Easter2025Team @relation(fields: [teamId], references: [id])
 
   @@id([teamId, neededPoints])
+}
+
+model Easter2025DisabledChannels {
+  channelId String   @id
 }
