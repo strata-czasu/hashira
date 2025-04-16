@@ -233,7 +233,7 @@ export class ProfileImageBuilder {
     const group = this.#svg("g[id='Marriage Status Text Top'] > text");
     group.children("tspan:nth(1)").text(value.toString());
     // Leave a space between day amount and text
-    group.children("tspan:nth(2)").text(` ${pluralizers.days(value)}`);
+    group.children("tspan:nth(2)").text(` ${pluralizers.genitiveDays(value)}`);
     return this;
   }
 

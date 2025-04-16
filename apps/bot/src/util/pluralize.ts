@@ -47,4 +47,9 @@ export const pluralizers = {
     1: "dzień",
     2: "dni",
   }),
+  genitiveDays: createPluralize({
+    0: "dni",
+    1: "dnia",
+    2: "dni",
+  }),
 };
