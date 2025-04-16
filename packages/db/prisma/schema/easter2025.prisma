@@ -1,0 +1,32 @@
+model Easter2025Team {
+  id                  Int                    @id @default(autoincrement())
+  name                String                 @unique
+  roleId              String                 @unique
+  statusChannelId     String
+  color           Int
+  statusLastMessageId String?
+  teamMembers         Easter2025TeamMember[]
+  stages              Easter2025Stage[]
+}
+
+model Easter2025TeamMember {
+  teamId   Int
+  userId   String         @id
+  joinedAt DateTime       @default(now())
+  user     User           @relation(fields: [userId], references: [id])
+  team     Easter2025Team @relation(fields: [teamId], references: [id])
+}
+
+model Easter2025Stage {
+  neededPoints   Int
+  completedAt    DateTime?
+  teamId         Int
+  linkedImageUrl String
+  team           Easter2025Team @relation(fields: [teamId], references: [id])
+
+  @@id([teamId, neededPoints])
+}
+
+model Easter2025DisabledChannels {
+  channelId String   @id
+}

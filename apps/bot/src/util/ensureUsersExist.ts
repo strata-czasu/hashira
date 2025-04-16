@@ -27,6 +27,6 @@ export async function ensureUsersExist(
   await prisma.user.createMany({ data: users.map(resolveId), skipDuplicates: true });
 }
 
-export async function ensureUserExists(db: PrismaTransaction, user: User | string) {
+export async function ensureUserExists(db: PrismaTransaction, user: UserResolvable) {
   await ensureUsersExist(db, [user]);
 }

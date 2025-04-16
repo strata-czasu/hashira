@@ -237,6 +237,7 @@ model User {
   dmPollExclusion                   DmPollExclusion?
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
+  easter2025TeamMember              Easter2025TeamMember[]
 
   @@map("users")
 }
