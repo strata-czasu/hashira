@@ -6,6 +6,7 @@ import {
   type ExtendedPrismaClient,
   type PrismaTransaction,
 } from "@hashira/db";
+import { isAfter } from "date-fns";
 import {
   type Client,
   EmbedBuilder,
@@ -169,6 +170,14 @@ const getTeamEmbed = async (
   return embed;
 };
 
+const isEventOpen = (member: GuildMember) => {
+  if (member.permissions.has(PermissionFlagsBits.ModerateMembers)) return true;
+
+  const eventStartDate = new Date("2025-04-17T12:00:00+02:00");
+
+  return isAfter(new Date(), eventStartDate);
+};
+
 export const easter2025 = new Hashira({ name: "easter2025" })
   .use(base)
   .group("rozbij-jajco", (group) =>
@@ -179,6 +188,8 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           .setDescription("Dołącz do eventu Rozbij Jajco 2025")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
+            if (!isEventOpen(itx.member)) return;
+
             await itx.deferReply({ flags: "Ephemeral" });
 
             const existingMembership = await prisma.easter2025TeamMember.findUnique({
