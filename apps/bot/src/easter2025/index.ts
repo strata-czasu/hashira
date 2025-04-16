@@ -16,6 +16,7 @@ import {
   bold,
   channelMention,
   hyperlink,
+  roleMention,
   userMention,
 } from "discord.js";
 import { isNil, sample, take } from "es-toolkit";
@@ -133,7 +134,9 @@ const getTeamEmbed = async (
     getNextMilestone(prisma, team.id),
   ]);
 
-  if (nextMilestone && nextMilestone.neededPoints <= totalActivity) {
+  const passedThreshold = nextMilestone && nextMilestone.neededPoints <= totalActivity;
+
+  if (passedThreshold) {
     // This will be updated in the next update
     await prisma.easter2025Stage.update({
       where: {
@@ -168,7 +171,7 @@ const getTeamEmbed = async (
     });
   }
 
-  return embed;
+  return { embed, passedThreshold };
 };
 
 const isEventOpen = (member: GuildMember) => {
@@ -587,7 +590,7 @@ async function updateTeamStatus(
   const channel = client.channels.cache.get(team.statusChannelId);
   if (!channel || !channel.isSendable()) return;
 
-  const embed = await getTeamEmbed(prisma, team);
+  const { embed, passedThreshold } = await getTeamEmbed(prisma, team);
   const message = await getTeamMessage(client, team);
 
   if (message) {
@@ -601,6 +604,12 @@ async function updateTeamStatus(
     where: { id: team.id },
     data: { statusLastMessageId: sentMessage.id },
   });
+
+  if (passedThreshold) {
+    await channel.send({
+      content: `Gratulacje! ${roleMention(team.roleId)}, osiągnęliście nowy próg!`,
+    });
+  }
 }
 
 async function updateStatusChannel(client: Client, prisma: ExtendedPrismaClient) {
