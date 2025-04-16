@@ -66,8 +66,9 @@ const formatMilestoneProgress = (
   }
 
   const progress = (Number(totalPoints) / neededPoints) * 100;
+  const ending = Number.isNaN(progress) ? "" : ` (${progress.toFixed(1)}%)`;
 
-  return `${bold(totalPoints.toString())}/${neededPoints} wiadomości (${progress.toFixed(1)}%)`;
+  return `${totalPoints}/${bold(neededPoints.toString())} wiadomości${ending}`;
 };
 
 const updateMembership = async (
