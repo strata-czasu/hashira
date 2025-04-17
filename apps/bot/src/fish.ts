@@ -12,7 +12,7 @@ const checkIfRedeemable = async (
   userId: string,
   guildId: string,
 ) => {
-  const redeems = await prisma.lastFishing.findmany({
+  const redeems = await prisma.lastFishing.findMany({
     where: { userId, guildId },
     orderBy: { timestamp: "desc" },
   });
