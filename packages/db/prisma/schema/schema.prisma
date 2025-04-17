@@ -60,6 +60,17 @@ model DailyPointsRedeems {
   @@map("dailyPointsRedeems")
 }
 
+model LastFishing {
+  if        Int      @id(map "strata_last_fishing_pkey") @default(autoincrement())
+  guildId   String
+  userId    String
+  timestamp DateTime @default(now()) @db.Timestamp(6)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "lastFishing_guildId_guild_id_fk")
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "lastFishing_userId_users_id_fk")
+
+  @@map("lastFishing")
+}
+
 model EmojiUsage {
   id        Int      @id(map: "core_emoji_usage_pkey") @default(autoincrement())
   guildId   String
@@ -88,6 +99,7 @@ model Guild {
   ultimatums         Ultimatum[]
   stickyMessages     StickyMessage[]
   voiceSessions      VoiceSession[]
+  lastFishing        LastFishing[]
 
   @@map("guild")
 }
@@ -238,7 +250,7 @@ model User {
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
   easter2025TeamMember              Easter2025TeamMember[]
-  lastFishing                       lastFishing[]
+  lastFishing                       LastFishing[]
 
   @@map("users")
 }
