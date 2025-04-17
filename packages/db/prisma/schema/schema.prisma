@@ -238,6 +238,7 @@ model User {
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
   easter2025TeamMember              Easter2025TeamMember[]
+  lastFishing                       lastFishing[]
 
   @@map("users")
 }
