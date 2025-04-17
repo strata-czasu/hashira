@@ -50,9 +50,6 @@ const calculateFishPrice = (): [string, number] => {
   if(fishType===100){
     return ["bombardino croccodilo", randomInt(900, 1101)];
   }
-  if(fishType>100 || fishType<1){
-    return ["gówno", 0];
-  }
   throw new Error("Unreachable path, all variants should've been handled above");
 };
 
