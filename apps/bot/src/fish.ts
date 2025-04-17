@@ -53,7 +53,7 @@ const calculateFishPrice = (): [string, number] => {
   if(fishType>100 || fishType<1){
     return ["gówno", 0];
   }
-  throw new Error("Zamiast ryby wyłowiłeś śmieci");
+  throw new Error("Unreachable path, all variants should've been handled above");
 };
 
 export const wedka = new Hashira({ name: "wedka" })
