@@ -47,7 +47,7 @@ const calculateFishPrice = (): [string, number] => {
   if(fishType>=96 && fishType<=99){
     return ["rekina", randomInt(150, 181)];
   }
-  if(fishType==100){
+  if(fishType===100){
     return ["bombardino croccodilo", randomInt(900, 1101)];
   }
   if(fishType>100 || fishType<1){
