@@ -87,7 +87,7 @@ export const wedka = new Hashira({ name: "wedka" })
 
           await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
         }else{
-          await itx.reply(`Dalej masz PZW na karku. Następny rybę możesz złowić <t:${nextRedeem}:R>`);
+          await itx.reply(`Dalej masz PZW na karku. Następną rybę możesz wyłowić <t:${nextRedeem}:R>`);
         }
       }),
   );
