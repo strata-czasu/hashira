@@ -28,28 +28,28 @@ const calculateFishPrice = (): [string, number] => {
   const fishType = randomInt(1, 101);
 
   if(fishType>=1 && fishType<=30){
-    return ["karasia", randomInt(30-61)];
+    return ["karasia", randomInt(30, 61)];
   }
   if(fishType>=31 && fishType<=50){
-    return ["śledzia", randomInt(50-81)];
+    return ["śledzia", randomInt(50, 81)];
   }
   if(fishType>=51 && fishType<=65){
-    return ["dorsza", randomInt(60-91)];
+    return ["dorsza", randomInt(60, 91)];
   }
   if(fishType>=66 && fishType<=75){
-    return ["pstrąga", randomInt(80-111)];
+    return ["pstrąga", randomInt(80, 111)];
   }
   if(fishType>=76 && fishType<=85){
-    return ["szczupaka:crown:", randomInt(90-111)];
+    return ["szczupaka:crown:", randomInt(90, 111)];
   }
   if(fishType>=86 && fishType<=95){
-    return ["suma", randomInt(110-131)];
+    return ["suma", randomInt(110, 131)];
   }
   if(fishType>=96 && fishType<=99){
-    return ["rekina", randomInt(150-181)];
+    return ["rekina", randomInt(150, 181)];
   }
   if(fishType==100){
-    return ["bombardino croccodilo", randomInt(900-1101)];
+    return ["bombardino croccodilo", randomInt(900, 1101)];
   }
   if(fishType>100 || fishType<1){
     return ["gówno", 0];
