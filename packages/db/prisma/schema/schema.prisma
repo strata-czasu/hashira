@@ -61,12 +61,12 @@ model DailyPointsRedeems {
 }
 
 model LastFishing {
-  id        Int      @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   guildId   String
   userId    String
   timestamp DateTime @default(now())
-  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "lastFishing_guildId_guild_id_fk")
-  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "lastFishing_userId_users_id_fk")
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model EmojiUsage {
