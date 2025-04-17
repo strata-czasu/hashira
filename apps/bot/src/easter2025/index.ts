@@ -30,23 +30,26 @@ const getTeamActivity = async (
   prisma: PrismaTransaction,
   teamId: number,
 ): Promise<{ userId: string; activity_count: bigint }[]> => {
-  return prisma.$queryRaw`SELECT
-  uta."userId",
-  COUNT(*) AS activity_count
-FROM "userTextActivity" uta
-INNER JOIN "Easter2025TeamMember" tm
-  ON uta."userId" = tm."userId"
-LEFT JOIN "Easter2025DisabledChannels" dc
-  ON uta."channelId" = dc."channelId"
-WHERE
-  tm."teamId" = ${teamId}
-  AND uta."timestamp" >= tm."joinedAt"
-  AND dc."channelId" IS NULL
-GROUP BY
-  uta."userId"
-ORDER BY
-  activity_count;
-`;
+  return prisma.$queryRaw`
+    SELECT
+      tm."userId",
+      COUNT(*) AS activity_count
+    FROM "Easter2025TeamMember" tm
+    JOIN "userTextActivity" uta
+      ON uta."userId"    = tm."userId"
+        AND uta."timestamp" >= tm."joinedAt"
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "Easter2025DisabledChannels" dc
+          WHERE dc."channelId" = uta."channelId"
+        )
+    WHERE
+      tm."teamId" = ${teamId}
+    GROUP BY
+      tm."userId"
+    ORDER BY
+      activity_count DESC;
+    `;
 };
 
 const getRandomTeam = async (prisma: PrismaTransaction) => {
@@ -555,13 +558,13 @@ export const easter2025 = new Hashira({ name: "easter2025" })
   .handle("ready", async ({ prisma }, client) => {
     console.log("Easter 2025 module ready!");
 
-    // setInterval(async () => {
-    //   try {
-    //     await updateStatusChannel(client, prisma);
-    //   } catch (error) {
-    //     console.error("Error updating Easter 2025 status:", error);
-    //   }
-    // }, 5 * 1000);
+    setInterval(async () => {
+      try {
+        await updateStatusChannel(client, prisma);
+      } catch (error) {
+        console.error("Error updating Easter 2025 status:", error);
+      }
+    }, 60 * 1000);
 
     await updateStatusChannel(client, prisma);
   });
