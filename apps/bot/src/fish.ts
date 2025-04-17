@@ -17,8 +17,7 @@ const checkIfRedeemable = async (
     orderBy: { timestamp: "desc" },
   });
 
-    const lastRedeem = redeems[0].timestamp ?? new Date(0);
-
+    const lastRedeem = redeems.length > 0 ? redeems[0].timestamp : new Date(0);
     const nextRedeem = addMinutes(lastRedeem, 60);
 
     return [isAfter(new Date(), addMinutes(lastRedeem, 60)), nextRedeem.valueOf()];
