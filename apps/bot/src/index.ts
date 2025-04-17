@@ -13,6 +13,7 @@ import { easter2025 } from "./easter2025";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { guildAvailability } from "./guildAvailability";
+import { writeHealthCheck } from "./healthcheck";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
@@ -73,6 +74,8 @@ export const bot = new Hashira({ name: "bot" })
   .use(easter2025)
   .handle("ready", async () => {
     console.log("Bot is ready!");
+    await writeHealthCheck(); // Initial write on startup
+    setInterval(writeHealthCheck, 1000 * 60); // Write heartbeat every minute
   });
 
 if (import.meta.main) {
