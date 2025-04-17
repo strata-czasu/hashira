@@ -555,13 +555,13 @@ export const easter2025 = new Hashira({ name: "easter2025" })
   .handle("ready", async ({ prisma }, client) => {
     console.log("Easter 2025 module ready!");
 
-    setInterval(async () => {
-      try {
-        await updateStatusChannel(client, prisma);
-      } catch (error) {
-        console.error("Error updating Easter 2025 status:", error);
-      }
-    }, 5 * 1000);
+    // setInterval(async () => {
+    //   try {
+    //     await updateStatusChannel(client, prisma);
+    //   } catch (error) {
+    //     console.error("Error updating Easter 2025 status:", error);
+    //   }
+    // }, 5 * 1000);
 
     await updateStatusChannel(client, prisma);
   });
