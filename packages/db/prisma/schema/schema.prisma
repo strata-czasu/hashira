@@ -60,6 +60,15 @@ model DailyPointsRedeems {
   @@map("dailyPointsRedeems")
 }
 
+model LastFishing {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  userId    String
+  timestamp DateTime @default(now())
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
 model EmojiUsage {
   id        Int      @id(map: "core_emoji_usage_pkey") @default(autoincrement())
   guildId   String
@@ -88,6 +97,7 @@ model Guild {
   ultimatums         Ultimatum[]
   stickyMessages     StickyMessage[]
   voiceSessions      VoiceSession[]
+  lastFishings       LastFishing[]
 
   @@map("guild")
 }
@@ -238,6 +248,7 @@ model User {
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
   easter2025TeamMember              Easter2025TeamMember[]
+  lastFishings                      LastFishing[]
 
   @@map("users")
 }
