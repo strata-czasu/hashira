@@ -1,11 +1,11 @@
 import { Hashira } from "@hashira/core";
-import { randomInt } from "es-toolkit";
-import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
-import { addBalance } from "./managers/transferManager";
-import { formatBalance } from "./util";
 import type { ExtendedPrismaClient } from "@hashira/db";
-import { isAfter, addMinutes } from "date-fns";
+import { addMinutes, isAfter } from "date-fns";
+import { randomInt } from "es-toolkit";
+import { base } from "./base";
+import { addBalance } from "./economy/managers/transferManager";
+import { formatBalance } from "./economy/util";
+import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 
 const checkIfRedeemable = async (
   prisma: ExtendedPrismaClient,
@@ -17,37 +17,37 @@ const checkIfRedeemable = async (
     orderBy: { timestamp: "desc" },
   });
 
-    const lastRedeem = redeems[0]?.timestamp ?? new Date(0);
-    const nextRedeem = addMinutes(lastRedeem, 60);
+  const lastRedeem = redeems[0]?.timestamp ?? new Date(0);
+  const nextRedeem = addMinutes(lastRedeem, 60);
 
-    return [isAfter(new Date(), addMinutes(lastRedeem, 60)), nextRedeem.valueOf()];
+  return [isAfter(new Date(), addMinutes(lastRedeem, 60)), nextRedeem.valueOf()];
 }
 
 const calculateFishPrice = (): [string, number] => {
   const fishType = randomInt(1, 101);
 
-  if(fishType>=1 && fishType<=30){
+  if (fishType >= 1 && fishType <= 30) {
     return ["karasia", randomInt(30, 61)];
   }
-  if(fishType>=31 && fishType<=50){
+  if (fishType >= 31 && fishType <= 50) {
     return ["śledzia", randomInt(50, 81)];
   }
-  if(fishType>=51 && fishType<=65){
+  if (fishType >= 51 && fishType <= 65) {
     return ["dorsza", randomInt(60, 91)];
   }
-  if(fishType>=66 && fishType<=75){
+  if (fishType >= 66 && fishType <= 75) {
     return ["pstrąga", randomInt(80, 111)];
   }
-  if(fishType>=76 && fishType<=85){
+  if (fishType >= 76 && fishType <= 85) {
     return ["szczupaka:crown:", randomInt(90, 111)];
   }
-  if(fishType>=86 && fishType<=95){
+  if (fishType >= 86 && fishType <= 95) {
     return ["suma", randomInt(110, 131)];
   }
-  if(fishType>=96 && fishType<=99){
+  if (fishType >= 96 && fishType <= 99) {
     return ["rekina", randomInt(150, 181)];
   }
-  if(fishType===100){
+  if (fishType === 100) {
     return ["bombardino croccodilo", randomInt(900, 1101)];
   }
   throw new Error("Unreachable path, all variants should've been handled above");
@@ -64,7 +64,7 @@ export const wedka = new Hashira({ name: "wedka" })
 
         const [redeemable, nextRedeem] = await checkIfRedeemable(prisma, itx.user.id, itx.guildId)
 
-        if(redeemable){
+        if (redeemable) {
           const [fish, amount] = calculateFishPrice();
 
           await addBalance({
@@ -75,7 +75,7 @@ export const wedka = new Hashira({ name: "wedka" })
             toUserId: itx.user.id,
             amount: amount,
           });
-          
+
           await prisma.lastFishing.create({
             data: { userId: itx.user.id, guildId: itx.guildId },
           });
@@ -83,7 +83,7 @@ export const wedka = new Hashira({ name: "wedka" })
           const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
           await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
-        }else{
+        } else {
           await itx.reply(`Dalej masz PZW na karku. Następną rybę możesz wyłowić <t:${nextRedeem}:R>`);
         }
       }),
