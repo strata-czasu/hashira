@@ -21,7 +21,7 @@ const checkIfRedeemable = async (
   const nextRedeem = addMinutes(lastRedeem, 60);
 
   return [isAfter(new Date(), addMinutes(lastRedeem, 60)), nextRedeem.valueOf()];
-}
+};
 
 const calculateFishPrice = (): [string, number] => {
   const fishType = randomInt(1, 101);
@@ -62,7 +62,11 @@ export const wedka = new Hashira({ name: "wedka" })
       .handle(async ({ prisma }, _, itx) => {
         if (!itx.inCachedGuild()) return;
 
-        const [redeemable, nextRedeem] = await checkIfRedeemable(prisma, itx.user.id, itx.guildId)
+        const [redeemable, nextRedeem] = await checkIfRedeemable(
+          prisma,
+          itx.user.id,
+          itx.guildId,
+        );
 
         if (redeemable) {
           const [fish, amount] = calculateFishPrice();
@@ -84,7 +88,9 @@ export const wedka = new Hashira({ name: "wedka" })
 
           await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
         } else {
-          await itx.reply(`Dalej masz PZW na karku. Następną rybę możesz wyłowić <t:${nextRedeem}:R>`);
+          await itx.reply(
+            `Dalej masz PZW na karku. Następną rybę możesz wyłowić <t:${nextRedeem}:R>`,
+          );
         }
       }),
   );
