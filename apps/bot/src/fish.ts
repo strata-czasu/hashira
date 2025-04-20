@@ -41,7 +41,7 @@ const calculateFishPrice = (): [string, number] => {
     return ["pstrąga", randomInt(80, 111)];
   }
   if (fishType >= 76 && fishType <= 85) {
-    return ["szczupaka:crown:", randomInt(90, 111)];
+    return ["szczupaka :crown:", randomInt(90, 111)];
   }
   if (fishType >= 86 && fishType <= 95) {
     return ["suma", randomInt(110, 131)];
@@ -50,8 +50,9 @@ const calculateFishPrice = (): [string, number] => {
     return ["rekina", randomInt(150, 181)];
   }
   if (fishType === 100) {
-    return ["bombardino croccodilo", randomInt(900, 1101)];
+    return ["bombardiro brocodilo", randomInt(900, 1101)];
   }
+
   throw new Error("Unreachable path, all variants should've been handled above");
 };
 
