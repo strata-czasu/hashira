@@ -8,24 +8,24 @@ import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 
-const checkIfRedeemable = async (
+const checkIfCanFish = async (
   prisma: ExtendedPrismaClient,
   userId: string,
   guildId: string,
 ): Promise<[boolean, Date]> => {
-  const redeem = await prisma.lastFishing.findFirst({
+  const fishing = await prisma.lastFishing.findFirst({
     where: { userId, guildId },
     orderBy: { timestamp: "desc" },
   });
 
-  const lastRedeem = redeem?.timestamp ?? new Date(0);
-  const nextRedeem = addMinutes(lastRedeem, 60);
-  const redeemable = isAfter(new Date(), nextRedeem);
+  const lastFishing = fishing?.timestamp ?? new Date(0);
+  const nextFishing = addMinutes(lastFishing, 60);
+  const canFish = isAfter(new Date(), nextFishing);
 
-  return [redeemable, nextRedeem];
+  return [canFish, nextFishing];
 };
 
-const calculateFishPrice = (): [string, number] => {
+const getRandomFish = (): [string, number] => {
   const fishType = randomInt(1, 101);
 
   if (fishType >= 1 && fishType <= 30) {
@@ -65,14 +65,14 @@ export const fish = new Hashira({ name: "fish" })
       .handle(async ({ prisma }, _, itx) => {
         if (!itx.inCachedGuild()) return;
 
-        const [redeemable, nextRedeem] = await checkIfRedeemable(
+        const [canFish, nextFishing] = await checkIfCanFish(
           prisma,
           itx.user.id,
           itx.guildId,
         );
 
-        if (redeemable) {
-          const [fish, amount] = calculateFishPrice();
+        if (canFish) {
+          const [fish, amount] = getRandomFish();
 
           await addBalance({
             prisma,
@@ -89,10 +89,10 @@ export const fish = new Hashira({ name: "fish" })
 
           const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
-          await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
+          await itx.reply(`Wyławiasz ${fish} wartego ${balance}`);
         } else {
           await itx.reply({
-            content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextRedeem, TimestampStyles.RelativeTime)}`,
+            content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextFishing, TimestampStyles.RelativeTime)}`,
             flags: "Ephemeral",
           });
         }
