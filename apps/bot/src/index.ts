@@ -12,6 +12,7 @@ import { dmVoting } from "./dmVoting";
 import { easter2025 } from "./easter2025";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
+import { fish } from "./fish";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
@@ -71,6 +72,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(ticketReminder)
   .use(massDM)
   .use(easter2025)
+  .use(fish)
   .handle("ready", async () => {
     console.log("Bot is ready!");
   });

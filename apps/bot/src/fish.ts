@@ -53,7 +53,7 @@ const calculateFishPrice = (): [string, number] => {
   throw new Error("Unreachable path, all variants should've been handled above");
 };
 
-export const wedka = new Hashira({ name: "wedka" })
+export const fish = new Hashira({ name: "fish" })
   .use(base)
   .command("wedka", (command) =>
     command
