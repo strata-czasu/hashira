@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { addMinutes, isAfter } from "date-fns";
+import { TimestampStyles, time } from "discord.js";
 import { randomInt } from "es-toolkit";
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
@@ -11,16 +12,17 @@ const checkIfRedeemable = async (
   prisma: ExtendedPrismaClient,
   userId: string,
   guildId: string,
-) => {
-  const redeems = await prisma.lastFishing.findMany({
+): Promise<[boolean, Date]> => {
+  const redeem = await prisma.lastFishing.findFirst({
     where: { userId, guildId },
     orderBy: { timestamp: "desc" },
   });
 
-  const lastRedeem = redeems[0]?.timestamp ?? new Date(0);
+  const lastRedeem = redeem?.timestamp ?? new Date(0);
   const nextRedeem = addMinutes(lastRedeem, 60);
+  const redeemable = isAfter(new Date(), nextRedeem);
 
-  return [isAfter(new Date(), addMinutes(lastRedeem, 60)), nextRedeem.valueOf()];
+  return [redeemable, nextRedeem];
 };
 
 const calculateFishPrice = (): [string, number] => {
@@ -89,7 +91,7 @@ export const fish = new Hashira({ name: "fish" })
           await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
         } else {
           await itx.reply(
-            `Dalej masz PZW na karku. Następną rybę możesz wyłowić <t:${nextRedeem}:R>`,
+            `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextRedeem, TimestampStyles.RelativeTime)}`,
           );
         }
       }),
