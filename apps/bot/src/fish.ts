@@ -91,9 +91,10 @@ export const fish = new Hashira({ name: "fish" })
 
           await itx.reply(`Wyłowiłeś ${fish} wartego ${balance}`);
         } else {
-          await itx.reply(
-            `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextRedeem, TimestampStyles.RelativeTime)}`,
-          );
+          await itx.reply({
+            content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextRedeem, TimestampStyles.RelativeTime)}`,
+            flags: "Ephemeral",
+          });
         }
       }),
   );
