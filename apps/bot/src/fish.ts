@@ -50,7 +50,7 @@ const getRandomFish = (): [string, number] => {
     return ["rekina", randomInt(150, 181)];
   }
   if (fishType === 100) {
-    return ["bombardiro brocodilo", randomInt(900, 1101)];
+    return ["bombardiro crocodilo", randomInt(900, 1101)];
   }
 
   throw new Error("Unreachable path, all variants should've been handled above");
