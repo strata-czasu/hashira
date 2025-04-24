@@ -47,6 +47,8 @@ export const getTypeNameForList = (type: ItemType): string => {
   switch (type) {
     case "profileTitle":
       return "(T)";
+    case "badge":
+      return "(O)";
     case "item":
       return "";
   }
