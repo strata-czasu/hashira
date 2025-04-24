@@ -418,6 +418,6 @@ export class ProfileImageBuilder {
   }
 
   public toSharp() {
-    return sharp(Buffer.from(this.result()));
+    return sharp(Buffer.from(this.result()), { density: 96 });
   }
 }
