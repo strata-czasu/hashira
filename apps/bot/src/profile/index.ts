@@ -264,5 +264,104 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.editReply(`Ustawiono tytuł ${italic(name)}`);
               }),
           ),
+      )
+      .addGroup("odznaki", (group) =>
+        group
+          .setDescription("Odznaki profilu")
+          .addCommand("lista", (command) =>
+            command
+              .setDescription("Wyświetl swoje odznaki")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+
+                const where: Prisma.InventoryItemWhereInput = {
+                  item: { type: "badge" },
+                  userId: itx.user.id,
+                  deletedAt: null,
+                };
+                const paginator = new DatabasePaginator(
+                  (props) =>
+                    prisma.inventoryItem.findMany({
+                      where,
+                      include: { item: true },
+                      ...props,
+                    }),
+                  () => prisma.inventoryItem.count({ where }),
+                );
+
+                const paginatedView = new PaginatedView(
+                  paginator,
+                  "Posiadane odznaki",
+                  ({ item: { name, id }, createdAt }) =>
+                    `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
+                  false,
+                );
+                await paginatedView.render(itx);
+              }),
+          )
+          .addCommand("ustaw", (command) =>
+            command
+              .setDescription("Ustaw wyświetlaną odznakę profilu")
+              .addInteger("id", (id) => id.setDescription("ID odznaki"))
+              .addInteger("wiersz", (row) =>
+                row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
+              )
+              .addInteger("kolumna", (column) =>
+                column
+                  .setDescription("Numer kolumny (1-5)")
+                  .setMinValue(1)
+                  .setMaxValue(5),
+              )
+              .handle(async ({ prisma }, { id, wiersz: row, kolumna: col }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const ownedBadge = await prisma.inventoryItem.findFirst({
+                  where: {
+                    item: { id, type: "badge" },
+                    userId: itx.user.id,
+                    deletedAt: null,
+                  },
+                  include: {
+                    item: {
+                      include: { badge: true },
+                    },
+                  },
+                });
+                if (!ownedBadge?.item.badge) {
+                  await itx.editReply(
+                    "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
+                  );
+                  return;
+                }
+
+                const {
+                  item: {
+                    name,
+                    badge: { id: badgeId },
+                  },
+                } = ownedBadge;
+
+                await ensureUserExists(prisma, itx.user);
+                await prisma.$transaction(async (tx) => {
+                  // Remove placement on the same row and column we're trying to place a new badge
+                  await tx.displayedProfileBadge.deleteMany({
+                    where: { userId: itx.user.id, row, col },
+                  });
+                  // Update badge on an existing placement
+                  await tx.displayedProfileBadge.upsert({
+                    create: { userId: itx.user.id, badgeId, row, col },
+                    update: { badgeId, row, col },
+                    where: {
+                      userId_badgeId: { userId: itx.user.id, badgeId },
+                    },
+                  });
+                });
+
+                await itx.editReply(
+                  `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
+                );
+              }),
+          ),
       ),
   );
