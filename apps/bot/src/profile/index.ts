@@ -122,8 +122,6 @@ export const profile = new Hashira({ name: "profile" })
               .level(42); // TODO)) Level value
 
             // TODO)) Customizable background image
-            // TODO)) Customizable badges
-            image.allShowcaseBadgesOpacity(0);
 
             if (dbUser.profileSettings?.title) {
               image.title(dbUser.profileSettings.title.name);
@@ -167,6 +165,15 @@ export const profile = new Hashira({ name: "profile" })
                 .marriageAvatarImage(await fetchAsBuffer(spouseAvatarImageURL));
             } else {
               image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
+            }
+
+            image.allShowcaseBadgesOpacity(0);
+            const displayedBadges = await prisma.displayedProfileBadge.findMany({
+              where: { userId: user.id },
+              include: { badge: true },
+            });
+            for (const { row, col, badge } of displayedBadges) {
+              image.showcaseBadge(row, col, Buffer.from(badge.image));
             }
 
             try {
