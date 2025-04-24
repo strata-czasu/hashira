@@ -309,15 +309,19 @@ export class ProfileImageBuilder {
    *
    * Incorrect row or column values will be ignored.
    *
-   * This is a convenience shortcut for
-   * `showcaseBadgeImage(row, col, value)` and `showcaseBadgeOpacity(row, col, 1)`.
+   * This is a convenience shortcut for calling:
+   * - `showcaseBadgeImage(row, col, value)`
+   * - `showcaseBadgeOpacity(row, col, 1)`
+   * - `showcaseBadgeBackgroundStrokeWidth(row, col, 0)`
    *
    * @param row Row index (1-3)
    * @param col Column index (1-5)
    * @param image PNG image data buffer
    */
   public showcaseBadge(row: number, col: number, image: Buffer) {
-    return this.showcaseBadgeImage(row, col, image).showcaseBadgeOpacity(row, col, 1);
+    return this.showcaseBadgeImage(row, col, image)
+      .showcaseBadgeOpacity(row, col, 1)
+      .showcaseBadgeBackgroundStrokeWidth(row, col, 0);
   }
 
   /**
@@ -411,6 +415,31 @@ export class ProfileImageBuilder {
 
   private showcaseBadgeContainer() {
     return this.#svg("g[id='Showcase Badges']");
+  }
+
+  /**
+   * Set the background stroke width of a showcase badge.
+   *
+   * Incorrect row or column values will be ignored.
+   *
+   * @param row Row index (1-3)
+   * @param col Column index (1-5)
+   * @param value Stroke width value
+   */
+  public showcaseBadgeBackgroundStrokeWidth(row: number, col: number, value: number) {
+    const elementId = this.showcaseBadgeBackgroundElementId(row, col);
+    this.showcaseBadgeBackgroundsContainer()
+      .children(`circle[id='${elementId}']`)
+      .first()
+      .attr("stroke-width", value.toString());
+  }
+
+  private showcaseBadgeBackgroundElementId(row: number, col: number) {
+    return `Showcase Badge Background ${row}:${col}`;
+  }
+
+  private showcaseBadgeBackgroundsContainer() {
+    return this.#svg("g[id='Showcase Badge Backgrounds']");
   }
 
   public result() {
