@@ -298,7 +298,7 @@ describe("imageBuilder", () => {
     it("changes showcase badge image", async () => {
       const image = await getImageBuilder();
       const badgeImage = await getDummyImage();
-      image.showcaseBadge(1, 1, badgeImage);
+      image.showcaseBadgeImage(1, 1, badgeImage);
 
       const res = cheerio.load(image.result());
       const badgeFill = res("circle[id='Showcase Badge 1:1']").first().attr("fill");
@@ -328,6 +328,15 @@ describe("imageBuilder", () => {
         const opacity = badge.attributes.find((attr) => attr.name === "opacity");
         expect(opacity?.value).toBe("0");
       });
+    });
+
+    it("changes showcase badge background stroke width", async () => {
+      const image = await getImageBuilder();
+      image.showcaseBadgeBackgroundStrokeWidth(1, 3, 0.5);
+      const res = cheerio.load(image.result());
+      const badgeBackground = res("circle[id='Showcase Badge Background 1:3']");
+      const strokeWidth = badgeBackground.attr("stroke-width");
+      expect(strokeWidth).toBe("0.5");
     });
   });
 

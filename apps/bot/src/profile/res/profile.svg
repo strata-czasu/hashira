@@ -5,21 +5,21 @@
 <g id="Showcase Badge Container">
 <path id="Showcase Badge Container Background" opacity="0.75" d="M684.6 346H1282.6V646C1282.6 678.033 1256.63 704 1224.6 704H684.6V346Z" fill="#F2F2F2"/>
 <g id="Showcase Badge Backgrounds">
-<circle id="Ellipse 14" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 593)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 13" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 593)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 12" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 11" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 10" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 14_2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 485)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 13_2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 485)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 12_2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 11_2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 10_2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 14_3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 377)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 13_3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 377)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 12_3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 11_3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
-<circle id="Ellipse 10_3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 3:5" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 593)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 3:4" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 593)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 3:3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 3:2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 3:1" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 595.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 2:5" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 485)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 2:4" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 485)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 2:3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 2:2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 2:1" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 487.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 1:5" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1240.75 377)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 1:4" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1132.94 377)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 1:3" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 1025.14 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 1:2" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 917.332 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
+<circle id="Showcase Badge Background 1:1" cx="41.4634" cy="41.4634" r="43.9634" transform="matrix(-1 0 0 1 809.527 379.073)" fill="black" fill-opacity="0.1" stroke="#F2F2F2" stroke-width="5" stroke-dasharray="6 6"/>
 </g>
 <g id="Showcase Badges">
 <circle id="Showcase Badge 3:5" cx="1199.32" cy="634.5" r="46.5" fill="url(#pattern1_2024_2)"/>
