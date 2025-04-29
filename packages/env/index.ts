@@ -24,6 +24,7 @@ const Env = v.object({
   OPENAI_KEY: v.optional(v.string()),
   SHLINK_API_KEY: v.optional(v.string()),
   SHLINK_API_URL: v.optional(v.pipe(v.string(), v.url())),
+  UNBELIEVABOAT_TOKEN: v.optional(v.string()),
 });
 
 export default v.parse(Env, process.env);
