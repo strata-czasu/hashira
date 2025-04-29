@@ -17,10 +17,10 @@
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@sentry/bun": "^8.55.0",
+    "@sentry/bun": "^9.15.0",
     "cheerio": "^1.0.0",
     "date-fns": "4.1.0",
     "openai": "4.67.3",
-    "sharp": "^0.33.5"
+    "sharp": "^0.34.1"
   }
 }
