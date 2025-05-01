@@ -14,7 +14,7 @@
     "start": "bun run --cwd apps/bot start",
     "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
     "prisma-studio": "bun run --cwd packages/db prisma-studio",
-    "prisma-generate": "bun run --cwd packages/db prisma generate",
+    "prisma-generate": "bun run --cwd packages/db prisma-generate",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
     "prisma-migrate-dev": "bun run --cwd packages/db prisma migrate dev",
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",

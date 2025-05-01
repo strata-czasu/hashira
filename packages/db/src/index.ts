@@ -1,9 +1,10 @@
 import env from "@hashira/env";
-import { PrismaClient } from "@prisma/client";
 import type { ITXClientDenyList } from "@prisma/client/runtime/library";
 import { createClient } from "@redis/client";
+import { PrismaClient } from "./generated/prisma/client";
 
 export const prisma = new PrismaClient();
+
 export type ExtendedPrismaClient = typeof prisma;
 export type PrismaTransaction = Omit<ExtendedPrismaClient, ITXClientDenyList>;
 
@@ -15,5 +16,5 @@ export const redis = await createClient({ url: env.REDIS_URL })
 
 export type RedisClient = typeof redis;
 
-export * from "@prisma/client";
+export * from "./generated/prisma/client";
 export { DatabasePaginator } from "./paginate";

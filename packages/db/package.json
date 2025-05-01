@@ -10,9 +10,9 @@
   "type": "module",
   "scripts": {
     "prisma-studio": "prisma studio",
-    "prisma-generate": "prisma generate",
-    "prisma-migrate": "prisma migrate dev",
-    "prisma-push": "prisma db push",
+    "prisma-generate": "prisma generate && bun ./fix-prisma-types.ts",
+    "prisma-migrate": "prisma migrate dev && bun ./fix-prisma-types.ts",
+    "prisma-push": "prisma db push && bun ./fix-prisma-types.ts",
     "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema --to-schema-datasource ./prisma/schema",
     "test": "bun test --preload ./test/preload.ts test/"
   },
