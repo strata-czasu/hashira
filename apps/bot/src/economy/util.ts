@@ -5,7 +5,7 @@ export type GetCurrencyConditionOptions =
   | { currencySymbol: string }
   | { currencyId: number };
 
-export const getItem = (prisma: PrismaTransaction, id: number) =>
+export const getItem = async (prisma: PrismaTransaction, id: number) =>
   prisma.item.findFirst({
     where: {
       id,

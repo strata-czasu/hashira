@@ -5,7 +5,8 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./tasks": "./src/tasks.ts",
-    "./transaction": "./src/transaction.ts"
+    "./transaction": "./src/transaction.ts",
+    "./enums": "./src/generated/prisma/enums.ts"
   },
   "type": "module",
   "scripts": {
