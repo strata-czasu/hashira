@@ -9,7 +9,6 @@ import { base } from "./base";
 import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
-import { easter2025 } from "./easter2025";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { fish } from "./fish";
@@ -71,7 +70,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(ping)
   .use(ticketReminder)
   .use(massDM)
-  .use(easter2025)
   .use(fish)
   .handle("ready", async () => {
     console.log("Bot is ready!");
