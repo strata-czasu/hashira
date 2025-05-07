@@ -3,6 +3,7 @@ import type { ExtendedPrismaClient, Mute, PrismaTransaction } from "@hashira/db"
 import { formatDate, intervalToDuration } from "date-fns";
 import {
   GuildMember,
+  type PartialUser,
   RESTJSONErrorCodes,
   type User,
   bold,
@@ -82,11 +83,15 @@ export const removeMute = async (
 
 export const formatBanReason = (
   reason: string,
-  moderator: User | null,
+  moderator: User | PartialUser | null,
   createdAt: Date,
 ) => {
   const components = [reason];
-  if (moderator) components.push(` (banujący: ${moderator.tag} (${moderator.id})`);
+  if (moderator) {
+    const tag = moderator.tag ?? "Nieznany";
+
+    components.push(` (banujący: ${tag} (${moderator.id})`);
+  }
   components.push(`, data: ${formatDate(createdAt, "yyyy-MM-dd HH:mm:ss")}`);
 
   return components.join("");

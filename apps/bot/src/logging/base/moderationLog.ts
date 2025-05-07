@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import type { Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
+  type PartialUser,
   TimestampStyles,
   type User,
   bold,
@@ -32,8 +33,16 @@ type MuteEditData = {
   oldDuration: Duration;
   newDuration: Duration | null;
 };
-type GuildBanAddData = { reason: string | null; user: User; moderator: User | null };
-type GuildBanRemoveData = { reason: string | null; user: User; moderator: User | null };
+type GuildBanAddData = {
+  reason: string | null;
+  user: User | PartialUser;
+  moderator: User | PartialUser | null;
+};
+type GuildBanRemoveData = {
+  reason: string | null;
+  user: User | PartialUser;
+  moderator: User | PartialUser | null;
+};
 
 const getWarnLogHeader = (action: string, warn: Warn) =>
   `**${action} ostrzeżenie [${inlineCode(warn.id.toString())}] dla ${userMention(warn.userId)} (${warn.userId})**`;
@@ -44,7 +53,7 @@ const getMuteLogHeader = (action: string, mute: Mute) =>
 const getBanLogContent = (
   title: string,
   reason: string | null,
-  moderator: User | null,
+  moderator: User | PartialUser | null,
 ) => {
   const content: string[] = [bold(title)];
 
