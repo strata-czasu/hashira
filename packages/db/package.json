@@ -13,7 +13,7 @@
     "prisma-generate": "prisma generate",
     "prisma-migrate": "prisma migrate dev",
     "prisma-push": "prisma db push",
-    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/schema --to-schema-datasource ./prisma/schema",
+    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/ --to-schema-datasource ./prisma/",
     "test": "bun test --preload ./test/preload.ts test/"
   },
   "devDependencies": {
