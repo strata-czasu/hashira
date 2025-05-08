@@ -40,6 +40,7 @@ const getBanDeleteSeconds = (deleteInterval: number) => {
 const applyBan = async (
   itx: ChatInputCommandInteraction<"cached"> | ModalSubmitInteraction<"cached">,
   user: User,
+  moderator: User,
   reason: string,
   deleteMessageSeconds: number | null,
 ) => {
@@ -67,10 +68,9 @@ const applyBan = async (
         `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
       );
       if (!sentMessage) {
-        await itx.followUp({
-          content: `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-          flags: "Ephemeral",
-        });
+        await moderator.send(
+          `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+        );
       }
     },
     [RESTJSONErrorCodes.MissingPermissions],
@@ -129,7 +129,7 @@ export const bans = new Hashira({ name: "bans" })
             ? getBanDeleteSeconds(deleteInterval)
             : null;
 
-          await applyBan(itx, user, reason, banDeleteSeconds);
+          await applyBan(itx, user, itx.member.user, reason, banDeleteSeconds);
         },
       ),
   )
@@ -260,7 +260,13 @@ export const bans = new Hashira({ name: "bans" })
       deleteMessageSeconds = durationToSeconds(parsedDuration);
     }
 
-    await applyBan(submitAction, itx.targetUser, reason, deleteMessageSeconds);
+    await applyBan(
+      submitAction,
+      itx.targetUser,
+      itx.member.user,
+      reason,
+      deleteMessageSeconds,
+    );
   })
   .handle("guildBanAdd", async (_, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons
