@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   AuditLogEvent,
   type ChatInputCommandInteraction,
+  type ContextMenuCommandInteraction,
   DiscordjsErrorCodes,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
@@ -85,6 +86,83 @@ const BAN_FIXUP_GUILDS: string[] = [
   GUILD_IDS.Piwnica,
   GUILD_IDS.StrataCzasu,
 ];
+
+const handleContextMenu = async ({
+  itx,
+  user,
+}: {
+  itx: ContextMenuCommandInteraction<"cached">;
+  user: User;
+}) => {
+  const modalRows = [
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+      new TextInputBuilder()
+        .setCustomId("reason")
+        .setLabel("Powód bana")
+        .setRequired(true)
+        .setMinLength(2)
+        .setStyle(TextInputStyle.Paragraph),
+    ),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+      new TextInputBuilder()
+        .setCustomId("delete-interval")
+        .setLabel("Przedział czasowy usuwania wiadomości")
+        .setRequired(false)
+        .setPlaceholder("1h, 6h, 12h, 1d, 3d, 7d")
+        .setMinLength(2)
+        .setStyle(TextInputStyle.Short),
+    ),
+  ];
+
+  const customId = `ban-${user.id}-${itx.commandType}`;
+  const modal = new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(`Zbanuj ${user.tag}`)
+    .addComponents(...modalRows);
+  await itx.showModal(modal);
+
+  const submitAction = await discordTry(
+    () =>
+      itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      }),
+    [DiscordjsErrorCodes.InteractionCollectorError],
+    () => null,
+  );
+  if (!submitAction) return;
+
+  await submitAction.deferReply();
+
+  // TODO)) Abstract this into a helper/common util
+  const reason = submitAction.components
+    .at(0)
+    ?.components.find((c) => c.customId === "reason")?.value;
+  const rawDeleteInterval =
+    submitAction.components
+      .at(1)
+      ?.components.find((c) => c.customId === "delete-interval")?.value || null;
+  if (!reason) {
+    return await errorFollowUp(
+      submitAction,
+      "Nie podano wszystkich wymaganych danych!",
+    );
+  }
+
+  let deleteMessageSeconds: number | null = null;
+  if (rawDeleteInterval) {
+    const parsedDuration = parseDuration(rawDeleteInterval);
+    if (!parsedDuration) {
+      return await errorFollowUp(
+        submitAction,
+        "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
+      );
+    }
+    deleteMessageSeconds = durationToSeconds(parsedDuration);
+  }
+
+  await applyBan(submitAction, user, itx.member.user, reason, deleteMessageSeconds);
+};
 
 export const bans = new Hashira({ name: "bans" })
   .use(base)
@@ -193,80 +271,18 @@ export const bans = new Hashira({ name: "bans" })
   .userContextMenu("ban", PermissionFlagsBits.BanMembers, async (_ctx, itx) => {
     if (!itx.inCachedGuild()) return;
 
-    const rows = [
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-        new TextInputBuilder()
-          .setCustomId("reason")
-          .setLabel("Powód bana")
-          .setRequired(true)
-          .setMinLength(2)
-          .setStyle(TextInputStyle.Paragraph),
-      ),
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-        new TextInputBuilder()
-          .setCustomId("delete-interval")
-          .setLabel("Przedział czasowy usuwania wiadomości")
-          .setRequired(false)
-          .setPlaceholder("1h, 6h, 12h, 1d, 3d, 7d")
-          .setMinLength(2)
-          .setStyle(TextInputStyle.Short),
-      ),
-    ];
+    await handleContextMenu({
+      itx,
+      user: itx.targetUser,
+    });
+  })
+  .messageContextMenu("ban", PermissionFlagsBits.BanMembers, async (_ctx, itx) => {
+    if (!itx.inCachedGuild()) return;
 
-    const customId = `ban-${itx.targetUser.id}`;
-    const modal = new ModalBuilder()
-      .setCustomId(customId)
-      .setTitle(`Zbanuj ${itx.targetUser.tag}`)
-      .addComponents(...rows);
-    await itx.showModal(modal);
-
-    const submitAction = await discordTry(
-      () =>
-        itx.awaitModalSubmit({
-          time: 60_000 * 5,
-          filter: (modal) => modal.customId === customId,
-        }),
-      [DiscordjsErrorCodes.InteractionCollectorError],
-      () => null,
-    );
-    if (!submitAction) return;
-
-    await submitAction.deferReply();
-
-    // TODO)) Abstract this into a helper/common util
-    const reason = submitAction.components
-      .at(0)
-      ?.components.find((c) => c.customId === "reason")?.value;
-    const rawDeleteInterval =
-      submitAction.components
-        .at(1)
-        ?.components.find((c) => c.customId === "delete-interval")?.value || null;
-    if (!reason) {
-      return await errorFollowUp(
-        submitAction,
-        "Nie podano wszystkich wymaganych danych!",
-      );
-    }
-
-    let deleteMessageSeconds: number | null = null;
-    if (rawDeleteInterval) {
-      const parsedDuration = parseDuration(rawDeleteInterval);
-      if (!parsedDuration) {
-        return await errorFollowUp(
-          submitAction,
-          "Nieprawidłowy format czasu. Przykłady: `1d`, `8h`, `30m`, `1s`",
-        );
-      }
-      deleteMessageSeconds = durationToSeconds(parsedDuration);
-    }
-
-    await applyBan(
-      submitAction,
-      itx.targetUser,
-      itx.member.user,
-      reason,
-      deleteMessageSeconds,
-    );
+    await handleContextMenu({
+      itx,
+      user: itx.targetMessage.author,
+    });
   })
   .handle("guildBanAdd", async (_, { guild, user }) => {
     // NOTE: This event could fire multiple times for unknown reasons
