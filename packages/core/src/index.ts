@@ -7,6 +7,7 @@ import {
   ContextMenuCommandBuilder,
   type Interaction,
   InteractionContextType,
+  type MessageContextMenuCommandInteraction,
   Partials,
   type Permissions,
   REST,
@@ -115,6 +116,16 @@ class Hashira<
       ) => Promise<void>,
     ]
   >;
+  #messageContextMenus: Map<
+    string,
+    [
+      ContextMenuCommandBuilder,
+      (
+        context: UnknownContext,
+        interaction: MessageContextMenuCommandInteraction,
+      ) => Promise<void>,
+    ]
+  >;
   #autocomplete: Map<
     string,
     (context: UnknownContext, interaction: AutocompleteInteraction) => Promise<void>
@@ -129,6 +140,7 @@ class Hashira<
     this.#methods = new Map();
     this.#commands = new Map();
     this.#userContextMenus = new Map();
+    this.#messageContextMenus = new Map();
     this.#autocomplete = new Map();
     this.#exceptionHandlers = new Map();
     this.#dependencies = [options.name];
@@ -245,6 +257,11 @@ class Hashira<
       this.#userContextMenus,
       instance.#userContextMenus,
     );
+    this.#messageContextMenus = mergeMap(
+      handleContextMenuConflict,
+      this.#messageContextMenus,
+      instance.#messageContextMenus,
+    );
     this.#autocomplete = mergeMap(
       handleAutoCompleteConflict,
       this.#autocomplete,
@@ -345,6 +362,30 @@ class Hashira<
     return this as unknown as ReturnType<typeof this.userContextMenu<T>>;
   }
 
+  messageContextMenu<T extends string>(
+    name: T,
+    permissions: Permissions | bigint | number | null | undefined,
+    handler: (
+      ctx: HashiraContext<Decorators>,
+      interaction: MessageContextMenuCommandInteraction,
+    ) => Promise<void>,
+  ): Hashira<Decorators, Commands> {
+    const builder = new ContextMenuCommandBuilder()
+      .setContexts(InteractionContextType.BotDM)
+      .setDefaultMemberPermissions(permissions)
+      .setType(ApplicationCommandType.Message)
+      .setName(name)
+      .setNameLocalization("en-US", capitalize(name));
+    this.#messageContextMenus.set(name, [
+      builder,
+      handler as unknown as (
+        ctx: UnknownContext,
+        interaction: MessageContextMenuCommandInteraction,
+      ) => Promise<void>,
+    ]);
+    return this as unknown as ReturnType<typeof this.messageContextMenu<T>>;
+  }
+
   autocomplete<
     T extends HashiraSlashCommandOptions,
     U extends AutocompleteInteraction = AutocompleteInteraction,
@@ -400,6 +441,21 @@ class Hashira<
     }
   }
 
+  private async handleMessageContextMenu(
+    interaction: MessageContextMenuCommandInteraction,
+  ) {
+    const contextMenu = this.#messageContextMenus.get(interaction.commandName);
+
+    if (!contextMenu) return;
+    const [_, handler] = contextMenu;
+
+    try {
+      await handler(this.context(), interaction);
+    } catch (error) {
+      if (error instanceof Error) this.handleException(error, interaction);
+    }
+  }
+
   private async handleAutocomplete(interaction: AutocompleteInteraction) {
     const handler = this.#autocomplete.get(interaction.commandName);
 
@@ -429,6 +485,8 @@ class Hashira<
       if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
       if (interaction.isUserContextMenuCommand())
         return this.handleUserContextMenu(interaction);
+      if (interaction.isMessageContextMenuCommand())
+        return this.handleMessageContextMenu(interaction);
       if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
     });
 
@@ -476,9 +534,10 @@ class Hashira<
   async registerGuildCommands(token: string, guildId: string, clientId: string) {
     const rest = new REST().setToken(token);
     const commands = [...this.#commands.values()].map(([builder]) => builder.toJSON());
-    const contextMenus = [...this.#userContextMenus.values()].map(([builder]) =>
-      builder.toJSON(),
-    );
+    const contextMenus = [
+      ...this.#userContextMenus.values(),
+      ...this.#messageContextMenus.values(),
+    ].map(([builder]) => builder.toJSON());
 
     try {
       const currentCommands = (await rest.get(
