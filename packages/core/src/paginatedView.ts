@@ -48,7 +48,13 @@ export class PaginatedView<T> {
     if (interaction.deferred && !this.#message) {
       this.#message = await interaction.editReply({ content });
     } else if (!this.#message) {
-      this.#message = await interaction.reply({ content, fetchReply: true });
+      const { resource } = await interaction.reply({ content, withResponse: true });
+      if (!resource?.message) {
+        throw new Error(
+          "Message resource not fetched after initial PaginatedView reply",
+        );
+      }
+      this.#message = resource.message;
     }
     await this.render(interaction);
   }
