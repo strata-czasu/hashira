@@ -1,7 +1,22 @@
 model ProfileSettings {
   userId  String @id @unique
   titleId Int?
+  // TODO)) Tint color
+  // TODO)) Background image
 
   user  User  @relation(fields: [userId], references: [id])
   title Item? @relation(fields: [titleId], references: [id])
+}
+
+model DisplayedProfileBadge {
+  userId  String
+  badgeId Int
+  row     Int
+  col     Int
+
+  user  User  @relation(fields: [userId], references: [id])
+  badge Badge @relation(fields: [badgeId], references: [id])
+
+  @@id([userId, badgeId])
+  @@unique([userId, row, col])
 }

@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item } from "@hashira/db";
-import { PermissionFlagsBits, inlineCode } from "discord.js";
+import { PermissionFlagsBits, inlineCode, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -41,7 +41,7 @@ export const items = new Hashira({ name: "items" })
               "Przedmioty",
               formatItemInList,
               true,
-              "T - tytuł profilu",
+              "T - tytuł profilu, O - odznaka",
             );
             await paginatedView.render(itx);
           }),
@@ -118,6 +118,47 @@ export const items = new Hashira({ name: "items" })
 
             await itx.editReply(`Utworzono tytuł ${formatItem(item)}`);
             // TODO)) Logs of title creation
+          }),
+      )
+      .addCommand("utwórz-odznakę", (command) =>
+        command
+          .setDescription("Utwórz nową odznakę")
+          .addString("name", (name) => name.setDescription("Nazwa odznaki"))
+          .addAttachment("image", (image) =>
+            image.setDescription("Obrazek odznaki (PNG, 128x128px)"),
+          )
+          .handle(async ({ prisma }, { name, image }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            if (image.contentType !== "image/png") {
+              await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
+              return;
+            }
+            if (image.width !== 128 || image.height !== 128) {
+              await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
+              return;
+            }
+
+            const imageData = await fetch(image.url);
+
+            await ensureUserExists(prisma, itx.user);
+            const item = await prisma.badge.create({
+              data: {
+                item: {
+                  create: {
+                    name,
+                    createdBy: itx.user.id,
+                    type: "badge",
+                  },
+                },
+                image: new Uint8Array(await imageData.arrayBuffer()),
+              },
+            });
+
+            await itx.editReply(
+              `Utworzono nową odznakę ${italic(name)} [${inlineCode(item.id.toString())}]`,
+            );
           }),
       )
       .addCommand("edytuj", (command) =>
