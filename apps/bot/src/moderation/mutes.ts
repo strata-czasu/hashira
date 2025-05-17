@@ -9,6 +9,7 @@ import { PaginatorOrder } from "@hashira/paginate";
 import { type Duration, add, intervalToDuration } from "date-fns";
 import {
   ActionRowBuilder,
+  type ContextMenuCommandInteraction,
   DiscordjsErrorCodes,
   type Guild,
   type GuildMember,
@@ -333,6 +334,96 @@ const addMute = async ({
     reply: (content) => itx.followUp({ content }),
     replyToModerator: (content) => itx.followUp({ content, flags: "Ephemeral" }),
   });
+};
+
+const handleContextMenu = async ({
+  prisma,
+  messageQueue,
+  log,
+  itx,
+  user,
+}: {
+  prisma: ExtendedPrismaClient;
+  messageQueue: Context["messageQueue"];
+  log: Context["moderationLog"];
+  itx: ContextMenuCommandInteraction<"cached">;
+  user: User;
+}) => {
+  const modalRows = [
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+      new TextInputBuilder()
+        .setCustomId("duration")
+        .setLabel("Czas trwania wyciszenia")
+        .setRequired(true)
+        .setPlaceholder("3h, 8h, 1d")
+        .setMinLength(2)
+        .setStyle(TextInputStyle.Short),
+    ),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+      new TextInputBuilder()
+        .setCustomId("reason")
+        .setLabel("Powód")
+        .setRequired(true)
+        .setPlaceholder("Toxic")
+        .setMaxLength(500)
+        .setStyle(TextInputStyle.Paragraph),
+    ),
+  ];
+
+  const customId = `mute-${user.id}-${itx.commandType}`;
+  const modal = new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(`Wycisz ${user.tag}`)
+    .addComponents(...modalRows);
+
+  await itx.showModal(modal);
+
+  const submitAction = await discordTry(
+    () =>
+      itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      }),
+    [DiscordjsErrorCodes.InteractionCollectorError],
+    () => null,
+  );
+  if (!submitAction) return;
+
+  // Any reply is needed in order to successfully finish the modal interaction
+  await submitAction.deferReply({ flags: "Ephemeral" });
+  const moderatorDmChannel = await itx.user.createDM();
+
+  // TODO)) Abstract this into a helper/common util
+  const duration = submitAction.components
+    .at(0)
+    ?.components.find((c) => c.customId === "duration")?.value;
+  const reason = submitAction.components
+    .at(1)
+    ?.components.find((c) => c.customId === "reason")?.value;
+  if (!duration || !reason) {
+    await moderatorDmChannel.send(
+      "Nie podano wszystkich wymaganych danych do nałożenia wyciszenia!",
+    );
+    return;
+  }
+
+  // Send confirmation to the moderator's DM instead of itx.followUp()
+  // This avoids an inconsistency in handling of itx.channel context menus
+  // See https://github.com/strata-czasu/hashira/issues/75
+  await universalAddMute({
+    prisma,
+    messageQueue,
+    log,
+    userId: user.id,
+    guild: itx.guild,
+    moderator: itx.user,
+    duration,
+    reason,
+    reply: (content) => moderatorDmChannel.send(content),
+    replyToModerator: (content) => moderatorDmChannel.send(content),
+  });
+  // Don't send any message to the guild channel
+  await submitAction.deleteReply();
 };
 
 export const mutes = new Hashira({ name: "mutes" })
@@ -692,80 +783,27 @@ export const mutes = new Hashira({ name: "mutes" })
     async ({ prisma, messageQueue, moderationLog: log }, itx) => {
       if (!itx.inCachedGuild()) return;
 
-      const rows = [
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-          new TextInputBuilder()
-            .setCustomId("duration")
-            .setLabel("Czas trwania wyciszenia")
-            .setRequired(true)
-            .setPlaceholder("3h, 8h, 1d")
-            .setMinLength(2)
-            .setStyle(TextInputStyle.Short),
-        ),
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-          new TextInputBuilder()
-            .setCustomId("reason")
-            .setLabel("Powód")
-            .setRequired(true)
-            .setPlaceholder("Toxic")
-            .setMaxLength(500)
-            .setStyle(TextInputStyle.Paragraph),
-        ),
-      ];
-
-      const customId = `mute-${itx.targetUser.id}`;
-      const modal = new ModalBuilder()
-        .setCustomId(customId)
-        .setTitle(`Wycisz ${itx.targetUser.tag}`)
-        .addComponents(...rows);
-
-      await itx.showModal(modal);
-
-      const submitAction = await discordTry(
-        () =>
-          itx.awaitModalSubmit({
-            time: 60_000 * 5,
-            filter: (modal) => modal.customId === customId,
-          }),
-        [DiscordjsErrorCodes.InteractionCollectorError],
-        () => null,
-      );
-      if (!submitAction) return;
-
-      // Any reply is needed in order to successfully finish the modal interaction
-      await submitAction.deferReply({ flags: "Ephemeral" });
-      const moderatorDmChannel = await itx.user.createDM();
-
-      // TODO)) Abstract this into a helper/common util
-      const duration = submitAction.components
-        .at(0)
-        ?.components.find((c) => c.customId === "duration")?.value;
-      const reason = submitAction.components
-        .at(1)
-        ?.components.find((c) => c.customId === "reason")?.value;
-      if (!duration || !reason) {
-        await moderatorDmChannel.send(
-          "Nie podano wszystkich wymaganych danych do nałożenia wyciszenia!",
-        );
-        return;
-      }
-
-      // Send confirmation to the moderator's DM instead of itx.followUp()
-      // This avoids an inconsistency in handling of itx.channel context menus
-      // See https://github.com/strata-czasu/hashira/issues/75
-      await universalAddMute({
+      await handleContextMenu({
         prisma,
         messageQueue,
         log,
-        userId: itx.targetUser.id,
-        guild: itx.guild,
-        moderator: itx.user,
-        duration,
-        reason,
-        reply: (content) => moderatorDmChannel.send(content),
-        replyToModerator: (content) => moderatorDmChannel.send(content),
+        itx,
+        user: itx.targetUser,
       });
-      // Don't send any message to the guild channel
-      await submitAction.deleteReply();
+    },
+  )
+  .messageContextMenu(
+    "mute",
+    PermissionFlagsBits.ModerateMembers,
+    async ({ prisma, messageQueue, moderationLog: log }, itx) => {
+      if (!itx.inCachedGuild()) return;
+
+      await handleContextMenu({
+        prisma,
+        messageQueue,
+        log,
+        itx,
+        user: itx.targetMessage.author,
+      });
     },
   );

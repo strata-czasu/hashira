@@ -8,6 +8,7 @@ import {
 import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
+  type ContextMenuCommandInteraction,
   DiscordjsErrorCodes,
   type Guild,
   HeadingLevel,
@@ -148,6 +149,74 @@ const universalAddWarn = async ({
       `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
     );
   }
+};
+
+const handleContextMenu = async ({
+  prisma,
+  log,
+  itx,
+  user,
+}: {
+  prisma: ExtendedPrismaClient;
+  log: Context["moderationLog"];
+  itx: ContextMenuCommandInteraction<"cached">;
+  user: User;
+}) => {
+  const modalRows = [
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+      new TextInputBuilder()
+        .setCustomId("reason")
+        .setLabel("Powód")
+        .setRequired(true)
+        .setPlaceholder("Grzeczniej")
+        .setMaxLength(500)
+        .setStyle(TextInputStyle.Paragraph),
+    ),
+  ];
+
+  const customId = `warn-${itx.targetId}-${itx.commandType}`;
+  const modal = new ModalBuilder()
+    .setCustomId(customId)
+    .setTitle(`Ostrzeż ${user.tag}`)
+    .addComponents(...modalRows);
+  await itx.showModal(modal);
+
+  const submitAction = await discordTry(
+    () =>
+      itx.awaitModalSubmit({
+        time: 60_000 * 5,
+        filter: (modal) => modal.customId === customId,
+      }),
+    [DiscordjsErrorCodes.InteractionCollectorError],
+    () => null,
+  );
+  if (!submitAction) return;
+
+  // Any reply is needed in order to successfully finish the modal interaction
+  await submitAction.deferReply({ flags: "Ephemeral" });
+  const moderatorDmChannel = await itx.user.createDM();
+
+  const reason = submitAction.components
+    .at(0)
+    ?.components.find((c) => c.customId === "reason")?.value;
+  if (!reason) {
+    await moderatorDmChannel.send(
+      "Nie podano wszystkich wymaganych danych do nałożenia ostrzeżenia!",
+    );
+    return;
+  }
+
+  await universalAddWarn({
+    prisma,
+    log,
+    user,
+    moderator: itx.user,
+    guild: itx.guild,
+    reason,
+    reply: (content) => moderatorDmChannel.send(content),
+    replyToModerator: (content) => moderatorDmChannel.send(content),
+  });
+  await submitAction.deleteReply();
 };
 
 export const warns = new Hashira({ name: "warns" })
@@ -326,60 +395,25 @@ export const warns = new Hashira({ name: "warns" })
     async ({ prisma, moderationLog: log }, itx) => {
       if (!itx.inCachedGuild()) return;
 
-      const rows = [
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
-          new TextInputBuilder()
-            .setCustomId("reason")
-            .setLabel("Powód")
-            .setRequired(true)
-            .setPlaceholder("Grzeczniej")
-            .setMaxLength(500)
-            .setStyle(TextInputStyle.Paragraph),
-        ),
-      ];
-
-      const customId = `warn-${itx.targetId}`;
-      const modal = new ModalBuilder()
-        .setCustomId(customId)
-        .setTitle(`Ostrzeż ${itx.targetUser.tag}`)
-        .addComponents(...rows);
-      await itx.showModal(modal);
-
-      const submitAction = await discordTry(
-        () =>
-          itx.awaitModalSubmit({
-            time: 60_000 * 5,
-            filter: (modal) => modal.customId === customId,
-          }),
-        [DiscordjsErrorCodes.InteractionCollectorError],
-        () => null,
-      );
-      if (!submitAction) return;
-
-      // Any reply is needed in order to successfully finish the modal interaction
-      await submitAction.deferReply({ flags: "Ephemeral" });
-      const moderatorDmChannel = await itx.user.createDM();
-
-      const reason = submitAction.components
-        .at(0)
-        ?.components.find((c) => c.customId === "reason")?.value;
-      if (!reason) {
-        await moderatorDmChannel.send(
-          "Nie podano wszystkich wymaganych danych do nałożenia ostrzeżenia!",
-        );
-        return;
-      }
-
-      await universalAddWarn({
+      await handleContextMenu({
         prisma,
         log,
+        itx,
         user: itx.targetUser,
-        moderator: itx.user,
-        guild: itx.guild,
-        reason,
-        reply: (content) => moderatorDmChannel.send(content),
-        replyToModerator: (content) => moderatorDmChannel.send(content),
       });
-      await submitAction.deleteReply();
+    },
+  )
+  .messageContextMenu(
+    "warn",
+    PermissionFlagsBits.ModerateMembers,
+    async ({ prisma, moderationLog: log }, itx) => {
+      if (!itx.inCachedGuild()) return;
+
+      await handleContextMenu({
+        prisma,
+        log,
+        itx,
+        user: itx.targetMessage.author,
+      });
     },
   );
