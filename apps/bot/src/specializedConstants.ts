@@ -35,12 +35,10 @@ export const BROCHURE_ROLES = {
   [GUILD_IDS.Piwnica]: {
     FEMALE: "1344071005319987312", // @k
     MALE: "1344071031681318942", // @f
-    RDN: "1326664971739725887", // @RDN
   },
   [GUILD_IDS.StrataCzasu]: {
     FEMALE: "412324847423717378", // @Kobieta
     MALE: "427454159747547136", // @Facet
-    RDN: "1320194743774347335", // @RDN
   },
 } as const;
 

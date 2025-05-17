@@ -41,26 +41,5 @@ export const brochure = new Hashira({ name: "brochure" }).handle(
       await sendDirectMessage(newMember.user, message);
       return;
     }
-
-    if (addedRole(oldMember, newMember, brochureRoles.RDN)) {
-      await sendDirectMessage(newMember.user, {
-        content: userMention(newMember.id),
-        embeds: [
-          {
-            image: {
-              url: "https://i.imgur.com/Zknqwak.png",
-            },
-            color: 4572336,
-            author: {
-              name: "Strata Czasu",
-              icon_url: "https://i.imgur.com/RaXlSrq.png",
-            },
-            description:
-              "Otrzymałxś właśnie rolę RDN i stały dostęp do <#683025889658929231> na Stracie Czasu.",
-          },
-        ],
-      });
-      return;
-    }
   },
 );
