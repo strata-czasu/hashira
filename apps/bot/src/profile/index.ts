@@ -308,7 +308,7 @@ export const profile = new Hashira({ name: "profile" })
           )
           .addCommand("ustaw", (command) =>
             command
-              .setDescription("Ustaw wyświetlaną odznakę profilu")
+              .setDescription("Wyświetl odznakę na profilu")
               .addInteger("id", (id) => id.setDescription("ID odznaki"))
               .addInteger("wiersz", (row) =>
                 row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
@@ -368,6 +368,34 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.editReply(
                   `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
                 );
+              }),
+          )
+          .addCommand("usuń", (command) =>
+            command
+              .setDescription("Usuń odznakę z profilu")
+              .addInteger("wiersz", (row) =>
+                row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
+              )
+              .addInteger("kolumna", (column) =>
+                column
+                  .setDescription("Numer kolumny (1-5)")
+                  .setMinValue(1)
+                  .setMaxValue(5),
+              )
+              .handle(async ({ prisma }, { wiersz: row, kolumna: col }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                await ensureUserExists(prisma, itx.user);
+                const { count } = await prisma.displayedProfileBadge.deleteMany({
+                  where: { userId: itx.user.id, row, col },
+                });
+
+                if (count === 0) {
+                  await itx.editReply("Nie masz odznaki na tej pozycji!");
+                  return;
+                }
+                await itx.editReply(`Usunięto odznakę z pozycji ${row}:${col}`);
               }),
           ),
       ),
