@@ -21,6 +21,7 @@
             prisma-engines
           ];
           shellHook = ''
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib"
             export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig";
             export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
             export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
