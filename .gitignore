@@ -108,6 +108,7 @@ web_modules/
 
 # Direnv
 
+.direnv/
 .envrc.local
 
 # parcel-bundler cache (https://parceljs.org/)
