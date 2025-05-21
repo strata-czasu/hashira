@@ -25,32 +25,32 @@ const checkIfCanFish = async (
   return [canFish, nextFishing];
 };
 
-const getRandomFish = (): [string, number] => {
+const getRandomFish = (): [string, number, number] => {
   const fishType = randomInt(1, 101);
 
   if (fishType >= 1 && fishType <= 30) {
-    return ["karasia", randomInt(30, 61)];
+    return ["karasia", randomInt(30, 61), 1];
   }
   if (fishType >= 31 && fishType <= 50) {
-    return ["śledzia", randomInt(50, 81)];
+    return ["śledzia", randomInt(50, 81), 2];
   }
   if (fishType >= 51 && fishType <= 65) {
-    return ["dorsza", randomInt(60, 91)];
+    return ["dorsza", randomInt(60, 91), 3];
   }
   if (fishType >= 66 && fishType <= 75) {
-    return ["pstrąga", randomInt(80, 111)];
+    return ["pstrąga", randomInt(80, 111), 4];
   }
   if (fishType >= 76 && fishType <= 85) {
-    return ["szczupaka :crown:", randomInt(90, 111)];
+    return ["szczupaka :crown:", randomInt(90, 111), 5];
   }
   if (fishType >= 86 && fishType <= 95) {
-    return ["suma", randomInt(110, 131)];
+    return ["suma", randomInt(110, 131), 6];
   }
   if (fishType >= 96 && fishType <= 99) {
-    return ["rekina", randomInt(150, 181)];
+    return ["rekina", randomInt(150, 181), 7];
   }
   if (fishType === 100) {
-    return ["bombardiro crocodilo", randomInt(900, 1101)];
+    return ["bombardiro crocodilo", randomInt(900, 1101), 8];
   }
 
   throw new Error("Unreachable path, all variants should've been handled above");
@@ -72,12 +72,12 @@ export const fish = new Hashira({ name: "fish" })
         );
 
         if (canFish) {
-          const [fish, amount] = getRandomFish();
+          const [fish, amount, fishId] = getRandomFish();
 
           await addBalance({
             prisma,
             currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-            reason: "Łowienie",
+            reason: `Łowienie ${fishId}`,
             guildId: itx.guildId,
             toUserId: itx.user.id,
             amount: amount,
