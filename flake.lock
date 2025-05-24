@@ -1,5 +1,26 @@
 {
   "nodes": {
+    "devDB": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "utils": "utils"
+      },
+      "locked": {
+        "lastModified": 1675862903,
+        "narHash": "sha256-jOhfKQNS8i+CMThkK1WeMnlrXAjEwqxy727R4+WXxnU=",
+        "owner": "hermann-p",
+        "repo": "nix-postgres-dev-db",
+        "rev": "3d81eebf90584c1d9cc659b3c8c0f67bf2832335",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hermann-p",
+        "repo": "nix-postgres-dev-db",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -52,6 +73,7 @@
     },
     "root": {
       "inputs": {
+        "devDB": "devDB",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
         "nixpkgs-bun": "nixpkgs-bun"
@@ -69,6 +91,21 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "utils": {
+      "locked": {
+        "lastModified": 1667395993,
+        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
         "type": "github"
       }
     }
