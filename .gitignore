@@ -108,7 +108,8 @@ web_modules/
 
 # Direnv
 
-.envrc
+.direnv/
+.envrc.local
 
 # parcel-bundler cache (https://parceljs.org/)
 
@@ -156,6 +157,7 @@ dist
 
 .dynamodb/
 
+
 # TernJS port file
 
 .tern-port
@@ -173,7 +175,14 @@ dist
 .pnp.*
 
 # IntelliJ based IDEs
+
 .idea
 
 # Finder (MacOS) folder config
+
 .DS_Store
+
+# Development databases
+
+PG_DATA/
+REDIS_DATA/
