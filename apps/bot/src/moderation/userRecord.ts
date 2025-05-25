@@ -34,26 +34,36 @@ export const userRecord = new Hashira({ name: "user-record" })
           [RESTJSONErrorCodes.UnknownMember],
           () => null,
         );
-        const isInGuild = member !== null;
 
         const embed = new EmbedBuilder()
           .setTitle(`Kartoteka ${user.tag}`)
           .setThumbnail(user.displayAvatarURL({ size: 256 }))
           .setFooter({ text: `ID: ${user.id}` })
-          .addFields(
-            {
-              name: "Data założenia konta",
-              value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
-            },
-            {
-              name: "Poziom weryfikacji",
-              value: formatVerificationType(dbUser.verificationLevel),
-            },
-            {
-              name: "Na serwerze?",
-              value: isInGuild ? "Tak" : "Nie",
-            },
+          .addFields({
+            name: "Data założenia konta",
+            value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
+          });
+
+        const verificationStatusParts = [
+          formatVerificationType(dbUser.verificationLevel),
+        ];
+        const verification = await prisma.verification.findFirst({
+          where: {
+            guildId: itx.guild.id,
+            userId: user.id,
+            acceptedAt: { not: null },
+          },
+          orderBy: { acceptedAt: "desc" },
+        });
+        if (verification?.acceptedAt) {
+          verificationStatusParts.push(
+            `(przyjęto ${time(verification.acceptedAt, TimestampStyles.ShortDateTime)})`,
           );
+        }
+        embed.addFields({
+          name: "Poziom weryfikacji",
+          value: verificationStatusParts.join(" "),
+        });
 
         if (member) {
           const mutes = await prisma.mute.findMany({
