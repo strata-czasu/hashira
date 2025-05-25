@@ -43,7 +43,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           .addFields(
             {
               name: "Data założenia konta",
-              value: time(user.createdAt, TimestampStyles.ShortDateTime),
+              value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
             },
             {
               name: "Poziom weryfikacji",
