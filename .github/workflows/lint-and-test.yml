@@ -45,7 +45,7 @@ jobs:
       - name: Generate Prisma Client
         run: bun prisma-generate
       - name: Check Types
-        run: bunx tsc --project apps/bot/tsconfig.json
+        run: bunx tsgo --project apps/bot/tsconfig.json
       - name: Check migrations
         run: bun prisma-check-migrations
       - name: Run tests
