@@ -34,7 +34,7 @@ const getRandomFish = (): [string, number, number] => {
   if (fishType >= 1 && fishType <= 30) {
     return ["karasia", randomInt(30, 61), 2];
   }
-  if (fishType >= 31 && fishType <= 50) {
+  if (fishType >= 31 && fishType <= 49) {
     return ["śledzia", randomInt(50, 81), 3];
   }
   if (fishType >= 51 && fishType <= 65) {
@@ -54,6 +54,9 @@ const getRandomFish = (): [string, number, number] => {
   }
   if (fishType === 100) {
     return ["bombardiro crocodilo", randomInt(900, 1101), 9];
+  }
+  if (fishType === 50){
+    return ["wonsza rzecznego", randomInt(-130, -70), 10];
   }
 
   throw new Error("Unreachable path, all variants should've been handled above");
