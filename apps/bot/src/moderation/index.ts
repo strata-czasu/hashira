@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import { bans } from "./bans";
 import { mutes } from "./mutes";
 import { prune } from "./prune";
+import { userRecord } from "./userRecord";
 import { verification } from "./verification";
 import { warns } from "./warns";
 
@@ -10,4 +11,5 @@ export const moderation = new Hashira({ name: "moderation" })
   .use(warns)
   .use(mutes)
   .use(prune)
-  .use(verification);
+  .use(verification)
+  .use(userRecord);
