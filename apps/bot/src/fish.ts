@@ -55,7 +55,7 @@ const getRandomFish = (): [string, number, number] => {
   if (fishType === 100) {
     return ["bombardiro crocodilo", randomInt(900, 1101), 9];
   }
-  if (fishType === 50){
+  if (fishType === 50) {
     return ["wonsza rzecznego", randomInt(-130, -70), 10];
   }
 
