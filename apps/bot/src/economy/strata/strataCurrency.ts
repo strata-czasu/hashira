@@ -61,18 +61,18 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           .handle(async ({ prisma }, { użytkownik: user }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const userId = user?.id ?? itx.user.id;
+            const targetUser = user ?? itx.user;
 
-            await ensureUserExists(prisma, userId);
+            await ensureUserExists(prisma, targetUser.id);
 
             const wallet = await getDefaultWallet({
               prisma,
-              userId,
+              userId: targetUser.id,
               guildId: itx.guildId,
               currencySymbol: STRATA_CZASU_CURRENCY.symbol,
             });
 
-            const where = { wallet };
+            const where = { walletId: wallet.id };
             const paginator = new DatabasePaginator(
               (props, createdAt) =>
                 prisma.transaction.findMany({
@@ -96,7 +96,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             };
             const view = new PaginatedView(
               paginator,
-              `Transakcje ${itx.user.tag}`,
+              `Transakcje ${targetUser.tag}`,
               formatTransaction,
               true,
             );
