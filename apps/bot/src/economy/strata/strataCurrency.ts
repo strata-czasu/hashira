@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits } from "discord.js";
+import { Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator, type Transaction } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+import { PermissionFlagsBits, TimestampStyles, italic, time } from "discord.js";
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
@@ -46,6 +48,59 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             } else {
               await itx.reply(`Użytkownik ${user} ma na swoim koncie: ${balance}`);
             }
+          }),
+      )
+      .addCommand("historia", (command) =>
+        command
+          .setDescription("Sprawdź historię transakcji punktów")
+          .addUser("użytkownik", (option) =>
+            option
+              .setDescription("Użytkownik, którego punkty chcesz sprawdzić")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const userId = user?.id ?? itx.user.id;
+
+            await ensureUserExists(prisma, userId);
+
+            const wallet = await getDefaultWallet({
+              prisma,
+              userId,
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            });
+
+            const where = { wallet };
+            const paginator = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.transaction.findMany({
+                  ...props,
+                  where,
+                  orderBy: { createdAt },
+                }),
+              () => prisma.transaction.count({ where }),
+              { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const formatTransaction = (transaction: Transaction) => {
+              const parts: string[] = [
+                time(transaction.createdAt, TimestampStyles.ShortDateTime),
+                formatBalance(transaction.amount, STRATA_CZASU_CURRENCY.symbol),
+              ];
+              if (transaction.reason) {
+                parts.push(`- ${italic(transaction.reason)}`);
+              }
+              return parts.join(" ");
+            };
+            const view = new PaginatedView(
+              paginator,
+              `Transakcje ${itx.user.tag}`,
+              formatTransaction,
+              true,
+            );
+            await view.render(itx);
           }),
       )
       .addCommand("dodaj", (command) =>
