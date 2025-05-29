@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "ms-vscode.vscode-typescript-next",
+    "oven.bun-vscode",
+    "biomejs.biome",
+    "Prisma.prisma"
+  ]
+}
