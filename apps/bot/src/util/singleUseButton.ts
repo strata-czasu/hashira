@@ -96,7 +96,7 @@ export function waitForButtonClick(
       filter,
     });
 
-    collector.once("end", (interactions, reason) => {
+    collector.once("end", (interactions, _) => {
       const interaction = interactions.first();
       if (interaction) resolve(ok(interaction, component));
       else resolve(err(component, message));
