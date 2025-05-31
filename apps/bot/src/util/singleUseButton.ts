@@ -88,13 +88,14 @@ export function waitForButtonClick(
     throw new Error(`Button with customId "${customId}" not found in message.`);
   }
 
-  const collector = message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: durationToMilliseconds(timeout),
-    filter,
-  });
-
+  // Based on https://github.com/discordjs/discord.js/blob/8124fc68bee3e4a2e4e83240d9885abcad942fb0/packages/discord.js/src/structures/Message.js#L690
   return new Promise<Result>((resolve) => {
+    const collector = message.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: durationToMilliseconds(timeout),
+      filter,
+    });
+
     collector.once("end", (interactions, reason) => {
       const interaction = interactions.first();
       if (interaction) resolve(ok(interaction, component));
