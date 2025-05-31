@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
-import { addMinutes, isAfter } from "date-fns";
+import { addMinutes, hoursToSeconds, isAfter } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -14,6 +14,8 @@ import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
+import { ensureUserExists } from "./util/ensureUsersExist";
+import { waitForButtonClick } from "./util/singleUseButton";
 
 const checkIfCanFish = async (
   prisma: ExtendedPrismaClient,
@@ -75,8 +77,9 @@ export const fish = new Hashira({ name: "fish" })
     command
       .setDMPermission(false)
       .setDescription("Nielegalny połów ryb")
-      .handle(async ({ prisma }, _, itx) => {
+      .handle(async ({ prisma, messageQueue }, _, itx) => {
         if (!itx.inCachedGuild()) return;
+        await ensureUserExists(prisma, itx.user);
 
         const [canFish, nextFishing] = await checkIfCanFish(
           prisma,
@@ -111,10 +114,45 @@ export const fish = new Hashira({ name: "fish" })
             reminderButton,
           );
 
-          await itx.reply({
+          const response = await itx.reply({
             content: `Wyławiasz ${fish} wartego ${balance}`,
             components: [row],
+            withResponse: true,
           });
+
+          if (!response.resource?.message) {
+            throw new Error("Failed to receive response from interaction reply");
+          }
+
+          const clickInfo = await waitForButtonClick(
+            response.resource.message,
+            "fish_reminder",
+            { minutes: 1 },
+            (interaction) => interaction.user.id === itx.user.id,
+          );
+
+          await clickInfo.editButton((builder) => {
+            builder.setDisabled(true);
+
+            if (clickInfo.interaction) {
+              builder.setLabel("Widzimy się za godzinę");
+              builder.setStyle(ButtonStyle.Success);
+            }
+
+            return builder;
+          });
+
+          if (clickInfo.interaction) {
+            await messageQueue.push(
+              "reminder",
+              {
+                userId: itx.user.id,
+                guildId: itx.guildId,
+                text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
+              },
+              hoursToSeconds(1),
+            );
+          }
         } else {
           await itx.reply({
             content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextFishing, TimestampStyles.RelativeTime)}`,
@@ -122,31 +160,4 @@ export const fish = new Hashira({ name: "fish" })
           });
         }
       }),
-  )
-  .handle("interactionCreate", async ({ messageQueue }, itx) => {
-    if (!itx.inCachedGuild()) return;
-    if (!itx.isButton()) return;
-    if (itx.customId !== "fish_reminder") return;
-    if (itx.message.author.id !== itx.user.id) {
-      await itx.reply({
-        content: "To nie twoje łowisko!",
-        flags: "Ephemeral",
-      });
-      return;
-    }
-
-    await messageQueue.push("reminder", {
-      userId: itx.user.id,
-      guildId: itx.guildId,
-      text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
-    });
-
-    await itx.reply({
-      content: "Przypomnienie zostało ustawione!",
-      flags: "Ephemeral",
-    });
-
-    await itx.message.edit({
-      components: [],
-    });
-  });
+  );
