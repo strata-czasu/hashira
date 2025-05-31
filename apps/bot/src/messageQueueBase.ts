@@ -38,6 +38,12 @@ type UltimatumEndData = {
   guildId: string;
 };
 
+type ReminderData = {
+  userId: string;
+  guildId: string;
+  text: string;
+};
+
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(database)
   .use(loggingBase)
@@ -238,6 +244,28 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 elapsed,
               )}. Pozostało ${formatDuration(remaining)}. Nie zapomnij o niej!`,
             );
+          },
+        )
+        .addHandler(
+          "reminder",
+          async ({ client }, { userId, guildId, text }: ReminderData) => {
+            const guild = await discordTry(
+              async () => client.guilds.fetch(guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              async () => null,
+            );
+
+            if (!guild) return;
+
+            const member = await discordTry(
+              async () => guild.members.fetch(userId),
+              [RESTJSONErrorCodes.UnknownMember],
+              async () => null,
+            );
+
+            if (!member) return;
+
+            await sendDirectMessage(member.user, text);
           },
         ),
     };
