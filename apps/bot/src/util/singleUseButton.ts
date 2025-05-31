@@ -93,6 +93,7 @@ export function waitForButtonClick(
     const collector = message.createMessageComponentCollector({
       componentType: ComponentType.Button,
       time: durationToMilliseconds(timeout),
+      max: 1,
       filter,
     });
 

@@ -159,6 +159,11 @@ export const fish = new Hashira({ name: "fish" })
             },
             hoursToSeconds(1),
           );
+          // Any response is required to acknowledge the button click
+          clickInfo.interaction.reply({
+            content: "Przypomnę Ci o łowieniu za godzinę!",
+            flags: "Ephemeral",
+          });
         }
       }),
   );
