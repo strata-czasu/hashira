@@ -13,7 +13,6 @@ import { randomInt } from "es-toolkit";
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
-import { messageQueueBase } from "./messageQueueBase";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 
 const checkIfCanFish = async (
@@ -72,7 +71,6 @@ const getRandomFish = (): [string, number, number] => {
 
 export const fish = new Hashira({ name: "fish" })
   .use(base)
-  .use(messageQueueBase)
   .command("wedka", (command) =>
     command
       .setDMPermission(false)
