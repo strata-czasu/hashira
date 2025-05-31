@@ -1,11 +1,19 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { addMinutes, isAfter } from "date-fns";
-import { TimestampStyles, time } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  TimestampStyles,
+  channelLink,
+  time,
+} from "discord.js";
 import { randomInt } from "es-toolkit";
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
+import { messageQueueBase } from "./messageQueueBase";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 
 const checkIfCanFish = async (
@@ -64,6 +72,7 @@ const getRandomFish = (): [string, number, number] => {
 
 export const fish = new Hashira({ name: "fish" })
   .use(base)
+  .use(messageQueueBase)
   .command("wedka", (command) =>
     command
       .setDMPermission(false)
@@ -95,7 +104,19 @@ export const fish = new Hashira({ name: "fish" })
 
           const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
-          await itx.reply(`Wyławiasz ${fish} wartego ${balance}`);
+          const reminderButton = new ButtonBuilder()
+            .setCustomId("fish_reminder")
+            .setLabel("Przypomnij mi za godzinę")
+            .setStyle(ButtonStyle.Secondary);
+
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            reminderButton,
+          );
+
+          await itx.reply({
+            content: `Wyławiasz ${fish} wartego ${balance}`,
+            components: [row],
+          });
         } else {
           await itx.reply({
             content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextFishing, TimestampStyles.RelativeTime)}`,
@@ -103,4 +124,31 @@ export const fish = new Hashira({ name: "fish" })
           });
         }
       }),
-  );
+  )
+  .handle("interactionCreate", async ({ messageQueue }, itx) => {
+    if (!itx.inCachedGuild()) return;
+    if (!itx.isButton()) return;
+    if (itx.customId !== "fish_reminder") return;
+    if (itx.message.author.id !== itx.user.id) {
+      await itx.reply({
+        content: "To nie twoje łowisko!",
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    await messageQueue.push("reminder", {
+      userId: itx.user.id,
+      guildId: itx.guildId,
+      text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
+    });
+
+    await itx.reply({
+      content: "Przypomnienie zostało ustawione!",
+      flags: "Ephemeral",
+    });
+
+    await itx.message.edit({
+      components: [],
+    });
+  });
