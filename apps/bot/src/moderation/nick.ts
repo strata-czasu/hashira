@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits } from "discord.js";
+import { PermissionFlagsBits, inlineCode } from "discord.js";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
@@ -11,6 +11,36 @@ export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageNicknames)
     .setDescription("Zarządzaj nickami użytkowników")
+    .addCommand("ustaw", (command) =>
+      command
+        .setDescription("Ustaw nick użytkownika")
+        .addUser("user", (user) =>
+          user.setDescription("Użytkownik, którego nick chcesz ustawić"),
+        )
+        .addString("nick", (nick) => nick.setDescription("Nowy nick użytkownika"))
+        .handle(async (_, { user, nick }, itx) => {
+          if (!itx.inCachedGuild()) return;
+
+          await itx.deferReply({ flags: "Ephemeral" });
+
+          const member = itx.guild.members.cache.get(user.id);
+          if (!member) {
+            return await errorFollowUp(itx, "Użytkownika nie ma na serwerze.");
+          }
+
+          if (nick.length < 1 || nick.length > 32) {
+            return await errorFollowUp(itx, "Nick musi mieć od 1 do 32 znaków.");
+          }
+
+          await member.setNickname(
+            nick,
+            `Ustawienie nicku (moderator: ${itx.user.tag} (${itx.user.id}))`,
+          );
+          await itx.editReply(
+            `Ustawiono nick użytkownika ${user.tag} na ${inlineCode(nick)}.`,
+          );
+        }),
+    )
     .addCommand("reset", (command) =>
       command
         .setDescription("Zresetuj nick użytkownika")
