@@ -1,10 +1,20 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, inlineCode } from "discord.js";
+import { PermissionFlagsBits, type User, inlineCode } from "discord.js";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
-const NICK_RESET_DM_CONTENT =
-  "Twój pseudonim na Stracie Czasu został zresetowany, ponieważ nie dało się go spingować wpisując pierwsze kilka liter pseudonimu w pasek wysyłania wiadomości na Discordzie. Napisz do osoby, która zresetowała Ci nick, jego nową pingowalną wersję lub zdobądź 5 poziom, żeby móc samodzielnie zmienić swój pseudonim.";
+const NICK_RESET_DM_TEMPLATE = `
+Twój pseudonim na Stracie Czasu został zresetowany, ponieważ nie dało się go spingować wpisując pierwsze kilka liter pseudonimu w pasek wysyłania wiadomości na Discordzie.
+
+Napisz do osoby, która zresetowała Ci nick ({{moderator}}), jego nową pingowalną wersję lub zdobądź 5 poziom, żeby móc samodzielnie zmienić swój pseudonim.
+`;
+
+function formatNickResetDmContent(moderator: User) {
+  return NICK_RESET_DM_TEMPLATE.replace(
+    "{{moderator}}",
+    `${moderator} (${moderator.tag})`,
+  );
+}
 
 export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
   group
@@ -65,7 +75,8 @@ export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
           const response = [`Zresetowano nick użytkownika ${user.tag}.`];
 
           await user.createDM();
-          const sentDm = await sendDirectMessage(user, NICK_RESET_DM_CONTENT);
+          const dmContent = formatNickResetDmContent(itx.user);
+          const sentDm = await sendDirectMessage(user, dmContent);
           if (!sentDm) {
             response.push("Nie udało się wysłać prywatnej wiadomości do użytkownika.");
           }
