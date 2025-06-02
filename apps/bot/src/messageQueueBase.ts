@@ -59,15 +59,18 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const currentUltimatum = await prisma.ultimatum.findFirst({
               where: { userId, guildId, endedAt: null },
             });
-
             if (!currentUltimatum) return;
+
+            const updatedUltimatum = await prisma.ultimatum.update({
+              where: { id: currentUltimatum.id },
+              data: { endedAt: new Date() },
+            });
 
             const guild = await discordTry(
               async () => client.guilds.fetch(guildId),
               [RESTJSONErrorCodes.UnknownGuild],
               async () => null,
             );
-
             if (!guild) return;
 
             const member = await discordTry(
@@ -75,15 +78,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               [RESTJSONErrorCodes.UnknownMember],
               async () => null,
             );
-
             if (!member) return;
 
             await member.roles.remove(STRATA_CZASU.ULTIMATUM_ROLE, "Koniec ultimatum");
-
-            const updatedUltimatum = await prisma.ultimatum.update({
-              where: { id: currentUltimatum.id },
-              data: { endedAt: new Date() },
-            });
 
             await sendDirectMessage(
               member.user,
