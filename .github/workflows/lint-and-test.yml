@@ -102,5 +102,5 @@ jobs:
         run: |
           bun test:core
           bun test:bot
-          bun test:db
           bun test:paginate
+          # FIXME: Run `bun test:db` when eventually set up
