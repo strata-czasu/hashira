@@ -1,5 +1,6 @@
 import type { Prettify } from "@hashira/utils/types";
 import type {
+  AutocompleteInteraction,
   ChatInputCommandInteraction,
   ToAPIApplicationCommandOptions,
 } from "discord.js";
@@ -17,6 +18,11 @@ export type UnknownEventWithContext = (
   ...args: unknown[]
 ) => Promise<void>;
 
+export type UnknownAutocompleteHandler = (
+  ctx: UnknownContext,
+  interaction: AutocompleteInteraction,
+) => Promise<void>;
+
 export type BaseDecorator = { [key: string]: unknown };
 
 export interface OptionBuilder<Required extends boolean, T> {
@@ -28,7 +34,7 @@ export interface OptionBuilder<Required extends boolean, T> {
   toSlashCommandOption(): ToAPIApplicationCommandOptions;
   // TODO: Should add base type like String, User, etc.
   transform(
-    interaction: ChatInputCommandInteraction,
+    interaction: ChatInputCommandInteraction | AutocompleteInteraction,
     name: string,
   ): Promise<this["_"]["type"]>;
 }

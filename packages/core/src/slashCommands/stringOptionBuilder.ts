@@ -2,6 +2,7 @@ import {
   type APIApplicationCommandOptionChoice,
   type CacheType,
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
   SlashCommandStringOption,
   escapeMarkdown,
 } from "discord.js";
@@ -40,11 +41,19 @@ export class StringOptionBuilder<
     return this;
   }
 
+  setAutocomplete(autocomplete: boolean) {
+    this.#builder.setAutocomplete(autocomplete);
+    return this;
+  }
+
   toSlashCommandOption() {
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     const value = interaction.options.getString(
       name,
       this.#builder.required,
