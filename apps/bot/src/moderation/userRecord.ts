@@ -42,7 +42,7 @@ export const userRecord = new Hashira({ name: "user-record" })
             iconURL: user.displayAvatarURL(),
           })
           .addFields({
-            name: "Data założenia konta",
+            name: "📆 Data założenia konta",
             value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
           });
 
@@ -63,7 +63,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           );
         }
         embed.addFields({
-          name: "Poziom weryfikacji",
+          name: "🔞 Poziom weryfikacji",
           value: verificationStatusParts.join(" "),
         });
 
@@ -78,7 +78,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           });
           if (mutes.length > 0) {
             embed.addFields({
-              name: "Ostatnie wyciszenia",
+              name: "🔇 Ostatnie wyciszenia",
               value: mutes
                 .map(
                   (m) =>
@@ -97,7 +97,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           });
           if (warns.length > 0) {
             embed.addFields({
-              name: "Ostatnie ostrzeżenia",
+              name: "⚠️ Ostatnie ostrzeżenia",
               value: warns
                 .map(
                   (w) =>
@@ -110,7 +110,7 @@ export const userRecord = new Hashira({ name: "user-record" })
 
         if (member?.joinedAt) {
           embed.addFields({
-            name: "Data dołączenia na serwer",
+            name: "📆 Data dołączenia na serwer",
             value: `${time(member.joinedAt, TimestampStyles.ShortDateTime)} (${time(member.joinedAt, TimestampStyles.RelativeTime)})`,
           });
         }
