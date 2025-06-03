@@ -85,6 +85,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.1.27
+      - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
       - name: Check Types
@@ -97,6 +98,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.1.27
+      - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
       - name: Check migrations
