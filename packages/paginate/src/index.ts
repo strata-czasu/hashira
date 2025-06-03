@@ -74,9 +74,11 @@ export class StaticPaginator<T> implements Paginator<T> {
   }
 
   async reorder(orderBy?: PaginatorOrder): Promise<T[]> {
-    if (orderBy) this.#ordering = orderBy;
-    else this.#ordering = toggleOrder(this.#ordering);
-    this.#items.reverse();
+    const nextOrder = orderBy ?? toggleOrder(this.#ordering);
+    if (nextOrder !== this.#ordering) {
+      this.#items.reverse();
+    }
+    this.#ordering = nextOrder;
     this.#page = 0;
     return await this.current();
   }
