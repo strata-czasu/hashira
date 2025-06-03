@@ -1,6 +1,7 @@
 import {
   type CacheType,
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
   type Role,
   SlashCommandRoleOption,
 } from "discord.js";
@@ -31,7 +32,10 @@ export class RoleOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     return interaction.options.getRole(
       name,
       this.#builder.required,

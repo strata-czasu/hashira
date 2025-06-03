@@ -2,6 +2,7 @@ import {
   type APIApplicationCommandOptionChoice,
   type CacheType,
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
   SlashCommandIntegerOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
@@ -38,6 +39,11 @@ export class IntegerOptionBuilder<
     return this;
   }
 
+  setAutocomplete(autocomplete: boolean) {
+    this.#builder.setAutocomplete(autocomplete);
+    return this;
+  }
+
   addChoices(...choices: APIApplicationCommandOptionChoice<number>[]) {
     this.#builder.addChoices(...choices);
     return this;
@@ -47,7 +53,10 @@ export class IntegerOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     return interaction.options.getInteger(
       name,
       this.#builder.required,
