@@ -13,6 +13,8 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { formatMuteLength } from "./util";
 import { formatVerificationType } from "./verification";
 
+const forceNewline = (text: string) => `${text}\n\u{200e}`;
+
 export const userRecord = new Hashira({ name: "user-record" })
   .use(base)
   .command("kartoteka", (command) =>
@@ -43,7 +45,9 @@ export const userRecord = new Hashira({ name: "user-record" })
           })
           .addFields({
             name: "📆 Data założenia konta",
-            value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
+            value: forceNewline(
+              `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
+            ),
           });
 
         const verificationStatusParts = [
@@ -64,7 +68,7 @@ export const userRecord = new Hashira({ name: "user-record" })
         }
         embed.addFields({
           name: "🔞 Poziom weryfikacji",
-          value: verificationStatusParts.join(" "),
+          value: forceNewline(verificationStatusParts.join(" ")),
         });
 
         if (member) {
@@ -77,14 +81,15 @@ export const userRecord = new Hashira({ name: "user-record" })
             take: 3,
           });
           if (mutes.length > 0) {
+            const joinedMutes = mutes
+              .map(
+                (m) =>
+                  `${time(m.createdAt, TimestampStyles.ShortDateTime)}+${formatMuteLength(m)} ${italic(m.reason)}`,
+              )
+              .join("\n");
             embed.addFields({
               name: "🔇 Ostatnie wyciszenia",
-              value: mutes
-                .map(
-                  (m) =>
-                    `${time(m.createdAt, TimestampStyles.ShortDateTime)}+${formatMuteLength(m)} ${italic(m.reason)}`,
-                )
-                .join("\n"),
+              value: forceNewline(joinedMutes),
             });
           }
           const warns = await prisma.warn.findMany({
@@ -96,14 +101,15 @@ export const userRecord = new Hashira({ name: "user-record" })
             take: 3,
           });
           if (warns.length > 0) {
+            const joinedWarns = warns
+              .map(
+                (w) =>
+                  `${time(w.createdAt, TimestampStyles.ShortDateTime)} ${italic(w.reason)}`,
+              )
+              .join("\n");
             embed.addFields({
               name: "⚠️ Ostatnie ostrzeżenia",
-              value: warns
-                .map(
-                  (w) =>
-                    `${time(w.createdAt, TimestampStyles.ShortDateTime)} ${italic(w.reason)}`,
-                )
-                .join("\n"),
+              value: forceNewline(joinedWarns),
             });
           }
         }
