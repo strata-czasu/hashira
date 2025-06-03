@@ -43,6 +43,17 @@ describe("StaticPaginator", () => {
     expect(await paginator.current()).toEqual([1, 2, 3]);
   });
 
+  it("should not reorder when the same ordering is provided", async () => {
+    const paginator = new StaticPaginator({ items, pageSize });
+
+    const first = await paginator.current();
+    await paginator.reorder(PaginatorOrder.ASC);
+    const second = await paginator.current();
+
+    expect(second).toEqual(first);
+    expect(paginator.displayCurrentPage).toBe("1");
+  });
+
   it("should navigate to the next page", async () => {
     const paginator = new StaticPaginator({ items, pageSize });
 

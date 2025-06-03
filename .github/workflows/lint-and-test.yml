@@ -16,9 +16,41 @@ env:
   REDIS_URL: redis://localhost:6379
 
 jobs:
-  lint-and-test:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.27
+      - name: Run Linting
+        run: bunx biome lint .
 
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.27
+      - name: Check Formatting
+        run: bunx biome format .
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.27
+      - run: bun install
+      - name: Generate Prisma Client
+        run: bun prisma-generate
+      - name: Check Types
+        run: bunx tsc -b
+
+  migrations:
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
@@ -31,25 +63,41 @@ jobs:
           --health-retries 5
         env:
           POSTGRES_PASSWORD: postgres
-
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.1.27
       - run: bun install
-      - name: Run Linting
-        run: bunx biome lint .
-      - name: Check Formatting
-        run: bunx biome format .
       - name: Generate Prisma Client
         run: bun prisma-generate
-      - name: Check Types
-        run: bunx tsc -b
       - name: Check migrations
         run: bun prisma-check-migrations
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        env:
+          POSTGRES_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.27
+      - run: bun install
+      - name: Generate Prisma Client
+        run: bun prisma-generate
       - name: Run tests
-        # FIXME: This is a workaround for the issue with `bun test`
+        # FIXME: This is a workaround for the issue of running all tests with `bun test`
         #        There's some issue with using and/or migrating the DB
         run: |
           bun test:core
