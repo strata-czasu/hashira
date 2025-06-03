@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.27
+          bun-version: 1.2.0
       - name: Run Linting
         run: bunx biome lint .
 
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.27
+          bun-version: 1.2.0
       - name: Check Formatting
         run: bunx biome format .
 
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.27
+          bun-version: 1.2.0
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.27
+          bun-version: 1.2.0
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.27
+          bun-version: 1.2.0
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
