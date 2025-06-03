@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import { sub } from "date-fns";
 import {
   EmbedBuilder,
   PermissionFlagsBits,
@@ -92,6 +93,7 @@ export const userRecord = new Hashira({ name: "user-record" })
               value: forceNewline(joinedMutes),
             });
           }
+
           const warns = await prisma.warn.findMany({
             where: {
               guildId: itx.guild.id,
@@ -112,6 +114,20 @@ export const userRecord = new Hashira({ name: "user-record" })
               value: forceNewline(joinedWarns),
             });
           }
+
+          const textActivity = await prisma.userTextActivity.count({
+            where: {
+              userId: user.id,
+              guildId: itx.guildId,
+              timestamp: {
+                gte: sub(itx.createdAt, { days: 30 }),
+              },
+            },
+          });
+          embed.addFields({
+            name: "🗨️ Aktywność tekstowa z 30 dni",
+            value: forceNewline(textActivity.toString()),
+          });
         }
 
         if (member?.joinedAt) {
