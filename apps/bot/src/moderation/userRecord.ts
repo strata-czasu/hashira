@@ -37,8 +37,10 @@ export const userRecord = new Hashira({ name: "user-record" })
 
         const embed = new EmbedBuilder()
           .setTitle(`Kartoteka ${user.tag}`)
-          .setThumbnail(user.displayAvatarURL({ size: 256 }))
-          .setFooter({ text: `ID: ${user.id}` })
+          .setFooter({
+            text: user.id,
+            iconURL: user.displayAvatarURL(),
+          })
           .addFields({
             name: "Data założenia konta",
             value: `${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`,
