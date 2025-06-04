@@ -318,6 +318,8 @@ class Hashira<
     const builder = command.toSlashCommandBuilder().setName(name);
     const handler = command.toHandler();
     this.#commands.set(name, [builder, handler]);
+    const autocomplete = command.toAutocomplete();
+    if (autocomplete) this.#autocomplete.set(name, autocomplete);
     return this as unknown as ReturnType<typeof this.command<T, U>>;
   }
 
@@ -335,6 +337,8 @@ class Hashira<
     const group = init(new Group(true));
     const builder = group.toSlashCommandBuilder().setName(name);
     this.#commands.set(name, [builder, group.toHandler()]);
+    const autocomplete = group.toAutocomplete();
+    if (autocomplete) this.#autocomplete.set(name, autocomplete);
     return this;
   }
 
