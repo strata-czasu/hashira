@@ -129,7 +129,6 @@ export const profile = new Hashira({ name: "profile" })
             const svg = cheerio.load(await file.text());
             const image = new ProfileImageBuilder(svg);
             image
-              .tintColor("#aa85a4")
               .nickname(user.displayName)
               .balance(wallet.balance)
               .rep(0) // TODO)) Rep value
@@ -150,6 +149,19 @@ export const profile = new Hashira({ name: "profile" })
               image.title(dbUser.profileSettings.title.name);
             } else {
               image.title("Użytkownik");
+            }
+
+            if (dbUser.profileSettings?.tintColorType === "dynamic") {
+              // TODO)) Take tint color from member's nick color
+              console.warn("Unimplemented dynamic tint color for profile image");
+            } else if (dbUser.profileSettings?.tintColorType === "custom") {
+              // TODO)) Use `profileSettings.tintColor` if set,
+              //        else throw error - invalid state
+              console.warn("Unimplemented custom tint color for profile image");
+            } else if (dbUser.profileSettings?.tintColorType === "fromItem") {
+              // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
+              //        else throw error - invalid state
+              console.warn("Unimplemented item-based tint color for profile image");
             }
 
             const member = await discordTry(
