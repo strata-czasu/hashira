@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    # TODO: Bump to 1.2.15
     # Bun 1.2.0
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/bu/bun/package.nix
     nixpkgs-bun.url = "github:nixos/nixpkgs/a370b2c86fa5c808a57323e3b63a4e022b15670b";
