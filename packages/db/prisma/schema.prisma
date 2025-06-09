@@ -322,6 +322,30 @@ model StickyMessage {
   guild         Guild   @relation(fields: [guildId], references: [id])
 }
 
+model VoiceSession {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  guildId    String
+  channelId  String
+  joinedAt   DateTime
+  leftAt     DateTime
+  user       User     @relation(fields: [userId], references: [id])
+  guild      Guild    @relation(fields: [guildId], references: [id])
+  activities VoiceSessionActivity[]
+
+  @@map("voiceSession")
+}
+
+model VoiceSessionActivity {
+  id              Int          @id @default(autoincrement())
+  voiceSessionId  Int
+  activeStates    Json
+  durationSeconds Int
+  voiceSession    VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+
+  @@map("voiceSessionActivity")
+}
+
 enum EntryType {
   debit
   credit
