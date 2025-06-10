@@ -1,70 +1,16 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+import { type RangeUnion, rangeObject } from "@hashira/utils/range";
 import { differenceInSeconds } from "date-fns";
 import type { Guild, VoiceState } from "discord.js";
 import { pick } from "es-toolkit";
 import * as v from "valibot";
 import { ensureUserExists } from "../util/ensureUsersExist";
-
-const BooleanString = v.pipe(
-  v.string(),
-  v.union([v.literal("true"), v.literal("false")]),
-  v.transform((v) => v === "true"),
-);
-
-const NumberString = v.pipe(
-  v.string(),
-  v.decimal(),
-  v.transform((v) => Number(v)),
-);
-
-const DateString = v.pipe(
-  v.string(),
-  v.isoTimestamp(),
-  v.transform((v) => new Date(v)),
-);
-
-const voiceSessionSchemaV1 = v.object({
-  channelId: v.string(),
-  joinedAt: DateString,
-  lastUpdate: DateString,
-  isMuted: BooleanString,
-  isDeafened: BooleanString,
-  isStreaming: BooleanString,
-  isVideo: BooleanString,
-  totalDeafenedSeconds: NumberString,
-  totalMutedSeconds: NumberString,
-  totalStreamingSeconds: NumberString,
-  totalVideoSeconds: NumberString,
-  version: v.literal("1"),
-});
-
-const voiceSessionSchemaV2 = v.object({
-  channelId: v.string(),
-  joinedAt: DateString,
-  lastUpdate: DateString,
-  isMuted: BooleanString,
-  isDeafened: BooleanString,
-  isStreaming: BooleanString,
-  isVideo: BooleanString,
-  totalDeafenedSeconds: NumberString,
-  totalMutedSeconds: NumberString,
-  totalStreamingSeconds: NumberString,
-  totalActiveStreamingSeconds: NumberString,
-  totalVideoSeconds: NumberString,
-  totalActiveVideoSeconds: NumberString,
-  version: v.literal("2"),
-});
-
-const AnyVersionVoiceSessionSchema = v.union([
-  voiceSessionSchemaV1,
-  voiceSessionSchemaV2,
-]);
-type AnyVersionVoiceSessionSchema = v.InferOutput<typeof AnyVersionVoiceSessionSchema>;
-
-const voiceSessionSchema = voiceSessionSchemaV2;
-type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
-
-const VERSION: VoiceSession["version"] = "2";
+import {
+  AnyVersionVoiceSessionSchema,
+  VERSION,
+  type VoiceSession,
+  type voiceSessionSchema,
+} from "./voiceSession/schema";
 
 export class VoiceSessionManager {
   private redis: RedisClient;
@@ -88,7 +34,24 @@ export class VoiceSessionManager {
         ...updatedSession,
         totalActiveStreamingSeconds: 0,
         totalActiveVideoSeconds: 0,
-        version: VERSION,
+        version: "2",
+      };
+    }
+
+    // Migrate from version 2 to version 3, remove old data because it's not easily mappable
+    if (updatedSession.version === "2") {
+      updatedSession = {
+        channelId: updatedSession.channelId,
+        joinedAt: updatedSession.joinedAt,
+        lastUpdate: updatedSession.lastUpdate,
+        state: 0,
+        ...rangeObject(
+          0,
+          15,
+          () => 0,
+          (i) => `total_${i}`,
+        ),
+        version: "3",
       };
     }
 
@@ -140,16 +103,7 @@ export class VoiceSessionManager {
     guildId: string,
     leftAt: Date,
   ): Prisma.VoiceSessionUncheckedCreateInput {
-    const cleanedSession = pick(session, [
-      "channelId",
-      "joinedAt",
-      "totalDeafenedSeconds",
-      "totalMutedSeconds",
-      "totalStreamingSeconds",
-      "totalActiveStreamingSeconds",
-      "totalVideoSeconds",
-      "totalActiveVideoSeconds",
-    ]);
+    const cleanedSession = pick(session, ["channelId", "joinedAt"]);
 
     return { ...cleanedSession, userId, guildId, leftAt };
   }
@@ -161,38 +115,30 @@ export class VoiceSessionManager {
       channelId: session.channelId,
       joinedAt: session.joinedAt.toISOString(),
       lastUpdate: session.lastUpdate.toISOString(),
-      isMuted: String(session.isMuted),
-      isDeafened: String(session.isDeafened),
-      isStreaming: String(session.isStreaming),
-      isVideo: String(session.isVideo),
-      totalMutedSeconds: String(session.totalMutedSeconds),
-      totalDeafenedSeconds: String(session.totalDeafenedSeconds),
-      totalStreamingSeconds: String(session.totalStreamingSeconds),
-      totalActiveStreamingSeconds: String(session.totalActiveStreamingSeconds),
-      totalVideoSeconds: String(session.totalVideoSeconds),
-      totalActiveVideoSeconds: String(session.totalActiveVideoSeconds),
+      state: `${session.state}`,
+      ...rangeObject(
+        0,
+        15,
+        (i) => String(session[`total_${i}`]),
+        (i) => `total_${i}`,
+      ),
       version: session.version,
     };
   }
 
   private updateSessionTimes(session: VoiceSession, delta: number): void {
-    if (session.isMuted) session.totalMutedSeconds += delta;
-    if (session.isDeafened) session.totalDeafenedSeconds += delta;
+    session[`total_${session.state}`] =
+      (session[`total_${session.state}`] ?? 0) + delta;
+  }
 
-    if (session.isStreaming) {
-      if (!session.isMuted && !session.isDeafened) {
-        session.totalActiveStreamingSeconds += delta;
-      }
+  private encodeState(state: VoiceState): RangeUnion<0, 16> {
+    let value = 0;
+    if (state.mute) value |= 1;
+    if (state.deaf) value |= 2;
+    if (state.streaming) value |= 4;
+    if (state.selfVideo) value |= 8;
 
-      session.totalStreamingSeconds += delta;
-    }
-    if (session.isVideo) {
-      if (!session.isMuted && !session.isDeafened) {
-        session.totalActiveVideoSeconds += delta;
-      }
-
-      session.totalVideoSeconds += delta;
-    }
+    return value as RangeUnion<0, 16>;
   }
 
   // Currently we only have one version, but this will be used for future migrations
@@ -201,20 +147,11 @@ export class VoiceSessionManager {
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
-      version: "2",
+      version: "3",
       channelId,
       joinedAt: now,
       lastUpdate: now,
-      isMuted: Boolean(state.mute),
-      isDeafened: Boolean(state.deaf),
-      isStreaming: Boolean(state.streaming),
-      isVideo: Boolean(state.selfVideo),
-      totalMutedSeconds: 0,
-      totalDeafenedSeconds: 0,
-      totalStreamingSeconds: 0,
-      totalActiveStreamingSeconds: 0,
-      totalVideoSeconds: 0,
-      totalActiveVideoSeconds: 0,
+      state: this.encodeState(state),
     };
 
     await this.redis.hSet(key, this.serializeVoiceSessionForRedis(voiceSession));
@@ -235,11 +172,7 @@ export class VoiceSessionManager {
     const delta = differenceInSeconds(now, session.lastUpdate);
 
     this.updateSessionTimes(session, delta);
-
-    session.isMuted = Boolean(newState.mute);
-    session.isDeafened = Boolean(newState.deaf);
-    session.isStreaming = Boolean(newState.streaming);
-    session.isVideo = Boolean(newState.selfVideo);
+    session.state = this.encodeState(newState);
     session.lastUpdate = now;
 
     await this.redis.hSet(key, this.serializeVoiceSessionForRedis(session));
