@@ -96,7 +96,7 @@
             fontconfig
           ];
           FONT_PATH = runCommand "custom-fonts" { } ''
-            mkdir -p $out/share/fonts/now
+            mkdir -p $out/share/fonts
             cp -r ${./fonts/now} $out/share/fonts/
           '';
           shellHook = ''
