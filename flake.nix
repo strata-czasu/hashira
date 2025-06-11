@@ -38,7 +38,7 @@
           bunSources = {
             "aarch64-darwin" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
-              hash = ""; # TODO: Add hash
+              hash = "sha256-qwzW/H/I0e5PgWbZm3EIbUeTxa7g0LXHP9+bcPpH3tQ=";
             };
             "x86_64-linux" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-linux-x64.zip";
