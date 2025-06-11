@@ -1,11 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # NOTE: Commit from https://github.com/NixOS/nixpkgs/pull/412819
-    # TODO: Replace with master ref once merged
-    # Bun 1.2.15
-    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/bu/bun/package.nix
-    nixpkgs-bun.url = "github:nixos/nixpkgs/8cd81bcda73983d7358fe9418d759cae739a0155";
     flake-utils.url = "github:numtide/flake-utils";
     devDB = {
       url = "github:hermann-p/nix-postgres-dev-db";
@@ -15,9 +10,7 @@
 
   outputs =
     {
-      self,
       nixpkgs,
-      nixpkgs-bun,
       flake-utils,
       devDB,
       ...
@@ -26,8 +19,23 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        pkgs-bun = import nixpkgs-bun { inherit system; };
         db = devDB.outputs.packages.${system};
+
+        bunVersion = "1.2.15";
+        bunSources = {
+          "aarch64-darwin" = pkgs.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
+            hash = ""; # TODO: Add hash
+          };
+          "x86_64-linux" = pkgs.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-linux-x64.zip";
+            hash = "sha256-omFiY2eDW7N1SgGuB/iESE7RewiGsB5Be3mVkfpNeQE=";
+          };
+        };
+        bun = pkgs.bun.overrideAttrs {
+          version = bunVersion;
+          src = bunSources.${system} or (throw "Unsupported system for bun: ${system}");
+        };
 
         # TODO: Move redis commands to a separate flake
         redis-data-env-var = "$REDIS_DATA";
@@ -75,7 +83,7 @@
       {
         devShell = mkShell {
           buildInputs = [
-            pkgs-bun.bun
+            bun
             prisma
             prisma-engines
             postgresql_17
