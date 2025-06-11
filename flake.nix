@@ -1,10 +1,11 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # TODO: Bump to 1.2.15
-    # Bun 1.2.0
+    # NOTE: Commit from https://github.com/NixOS/nixpkgs/pull/412819
+    # TODO: Replace with master ref once merged
+    # Bun 1.2.15
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/bu/bun/package.nix
-    nixpkgs-bun.url = "github:nixos/nixpkgs/a370b2c86fa5c808a57323e3b63a4e022b15670b";
+    nixpkgs-bun.url = "github:nixos/nixpkgs/8cd81bcda73983d7358fe9418d759cae739a0155";
     flake-utils.url = "github:numtide/flake-utils";
     devDB = {
       url = "github:hermann-p/nix-postgres-dev-db";
