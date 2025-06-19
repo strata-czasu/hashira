@@ -351,8 +351,6 @@ export class VoiceSessionManager {
     oldState: VoiceState,
     newState: VoiceState,
   ): Promise<void> {
-    const userName = newState.member?.displayName || newState.id;
-
     // User joins a voice channel
     if (!oldState.channel && newState.channel) {
       await this.startVoiceSession(newState.channel.id, newState);
