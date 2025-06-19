@@ -31,6 +31,7 @@ model VoiceSessionTotal {
   isDeafened     Boolean
   isStreaming    Boolean
   isVideo        Boolean
+  isAlone        Boolean
   secondsSpent   Int
   voiceSessionId Int
 

@@ -11,6 +11,9 @@ import {
   type voiceSessionSchema,
 } from "./voiceSession/schema";
 
+const stateRange = range(0, 32);
+type RangeState = RangeUnion<0, 32>;
+
 export class VoiceSessionManager {
   private redis: RedisClient;
   private prisma: ExtendedPrismaClient;
@@ -98,7 +101,7 @@ export class VoiceSessionManager {
   ): Prisma.VoiceSessionCreateInput {
     const totals: Prisma.VoiceSessionTotalCreateManyVoiceSessionInput[] = [];
 
-    for (const i of range(0, 16)) {
+    for (const i of stateRange) {
       const key = `total_${i}` as const;
       const value = session[key];
 
@@ -131,7 +134,7 @@ export class VoiceSessionManager {
       version: session.version,
     };
 
-    for (const i of range(0, 16)) {
+    for (const i of stateRange) {
       const key = `total_${i}` as const;
 
       const value = session[key] ?? 0;
@@ -149,37 +152,45 @@ export class VoiceSessionManager {
       (session[`total_${session.state}`] ?? 0) + delta;
   }
 
-  private encodeState(state: VoiceState): RangeUnion<0, 16> {
+  private voiceStateAlone(state: VoiceState): boolean {
+    if (state.channel?.members.size !== 1) return false;
+
+    return state.channel.members.has(state.id);
+  }
+
+  private encodeState(state: VoiceState): RangeState {
     let value = 0;
     if (state.mute) value |= 1;
     if (state.deaf) value |= 2;
     if (state.streaming) value |= 4;
     if (state.selfVideo) value |= 8;
+    if (this.voiceStateAlone(state)) value |= 16;
 
-    return value as RangeUnion<0, 16>;
+    return value as RangeState;
   }
 
-  private decodeState(value: RangeUnion<0, 16>): {
+  private decodeState(value: RangeState): {
     isMuted: boolean;
     isDeafened: boolean;
     isStreaming: boolean;
     isVideo: boolean;
+    isAlone: boolean;
   } {
     return {
       isMuted: (value & 1) !== 0,
       isDeafened: (value & 2) !== 0,
       isStreaming: (value & 4) !== 0,
       isVideo: (value & 8) !== 0,
+      isAlone: (value & 16) !== 0,
     };
   }
 
-  // Currently we only have one version, but this will be used for future migrations
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
     const now = new Date();
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
-      version: "3",
+      version: VERSION,
       channelId,
       joinedAt: now,
       lastUpdate: now,

@@ -20,8 +20,8 @@ const DateString = v.pipe(
 );
 
 const StateString = v.pipe(
-  v.union(range(0, 16).map((i) => v.literal(`${i}`))),
-  v.transform((v) => Number(v) as RangeUnion<0, 16>),
+  v.union(range(0, 32).map((i) => v.literal(`${i}`))),
+  v.transform((v) => Number(v) as RangeUnion<0, 32>),
 );
 
 const voiceSessionSchemaV1 = v.object({
@@ -63,7 +63,7 @@ const voiceSessionSchemaV3 = v.object({
   state: StateString,
   ...rangeObject(
     0,
-    16,
+    32,
     () => v.exactOptional(NumberString),
     (i) => `total_${i}`,
   ),
