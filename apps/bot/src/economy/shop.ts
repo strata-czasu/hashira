@@ -74,14 +74,36 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("kup", (command) =>
         command
           .setDescription("Kup przedmiot ze sklepu")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
           .addInteger("ilość", (amount) =>
             amount
               .setDescription("Ilość przedmiotów")
               .setRequired(false)
               .setMinValue(1),
           )
-          .handle(async ({ prisma }, { id, ilość: rawAmount }, itx) => {
+          .autocomplete(async ({ prisma }, _, itx) => {
+            const results = await prisma.shopItem.findMany({
+              where: {
+                deletedAt: null,
+                item: {
+                  name: {
+                    contains: itx.options.getFocused(),
+                    mode: "insensitive",
+                  },
+                },
+              },
+              include: { item: true },
+            });
+            await itx.respond(
+              results.map(({ id, price, item }) => ({
+                value: id,
+                name: `${item.name} - ${formatAmount(price)} ${getTypeNameForList(item.type)}`,
+              })),
+            );
+          })
+          .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
