@@ -1,7 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import * as cheerio from "cheerio";
-import { differenceInDays, sub } from "date-fns";
+import { differenceInDays, secondsToHours, sub } from "date-fns";
 import {
   DiscordAPIError,
   EmbedBuilder,
@@ -88,6 +88,22 @@ export const profile = new Hashira({ name: "profile" })
                 },
               },
             });
+            const {
+              _sum: { secondsSpent: voiceActivitySeconds },
+            } = await prisma.voiceSessionTotal.aggregate({
+              _sum: {
+                secondsSpent: true,
+              },
+              where: {
+                isMuted: false,
+                isDeafened: false,
+                isAlone: false,
+                voiceSession: {
+                  guildId: itx.guildId,
+                  userId: user.id,
+                },
+              },
+            });
 
             const embed = new EmbedBuilder()
               .setTitle(`Profil ${user.tag}`)
@@ -115,11 +131,15 @@ export const profile = new Hashira({ name: "profile" })
               .balance(wallet.balance)
               .rep(0) // TODO)) Rep value
               .items(dbUser.inventoryItems.length)
-              .voiceActivity(123) // TODO)) Voice activity value
               .textActivity(textActivity)
               .accountCreationDate(user.createdAt)
               .exp(1234, 23001) // TODO)) Exp value
               .level(42); // TODO)) Level value
+
+            if (voiceActivitySeconds) {
+              const voiceActivityHours = secondsToHours(voiceActivitySeconds);
+              image.voiceActivity(voiceActivityHours);
+            }
 
             // TODO)) Customizable background image
 
