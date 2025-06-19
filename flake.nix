@@ -125,7 +125,7 @@
               export FONTCONFIG_FILE="${pkgs.fontconfig.out}/etc/fonts/fonts.conf"
               export FONTCONFIG_PATH="$FONT_PATH/etc/fonts"
               export XDG_DATA_DIRS="$FONT_PATH/share:$XDG_DATA_DIRS"
-              fc-cache -f -v $FONT_PATH/share/fonts
+              fc-cache -v $FONT_PATH/share/fonts
             '';
           };
         }
