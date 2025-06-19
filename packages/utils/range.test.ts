@@ -11,6 +11,24 @@ describe("range", () => {
     expect(range(5, 5)).toEqual([]);
   });
 
+  it("should return empty array when start is greater than end", () => {
+    // Use type assertion for this edge case to avoid TypeScript recursion issues
+    const rangeForInvalidRange = range as (start: number, end: number) => number[];
+    expect(rangeForInvalidRange(10, 5)).toEqual([]);
+  });
+
+  it("should handle single element range", () => {
+    expect(range(5, 6)).toEqual([5]);
+  });
+
+  it("should handle range starting from zero", () => {
+    expect(range(0, 3)).toEqual([0, 1, 2]);
+  });
+
+  it("should handle larger ranges", () => {
+    expect(range(10, 15)).toEqual([10, 11, 12, 13, 14]);
+  });
+
   // Without this, TypeScript will suffer a stroke and it will tell you that maximum call stack size has been exceeded
   const rangeForNegatives = range as (start: number, end: number) => number[];
 
@@ -63,6 +81,67 @@ describe("rangeObject", () => {
   it("should handle empty range", () => {
     const result = rangeObject(5, 5, (i) => i);
     expect(result).toEqual({});
+  });
+
+  it("should return empty object when start is greater than end", () => {
+    // Use type assertion for this edge case to avoid TypeScript recursion issues
+    const rangeObjectForInvalidRange = rangeObject as <T>(
+      start: number,
+      end: number,
+      mapper: (i: number) => T,
+    ) => Record<number, T>;
+    const result = rangeObjectForInvalidRange(10, 5, (i) => i);
+    expect(result).toEqual({});
+  });
+
+  it("should handle single element range", () => {
+    const result = rangeObject(5, 6, (i) => i * 2);
+    expect(result).toEqual({ 5: 10 });
+  });
+
+  it("should handle range starting from zero", () => {
+    const result = rangeObject(0, 2, (i) => `item-${i}`);
+    expect(result).toEqual({
+      0: "item-0",
+      1: "item-1",
+    });
+  });
+
+  it("should work with custom keyMapper", () => {
+    const result = rangeObject(
+      0,
+      3,
+      (i) => i * 2,
+      (i) => `key-${i}`,
+    );
+    expect(result).toEqual({
+      "key-0": 0,
+      "key-1": 2,
+      "key-2": 4,
+    });
+  });
+
+  it("should work with keyMapper returning numbers", () => {
+    const result = rangeObject(
+      0,
+      3,
+      (i) => `value-${i}`,
+      (i) => i + 100,
+    );
+    expect(result).toEqual({
+      100: "value-0",
+      101: "value-1",
+      102: "value-2",
+    });
+  });
+
+  it("should handle larger ranges", () => {
+    const result = rangeObject(10, 13, (i) => i * i);
+    expect(result).toEqual({
+      10: 100,
+      11: 121,
+      12: 144,
+    });
   });
 
   // Without this, TypeScript will suffer a stroke and it will tell you that maximum call stack size has been exceeded

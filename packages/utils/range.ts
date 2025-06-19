@@ -28,7 +28,11 @@ export type Range<
   Start extends number,
   End extends number,
   Acc extends number[] = [],
-> = Start extends End ? Acc : Range<Increment<Start>, End, [...Acc, Start]>;
+> = Start extends End
+  ? Acc
+  : Acc["length"] extends 512
+    ? []
+    : Range<Increment<Start>, End, [...Acc, Start]>;
 
 /**
  * Returns an array of numbers from `start` to `end - 1`.
@@ -60,9 +64,15 @@ export function range<Start extends number, End extends number>(
   return result as Range<Start, End>;
 }
 
-export type RangeUnion<Start extends number, End extends number> = Start extends End
+export type RangeUnion<
+  Start extends number,
+  End extends number,
+  Depth extends unknown[] = [],
+> = Start extends End
   ? never
-  : Start | RangeUnion<Increment<Start>, End>;
+  : Depth["length"] extends 512
+    ? never
+    : Start | RangeUnion<Increment<Start>, End, [...Depth, unknown]>;
 
 type RangeObjectType<
   Start extends number,
