@@ -1,70 +1,18 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+import { type RangeUnion, range } from "@hashira/utils/range";
 import { differenceInSeconds } from "date-fns";
-import type { Guild, VoiceState } from "discord.js";
-import { pick } from "es-toolkit";
+import type { Guild, VoiceBasedChannel, VoiceState } from "discord.js";
 import * as v from "valibot";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import {
+  AnyVersionVoiceSessionSchema,
+  VERSION,
+  type VoiceSession,
+  type voiceSessionSchema,
+} from "./voiceSession/schema";
 
-const BooleanString = v.pipe(
-  v.string(),
-  v.union([v.literal("true"), v.literal("false")]),
-  v.transform((v) => v === "true"),
-);
-
-const NumberString = v.pipe(
-  v.string(),
-  v.decimal(),
-  v.transform((v) => Number(v)),
-);
-
-const DateString = v.pipe(
-  v.string(),
-  v.isoTimestamp(),
-  v.transform((v) => new Date(v)),
-);
-
-const voiceSessionSchemaV1 = v.object({
-  channelId: v.string(),
-  joinedAt: DateString,
-  lastUpdate: DateString,
-  isMuted: BooleanString,
-  isDeafened: BooleanString,
-  isStreaming: BooleanString,
-  isVideo: BooleanString,
-  totalDeafenedSeconds: NumberString,
-  totalMutedSeconds: NumberString,
-  totalStreamingSeconds: NumberString,
-  totalVideoSeconds: NumberString,
-  version: v.literal("1"),
-});
-
-const voiceSessionSchemaV2 = v.object({
-  channelId: v.string(),
-  joinedAt: DateString,
-  lastUpdate: DateString,
-  isMuted: BooleanString,
-  isDeafened: BooleanString,
-  isStreaming: BooleanString,
-  isVideo: BooleanString,
-  totalDeafenedSeconds: NumberString,
-  totalMutedSeconds: NumberString,
-  totalStreamingSeconds: NumberString,
-  totalActiveStreamingSeconds: NumberString,
-  totalVideoSeconds: NumberString,
-  totalActiveVideoSeconds: NumberString,
-  version: v.literal("2"),
-});
-
-const AnyVersionVoiceSessionSchema = v.union([
-  voiceSessionSchemaV1,
-  voiceSessionSchemaV2,
-]);
-type AnyVersionVoiceSessionSchema = v.InferOutput<typeof AnyVersionVoiceSessionSchema>;
-
-const voiceSessionSchema = voiceSessionSchemaV2;
-type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;
-
-const VERSION: VoiceSession["version"] = "2";
+const stateRange = range(0, 32);
+type RangeState = RangeUnion<0, 32>;
 
 export class VoiceSessionManager {
   private redis: RedisClient;
@@ -88,7 +36,18 @@ export class VoiceSessionManager {
         ...updatedSession,
         totalActiveStreamingSeconds: 0,
         totalActiveVideoSeconds: 0,
-        version: VERSION,
+        version: "2",
+      };
+    }
+
+    // Migrate from version 2 to version 3, remove old data because it's not easily mappable
+    if (updatedSession.version === "2") {
+      updatedSession = {
+        channelId: updatedSession.channelId,
+        joinedAt: updatedSession.joinedAt,
+        lastUpdate: updatedSession.lastUpdate,
+        state: 0,
+        version: "3",
       };
     }
 
@@ -139,82 +98,135 @@ export class VoiceSessionManager {
     userId: string,
     guildId: string,
     leftAt: Date,
-  ): Prisma.VoiceSessionUncheckedCreateInput {
-    const cleanedSession = pick(session, [
-      "channelId",
-      "joinedAt",
-      "totalDeafenedSeconds",
-      "totalMutedSeconds",
-      "totalStreamingSeconds",
-      "totalActiveStreamingSeconds",
-      "totalVideoSeconds",
-      "totalActiveVideoSeconds",
-    ]);
+  ): Prisma.VoiceSessionCreateInput {
+    const totals: Prisma.VoiceSessionTotalCreateManyVoiceSessionInput[] = [];
 
-    return { ...cleanedSession, userId, guildId, leftAt };
+    for (const i of stateRange) {
+      const key = `total_${i}` as const;
+      const value = session[key];
+
+      if (value && value > 0) {
+        totals.push({ ...this.decodeState(i), secondsSpent: value });
+      }
+    }
+
+    return {
+      channelId: session.channelId,
+      joinedAt: session.joinedAt,
+      leftAt,
+      user: { connectOrCreate: { where: { id: userId }, create: { id: userId } } },
+      guild: { connectOrCreate: { where: { id: guildId }, create: { id: guildId } } },
+      totals: {
+        createMany: { data: totals },
+      },
+    };
   }
 
   private serializeVoiceSessionForRedis(
     session: VoiceSession,
   ): v.InferInput<typeof voiceSessionSchema> {
-    return {
+    // Only include total_{i} fields that have non-zero values or are the current state
+    const result: v.InferInput<typeof voiceSessionSchema> = {
       channelId: session.channelId,
       joinedAt: session.joinedAt.toISOString(),
       lastUpdate: session.lastUpdate.toISOString(),
-      isMuted: String(session.isMuted),
-      isDeafened: String(session.isDeafened),
-      isStreaming: String(session.isStreaming),
-      isVideo: String(session.isVideo),
-      totalMutedSeconds: String(session.totalMutedSeconds),
-      totalDeafenedSeconds: String(session.totalDeafenedSeconds),
-      totalStreamingSeconds: String(session.totalStreamingSeconds),
-      totalActiveStreamingSeconds: String(session.totalActiveStreamingSeconds),
-      totalVideoSeconds: String(session.totalVideoSeconds),
-      totalActiveVideoSeconds: String(session.totalActiveVideoSeconds),
+      state: `${session.state}`,
       version: session.version,
     };
+
+    for (const i of stateRange) {
+      const key = `total_${i}` as const;
+
+      const value = session[key] ?? 0;
+
+      if (value > 0) {
+        result[key] = String(value);
+      }
+    }
+
+    return result;
   }
 
   private updateSessionTimes(session: VoiceSession, delta: number): void {
-    if (session.isMuted) session.totalMutedSeconds += delta;
-    if (session.isDeafened) session.totalDeafenedSeconds += delta;
+    session[`total_${session.state}`] =
+      (session[`total_${session.state}`] ?? 0) + delta;
+  }
 
-    if (session.isStreaming) {
-      if (!session.isMuted && !session.isDeafened) {
-        session.totalActiveStreamingSeconds += delta;
+  private voiceStateAlone(state: VoiceState): boolean {
+    if (state.channel?.members.size !== 1) return false;
+
+    return state.channel.members.has(state.id);
+  }
+
+  private encodeState(state: VoiceState): RangeState {
+    let value = 0;
+    if (state.mute) value |= 1;
+    if (state.deaf) value |= 2;
+    if (state.streaming) value |= 4;
+    if (state.selfVideo) value |= 8;
+    if (this.voiceStateAlone(state)) value |= 16;
+
+    return value as RangeState;
+  }
+
+  private decodeState(value: RangeState): {
+    isMuted: boolean;
+    isDeafened: boolean;
+    isStreaming: boolean;
+    isVideo: boolean;
+    isAlone: boolean;
+  } {
+    return {
+      isMuted: (value & 1) !== 0,
+      isDeafened: (value & 2) !== 0,
+      isStreaming: (value & 4) !== 0,
+      isVideo: (value & 8) !== 0,
+      isAlone: (value & 16) !== 0,
+    };
+  }
+
+  private async updateRemainingUsersAfterLeave(
+    channel: VoiceBasedChannel,
+  ): Promise<void> {
+    if (channel.members.size === 1) {
+      const remainingUser = channel.members.first();
+      if (remainingUser?.voice) {
+        const actualVoiceState = remainingUser.voice;
+
+        if (actualVoiceState.channel?.id === channel.id) {
+          await this.updateVoiceSession(actualVoiceState);
+        }
       }
-
-      session.totalStreamingSeconds += delta;
-    }
-    if (session.isVideo) {
-      if (!session.isMuted && !session.isDeafened) {
-        session.totalActiveVideoSeconds += delta;
-      }
-
-      session.totalVideoSeconds += delta;
     }
   }
 
-  // Currently we only have one version, but this will be used for future migrations
+  private async updateUsersAfterJoin(
+    channel: VoiceBasedChannel,
+    excludeUserId?: string,
+  ): Promise<void> {
+    if (channel.members.size > 1) {
+      for (const [, member] of channel.members) {
+        if (
+          member?.voice &&
+          member.voice.channel?.id === channel.id &&
+          member.id !== excludeUserId
+        ) {
+          await this.updateVoiceSession(member.voice);
+        }
+      }
+    }
+  }
+
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
     const now = new Date();
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
-      version: "2",
+      version: VERSION,
       channelId,
       joinedAt: now,
       lastUpdate: now,
-      isMuted: Boolean(state.mute),
-      isDeafened: Boolean(state.deaf),
-      isStreaming: Boolean(state.streaming),
-      isVideo: Boolean(state.selfVideo),
-      totalMutedSeconds: 0,
-      totalDeafenedSeconds: 0,
-      totalStreamingSeconds: 0,
-      totalActiveStreamingSeconds: 0,
-      totalVideoSeconds: 0,
-      totalActiveVideoSeconds: 0,
+      state: this.encodeState(state),
     };
 
     await this.redis.hSet(key, this.serializeVoiceSessionForRedis(voiceSession));
@@ -236,10 +248,7 @@ export class VoiceSessionManager {
 
     this.updateSessionTimes(session, delta);
 
-    session.isMuted = Boolean(newState.mute);
-    session.isDeafened = Boolean(newState.deaf);
-    session.isStreaming = Boolean(newState.streaming);
-    session.isVideo = Boolean(newState.selfVideo);
+    session.state = this.encodeState(newState);
     session.lastUpdate = now;
 
     await this.redis.hSet(key, this.serializeVoiceSessionForRedis(session));
@@ -322,7 +331,9 @@ export class VoiceSessionManager {
 
   async handleNewGuild(guild: Guild): Promise<void> {
     const allFoundSessions = await Promise.all(
-      guild.voiceStates.cache.map((voiceState) => this.handleVoiceState(voiceState)),
+      guild.voiceStates.cache.map((voiceState) => {
+        return this.handleVoiceState(voiceState);
+      }),
     );
 
     const foundSessions = allFoundSessions.flat();
@@ -342,23 +353,33 @@ export class VoiceSessionManager {
   ): Promise<void> {
     // User joins a voice channel
     if (!oldState.channel && newState.channel) {
-      return await this.startVoiceSession(newState.channel.id, newState);
+      await this.startVoiceSession(newState.channel.id, newState);
+
+      await this.updateUsersAfterJoin(newState.channel, newState.id);
+      return;
     }
 
     // User leaves a voice channel
     if (oldState.channel && !newState.channel) {
+      await this.updateRemainingUsersAfterLeave(oldState.channel);
+
       return await this.endVoiceSession(newState, new Date());
     }
 
     // User moves between channels or updates voice state within a channel
     if (oldState.channel && newState.channel) {
       if (oldState.channel.id !== newState.channel.id) {
+        await this.updateRemainingUsersAfterLeave(oldState.channel);
+
         await this.endVoiceSession(newState, new Date());
         await this.startVoiceSession(newState.channel.id, newState);
+
+        await this.updateUsersAfterJoin(newState.channel, newState.id);
+
         return;
       }
 
-      // Same channel update
+      // Same channel, just updating state
       return await this.updateVoiceSession(newState);
     }
   }
