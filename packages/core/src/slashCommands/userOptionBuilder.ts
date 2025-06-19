@@ -1,4 +1,5 @@
 import {
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
   SlashCommandUserOption,
@@ -32,7 +33,13 @@ export class UserOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
+    if (interaction.isAutocomplete()) return null as this["_"]["type"];
     return interaction.options.getUser(
       name,
       this.#builder.required,

@@ -1,6 +1,7 @@
 import type { Prettify } from "@hashira/utils/types";
 import {
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
   type Permissions,
   SlashCommandBuilder,
 } from "discord.js";
@@ -17,6 +18,7 @@ import type {
   If,
   OptionBuilder,
   OptionDataType,
+  UnknownAutocompleteHandler,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
@@ -37,6 +39,7 @@ export class TopLevelSlashCommand<
   #builder = new SlashCommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;
+  #autocomplete?: UnknownAutocompleteHandler;
 
   setDescription(
     description: string,
@@ -207,7 +210,9 @@ export class TopLevelSlashCommand<
     return this.#handler as ReturnType<typeof this.toHandler>;
   }
 
-  async options(interaction: ChatInputCommandInteraction): Promise<Options> {
+  async options(
+    interaction: ChatInputCommandInteraction | AutocompleteInteraction,
+  ): Promise<Options> {
     // TODO: This should use custom logic to handle different types of
     // options (e.g. user, member, role, etc.) and also custom options
     const options: Record<string, unknown> = {};
@@ -232,5 +237,24 @@ export class TopLevelSlashCommand<
     this.#handler = _handler as UnknownCommandHandler;
 
     return this as unknown as ReturnType<typeof this.handle>;
+  }
+
+  autocomplete(
+    handler: (
+      ctx: Context,
+      options: Options,
+      interaction: AutocompleteInteraction,
+    ) => Promise<void>,
+  ): TopLevelSlashCommand<Context, Settings, Options> {
+    const _handler = async (ctx: Context, interaction: AutocompleteInteraction) =>
+      await handler(ctx, await this.options(interaction), interaction);
+
+    this.#autocomplete = _handler as UnknownAutocompleteHandler;
+
+    return this as unknown as ReturnType<typeof this.autocomplete>;
+  }
+
+  toAutocomplete(): UnknownAutocompleteHandler | undefined {
+    return this.#autocomplete;
   }
 }

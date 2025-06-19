@@ -1,18 +1,19 @@
 import {
   type APIApplicationCommandOptionChoice,
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
   SlashCommandStringOption,
   escapeMarkdown,
 } from "discord.js";
-import type { OptionBuilder } from "../types";
+import type { If, OptionBuilder } from "../types";
 
 export class StringOptionBuilder<
   HasDescription extends boolean = false,
   Required extends boolean = true,
 > implements OptionBuilder<Required, string>
 {
-  declare _: { type: Required extends true ? string : string | null };
+  declare _: { type: If<Required, string, string | null> };
   // Enforce nominal typing
   protected declare readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandStringOption().setRequired(true);
@@ -40,11 +41,21 @@ export class StringOptionBuilder<
     return this;
   }
 
+  setAutocomplete(autocomplete: boolean) {
+    this.#builder.setAutocomplete(autocomplete);
+    return this;
+  }
+
   toSlashCommandOption() {
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     const value = interaction.options.getString(
       name,
       this.#builder.required,

@@ -1,4 +1,5 @@
 import {
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
   SlashCommandBooleanOption,
@@ -31,7 +32,12 @@ export class BooleanOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     return interaction.options.getBoolean(
       name,
       this.#builder.required,

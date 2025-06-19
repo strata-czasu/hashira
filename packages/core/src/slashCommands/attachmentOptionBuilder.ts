@@ -1,5 +1,6 @@
 import {
   type Attachment,
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
   SlashCommandAttachmentOption,
@@ -32,7 +33,13 @@ export class AttachmentOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
+    if (interaction.isAutocomplete()) return null as this["_"]["type"];
     return interaction.options.getAttachment(
       name,
       this.#builder.required,

@@ -2,6 +2,7 @@ import type { Prettify } from "@hashira/utils/types";
 import {
   type Channel,
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
   type Permissions,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
@@ -15,6 +16,7 @@ import type {
   OptionBuilder,
   OptionDataType,
   UnknownContext,
+  UnknownAutocompleteHandler,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
@@ -33,6 +35,9 @@ export type UnknownCommandHandler = (
 ) => Promise<void>;
 
 type Handlers = { [key: string]: Handlers | UnknownCommandHandler };
+type AutocompleteHandlers = {
+  [key: string]: AutocompleteHandlers | UnknownAutocompleteHandler;
+};
 
 type GroupSettings = {
   HasDescription: boolean;
@@ -54,6 +59,7 @@ export class Group<
   protected readonly _topLevel: Settings["TopLevel"];
   #builder: SlashCommandBuilder | SlashCommandSubcommandGroupBuilder;
   #handlers: Handlers = {};
+  #autocompleteHandlers: AutocompleteHandlers = {};
 
   constructor(topLevel: Settings["TopLevel"]) {
     this._topLevel = topLevel;
@@ -107,6 +113,8 @@ export class Group<
     const commandBuilder = command.toSlashCommandBuilder().setName(name);
     this.#builder.addSubcommand(commandBuilder);
     this.#handlers[name] = command.toHandler();
+    const autocomplete = command.toAutocomplete();
+    if (autocomplete) this.#autocompleteHandlers[name] = autocomplete;
     return this as unknown as ReturnType<typeof this.addCommand<T, U>>;
   }
 
@@ -132,6 +140,7 @@ export class Group<
     const builder = group.toSlashCommandBuilder().setName(name);
     this.#builder.addSubcommandGroup(builder);
     this.#handlers[name] = group.#handlers;
+    this.#autocompleteHandlers[name] = group.#autocompleteHandlers;
     return this as unknown as ReturnType<typeof this.addGroup<T, U>>;
   }
 
@@ -158,6 +167,24 @@ export class Group<
     return result;
   }
 
+  #flattenAutocompleteHandlers(
+    handlers: AutocompleteHandlers,
+  ): { [key: string]: UnknownAutocompleteHandler } {
+    const result: { [key: string]: UnknownAutocompleteHandler } = {};
+    for (const [key, value] of Object.entries(handlers)) {
+      if (typeof value === "function") {
+        result[key] = value;
+      } else {
+        for (const [subKey, subValue] of Object.entries(
+          this.#flattenAutocompleteHandlers(value),
+        )) {
+          result[`${key}.${subKey}`] = subValue;
+        }
+      }
+    }
+    return result;
+  }
+
   toHandler(): If<Settings["TopLevel"], UnknownCommandHandler, never> {
     if (!this._topLevel) throw new Error("Cannot get handler for non-top-level group");
     const handlers = this.#flattenHandlers(this.#handlers);
@@ -170,6 +197,20 @@ export class Group<
       if (!handler) throw new Error(`No handler found for ${qualifiedName}`);
       await handler(ctx, int);
     }) as unknown as ReturnType<typeof this.toHandler>;
+  }
+
+  toAutocomplete(): If<Settings["TopLevel"], UnknownAutocompleteHandler, never> {
+    if (!this._topLevel) throw new Error("Cannot get handler for non-top-level group");
+    const handlers = this.#flattenAutocompleteHandlers(this.#autocompleteHandlers);
+
+    return (async (ctx: UnknownContext, int: AutocompleteInteraction) => {
+      const group = int.options.getSubcommandGroup(false);
+      const command = int.options.getSubcommand(false);
+      const qualifiedName = [group, command].filter(Boolean).join(".");
+      const handler = handlers[qualifiedName];
+      if (!handler) return;
+      await handler(ctx, int);
+    }) as unknown as ReturnType<typeof this.toAutocomplete>;
   }
 }
 
@@ -194,6 +235,7 @@ export class SlashCommand<
   #builder = new SlashCommandSubcommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;
+  #autocomplete?: UnknownAutocompleteHandler;
 
   setDescription(
     description: string,
@@ -342,7 +384,9 @@ export class SlashCommand<
     return this.#handler as ReturnType<typeof this.toHandler>;
   }
 
-  async options(interaction: ChatInputCommandInteraction): Promise<Options> {
+  async options(
+    interaction: ChatInputCommandInteraction | AutocompleteInteraction,
+  ): Promise<Options> {
     // TODO: This should use custom logic to handle different types of
     // options (e.g. user, member, role, etc.) and also custom options
     const options: Record<string, unknown> = {};
@@ -369,6 +413,25 @@ export class SlashCommand<
     this.#handler = _handler as UnknownCommandHandler;
 
     return this as unknown as ReturnType<typeof this.handle>;
+  }
+
+  autocomplete(
+    handler: (
+      ctx: Context,
+      options: Options,
+      interaction: AutocompleteInteraction,
+    ) => Promise<void>,
+  ): SlashCommand<Context, Settings, Options> {
+    const _handler = async (ctx: Context, interaction: AutocompleteInteraction) =>
+      await handler(ctx, await this.options(interaction), interaction);
+
+    this.#autocomplete = _handler as UnknownAutocompleteHandler;
+
+    return this as unknown as ReturnType<typeof this.autocomplete>;
+  }
+
+  toAutocomplete(): UnknownAutocompleteHandler | undefined {
+    return this.#autocomplete;
   }
 }
 

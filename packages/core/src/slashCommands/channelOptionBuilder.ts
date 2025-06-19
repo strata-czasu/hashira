@@ -1,5 +1,6 @@
 import {
   type ApplicationCommandOptionAllowedChannelTypes,
+  type AutocompleteInteraction,
   type CacheType,
   type Channel,
   type ChannelType,
@@ -47,7 +48,13 @@ export class ChannelOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
+    if (interaction.isAutocomplete()) return null as this["_"]["type"];
     return interaction.options.getChannel(
       name,
       this.#builder.required,

@@ -318,6 +318,8 @@ class Hashira<
     const builder = command.toSlashCommandBuilder().setName(name);
     const handler = command.toHandler();
     this.#commands.set(name, [builder, handler]);
+    const autocomplete = command.toAutocomplete();
+    if (autocomplete) this.#autocomplete.set(name, autocomplete);
     return this as unknown as ReturnType<typeof this.command<T, U>>;
   }
 
@@ -335,6 +337,8 @@ class Hashira<
     const group = init(new Group(true));
     const builder = group.toSlashCommandBuilder().setName(name);
     this.#commands.set(name, [builder, group.toHandler()]);
+    const autocomplete = group.toAutocomplete();
+    if (autocomplete) this.#autocomplete.set(name, autocomplete);
     return this;
   }
 
@@ -384,24 +388,6 @@ class Hashira<
       ) => Promise<void>,
     ]);
     return this as unknown as ReturnType<typeof this.messageContextMenu<T>>;
-  }
-
-  autocomplete<
-    T extends HashiraSlashCommandOptions,
-    U extends AutocompleteInteraction = AutocompleteInteraction,
-  >(
-    commandBuilder: T,
-    handler: (context: HashiraContext<Decorators>, interaction: U) => Promise<void>,
-  ): Hashira<Decorators, Commands> {
-    this.#autocomplete.set(
-      commandBuilder.name,
-      handler as (
-        context: UnknownContext,
-        interaction: AutocompleteInteraction,
-      ) => Promise<void>,
-    );
-
-    return this;
   }
 
   private async handleCommand(interaction: ChatInputCommandInteraction) {

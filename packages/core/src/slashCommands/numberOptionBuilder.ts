@@ -1,5 +1,6 @@
 import {
   type APIApplicationCommandOptionChoice,
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
   SlashCommandNumberOption,
@@ -38,6 +39,11 @@ export class NumberOptionBuilder<
     return this;
   }
 
+  setAutocomplete(autocomplete: boolean) {
+    this.#builder.setAutocomplete(autocomplete);
+    return this;
+  }
+
   addChoices(...choices: APIApplicationCommandOptionChoice<number>[]) {
     this.#builder.addChoices(...choices);
     return this;
@@ -47,7 +53,12 @@ export class NumberOptionBuilder<
     return this.#builder;
   }
 
-  async transform(interaction: ChatInputCommandInteraction<CacheType>, name: string) {
+  async transform(
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
+    name: string,
+  ) {
     return interaction.options.getNumber(
       name,
       this.#builder.required,
