@@ -1,7 +1,7 @@
 import {
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
-  type AutocompleteInteraction,
   type Role,
   SlashCommandRoleOption,
 } from "discord.js";
@@ -13,6 +13,7 @@ export class RoleOptionBuilder<
 > implements OptionBuilder<Required, Role>
 {
   declare _: { type: If<Required, Role, Role | null> };
+  // Enforce nominal typing
   protected declare readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandRoleOption().setRequired(true);
 
@@ -33,9 +34,12 @@ export class RoleOptionBuilder<
   }
 
   async transform(
-    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
+    if (interaction.isAutocomplete()) return null as this["_"]["type"];
     return interaction.options.getRole(
       name,
       this.#builder.required,

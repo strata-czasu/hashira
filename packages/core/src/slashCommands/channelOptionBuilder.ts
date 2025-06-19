@@ -1,10 +1,10 @@
 import {
   type ApplicationCommandOptionAllowedChannelTypes,
+  type AutocompleteInteraction,
   type CacheType,
   type Channel,
   type ChannelType,
   type ChatInputCommandInteraction,
-  type AutocompleteInteraction,
   SlashCommandChannelOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
@@ -49,9 +49,12 @@ export class ChannelOptionBuilder<
   }
 
   async transform(
-    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
+    if (interaction.isAutocomplete()) return null as this["_"]["type"];
     return interaction.options.getChannel(
       name,
       this.#builder.required,

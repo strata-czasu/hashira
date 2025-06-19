@@ -1,8 +1,8 @@
 import {
   type APIApplicationCommandOptionChoice,
+  type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
-  type AutocompleteInteraction,
   SlashCommandNumberOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
@@ -54,7 +54,9 @@ export class NumberOptionBuilder<
   }
 
   async transform(
-    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
+    interaction:
+      | ChatInputCommandInteraction<CacheType>
+      | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     return interaction.options.getNumber(
