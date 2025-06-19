@@ -48,7 +48,7 @@ jobs:
       - name: Generate Prisma Client
         run: bun prisma-generate
       - name: Check Types
-        run: bunx tsc -b
+        run: bun typecheck
 
   migrations:
     runs-on: ubuntu-latest
