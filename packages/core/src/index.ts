@@ -390,24 +390,6 @@ class Hashira<
     return this as unknown as ReturnType<typeof this.messageContextMenu<T>>;
   }
 
-  autocomplete<
-    T extends HashiraSlashCommandOptions,
-    U extends AutocompleteInteraction = AutocompleteInteraction,
-  >(
-    commandBuilder: T,
-    handler: (context: HashiraContext<Decorators>, interaction: U) => Promise<void>,
-  ): Hashira<Decorators, Commands> {
-    this.#autocomplete.set(
-      commandBuilder.name,
-      handler as (
-        context: UnknownContext,
-        interaction: AutocompleteInteraction,
-      ) => Promise<void>,
-    );
-
-    return this;
-  }
-
   private async handleCommand(interaction: ChatInputCommandInteraction) {
     const command = this.#commands.get(interaction.commandName);
 
