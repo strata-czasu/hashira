@@ -1,7 +1,7 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 import { type RangeUnion, range } from "@hashira/utils/range";
 import { differenceInSeconds } from "date-fns";
-import type { Guild, VoiceState } from "discord.js";
+import type { Guild, VoiceBasedChannel, VoiceState } from "discord.js";
 import * as v from "valibot";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import {
@@ -185,6 +185,38 @@ export class VoiceSessionManager {
     };
   }
 
+  private async updateRemainingUsersAfterLeave(
+    channel: VoiceBasedChannel,
+  ): Promise<void> {
+    if (channel.members.size === 1) {
+      const remainingUser = channel.members.first();
+      if (remainingUser?.voice) {
+        const actualVoiceState = remainingUser.voice;
+
+        if (actualVoiceState.channel?.id === channel.id) {
+          await this.updateVoiceSession(actualVoiceState);
+        }
+      }
+    }
+  }
+
+  private async updateUsersAfterJoin(
+    channel: VoiceBasedChannel,
+    excludeUserId?: string,
+  ): Promise<void> {
+    if (channel.members.size > 1) {
+      for (const [, member] of channel.members) {
+        if (
+          member?.voice &&
+          member.voice.channel?.id === channel.id &&
+          member.id !== excludeUserId
+        ) {
+          await this.updateVoiceSession(member.voice);
+        }
+      }
+    }
+  }
+
   async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
     const now = new Date();
     const key = this.getSessionKey(state.guild.id, state.id);
@@ -215,6 +247,7 @@ export class VoiceSessionManager {
     const delta = differenceInSeconds(now, session.lastUpdate);
 
     this.updateSessionTimes(session, delta);
+
     session.state = this.encodeState(newState);
     session.lastUpdate = now;
 
@@ -298,7 +331,9 @@ export class VoiceSessionManager {
 
   async handleNewGuild(guild: Guild): Promise<void> {
     const allFoundSessions = await Promise.all(
-      guild.voiceStates.cache.map((voiceState) => this.handleVoiceState(voiceState)),
+      guild.voiceStates.cache.map((voiceState) => {
+        return this.handleVoiceState(voiceState);
+      }),
     );
 
     const foundSessions = allFoundSessions.flat();
@@ -316,25 +351,37 @@ export class VoiceSessionManager {
     oldState: VoiceState,
     newState: VoiceState,
   ): Promise<void> {
+    const userName = newState.member?.displayName || newState.id;
+
     // User joins a voice channel
     if (!oldState.channel && newState.channel) {
-      return await this.startVoiceSession(newState.channel.id, newState);
+      await this.startVoiceSession(newState.channel.id, newState);
+
+      await this.updateUsersAfterJoin(newState.channel, newState.id);
+      return;
     }
 
     // User leaves a voice channel
     if (oldState.channel && !newState.channel) {
+      await this.updateRemainingUsersAfterLeave(oldState.channel);
+
       return await this.endVoiceSession(newState, new Date());
     }
 
     // User moves between channels or updates voice state within a channel
     if (oldState.channel && newState.channel) {
       if (oldState.channel.id !== newState.channel.id) {
+        await this.updateRemainingUsersAfterLeave(oldState.channel);
+
         await this.endVoiceSession(newState, new Date());
         await this.startVoiceSession(newState.channel.id, newState);
+
+        await this.updateUsersAfterJoin(newState.channel, newState.id);
+
         return;
       }
 
-      // Same channel update
+      // Same channel, just updating state
       return await this.updateVoiceSession(newState);
     }
   }
