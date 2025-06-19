@@ -11,22 +11,28 @@ model UserTextActivity {
   @@map("userTextActivity")
 }
 
-/// Stores completed voice chat session data for analytics
 /// Created when a user leaves a voice channel or moves to a different channel
-/// This record should not be modified after creation
+/// This record or its children should not be modified after creation
 model VoiceSession {
-  id                          Int      @id @default(autoincrement())
-  channelId                   String
-  joinedAt                    DateTime
-  leftAt                      DateTime
-  userId                      String
-  guildId                     String
-  totalMutedSeconds           Int
-  totalDeafenedSeconds        Int
-  totalStreamingSeconds       Int
-  totalVideoSeconds           Int
-  totalActiveStreamingSeconds Int
-  totalActiveVideoSeconds     Int
-  user                        User     @relation(fields: [userId], references: [id])
-  guild                       Guild    @relation(fields: [guildId], references: [id])
+  id        Int                 @id @default(autoincrement())
+  channelId String
+  joinedAt  DateTime
+  leftAt    DateTime
+  userId    String
+  guildId   String
+  user      User                @relation(fields: [userId], references: [id])
+  guild     Guild               @relation(fields: [guildId], references: [id])
+  totals    VoiceSessionTotal[]
+}
+
+model VoiceSessionTotal {
+  id             Int     @id @default(autoincrement())
+  isMuted        Boolean
+  isDeafened     Boolean
+  isStreaming    Boolean
+  isVideo        Boolean
+  secondsSpent   Int
+  voiceSessionId Int
+
+  voiceSession VoiceSession @relation(fields: [voiceSessionId], references: [id])
 }

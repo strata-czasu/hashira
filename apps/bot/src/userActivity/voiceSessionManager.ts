@@ -1,8 +1,7 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
-import { type RangeUnion, rangeObject } from "@hashira/utils/range";
+import { type RangeUnion, range } from "@hashira/utils/range";
 import { differenceInSeconds } from "date-fns";
 import type { Guild, VoiceState } from "discord.js";
-import { pick } from "es-toolkit";
 import * as v from "valibot";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import {
@@ -45,12 +44,6 @@ export class VoiceSessionManager {
         joinedAt: updatedSession.joinedAt,
         lastUpdate: updatedSession.lastUpdate,
         state: 0,
-        ...rangeObject(
-          0,
-          15,
-          () => 0,
-          (i) => `total_${i}`,
-        ),
         version: "3",
       };
     }
@@ -102,28 +95,53 @@ export class VoiceSessionManager {
     userId: string,
     guildId: string,
     leftAt: Date,
-  ): Prisma.VoiceSessionUncheckedCreateInput {
-    const cleanedSession = pick(session, ["channelId", "joinedAt"]);
+  ): Prisma.VoiceSessionCreateInput {
+    const totals: Prisma.VoiceSessionTotalCreateManyVoiceSessionInput[] = [];
 
-    return { ...cleanedSession, userId, guildId, leftAt };
+    for (const i of range(0, 16)) {
+      const key = `total_${i}` as const;
+      const value = session[key];
+
+      if (value && value > 0) {
+        totals.push({ ...this.decodeState(i), secondsSpent: value });
+      }
+    }
+
+    return {
+      channelId: session.channelId,
+      joinedAt: session.joinedAt,
+      leftAt,
+      user: { connectOrCreate: { where: { id: userId }, create: { id: userId } } },
+      guild: { connectOrCreate: { where: { id: guildId }, create: { id: guildId } } },
+      totals: {
+        createMany: { data: totals },
+      },
+    };
   }
 
   private serializeVoiceSessionForRedis(
     session: VoiceSession,
   ): v.InferInput<typeof voiceSessionSchema> {
-    return {
+    // Only include total_{i} fields that have non-zero values or are the current state
+    const result: v.InferInput<typeof voiceSessionSchema> = {
       channelId: session.channelId,
       joinedAt: session.joinedAt.toISOString(),
       lastUpdate: session.lastUpdate.toISOString(),
       state: `${session.state}`,
-      ...rangeObject(
-        0,
-        15,
-        (i) => String(session[`total_${i}`]),
-        (i) => `total_${i}`,
-      ),
       version: session.version,
     };
+
+    for (const i of range(0, 16)) {
+      const key = `total_${i}` as const;
+
+      const value = session[key] ?? 0;
+
+      if (value > 0) {
+        result[key] = String(value);
+      }
+    }
+
+    return result;
   }
 
   private updateSessionTimes(session: VoiceSession, delta: number): void {
@@ -139,6 +157,20 @@ export class VoiceSessionManager {
     if (state.selfVideo) value |= 8;
 
     return value as RangeUnion<0, 16>;
+  }
+
+  private decodeState(value: RangeUnion<0, 16>): {
+    isMuted: boolean;
+    isDeafened: boolean;
+    isStreaming: boolean;
+    isVideo: boolean;
+  } {
+    return {
+      isMuted: (value & 1) !== 0,
+      isDeafened: (value & 2) !== 0,
+      isStreaming: (value & 4) !== 0,
+      isVideo: (value & 8) !== 0,
+    };
   }
 
   // Currently we only have one version, but this will be used for future migrations

@@ -64,7 +64,7 @@ const voiceSessionSchemaV3 = v.object({
   ...rangeObject(
     0,
     16,
-    () => v.optional(NumberString),
+    () => v.exactOptional(NumberString),
     (i) => `total_${i}`,
   ),
   version: v.literal("3"),

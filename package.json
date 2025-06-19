@@ -19,6 +19,7 @@
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
     "prisma-migrate-dev": "bun run --cwd packages/db prisma migrate dev",
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",
+    "prisma-migrate-reset": "bun run --cwd packages/db prisma migrate reset",
     "prisma-push": "bun run --cwd packages/db prisma-push",
     "test:core": "bun run --cwd packages/core test",
     "test:bot": "bun run --cwd apps/bot test",
