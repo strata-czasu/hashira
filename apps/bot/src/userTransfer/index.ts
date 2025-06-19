@@ -1,6 +1,6 @@
-import { Hashira } from "@hashira/core";
+import { Hashira, waitForConfirmation } from "@hashira/core";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { PermissionFlagsBits, bold } from "discord.js";
+import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
 import { base } from "../base";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { runOperations } from "./transfer";
@@ -22,6 +22,21 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
         async ({ prisma }, { "stary-user": oldUser, "nowy-user": newUser }, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
+
+          const confirmation = await waitForConfirmation(
+            { send: itx.editReply.bind(itx) },
+            `Czy na pewno chcesz przenieść dane?\nZ ${bold(oldUser.tag)} (${inlineCode(newUser.id)})\nDO ${bold(newUser.tag)} (${inlineCode(newUser.id)})`,
+            "Tak",
+            "Nie",
+            (action) => action.user.id === itx.user.id,
+          );
+          if (!confirmation) {
+            await itx.editReply({
+              content: "Anulowano przenoszenie danych.",
+              components: [],
+            });
+            return;
+          }
 
           // TODO: Log transfers to the appropriate loggers
 
@@ -77,7 +92,10 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
             );
           }
 
-          await itx.editReply(lines.join("\n"));
+          await itx.editReply({
+            content: lines.join("\n"),
+            components: [],
+          });
         },
       ),
   );
