@@ -101,6 +101,9 @@ export const profile = new Hashira({ name: "profile" })
                 voiceSession: {
                   guildId: itx.guildId,
                   userId: user.id,
+                  joinedAt: {
+                    gte: sub(itx.createdAt, { days: 30 }),
+                  },
                 },
               },
             });
