@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { sub } from "date-fns";
+import { secondsToHours, sub } from "date-fns";
 import {
   EmbedBuilder,
   PermissionFlagsBits,
@@ -124,9 +124,32 @@ export const userRecord = new Hashira({ name: "user-record" })
               },
             },
           });
+          const {
+            _sum: { secondsSpent: voiceActivitySeconds },
+          } = await prisma.voiceSessionTotal.aggregate({
+            _sum: {
+              secondsSpent: true,
+            },
+            where: {
+              isMuted: false,
+              isDeafened: false,
+              isAlone: false,
+              voiceSession: {
+                guildId: itx.guildId,
+                userId: user.id,
+                joinedAt: {
+                  gte: sub(itx.createdAt, { days: 30 }),
+                },
+              },
+            },
+          });
+          const activityLines = [
+            `🎙️ ${secondsToHours(voiceActivitySeconds ?? 0)}h`,
+            `🗨️ ${textActivity} wiad.`,
+          ];
           embed.addFields({
-            name: "🗨️ Aktywność tekstowa z 30 dni",
-            value: forceNewline(textActivity.toString()),
+            name: "Aktywność z 30 dni",
+            value: forceNewline(activityLines.join(" | ")),
           });
         }
 
