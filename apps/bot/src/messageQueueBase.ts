@@ -5,7 +5,7 @@ import { type Duration, formatDuration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { database } from "./db";
 import { loggingBase } from "./logging/base";
-import { composeChannelRestrictionRestoreMessage } from "./moderation/access";
+import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
 import {
   formatBanReason,
   formatUserWithId,
