@@ -80,23 +80,24 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                 String               @id(map: "core_guild_pkey")
-  autoRole           AutoRole[]
-  colorRole          ColorRole[]
-  currency           Currency[]
-  dailyPointsRedeems DailyPointsRedeems[]
-  emojiUsage         EmojiUsage[]
-  guildSettings      GuildSettings?
-  mute               Mute[]
-  userTextActivity   UserTextActivity[]
-  verification       Verification[]
-  wallet             Wallet[]
-  warn               Warn[]
-  protectedInvites   ProtectedInvite[]
-  ultimatums         Ultimatum[]
-  stickyMessages     StickyMessage[]
-  voiceSessions      VoiceSession[]
-  lastFishings       LastFishing[]
+  id                  String               @id(map: "core_guild_pkey")
+  autoRole            AutoRole[]
+  colorRole           ColorRole[]
+  currency            Currency[]
+  dailyPointsRedeems  DailyPointsRedeems[]
+  emojiUsage          EmojiUsage[]
+  guildSettings       GuildSettings?
+  mute                Mute[]
+  userTextActivity    UserTextActivity[]
+  verification        Verification[]
+  wallet              Wallet[]
+  warn                Warn[]
+  protectedInvites    ProtectedInvite[]
+  ultimatums          Ultimatum[]
+  stickyMessages      StickyMessage[]
+  channelRestrictions ChannelRestriction[]
+  voiceSessions       VoiceSession[]
+  lastFishings        LastFishing[]
 
   @@map("guild")
 }
@@ -259,6 +260,8 @@ model User {
   displayedProfileBadges            DisplayedProfileBadge[]
   easter2025TeamMember              Easter2025TeamMember[]
   lastFishings                      LastFishing[]
+  givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
+  receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
 
   @@map("users")
 }
@@ -320,6 +323,22 @@ model StickyMessage {
   content       Json
   enabled       Boolean
   guild         Guild   @relation(fields: [guildId], references: [id])
+}
+
+model ChannelRestriction {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+  guildId      String
+  channelId    String
+  userId       String
+  moderatorId  String
+  reason       String
+  endsAt       DateTime? @db.Timestamp(6)
+  deleteReason String?
+  guild        Guild     @relation(fields: [guildId], references: [id])
+  moderator    User      @relation("moderator", fields: [moderatorId], references: [id])
+  user         User      @relation("user", fields: [userId], references: [id])
 }
 
 enum EntryType {

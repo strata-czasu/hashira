@@ -1,7 +1,7 @@
 import type { Prettify } from "@hashira/utils/types";
 import {
-  type ChatInputCommandInteraction,
   type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
   type Permissions,
   SlashCommandBuilder,
 } from "discord.js";

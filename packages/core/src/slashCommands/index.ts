@@ -1,8 +1,8 @@
 import type { Prettify } from "@hashira/utils/types";
 import {
+  type AutocompleteInteraction,
   type Channel,
   type ChatInputCommandInteraction,
-  type AutocompleteInteraction,
   type Permissions,
   SlashCommandBuilder,
   SlashCommandSubcommandBuilder,
@@ -15,8 +15,8 @@ import type {
   If,
   OptionBuilder,
   OptionDataType,
-  UnknownContext,
   UnknownAutocompleteHandler,
+  UnknownContext,
 } from "../types";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
@@ -167,9 +167,9 @@ export class Group<
     return result;
   }
 
-  #flattenAutocompleteHandlers(
-    handlers: AutocompleteHandlers,
-  ): { [key: string]: UnknownAutocompleteHandler } {
+  #flattenAutocompleteHandlers(handlers: AutocompleteHandlers): {
+    [key: string]: UnknownAutocompleteHandler;
+  } {
     const result: { [key: string]: UnknownAutocompleteHandler } = {};
     for (const [key, value] of Object.entries(handlers)) {
       if (typeof value === "function") {

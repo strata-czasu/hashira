@@ -5,6 +5,7 @@ import { type Duration, formatDuration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { database } from "./db";
 import { loggingBase } from "./logging/base";
+import { composeChannelRestrictionRestoreMessage } from "./moderation/access";
 import {
   formatBanReason,
   formatUserWithId,
@@ -42,6 +43,10 @@ type ReminderData = {
   userId: string;
   guildId: string;
   text: string;
+};
+
+type ChannelRestrictionEndData = {
+  restrictionId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -263,6 +268,71 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (!member) return;
 
             await sendDirectMessage(member.user, text);
+          },
+        )
+        .addHandler(
+          "channelRestrictionEnd",
+          async ({ client }, { restrictionId }: ChannelRestrictionEndData) => {
+            const restriction = await prisma.channelRestriction.findFirst({
+              where: { id: restrictionId, deletedAt: null },
+            });
+
+            if (!restriction) return;
+
+            const guild = await discordTry(
+              async () => client.guilds.fetch(restriction.guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              async () => null,
+            );
+
+            if (!guild) return;
+
+            const channel = await discordTry(
+              async () => guild.channels.fetch(restriction.channelId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              async () => null,
+            );
+
+            if (!channel) return;
+
+            if (channel.isThread() || !channel.isTextBased()) {
+              console.warn(
+                `Channel restriction end for non-text channel or thread: ${restrictionId}`,
+              );
+              return;
+            }
+
+            const user = await discordTry(
+              async () => client.users.fetch(restriction.userId),
+              [RESTJSONErrorCodes.UnknownUser],
+              async () => null,
+            );
+
+            await discordTry(
+              () =>
+                channel.permissionOverwrites.delete(
+                  restriction.userId,
+                  `Koniec blokady dostępu [${restrictionId}]`,
+                ),
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => null,
+            );
+
+            await prisma.channelRestriction.update({
+              where: { id: restrictionId },
+              data: { deletedAt: new Date() },
+            });
+
+            if (user) {
+              await sendDirectMessage(
+                user,
+                composeChannelRestrictionRestoreMessage(
+                  user,
+                  restriction.channelId,
+                  null,
+                ),
+              );
+            }
           },
         ),
     };
