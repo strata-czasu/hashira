@@ -296,9 +296,10 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (!channel) return;
 
             if (channel.isThread() || !channel.isTextBased()) {
-              throw new Error(
-                `Invalid channel type: ${channel.type} for restriction ${restrictionId}`,
+              console.warn(
+                `Channel restriction end for non-text channel or thread: ${restrictionId}`,
               );
+              return;
             }
 
             const user = await discordTry(
