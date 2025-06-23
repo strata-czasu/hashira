@@ -68,11 +68,11 @@ export const access = new Hashira({ name: "access" })
           .setDescription("Odbierz dostęp do kanału")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addString("powód", (reason) => reason.setDescription("Powód"))
-          .addString("czas", (czas) =>
-            czas.setDescription("Czas blokady").setRequired(false),
-          )
           .addChannel("kanał", (channel) =>
             channel.setDescription("Kanał").setChannelType(ChannelType.GuildText),
+          )
+          .addString("czas", (czas) =>
+            czas.setDescription("Czas blokady").setRequired(false),
           )
           .handle(
             async (
