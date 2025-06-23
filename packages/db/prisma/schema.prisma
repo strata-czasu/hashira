@@ -146,7 +146,7 @@ model InventoryItem {
 }
 
 // TODO)) `canBeTraded` or something like that to limit trading of items.
-// For the time being, all `profileTitle` items are untradeable.
+// For the time being, only type=`item` items are tradeable.
 // TODO)) Some items (like type=`profileTitle`) should be unique per user.
 model Item {
   id          Int       @id(map: "core_item_pkey") @default(autoincrement())
@@ -163,6 +163,7 @@ model Item {
   shopItem        ShopItem[]
   profileSettings ProfileSettings[]
   badge           Badge?
+  tintColor       TintColor?
 
   @@map("item")
 }
@@ -174,6 +175,15 @@ model Badge {
 
   item                Item                    @relation(fields: [itemId], references: [id])
   displayedInProfiles DisplayedProfileBadge[]
+}
+
+model TintColor {
+  id     Int    @id @default(autoincrement())
+  itemId Int    @unique
+  color  String // Hex color code, e.g. "#FF5733"
+
+  item           Item              @relation(fields: [itemId], references: [id])
+  usedInProfiles ProfileSettings[]
 }
 
 model Mute {
@@ -350,5 +360,8 @@ enum DiscordButtonStyle {
 enum ItemType {
   item
   profileTitle
-  badge
+  badge // Specifies `badge`
+  staticTintColor // Specifies `tintColor`
+  dynamicTintColorAccess
+  customTintColorAccess
 }
