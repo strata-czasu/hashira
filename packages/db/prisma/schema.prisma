@@ -80,24 +80,24 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                 String               @id(map: "core_guild_pkey")
-  autoRole           AutoRole[]
-  colorRole          ColorRole[]
-  currency           Currency[]
-  dailyPointsRedeems DailyPointsRedeems[]
-  emojiUsage         EmojiUsage[]
-  guildSettings      GuildSettings?
-  mute               Mute[]
-  userTextActivity   UserTextActivity[]
-  verification       Verification[]
-  wallet             Wallet[]
-  warn               Warn[]
-  protectedInvites   ProtectedInvite[]
-  ultimatums         Ultimatum[]
-  stickyMessages     StickyMessage[]
+  id                  String               @id(map: "core_guild_pkey")
+  autoRole            AutoRole[]
+  colorRole           ColorRole[]
+  currency            Currency[]
+  dailyPointsRedeems  DailyPointsRedeems[]
+  emojiUsage          EmojiUsage[]
+  guildSettings       GuildSettings?
+  mute                Mute[]
+  userTextActivity    UserTextActivity[]
+  verification        Verification[]
+  wallet              Wallet[]
+  warn                Warn[]
+  protectedInvites    ProtectedInvite[]
+  ultimatums          Ultimatum[]
+  stickyMessages      StickyMessage[]
   channelRestrictions ChannelRestriction[]
-  voiceSessions      VoiceSession[]
-  lastFishings       LastFishing[]
+  voiceSessions       VoiceSession[]
+  lastFishings        LastFishing[]
 
   @@map("guild")
 }
@@ -250,8 +250,6 @@ model User {
   receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
-  givenChannelRestrictions          ChannelRestriction[]               @relation("channelRestriction_moderatorIdTousers")
-  receivedChannelRestrictions       ChannelRestriction[]               @relation("channelRestriction_userIdTousers")
   ultimatums                        Ultimatum[]
   dmPolls                           DmPoll[]
   dmPollVotes                       DmPollVote[]
@@ -262,6 +260,8 @@ model User {
   displayedProfileBadges            DisplayedProfileBadge[]
   easter2025TeamMember              Easter2025TeamMember[]
   lastFishings                      LastFishing[]
+  givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
+  receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
 
   @@map("users")
 }
@@ -336,12 +336,9 @@ model ChannelRestriction {
   reason       String
   endsAt       DateTime? @db.Timestamp(6)
   deleteReason String?
-  guild        Guild @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  moderator    User  @relation("channelRestriction_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user         User  @relation("channelRestriction_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([userId], map: "channelRestriction_userId_index")
-  @@map("channelRestriction")
+  guild        Guild     @relation(fields: [guildId], references: [id])
+  moderator    User      @relation("moderator", fields: [moderatorId], references: [id])
+  user         User      @relation("user", fields: [userId], references: [id])
 }
 
 enum EntryType {
