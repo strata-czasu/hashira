@@ -151,9 +151,18 @@ export const profile = new Hashira({ name: "profile" })
               image.title("Użytkownik");
             }
 
+            const member = await discordTry(
+              () => itx.guild.members.fetch(user.id),
+              [RESTJSONErrorCodes.UnknownMember],
+              () => null,
+            );
+            if (member?.joinedAt) {
+              image.guildJoinDate(member.joinedAt);
+            }
+
             if (dbUser.profileSettings?.tintColorType === "dynamic") {
-              // TODO)) Take tint color from member's nick color
-              console.warn("Unimplemented dynamic tint color for profile image");
+              const color = member?.displayHexColor;
+              if (color) image.tintColor(color);
             } else if (dbUser.profileSettings?.tintColorType === "custom") {
               // TODO)) Use `profileSettings.tintColor` if set,
               //        else throw error - invalid state
@@ -162,15 +171,6 @@ export const profile = new Hashira({ name: "profile" })
               // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
               //        else throw error - invalid state
               console.warn("Unimplemented item-based tint color for profile image");
-            }
-
-            const member = await discordTry(
-              () => itx.guild.members.fetch(user.id),
-              [RESTJSONErrorCodes.UnknownMember],
-              () => null,
-            );
-            if (member?.joinedAt) {
-              image.guildJoinDate(member.joinedAt);
             }
 
             const avatarImageURL =
