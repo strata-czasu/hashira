@@ -116,7 +116,7 @@ export const access = new Hashira({ name: "access" })
     group
       .setDescription("Zarządzaj dostępem do kanałów")
       .setDMPermission(false)
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addCommand("odbierz", (command) =>
         command
           .setDescription("Odbierz dostęp do kanału")
