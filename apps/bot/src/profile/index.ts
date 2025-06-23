@@ -273,8 +273,29 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Ustaw wyświetlany tytuł profilu")
-              .addInteger("id", (command) => command.setDescription("ID tytułu"))
-              .handle(async ({ prisma }, { id }, itx) => {
+              .addInteger("tytuł", (command) =>
+                command.setDescription("Tytuł").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
+                  where: {
+                    userId: itx.user.id,
+                    deletedAt: null,
+                    item: {
+                      type: "profileTitle",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  include: { item: true },
+                });
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(async ({ prisma }, { tytuł: id }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
