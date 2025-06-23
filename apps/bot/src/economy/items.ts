@@ -97,7 +97,7 @@ export const items = new Hashira({ name: "items" })
       )
       .addCommand("utwórz-tytuł", (command) =>
         command
-          .setDescription("Utwórz nowy tytuł")
+          .setDescription("Utwórz nowy tytuł profilu")
           .addString("name", (name) => name.setDescription("Nazwa tytułu"))
           .addString("description", (description) =>
             description.setDescription("Opis tytułu").setRequired(false),
@@ -122,7 +122,7 @@ export const items = new Hashira({ name: "items" })
       )
       .addCommand("utwórz-odznakę", (command) =>
         command
-          .setDescription("Utwórz nową odznakę")
+          .setDescription("Utwórz nową odznakę profilu")
           .addString("name", (name) => name.setDescription("Nazwa odznaki"))
           .addAttachment("image", (image) =>
             image.setDescription("Obrazek odznaki (PNG, 128x128px)"),
