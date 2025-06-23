@@ -160,13 +160,16 @@ export const profile = new Hashira({ name: "profile" })
               image.guildJoinDate(member.joinedAt);
             }
 
-            if (dbUser.profileSettings?.tintColorType === "dynamic") {
-              const color = member?.displayHexColor;
-              if (color) image.tintColor(color);
-            } else if (dbUser.profileSettings?.tintColorType === "custom") {
-              // TODO)) Use `profileSettings.tintColor` if set,
-              //        else throw error - invalid state
-              console.warn("Unimplemented custom tint color for profile image");
+            if (
+              dbUser.profileSettings?.tintColorType === "dynamic" &&
+              member?.displayHexColor
+            ) {
+              image.tintColor(member.displayHexColor);
+            } else if (
+              dbUser.profileSettings?.tintColorType === "custom" &&
+              dbUser.profileSettings.tintColor
+            ) {
+              image.tintColor(dbUser.profileSettings.tintColor);
             } else if (dbUser.profileSettings?.tintColorType === "fromItem") {
               // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
               //        else throw error - invalid state
