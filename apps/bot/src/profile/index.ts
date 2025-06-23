@@ -167,9 +167,9 @@ export const profile = new Hashira({ name: "profile" })
               image.tintColor(member.displayHexColor);
             } else if (
               dbUser.profileSettings?.tintColorType === "custom" &&
-              dbUser.profileSettings.tintColor
+              dbUser.profileSettings.customTintColor
             ) {
-              image.tintColor(dbUser.profileSettings.tintColor);
+              image.tintColor(dbUser.profileSettings.customTintColor);
             } else if (dbUser.profileSettings?.tintColorType === "fromItem") {
               // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
               //        else throw error - invalid state

@@ -1,13 +1,14 @@
 model ProfileSettings {
-  userId        String        @id @unique
-  titleId       Int?
-  tintColorType TintColorType @default(default)
-  tintColor     String? // For TintColorType.custom
-  // TODO)) tintColorItemId? // For TintColorType.fromItem
+  userId          String        @id @unique
+  titleId         Int?
+  tintColorType   TintColorType @default(default)
+  customTintColor String? // For TintColorType.custom
+  tintColorId     Int? // For TintColorType.fromItem
   // TODO)) Background image
 
-  user  User  @relation(fields: [userId], references: [id])
-  title Item? @relation(fields: [titleId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  title     Item?      @relation(fields: [titleId], references: [id])
+  tintColor TintColor? @relation(fields: [tintColorId], references: [id])
 }
 
 enum TintColorType {
