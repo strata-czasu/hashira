@@ -95,6 +95,7 @@ model Guild {
   protectedInvites   ProtectedInvite[]
   ultimatums         Ultimatum[]
   stickyMessages     StickyMessage[]
+  channelRestrictions ChannelRestriction[]
   voiceSessions      VoiceSession[]
   lastFishings       LastFishing[]
 
@@ -249,6 +250,8 @@ model User {
   receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
   givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
   receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
+  givenChannelRestrictions          ChannelRestriction[]               @relation("channelRestriction_moderatorIdTousers")
+  receivedChannelRestrictions       ChannelRestriction[]               @relation("channelRestriction_userIdTousers")
   ultimatums                        Ultimatum[]
   dmPolls                           DmPoll[]
   dmPollVotes                       DmPollVote[]
@@ -320,6 +323,25 @@ model StickyMessage {
   content       Json
   enabled       Boolean
   guild         Guild   @relation(fields: [guildId], references: [id])
+}
+
+model ChannelRestriction {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+  guildId      String
+  channelId    String
+  userId       String
+  moderatorId  String
+  reason       String
+  endsAt       DateTime? @db.Timestamp(6)
+  deleteReason String?
+  guild        Guild @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  moderator    User  @relation("channelRestriction_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user         User  @relation("channelRestriction_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId], map: "channelRestriction_userId_index")
+  @@map("channelRestriction")
 }
 
 enum EntryType {

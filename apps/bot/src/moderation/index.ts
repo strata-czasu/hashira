@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import { access } from "./access";
 import { bans } from "./bans";
 import { mutes } from "./mutes";
 import { nick } from "./nick";
@@ -14,4 +15,5 @@ export const moderation = new Hashira({ name: "moderation" })
   .use(prune)
   .use(verification)
   .use(userRecord)
+  .use(access)
   .use(nick);

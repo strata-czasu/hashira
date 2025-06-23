@@ -1,11 +1,12 @@
 import { Hashira } from "@hashira/core";
-import type { Mute, Warn } from "@hashira/db";
+import type { ChannelRestriction, Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
   type PartialUser,
   TimestampStyles,
   type User,
   bold,
+  channelMention,
   inlineCode,
   italic,
   time,
@@ -32,6 +33,15 @@ type MuteEditData = {
   newReason: string | null;
   oldDuration: Duration;
   newDuration: Duration | null;
+};
+type ChannelRestrictionCreateData = {
+  restriction: ChannelRestriction;
+  moderator: User;
+};
+type ChannelRestrictionRemoveData = {
+  restriction: ChannelRestriction;
+  moderator: User;
+  removeReason: string | null;
 };
 type GuildBanAddData = {
   reason: string | null;
@@ -142,6 +152,36 @@ export const moderationLog = new Hashira({ name: "moderationLog" }).const(
         return getLogMessageEmbed(moderator, timestamp)
           .setDescription(content)
           .setColor("Yellow");
+      },
+    )
+    .addMessageType(
+      "channelRestrictionCreate",
+      async (
+        { timestamp },
+        { restriction, moderator }: ChannelRestrictionCreateData,
+      ) => {
+        let content = `**Odbiera dostęp** ${channelMention(restriction.channelId)} dla ${userMention(restriction.userId)}`;
+        if (restriction.endsAt)
+          content += `\nKoniec: ${time(restriction.endsAt, TimestampStyles.RelativeTime)}`;
+        content += `\nPowód: ${italic(restriction.reason)}`;
+        return getLogMessageEmbed(moderator, timestamp)
+          .setDescription(content)
+          .setColor("Orange");
+      },
+    )
+    .addMessageType(
+      "channelRestrictionRemove",
+      async (
+        { timestamp },
+        { restriction, moderator, removeReason }: ChannelRestrictionRemoveData,
+      ) => {
+        let content = `**Przywraca dostęp** ${channelMention(
+          restriction.channelId,
+        )} dla ${userMention(restriction.userId)}`;
+        if (removeReason) content += `\nPowód przywrócenia: ${italic(removeReason)}`;
+        return getLogMessageEmbed(moderator, timestamp)
+          .setDescription(content)
+          .setColor("Green");
       },
     )
     .addMessageType(

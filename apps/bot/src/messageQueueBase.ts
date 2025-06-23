@@ -264,6 +264,44 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             await sendDirectMessage(member.user, text);
           },
+        )
+        .addHandler(
+          "channelRestrictionEnd",
+          async ({ client }, { restrictionId }: { restrictionId: number }) => {
+            const restriction = await prisma.channelRestriction.findFirst({
+              where: { id: restrictionId, deletedAt: null },
+            });
+            if (!restriction) return;
+
+            const guild = await discordTry(
+              async () => client.guilds.fetch(restriction.guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              async () => null,
+            );
+            if (!guild) return;
+
+            const channel = await discordTry(
+              async () => guild.channels.fetch(restriction.channelId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              async () => null,
+            );
+            if (!channel || !channel.isTextBased()) return;
+
+            await discordTry(
+              () =>
+                channel.permissionOverwrites.delete(
+                  restriction.userId,
+                  `Koniec blokady dostępu [${restrictionId}]`,
+                ),
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => null,
+            );
+
+            await prisma.channelRestriction.update({
+              where: { id: restrictionId },
+              data: { deletedAt: new Date(), deleteReason: "koniec" },
+            });
+          },
         ),
     };
   });
