@@ -129,7 +129,6 @@ export const profile = new Hashira({ name: "profile" })
             const svg = cheerio.load(await file.text());
             const image = new ProfileImageBuilder(svg);
             image
-              .tintColor("#aa85a4")
               .nickname(user.displayName)
               .balance(wallet.balance)
               .rep(0) // TODO)) Rep value
@@ -159,6 +158,22 @@ export const profile = new Hashira({ name: "profile" })
             );
             if (member?.joinedAt) {
               image.guildJoinDate(member.joinedAt);
+            }
+
+            if (
+              dbUser.profileSettings?.tintColorType === "dynamic" &&
+              member?.displayHexColor
+            ) {
+              image.tintColor(member.displayHexColor);
+            } else if (
+              dbUser.profileSettings?.tintColorType === "custom" &&
+              dbUser.profileSettings.customTintColor
+            ) {
+              image.tintColor(dbUser.profileSettings.customTintColor);
+            } else if (dbUser.profileSettings?.tintColorType === "fromItem") {
+              // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
+              //        else throw error - invalid state
+              console.warn("Unimplemented item-based tint color for profile image");
             }
 
             const avatarImageURL =
@@ -261,8 +276,29 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Ustaw wyświetlany tytuł profilu")
-              .addInteger("id", (command) => command.setDescription("ID tytułu"))
-              .handle(async ({ prisma }, { id }, itx) => {
+              .addInteger("tytuł", (command) =>
+                command.setDescription("Tytuł").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
+                  where: {
+                    userId: itx.user.id,
+                    deletedAt: null,
+                    item: {
+                      type: "profileTitle",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  include: { item: true },
+                });
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(async ({ prisma }, { tytuł: id }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
@@ -332,7 +368,6 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Wyświetl odznakę na profilu")
-              .addInteger("id", (id) => id.setDescription("ID odznaki"))
               .addInteger("wiersz", (row) =>
                 row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
               )
@@ -342,15 +377,24 @@ export const profile = new Hashira({ name: "profile" })
                   .setMinValue(1)
                   .setMaxValue(5),
               )
-              .handle(async ({ prisma }, { id, wiersz: row, kolumna: col }, itx) => {
-                if (!itx.inCachedGuild()) return;
-                await itx.deferReply();
-
-                const ownedBadge = await prisma.inventoryItem.findFirst({
+              // FIXME: This being auto-completed while row and column are not
+              //        can lead to an interaction error when trying to receive
+              //        autocomplete results, because row and column are not set.
+              .addInteger("odznaka", (id) =>
+                id.setDescription("Odznaka").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
                   where: {
-                    item: { id, type: "badge" },
                     userId: itx.user.id,
                     deletedAt: null,
+                    item: {
+                      type: "badge",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                    },
                   },
                   include: {
                     item: {
@@ -358,40 +402,62 @@ export const profile = new Hashira({ name: "profile" })
                     },
                   },
                 });
-                if (!ownedBadge?.item.badge) {
-                  await itx.editReply(
-                    "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
-                  );
-                  return;
-                }
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(
+                async ({ prisma }, { odznaka: id, wiersz: row, kolumna: col }, itx) => {
+                  if (!itx.inCachedGuild()) return;
+                  await itx.deferReply();
 
-                const {
-                  item: {
-                    name,
-                    badge: { id: badgeId },
-                  },
-                } = ownedBadge;
-
-                await ensureUserExists(prisma, itx.user);
-                await prisma.$transaction(async (tx) => {
-                  // Remove placement on the same row and column we're trying to place a new badge
-                  await tx.displayedProfileBadge.deleteMany({
-                    where: { userId: itx.user.id, row, col },
-                  });
-                  // Update badge on an existing placement
-                  await tx.displayedProfileBadge.upsert({
-                    create: { userId: itx.user.id, badgeId, row, col },
-                    update: { badgeId, row, col },
+                  const ownedBadge = await prisma.inventoryItem.findFirst({
                     where: {
-                      userId_badgeId: { userId: itx.user.id, badgeId },
+                      item: { id, type: "badge" },
+                      userId: itx.user.id,
+                      deletedAt: null,
+                    },
+                    include: {
+                      item: {
+                        include: { badge: true },
+                      },
                     },
                   });
-                });
+                  if (!ownedBadge?.item.badge) {
+                    await itx.editReply(
+                      "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
+                    );
+                    return;
+                  }
 
-                await itx.editReply(
-                  `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
-                );
-              }),
+                  const {
+                    item: {
+                      name,
+                      badge: { id: badgeId },
+                    },
+                  } = ownedBadge;
+
+                  await ensureUserExists(prisma, itx.user);
+                  await prisma.$transaction(async (tx) => {
+                    // Remove placement on the same row and column we're trying to place a new badge
+                    await tx.displayedProfileBadge.deleteMany({
+                      where: { userId: itx.user.id, row, col },
+                    });
+                    // Update badge on an existing placement
+                    await tx.displayedProfileBadge.upsert({
+                      create: { userId: itx.user.id, badgeId, row, col },
+                      update: { badgeId, row, col },
+                      where: {
+                        userId_badgeId: { userId: itx.user.id, badgeId },
+                      },
+                    });
+                  });
+
+                  await itx.editReply(
+                    `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
+                  );
+                },
+              ),
           )
           .addCommand("usuń", (command) =>
             command
