@@ -23,6 +23,11 @@ export const base = new Hashira({ name: "base" })
           scope.setUser({ id: itx.user.id, username: itx.user.username });
           scope.setTag("interaction_type", itx.type);
 
+          if (itx.inGuild()) {
+            scope.setTag("guild.id", itx.guildId ?? "");
+            scope.setExtra("guild.name", itx.guild?.name ?? "");
+          }
+
           if (itx.channel) {
             scope.setTag("channel.id", itx.channel.id);
             scope.setTag("channel.type", itx.channel.type);
@@ -42,6 +47,7 @@ export const base = new Hashira({ name: "base" })
 
           if (itx.isChatInputCommand()) {
             scope.setExtra("command", itx.toString());
+            scope.setExtra("command_options", itx.options.data);
           }
 
           if (itx.isUserContextMenuCommand()) {
