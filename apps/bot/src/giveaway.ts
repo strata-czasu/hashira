@@ -3,6 +3,7 @@ import { type Duration, addSeconds } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
+  type ButtonInteraction,
   ButtonStyle,
   ComponentType,
   EmbedBuilder,
@@ -43,6 +44,23 @@ function durationToSeconds(duration: Duration | null): number | undefined {
         (duration.minutes ?? 0) * 60 +
         (duration.seconds ?? 0) * 1
     : undefined;
+}
+
+async function updateGiveaway(
+  i: ButtonInteraction,
+  giveaway:
+    | {
+        rewards: Reward[];
+        users: string[];
+      }
+    | undefined,
+) {
+  if (giveaway && i.message.embeds[0]) {
+    const updatedEmbed = EmbedBuilder.from(i.message.embeds[0]).setFooter({
+      text: `Uczestnicy: ${giveaway.users.length}`,
+    });
+    await i.message.edit({ embeds: [updatedEmbed] });
+  }
 }
 
 export const giveaway = new Hashira({ name: "giveaway" })
@@ -148,61 +166,81 @@ export const giveaway = new Hashira({ name: "giveaway" })
         });
 
         btnCollector.on("collect", async (i) => {
-          if (i.customId === "join_giveaway") {
-            if (!giveaways.has(i.message.id)) {
-              await i.reply({
-                content: "Ten giveaway już się zakończył!",
-                flags: "Ephemeral",
-              });
-              return;
-            }
-
-            if (giveaways.get(i.message.id)?.users.includes(i.user.id)) {
-              const joinButton = new ButtonBuilder()
-                .setCustomId("leave_giveaway")
-                .setLabel("Wyjdź")
-                .setStyle(ButtonStyle.Danger);
-
-              const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-                joinButton,
-              );
-
-              await i.reply({
-                content: "Już dołączyłxś do tego giveaway!",
-                components: [row],
-                flags: "Ephemeral",
-              });
-              return;
-            }
-
-            giveaways.get(i.message.id)?.users.push(i.user.id);
+          if (i.customId !== "join_giveaway") return;
+          if (!giveaways.has(i.message.id)) {
             await i.reply({
-              content: `${i.user} dołączyłx do giveaway!`,
+              content: "Ten giveaway już się zakończył!",
               flags: "Ephemeral",
             });
-          } else if (i.customId === "leave_giveaway") {
-            const giveaway = giveaways.get(i.message.id);
-            if (giveaway) {
-              giveaway.users = giveaway.users.filter((userId) => userId !== i.user.id);
-              await i.reply({
-                content: "Opuściłxś giveaway.",
-                flags: "Ephemeral",
-              });
-            } else {
-              await i.reply({
-                content: "Ten giveaway już się zakończył!",
-                flags: "Ephemeral",
-              });
-            }
+            return;
           }
 
-          const giveaway = giveaways.get(i.message.id);
-          if (giveaway && i.message.embeds[0]) {
-            const updatedEmbed = EmbedBuilder.from(i.message.embeds[0]).setFooter({
-              text: `Uczestnicy: ${giveaway.users.length}`,
+          const leaveButton = new ButtonBuilder()
+            .setCustomId("leave_giveaway")
+            .setLabel("Wyjdź")
+            .setStyle(ButtonStyle.Danger);
+
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+
+          await i.deferReply({ flags: "Ephemeral" });
+
+          let giveaway = giveaways.get(i.message.id);
+
+          if (!giveaway) {
+            await i.reply({
+              content: "Ten giveaway już się zakończył!",
+              flags: "Ephemeral",
             });
-            await i.message.edit({ embeds: [updatedEmbed] });
+            return;
           }
+
+          let message = "Już dołączyłxś do tego giveaway!";
+
+          if (!giveaway.users.includes(i.user.id)) {
+            giveaways.get(i.message.id)?.users.push(i.user.id);
+            message = `${i.user} dołączyłx do giveaway!`;
+            updateGiveaway(i, giveaway);
+          }
+
+          const joinResponse = await i.followUp({
+            content: message,
+            components: [row],
+          });
+
+          if (!joinResponse) {
+            throw new Error("Failed to receive response from interaction reply");
+          }
+
+          const clickInfo = await waitForButtonClick(
+            joinResponse,
+            "leave_giveaway",
+            { minutes: 1 },
+            (interaction) => interaction.user.id === itx.user.id,
+          );
+
+          if (!clickInfo.interaction) return;
+
+          // replying to original giveaway so user can jump to it instead of reply > reply > giveaway
+          await clickInfo.interaction.deferReply({ flags: "Ephemeral" });
+          await clickInfo.interaction.deleteReply();
+
+          // refresh from map
+          giveaway = giveaways.get(i.message.id);
+          if (giveaway) {
+            giveaway.users = giveaway.users.filter((userId) => userId !== i.user.id);
+
+            await i.followUp({
+              content: "Opuściłxś giveaway.",
+              flags: "Ephemeral",
+            });
+          } else {
+            await i.followUp({
+              content: "Ten giveaway już się zakończył!",
+              flags: "Ephemeral",
+            });
+          }
+
+          updateGiveaway(i, giveaway);
         });
 
         btnCollector.on("end", async () => {
