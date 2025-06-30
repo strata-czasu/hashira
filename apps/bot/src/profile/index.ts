@@ -62,6 +62,7 @@ export const profile = new Hashira({ name: "profile" })
                 profileSettings: {
                   include: {
                     title: true,
+                    tintColor: true,
                   },
                 },
               },
@@ -170,10 +171,11 @@ export const profile = new Hashira({ name: "profile" })
               dbUser.profileSettings.customTintColor
             ) {
               image.tintColor(dbUser.profileSettings.customTintColor);
-            } else if (dbUser.profileSettings?.tintColorType === "fromItem") {
-              // TODO)) Use color from `profileSettings.tintColorItem.color` if set,
-              //        else throw error - invalid state
-              console.warn("Unimplemented item-based tint color for profile image");
+            } else if (
+              dbUser.profileSettings?.tintColorType === "fromItem" &&
+              dbUser.profileSettings.tintColor
+            ) {
+              image.tintColor(dbUser.profileSettings.tintColor.color);
             }
 
             const avatarImageURL =
