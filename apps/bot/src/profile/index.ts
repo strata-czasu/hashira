@@ -7,6 +7,7 @@ import {
   EmbedBuilder,
   RESTJSONErrorCodes,
   TimestampStyles,
+  bold,
   inlineCode,
   italic,
   subtext,
@@ -19,6 +20,7 @@ import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
 
@@ -487,6 +489,59 @@ export const profile = new Hashira({ name: "profile" })
                   return;
                 }
                 await itx.editReply(`Usunięto odznakę z pozycji ${row}:${col}`);
+              }),
+          ),
+      )
+      .addGroup("kolor", (group) =>
+        group
+          .setDescription("Kolor profilu")
+          // TODO)) Default color
+          // TODO)) Dynamic color
+          // TODO)) Color from item
+          .addCommand("hex", (command) =>
+            command
+              .setDescription("Ustaw dowolny kolor profilu")
+              .addString("hex", (hex) => hex.setDescription("Hex koloru (np. #ff5632)"))
+              .handle(async ({ prisma }, { hex }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const color = Bun.color(hex, "hex");
+                if (!color) {
+                  return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
+                }
+
+                await ensureUserExists(prisma, itx.user);
+                const ownedCustomColorAccess = await prisma.inventoryItem.findFirst({
+                  where: {
+                    item: { type: "customTintColorAccess" },
+                    userId: itx.user.id,
+                    deletedAt: null,
+                  },
+                });
+                if (!ownedCustomColorAccess) {
+                  return await errorFollowUp(
+                    itx,
+                    "Nie posiadasz dostępu do ustawiania dowolnych kolorów profilu!",
+                  );
+                }
+
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "custom",
+                    customTintColor: color,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "custom",
+                    customTintColor: color,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(`Ustawiono kolor profilu ${bold(color)}`);
               }),
           ),
       ),
