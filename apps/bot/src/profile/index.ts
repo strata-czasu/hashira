@@ -417,11 +417,7 @@ export const profile = new Hashira({ name: "profile" })
                       },
                     },
                   },
-                  include: {
-                    item: {
-                      include: { badge: true },
-                    },
-                  },
+                  include: { item: true },
                 });
                 await itx.respond(
                   results.map(({ item: { id, name } }) => ({ value: id, name })),
@@ -513,7 +509,82 @@ export const profile = new Hashira({ name: "profile" })
         group
           .setDescription("Kolor profilu")
           // TODO)) Default color
-          // TODO)) Color from item
+          .addCommand("item", (command) =>
+            command
+              .setDescription("Ustaw kolor profilu z przedmiotu")
+              .addInteger("przedmiot", (id) =>
+                id.setDescription("Przedmiot").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
+                  where: {
+                    userId: itx.user.id,
+                    deletedAt: null,
+                    item: {
+                      type: "staticTintColor",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                      tintColor: { isNot: null },
+                    },
+                  },
+                  include: { item: true },
+                });
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(async ({ prisma }, { przedmiot: id }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const ownedColor = await prisma.inventoryItem.findFirst({
+                  where: {
+                    item: { id, type: "staticTintColor" },
+                    userId: itx.user.id,
+                    deletedAt: null,
+                  },
+                  include: {
+                    item: {
+                      include: { tintColor: true },
+                    },
+                  },
+                });
+                if (!ownedColor?.item.tintColor) {
+                  await itx.editReply(
+                    "Kolor o tym ID nie istnieje lub go nie posiadasz!",
+                  );
+                  return;
+                }
+                const {
+                  item: {
+                    name,
+                    tintColor: { id: tintColorId, color },
+                  },
+                } = ownedColor;
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "fromItem",
+                    customTintColor: null,
+                    tintColorId,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "fromItem",
+                    customTintColor: null,
+                    tintColorId,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(
+                  `Ustawiono kolor profilu ${italic(name)} (${bold(color)})`,
+                );
+              }),
+          )
           .addCommand("z-nicku", (command) =>
             command
               .setDescription("Ustaw dynamiczny kolor profilu z koloru nicku")
