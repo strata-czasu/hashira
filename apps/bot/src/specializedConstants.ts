@@ -1,3 +1,4 @@
+import type { ItemType } from "@hashira/db";
 import { durationToSeconds } from "./util/duration";
 
 export const GUILD_IDS = {
@@ -41,6 +42,18 @@ export const BROCHURE_ROLES = {
     MALE: "427454159747547136", // @Facet
   },
 } as const;
+
+// Used for creating default items
+export const DEFAULT_ITEMS: { type: ItemType; name: string }[] = [
+  {
+    type: "dynamicTintColorAccess",
+    name: "Dostęp do koloru profilu z koloru nicku",
+  },
+  {
+    type: "customTintColorAccess",
+    name: "Dostęp do dowolnego koloru profilu",
+  },
+] as const;
 
 // Used for seeding log settings for development
 export const DEFAULT_LOG_CHANNELS = {

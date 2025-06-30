@@ -150,6 +150,7 @@ model InventoryItem {
 // TODO)) `canBeTraded` or something like that to limit trading of items.
 // For the time being, only type=`item` items are tradeable.
 // TODO)) Some items (like type=`profileTitle`) should be unique per user.
+// TODO)) Items should be guild-specific, along with all their relations!!!
 model Item {
   id          Int       @id(map: "core_item_pkey") @default(autoincrement())
   description String?
