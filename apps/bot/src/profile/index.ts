@@ -508,6 +508,61 @@ export const profile = new Hashira({ name: "profile" })
       .addGroup("kolor", (group) =>
         group
           .setDescription("Kolor profilu")
+          .addCommand("lista", (command) =>
+            command
+              .setDescription("Wyświetl swoje kolory profilu")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const where: Prisma.InventoryItemWhereInput = {
+                  item: { type: "staticTintColor" },
+                  userId: itx.user.id,
+                  deletedAt: null,
+                };
+                const paginator = new DatabasePaginator(
+                  (props) =>
+                    prisma.inventoryItem.findMany({
+                      where,
+                      include: { item: true },
+                      ...props,
+                    }),
+                  () => prisma.inventoryItem.count({ where }),
+                );
+
+                const accesses: { name: string; access: boolean }[] = [
+                  {
+                    name: "Dynamiczny kolor z nicku",
+                    access: await hasAccessItem(
+                      prisma,
+                      itx.user.id,
+                      "dynamicTintColorAccess",
+                    ),
+                  },
+                  {
+                    name: "Dowolny kolor profilu",
+                    access: await hasAccessItem(
+                      prisma,
+                      itx.user.id,
+                      "customTintColorAccess",
+                    ),
+                  },
+                ];
+                const accessesText = accesses
+                  .map(({ name, access }) => `${access ? "✅" : "❌"} ${name}`)
+                  .join("\n");
+
+                const paginatedView = new PaginatedView(
+                  paginator,
+                  "Posiadane kolory profilu",
+                  ({ item: { name, id }, createdAt }) =>
+                    `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
+                  false,
+                  accessesText,
+                );
+                await paginatedView.render(itx);
+              }),
+          )
           .addCommand("domyślny", (command) =>
             command
               .setDescription("Ustaw domyślny kolor profilu")
