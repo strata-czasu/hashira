@@ -311,6 +311,19 @@ export const giveaway = new Hashira({ name: "giveaway" })
             idx += reward.amount;
           }
 
+          await response.edit({
+            components: [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                ButtonBuilder.from(row.components[0] as ButtonBuilder).setDisabled(
+                  true,
+                ),
+                ButtonBuilder.from(row.components[1] as ButtonBuilder).setDisabled(
+                  true,
+                ),
+              ),
+            ],
+          });
+
           await response.reply({
             content: `Wyniki giveaway:\n${results.join("\n")}`,
             allowedMentions: { users: giveaway.users },
