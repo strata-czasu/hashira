@@ -1,10 +1,44 @@
-import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
+import {
+  ConfirmationDialog,
+  type ExtractContext,
+  Hashira,
+  PaginatedView,
+} from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import {
+  type AutocompleteInteraction,
+  PermissionFlagsBits,
+  bold,
+  inlineCode,
+} from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { getInventoryItem, getItem, getTypeNameForList } from "./util";
+
+const autocompleteItem = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction;
+}) => {
+  const results = await prisma.item.findMany({
+    where: {
+      deletedAt: null,
+      name: {
+        contains: itx.options.getFocused(),
+        mode: "insensitive",
+      },
+    },
+  });
+  return itx.respond(
+    results.map(({ id, name, type }) => ({
+      value: id,
+      name: `${name} ${getTypeNameForList(type)}`,
+    })),
+  );
+};
 
 export const inventory = new Hashira({ name: "inventory" })
   .use(base)
@@ -169,21 +203,7 @@ export const inventory = new Hashira({ name: "inventory" })
           )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .autocomplete(async ({ prisma }, _, itx) => {
-            const results = await prisma.item.findMany({
-              where: {
-                deletedAt: null,
-                name: {
-                  contains: itx.options.getFocused(),
-                  mode: "insensitive",
-                },
-              },
-            });
-            await itx.respond(
-              results.map(({ id, name, type }) => ({
-                value: id,
-                name: `${name} ${getTypeNameForList(type)}`,
-              })),
-            );
+            return autocompleteItem({ prisma, itx });
           })
           .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -220,9 +240,14 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("zabierz", (command) =>
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addInteger("przedmiot", (id) =>
+            id.setDescription("Przedmiot").setAutocomplete(true),
+          )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, economyLog }, { id: itemId, user }, itx) => {
+          .autocomplete(async ({ prisma }, _, itx) => {
+            return autocompleteItem({ prisma, itx });
+          })
+          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
