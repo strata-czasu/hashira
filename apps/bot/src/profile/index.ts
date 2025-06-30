@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import * as cheerio from "cheerio";
 import { differenceInDays, secondsToHours, sub } from "date-fns";
@@ -24,6 +24,8 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
 
+type BaseContext = ExtractContext<typeof base>;
+
 async function fetchAsBuffer(url: string | URL) {
   const res = await fetch(url);
   if (!res.ok) {
@@ -34,6 +36,21 @@ async function fetchAsBuffer(url: string | URL) {
   }
   const arrbuf = await res.arrayBuffer();
   return Buffer.from(arrbuf);
+}
+
+async function hasAccessItem(
+  prisma: BaseContext["prisma"],
+  userId: string,
+  itemType: "dynamicTintColorAccess" | "customTintColorAccess",
+) {
+  const item = await prisma.inventoryItem.findFirst({
+    where: {
+      item: { type: itemType },
+      userId,
+      deletedAt: null,
+    },
+  });
+  return item !== null;
 }
 
 export const profile = new Hashira({ name: "profile" })
@@ -496,8 +513,48 @@ export const profile = new Hashira({ name: "profile" })
         group
           .setDescription("Kolor profilu")
           // TODO)) Default color
-          // TODO)) Dynamic color
           // TODO)) Color from item
+          .addCommand("z-nicku", (command) =>
+            command
+              .setDescription("Ustaw dynamiczny kolor profilu z koloru nicku")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                await ensureUserExists(prisma, itx.user);
+                const hasAccess = await hasAccessItem(
+                  prisma,
+                  itx.user.id,
+                  "dynamicTintColorAccess",
+                );
+                if (!hasAccess) {
+                  return await errorFollowUp(
+                    itx,
+                    "Nie posiadasz dostępu do ustawiania dowolnych kolorów profilu!",
+                  );
+                }
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "dynamic",
+                    customTintColor: null,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "dynamic",
+                    customTintColor: null,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(
+                  "Ustawiono dynamiczny kolor profilu z koloru nicku",
+                );
+              }),
+          )
           .addCommand("hex", (command) =>
             command
               .setDescription("Ustaw dowolny kolor profilu")
@@ -512,20 +569,19 @@ export const profile = new Hashira({ name: "profile" })
                 }
 
                 await ensureUserExists(prisma, itx.user);
-                const ownedCustomColorAccess = await prisma.inventoryItem.findFirst({
-                  where: {
-                    item: { type: "customTintColorAccess" },
-                    userId: itx.user.id,
-                    deletedAt: null,
-                  },
-                });
-                if (!ownedCustomColorAccess) {
+                const hasAccess = await hasAccessItem(
+                  prisma,
+                  itx.user.id,
+                  "customTintColorAccess",
+                );
+                if (!hasAccess) {
                   return await errorFollowUp(
                     itx,
                     "Nie posiadasz dostępu do ustawiania dowolnych kolorów profilu!",
                   );
                 }
 
+                // TODO)) Wrap this into a less verbose utility
                 await prisma.profileSettings.upsert({
                   create: {
                     tintColorType: "custom",
