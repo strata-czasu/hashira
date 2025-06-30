@@ -155,9 +155,17 @@ export const giveaway = new Hashira({ name: "giveaway" })
         const joinButton = new ButtonBuilder()
           .setCustomId("join_giveaway")
           .setLabel("Dołącz")
+          .setStyle(ButtonStyle.Primary);
+
+        const listButton = new ButtonBuilder()
+          .setCustomId("list_giveaway")
+          .setLabel("Lista uczestników")
           .setStyle(ButtonStyle.Secondary);
 
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton);
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          joinButton,
+          listButton,
+        );
 
         const response = await itx.followUp({
           embeds: [embed],
@@ -180,7 +188,28 @@ export const giveaway = new Hashira({ name: "giveaway" })
         });
 
         btnCollector.on("collect", async (i) => {
+          if (i.customId === "list_giveaway") {
+            const giveaway = giveaways.get(i.message.id);
+            if (giveaway) {
+              const participants =
+                giveaway.users.length > 0
+                  ? giveaway.users.map((id) => `<@${id}>`).join(", ")
+                  : "Brak uczestników";
+              await i.reply({
+                content: `Uczestnicy: ${participants}`,
+                flags: "Ephemeral",
+              });
+            } else {
+              await i.reply({
+                content: "Ten giveaway już się zakończył!",
+                flags: "Ephemeral",
+              });
+            }
+            return;
+          }
+
           if (i.customId !== "join_giveaway") return;
+
           if (!giveaways.has(i.message.id)) {
             await i.reply({
               content: "Ten giveaway już się zakończył!",
