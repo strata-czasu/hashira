@@ -508,7 +508,32 @@ export const profile = new Hashira({ name: "profile" })
       .addGroup("kolor", (group) =>
         group
           .setDescription("Kolor profilu")
-          // TODO)) Default color
+          .addCommand("domyślny", (command) =>
+            command
+              .setDescription("Ustaw domyślny kolor profilu")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "default",
+                    customTintColor: null,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "default",
+                    customTintColor: null,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply("Ustawiono domyślny kolor profilu");
+              }),
+          )
           .addCommand("item", (command) =>
             command
               .setDescription("Ustaw kolor profilu z przedmiotu")
