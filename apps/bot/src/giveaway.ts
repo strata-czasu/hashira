@@ -54,10 +54,11 @@ async function updateGiveaway(
         users: string[];
       }
     | undefined,
+  totalRewards: number,
 ) {
   if (giveaway && i.message.embeds[0]) {
     const updatedEmbed = EmbedBuilder.from(i.message.embeds[0]).setFooter({
-      text: `Uczestnicy: ${giveaway.users.length}`,
+      text: `Uczestnicy: ${giveaway.users.length} | Łącznie nagród: ${totalRewards}`,
     });
     await i.message.edit({ embeds: [updatedEmbed] });
   }
@@ -79,7 +80,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
           "Czas trwania givka, np. 1d (1 dzień) lub 2h (2 godziny)",
         ),
       )
-      .handle(async ({ prisma }, { nagrody, czas_trwania }, itx) => {
+      .addString("tytul", (tytul) =>
+        tytul
+          .setDescription("Tytuł giveaway'a, domyślnie 'Giveaway'")
+          .setRequired(false),
+      )
+      .handle(async ({ prisma }, { nagrody, czas_trwania, tytul }, itx) => {
         if (!itx.inCachedGuild()) return;
         await ensureUserExists(prisma, itx.user);
 
@@ -101,14 +107,20 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
         const startTime = Date.now();
 
+        const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
+
         const embed = new EmbedBuilder()
           .setColor(0x0099ff)
-          .setTitle("Giveaway")
+          .setTitle(tytul || "Giveaway")
+          .setAuthor({
+            name: `${itx.user.username}`,
+            iconURL: itx.user.avatarURL() || "",
+          })
           .setDescription(
             `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
             \nKoniec ${time(addSeconds(startTime, durationSeconds), "R")}`,
           )
-          .setFooter({ text: "Uczestnicy: 0" });
+          .setFooter({ text: `Uczestnicy: 0 | Łącznie nagród: ${totalRewards}` });
 
         const confirmButton = new ButtonBuilder()
           .setCustomId("confirm_giveaway")
@@ -129,12 +141,14 @@ export const giveaway = new Hashira({ name: "giveaway" })
           throw new Error("Failed to receive response from interaction reply");
         }
 
-        await waitForButtonClick(
+        const confirmation = await waitForButtonClick(
           responseConfirm.resource.message,
           "confirm_giveaway",
           { minutes: 1 },
           (interaction) => interaction.user.id === itx.user.id,
         );
+
+        if (!confirmation.interaction) return;
 
         itx.deleteReply();
 
@@ -199,7 +213,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           if (!giveaway.users.includes(i.user.id)) {
             giveaways.get(i.message.id)?.users.push(i.user.id);
             message = `${i.user} dołączyłx do giveaway!`;
-            updateGiveaway(i, giveaway);
+            updateGiveaway(i, giveaway, totalRewards);
           }
 
           const joinResponse = await i.followUp({
@@ -240,7 +254,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             });
           }
 
-          updateGiveaway(i, giveaway);
+          updateGiveaway(i, giveaway, totalRewards);
         });
 
         btnCollector.on("end", async () => {
