@@ -207,7 +207,6 @@ const transferChannelRestrictions: TransferOperation = async ({
   newUser,
   guild,
 }) => {
-  // Find all active channel restrictions for the old user
   const restrictions = await prisma.channelRestriction.findMany({
     where: { userId: oldUser.id, guildId: guild.id, deletedAt: null },
   });
@@ -217,66 +216,85 @@ const transferChannelRestrictions: TransferOperation = async ({
   let transferredCount = 0;
   let permissionErrors = 0;
 
-  // Transfer each restriction
   for (const restriction of restrictions) {
-    try {
-      // Get the Discord channel
-      const channel = await discordTry(
-        () => guild.channels.fetch(restriction.channelId),
-        [RESTJSONErrorCodes.UnknownChannel],
-        () => null,
-      );
+    const success = await transferSingleChannelRestriction({
+      restriction,
+      oldUser,
+      newUser,
+      guild,
+      prisma,
+    });
 
-      if (channel && channel.isTextBased()) {
-        // Remove permission override from old user
-        await discordTry(
-          () => channel.permissionOverwrites.delete(oldUser, "Przeniesienie ograniczenia kanału"),
-          [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownOverwrite],
-          () => null,
-        );
-
-        // Add permission override to new user
-        const result = await discordTry(
-          () =>
-            channel.permissionOverwrites.edit(
-              newUser,
-              { ViewChannel: false },
-              { reason: "Przeniesienie ograniczenia kanału" },
-            ),
-          [RESTJSONErrorCodes.MissingPermissions],
-          () => null,
-        );
-
-        if (result) {
-          // Update database record to point to new user
-          await prisma.channelRestriction.update({
-            where: { id: restriction.id },
-            data: { userId: newUser.id },
-          });
-          transferredCount++;
-        } else {
-          permissionErrors++;
-        }
-      } else {
-        // Channel doesn't exist or isn't text-based, just update database
-        await prisma.channelRestriction.update({
-          where: { id: restriction.id },
-          data: { userId: newUser.id },
-        });
-        transferredCount++;
-      }
-    } catch (error) {
-      console.error(`Error transferring channel restriction ${restriction.id}:`, error);
+    if (success) {
+      transferredCount++;
+    } else {
       permissionErrors++;
     }
   }
 
-  let message = `Przeniesiono ${transferredCount} ograniczeń dostępu do kanałów`;
-  if (permissionErrors > 0) {
-    message += ` (${permissionErrors} błędów uprawnień)`;
+  if (transferredCount === 0) return null;
+
+  const baseMessage = `Przeniesiono ograniczenia kanałów (${transferredCount})`;
+  return permissionErrors > 0 
+    ? `${baseMessage}, błędy uprawnień: ${permissionErrors}`
+    : baseMessage;
+};
+
+const transferSingleChannelRestriction = async ({
+  restriction,
+  oldUser,
+  newUser,
+  guild,
+  prisma,
+}: {
+  restriction: { id: string; channelId: string };
+  oldUser: DiscordUser;
+  newUser: DiscordUser;
+  guild: Guild;
+  prisma: ExtendedPrismaClient;
+}): Promise<boolean> => {
+  try {
+    const channel = await discordTry(
+      () => guild.channels.fetch(restriction.channelId),
+      [RESTJSONErrorCodes.UnknownChannel],
+      () => null,
+    );
+
+    // Update database record first
+    await prisma.channelRestriction.update({
+      where: { id: restriction.id },
+      data: { userId: newUser.id },
+    });
+
+    // If channel doesn't exist or isn't text-based, database update is sufficient
+    if (!channel || !channel.isTextBased()) {
+      return true;
+    }
+
+    // Remove old user's permission override
+    await discordTry(
+      () => channel.permissionOverwrites.delete(oldUser, "Transfer ograniczenia kanału"),
+      [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownOverwrite],
+      () => null,
+    );
+
+    // Add new user's permission override
+    const permissionResult = await discordTry(
+      () =>
+        channel.permissionOverwrites.edit(
+          newUser,
+          { ViewChannel: false },
+          { reason: "Transfer ograniczenia kanału" },
+        ),
+      [RESTJSONErrorCodes.MissingPermissions],
+      () => null,
+    );
+
+    return permissionResult !== null;
+  } catch (error) {
+    console.error(`Error transferring channel restriction ${restriction.id}:`, error);
+    return false;
   }
-  
-  return transferredCount > 0 ? message : null;
 };
 
 // TODO: Voice activity
