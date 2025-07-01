@@ -86,7 +86,6 @@ const setDefaultLogChannels = async (guildId: string) => {
 
 if (isProduction) {
   await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
-  await createDefaultItems();
 } else {
   const testingServers = [GUILD_IDS.Homik, GUILD_IDS.Piwnica];
   for (const guildId of testingServers) {
