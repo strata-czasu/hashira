@@ -11,6 +11,7 @@ import {
 import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   endGiveaway,
@@ -31,7 +32,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           "Nagrody do rozdania, oddzielone przecinkami, gdy nagród jest więcej to piszemy np. 2x200 punktów",
         ),
       )
-      .addString("czas_trwania", (duration) =>
+      .addString("czas-trwania", (duration) =>
         duration.setDescription(
           "Czas trwania givka, np. 1d (1 dzień) lub 2h (2 godziny)",
         ),
@@ -42,33 +43,31 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .setRequired(false),
       )
       .handle(
-        async ({ prisma, messageQueue }, { nagrody, czas_trwania, tytul }, itx) => {
+        async (
+          { prisma, messageQueue },
+          { nagrody: rewards, "czas-trwania": duration, tytul: title },
+          itx,
+        ) => {
           if (!itx.inCachedGuild()) return;
           await ensureUserExists(prisma, itx.user);
 
-          const parsedRewards: GiveawayReward[] = parseRewards(nagrody);
+          const parsedRewards: GiveawayReward[] = parseRewards(rewards);
 
-          const parsedTime: Duration | null = parseDuration(czas_trwania);
+          const parsedTime: Duration | null = parseDuration(duration);
 
           if (parsedTime === null) {
-            await itx.reply({
-              content: "Podano nieprawidłowy czas",
-              withResponse: true,
-              flags: "Ephemeral",
-            });
-
-            return;
+            return await errorFollowUp(itx, "Podano nieprawidłowy czas");
           }
 
           const durationSeconds = durationToSeconds(parsedTime);
 
-          const endTime = addSeconds(Date.now(), durationSeconds);
+          const endTime = addSeconds(itx.createdAt, durationSeconds);
 
           const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
 
           const embed = new EmbedBuilder()
             .setColor(0x0099ff)
-            .setTitle(tytul || "Giveaway")
+            .setTitle(title || "Giveaway")
             .setAuthor({
               name: `${itx.user.username}`,
               iconURL: itx.user.avatarURL() || "",
@@ -136,7 +135,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           await messageQueue.push(
             "giveawayEnd",
             { giveawayId: giveaway.id },
-            Math.floor((endTime.valueOf() - Date.now()) / 1000),
+            Math.floor(endTime.valueOf() / 1000) - itx.createdAt.getSeconds(),
             giveaway.id.toString(),
           );
         },
@@ -148,6 +147,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
       // giveaway-option:optionId
       if (!itx.customId.startsWith("giveaway-option:")) return;
       if (!itx.inCachedGuild()) return;
+
+      // To ensure user exists before trying to join to giveaway
+      await ensureUserExists(prisma, itx.user);
 
       await itx.deferReply({ flags: "Ephemeral" });
 
@@ -175,7 +177,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         throw new Error(`Message ${message} not found.`);
       }
 
-      if (giveaway.endAt <= new Date()) {
+      if (giveaway.endAt <= itx.createdAt) {
         await endGiveaway(message, prisma);
         return;
       }
@@ -249,7 +251,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
       if (!leaveButtonClick.interaction) return;
 
-      if (giveaway.endAt <= new Date()) {
+      if (giveaway.endAt <= itx.createdAt) {
         await itx.followUp({
           content: "Ten giveaway już się zakończył!",
           flags: "Ephemeral",

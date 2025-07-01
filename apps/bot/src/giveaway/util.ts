@@ -97,12 +97,12 @@ export async function endGiveaway(
     ],
   });
 
-  const rewards: GiveawayReward[] = await prisma.giveawayReward.findMany({
+  const rewards = await prisma.giveawayReward.findMany({
     where: { giveawayId: giveaway.id },
   });
-  const participants: GiveawayParticipant[] = await prisma.giveawayParticipant.findMany(
-    { where: { giveawayId: giveaway.id, isRemoved: false } },
-  );
+  const participants = await prisma.giveawayParticipant.findMany({
+    where: { giveawayId: giveaway.id, isRemoved: false },
+  });
 
   // Shuffle participants
   const shuffled = shuffle(participants.map((p) => p.userId));
@@ -127,7 +127,9 @@ export async function endGiveaway(
   });
 
   // Delete giveaway and FK's
-  await prisma.giveawayParticipant.deleteMany({ where: { giveawayId: giveaway.id } });
-  await prisma.giveawayReward.deleteMany({ where: { giveawayId: giveaway.id } });
-  await prisma.giveaway.delete({ where: { id: giveaway.id } });
+  // await prisma.$transaction([
+  //   prisma.giveawayParticipant.deleteMany({ where: { giveawayId: giveaway.id } }),
+  //   prisma.giveawayReward.deleteMany({ where: { giveawayId: giveaway.id } }),
+  //   prisma.giveaway.delete({ where: { id: giveaway.id } }),
+  // ]);
 }

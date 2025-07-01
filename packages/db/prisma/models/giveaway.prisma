@@ -3,6 +3,7 @@ model Giveaway {
   createdAt DateTime @default(now())
   endAt     DateTime
 
+  guild     Guild  @relation(fields: [guildId], references: [id])
   guildId   String
   channelId String
   messageId String
@@ -17,6 +18,7 @@ model GiveawayParticipant {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
+  user      User    @relation(fields: [userId], references: [id])
   userId    String
   isRemoved Boolean @default(false)
 }
