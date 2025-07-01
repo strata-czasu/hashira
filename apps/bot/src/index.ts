@@ -12,7 +12,7 @@ import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { fish } from "./fish";
-import { giveaway } from "./giveaway";
+import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
