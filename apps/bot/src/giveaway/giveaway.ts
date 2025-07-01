@@ -135,7 +135,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           await messageQueue.push(
             "giveawayEnd",
             { giveawayId: giveaway.id },
-            Math.floor(endTime.valueOf() / 1000) - itx.createdAt.getSeconds(),
+            Math.floor((endTime.valueOf() - itx.createdAt.valueOf()) / 1000),
             giveaway.id.toString(),
           );
         },
