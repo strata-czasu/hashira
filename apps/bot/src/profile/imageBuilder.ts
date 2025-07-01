@@ -1,3 +1,4 @@
+import type { ColorInput } from "bun";
 import type * as cheerio from "cheerio";
 import { format as formatDate } from "date-fns";
 import sharp from "sharp";
@@ -159,9 +160,9 @@ export class ProfileImageBuilder {
    * NOTE: This function's behavior depends on the default (placeholder) tint color
    *       staying constant. See `defaultTintColor` and its upsage in the function's body.
    *
-   * @param value Color value in a SVG-supported format (e.g. `#ff0000`)
+   * @param value Bun-compatible color value (e.g. `#ff0000`)
    */
-  public tintColor(value: string) {
+  public tintColor(value: ColorInput) {
     const defaultTintColor = "#3C3E43";
     const elements = [
       // Left
@@ -186,8 +187,13 @@ export class ProfileImageBuilder {
       this.#svg('rect[id="Showcase Header Background"]'),
     ];
 
+    const color = Bun.color(value, "hex");
+    if (!color) {
+      throw new Error(`Invalid color value: ${value}`);
+    }
+
     for (const element of elements) {
-      element.attr("fill", value);
+      element.attr("fill", color);
     }
     return this;
   }

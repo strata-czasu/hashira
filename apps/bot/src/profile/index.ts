@@ -189,9 +189,9 @@ export const profile = new Hashira({ name: "profile" })
 
             if (
               dbUser.profileSettings?.tintColorType === "dynamic" &&
-              member?.displayHexColor
+              member?.displayColor
             ) {
-              image.tintColor(member.displayHexColor);
+              image.tintColor(member.displayColor);
             } else if (
               dbUser.profileSettings?.tintColorType === "custom" &&
               dbUser.profileSettings.customTintColor
@@ -640,7 +640,7 @@ export const profile = new Hashira({ name: "profile" })
                 const {
                   item: {
                     name,
-                    tintColor: { id: tintColorId, color },
+                    tintColor: { id: tintColorId },
                   },
                 } = ownedColor;
 
@@ -660,9 +660,7 @@ export const profile = new Hashira({ name: "profile" })
                   where: { userId: itx.user.id },
                 });
 
-                await itx.editReply(
-                  `Ustawiono kolor profilu ${italic(name)} (${bold(color)})`,
-                );
+                await itx.editReply(`Ustawiono kolor profilu ${italic(name)}`);
               }),
           )
           .addCommand("z-nicku", (command) =>
@@ -711,7 +709,7 @@ export const profile = new Hashira({ name: "profile" })
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const color = Bun.color(hex, "hex");
+                const color = Bun.color(hex, "number");
                 if (!color) {
                   return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
                 }
@@ -742,7 +740,7 @@ export const profile = new Hashira({ name: "profile" })
                   where: { userId: itx.user.id },
                 });
 
-                await itx.editReply(`Ustawiono kolor profilu ${bold(color)}`);
+                await itx.editReply(`Ustawiono kolor profilu ${bold(hex)}`);
               }),
           ),
       ),

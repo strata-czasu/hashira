@@ -181,9 +181,9 @@ model Badge {
 }
 
 model TintColor {
-  id     Int    @id @default(autoincrement())
-  itemId Int    @unique
-  color  String // Hex color code, e.g. "#FF5733"
+  id     Int @id @default(autoincrement())
+  itemId Int @unique
+  color  Int
 
   item           Item              @relation(fields: [itemId], references: [id])
   usedInProfiles ProfileSettings[]

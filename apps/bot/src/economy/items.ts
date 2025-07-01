@@ -170,7 +170,7 @@ export const items = new Hashira({ name: "items" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const color = Bun.color(hex, "hex");
+            const color = Bun.color(hex, "number");
             if (!color) {
               return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
             }
@@ -190,7 +190,7 @@ export const items = new Hashira({ name: "items" })
             });
 
             await itx.editReply(
-              `Utworzono nowy kolor ${italic(name)} (${bold(color)}) [${inlineCode(item.id.toString())}]`,
+              `Utworzono nowy kolor ${italic(name)} (${bold(hex)}) [${inlineCode(item.id.toString())}]`,
             );
           }),
       )

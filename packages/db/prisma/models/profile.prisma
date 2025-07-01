@@ -2,7 +2,7 @@ model ProfileSettings {
   userId          String        @id @unique
   titleId         Int?
   tintColorType   TintColorType @default(default)
-  customTintColor String? // For TintColorType.custom
+  customTintColor Int? // For TintColorType.custom
   tintColorId     Int? // For TintColorType.fromItem
   // TODO)) Background image
 
