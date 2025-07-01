@@ -201,6 +201,84 @@ const transferMarriage: TransferOperation = async ({ prisma, oldDbUser }) => {
   return `Stary user ma aktywne małżeństwo. Rozwiedziono ${userMention(oldDbUser.id)} (${oldDbUser.id}) z ${userMention(oldDbUser.marriedTo)} (${oldDbUser.marriedTo})`;
 };
 
+const transferChannelRestrictions: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
+  // Find all active channel restrictions for the old user
+  const restrictions = await prisma.channelRestriction.findMany({
+    where: { userId: oldUser.id, guildId: guild.id, deletedAt: null },
+  });
+
+  if (restrictions.length === 0) return null;
+
+  let transferredCount = 0;
+  let permissionErrors = 0;
+
+  // Transfer each restriction
+  for (const restriction of restrictions) {
+    try {
+      // Get the Discord channel
+      const channel = await discordTry(
+        () => guild.channels.fetch(restriction.channelId),
+        [RESTJSONErrorCodes.UnknownChannel],
+        () => null,
+      );
+
+      if (channel && channel.isTextBased()) {
+        // Remove permission override from old user
+        await discordTry(
+          () => channel.permissionOverwrites.delete(oldUser, "Przeniesienie ograniczenia kanału"),
+          [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownOverwrite],
+          () => null,
+        );
+
+        // Add permission override to new user
+        const result = await discordTry(
+          () =>
+            channel.permissionOverwrites.edit(
+              newUser,
+              { ViewChannel: false },
+              { reason: "Przeniesienie ograniczenia kanału" },
+            ),
+          [RESTJSONErrorCodes.MissingPermissions],
+          () => null,
+        );
+
+        if (result) {
+          // Update database record to point to new user
+          await prisma.channelRestriction.update({
+            where: { id: restriction.id },
+            data: { userId: newUser.id },
+          });
+          transferredCount++;
+        } else {
+          permissionErrors++;
+        }
+      } else {
+        // Channel doesn't exist or isn't text-based, just update database
+        await prisma.channelRestriction.update({
+          where: { id: restriction.id },
+          data: { userId: newUser.id },
+        });
+        transferredCount++;
+      }
+    } catch (error) {
+      console.error(`Error transferring channel restriction ${restriction.id}:`, error);
+      permissionErrors++;
+    }
+  }
+
+  let message = `Przeniesiono ${transferredCount} ograniczeń dostępu do kanałów`;
+  if (permissionErrors > 0) {
+    message += ` (${permissionErrors} błędów uprawnień)`;
+  }
+  
+  return transferredCount > 0 ? message : null;
+};
+
 // TODO: Voice activity
 // TODO: Experience and level
 
@@ -217,6 +295,7 @@ export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
   { name: "ultimatum", fn: transferUltimatum },
   { name: "wyciszenia", fn: transferMutes },
   { name: "ostrzeżenia", fn: transferWarns },
+  { name: "ograniczenia kanałów", fn: transferChannelRestrictions },
   { name: "uczestnictwa w ankietach", fn: transferDmPollParticipations },
   { name: "głosy w ankietach", fn: transferDmPollVotes },
   { name: "wykluczenie z ankiet", fn: transferDmPollExclusion },
