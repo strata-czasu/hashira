@@ -185,3 +185,7 @@ dist
 
 PG_DATA/
 REDIS_DATA/
+
+# TypeScript compiled output
+*.js
+*.js.map
