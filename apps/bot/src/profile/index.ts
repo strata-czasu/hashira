@@ -38,19 +38,26 @@ async function fetchAsBuffer(url: string | URL) {
   return Buffer.from(arrbuf);
 }
 
-async function hasAccessItem(
-  prisma: BaseContext["prisma"],
-  userId: string,
-  itemType: "dynamicTintColorAccess" | "customTintColorAccess",
-) {
-  const item = await prisma.inventoryItem.findFirst({
+async function getUserAccesses(prisma: BaseContext["prisma"], userId: string) {
+  const ownedItems = await prisma.inventoryItem.findMany({
     where: {
-      item: { type: itemType },
       userId,
       deletedAt: null,
+      item: {
+        type: {
+          in: ["dynamicTintColorAccess", "customTintColorAccess"],
+        },
+      },
+    },
+    select: {
+      item: {
+        select: {
+          type: true,
+        },
+      },
     },
   });
-  return item !== null;
+  return ownedItems.map(({ item }) => item.type);
 }
 
 export const profile = new Hashira({ name: "profile" })
@@ -530,25 +537,18 @@ export const profile = new Hashira({ name: "profile" })
                   () => prisma.inventoryItem.count({ where }),
                 );
 
-                const accesses: { name: string; access: boolean }[] = [
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const accessBadges: { name: string; access: boolean }[] = [
                   {
                     name: "Dynamiczny kolor z nicku",
-                    access: await hasAccessItem(
-                      prisma,
-                      itx.user.id,
-                      "dynamicTintColorAccess",
-                    ),
+                    access: accesses.includes("dynamicTintColorAccess"),
                   },
                   {
                     name: "Dowolny kolor profilu",
-                    access: await hasAccessItem(
-                      prisma,
-                      itx.user.id,
-                      "customTintColorAccess",
-                    ),
+                    access: accesses.includes("customTintColorAccess"),
                   },
                 ];
-                const accessesText = accesses
+                const accessesText = accessBadges
                   .map(({ name, access }) => `${access ? "✅" : "❌"} ${name}`)
                   .join("\n");
 
@@ -673,11 +673,8 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.deferReply();
 
                 await ensureUserExists(prisma, itx.user);
-                const hasAccess = await hasAccessItem(
-                  prisma,
-                  itx.user.id,
-                  "dynamicTintColorAccess",
-                );
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const hasAccess = accesses.includes("dynamicTintColorAccess");
                 if (!hasAccess) {
                   return await errorFollowUp(
                     itx,
@@ -720,11 +717,8 @@ export const profile = new Hashira({ name: "profile" })
                 }
 
                 await ensureUserExists(prisma, itx.user);
-                const hasAccess = await hasAccessItem(
-                  prisma,
-                  itx.user.id,
-                  "customTintColorAccess",
-                );
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const hasAccess = accesses.includes("customTintColorAccess");
                 if (!hasAccess) {
                   return await errorFollowUp(
                     itx,
