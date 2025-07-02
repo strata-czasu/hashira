@@ -98,6 +98,7 @@ model Guild {
   channelRestrictions ChannelRestriction[]
   voiceSessions       VoiceSession[]
   lastFishings        LastFishing[]
+  giveaways           Giveaway[]
 
   @@map("guild")
 }
@@ -262,6 +263,8 @@ model User {
   lastFishings                      LastFishing[]
   givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
   receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
+  giveawayParticipations            GiveawayParticipant[]
+  giveawayWinnings                  GiveawayWinner[]
 
   @@map("users")
 }

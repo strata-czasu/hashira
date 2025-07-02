@@ -1,0 +1,46 @@
+model Giveaway {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  endAt     DateTime
+
+  guild     Guild  @relation(fields: [guildId], references: [id])
+  guildId   String
+  channelId String
+  messageId String
+
+  participants GiveawayParticipant[]
+  winners      GiveawayWinner[]
+  rewards      GiveawayReward[]
+  totalRewards Int
+}
+
+model GiveawayParticipant {
+  id         Int      @id @default(autoincrement())
+  giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
+  giveawayId Int
+
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  isRemoved Boolean @default(false)
+}
+
+model GiveawayWinner {
+  id         Int      @id @default(autoincrement())
+  giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
+  giveawayId Int
+
+  reward   GiveawayReward? @relation(fields: [rewardId], references: [id])
+  rewardId Int?
+  user     User            @relation(fields: [userId], references: [id])
+  userId   String
+}
+
+model GiveawayReward {
+  id         Int      @id @default(autoincrement())
+  giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
+  giveawayId Int
+
+  amount  Int
+  reward  String
+  winners GiveawayWinner[]
+}

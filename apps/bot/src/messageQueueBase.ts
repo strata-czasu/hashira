@@ -4,6 +4,7 @@ import { MessageQueue } from "@hashira/db/tasks";
 import { type Duration, formatDuration } from "date-fns";
 import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
 import { database } from "./db";
+import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
 import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
 import {
@@ -43,6 +44,10 @@ type ReminderData = {
   userId: string;
   guildId: string;
   text: string;
+};
+
+type GiveawayData = {
+  giveawayId: number;
 };
 
 type ChannelRestrictionEndData = {
@@ -334,6 +339,39 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               );
             }
           },
-        ),
+        )
+        .addHandler("giveawayEnd", async ({ client }, { giveawayId }: GiveawayData) => {
+          const giveaway = await prisma.giveaway.findFirst({
+            where: { id: giveawayId },
+          });
+
+          if (!giveaway) return;
+
+          const guild = await discordTry(
+            async () => client.guilds.fetch(giveaway.guildId),
+            [RESTJSONErrorCodes.UnknownGuild],
+            async () => null,
+          );
+
+          if (!guild) return;
+
+          const channel = await discordTry(
+            async () => guild.channels.fetch(giveaway.channelId),
+            [RESTJSONErrorCodes.UnknownChannel],
+            async () => null,
+          );
+
+          if (!channel?.isTextBased()) return;
+
+          const message = await discordTry(
+            async () => channel.messages.fetch(giveaway.messageId),
+            [RESTJSONErrorCodes.UnknownChannel],
+            async () => null,
+          );
+
+          if (!message) return;
+
+          endGiveaway(message, prisma);
+        }),
     };
   });
