@@ -113,7 +113,7 @@ export async function endGiveaway(
   // Assign rewards
   let idx = 0;
   const winningUsers: Omit<GiveawayWinner, "id">[] = [];
-  const results = rewards.map(({ reward, amount }) => {
+  const results = rewards.map(({ reward, amount, id: rewardId }) => {
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
     const slice = shuffledIds.slice(idx, (idx += amount));
     if (slice.length > 0) {
@@ -121,13 +121,7 @@ export async function endGiveaway(
         ...slice.map((userId) => ({
           giveawayId: giveaway.id,
           userId: userId,
-          rewardId: (() => {
-            const rewardEntry = rewards.find((r) => r.reward === reward);
-            if (!rewardEntry) {
-              throw new Error(`No matching reward found for reward: ${reward}`);
-            }
-            return rewardEntry.id;
-          })(),
+          rewardId: rewardId,
         })),
       );
     }
