@@ -29,11 +29,10 @@ model GiveawayWinner {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
-  reward   GiveawayReward @relation(fields: [rewardId], references: [id])
-  rewardId Int
-
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  reward   GiveawayReward? @relation(fields: [rewardId], references: [id])
+  rewardId Int?
+  user     User            @relation(fields: [userId], references: [id])
+  userId   String
 }
 
 model GiveawayReward {
@@ -41,7 +40,7 @@ model GiveawayReward {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
-  amount Int
-  reward String
-  winner GiveawayWinner[]
+  amount  Int
+  reward  String
+  winners GiveawayWinner[]
 }

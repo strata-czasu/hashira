@@ -141,7 +141,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         },
       ),
   )
-  .handle("ready", async ({ prisma }, client) => {
+  .handle("ready", async ({ prisma, messageQueue }, client) => {
     client.on("interactionCreate", async (itx) => {
       if (!itx.isButton()) return;
       // giveaway-option:optionId
@@ -178,6 +178,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
       }
 
       if (giveaway.endAt <= itx.createdAt) {
+        await messageQueue.cancel("giveawayEnd", giveaway.id.toString());
         await endGiveaway(message, prisma);
         return;
       }
@@ -208,7 +209,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         return;
       }
 
-      let returnMsg = "Już dołączyłxś do tego giveaway!";
+      let returnMsg = "Już jesteś uczestnikiem do tego giveaway!";
 
       const existing = await prisma.giveawayParticipant.findFirst({
         where: { userId: itx.user.id, giveawayId: giveaway.id },

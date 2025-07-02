@@ -263,8 +263,8 @@ model User {
   lastFishings                      LastFishing[]
   givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
   receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
-  giveawayParticipants              GiveawayParticipant[]
-  giveawayWinner                    GiveawayWinner[]
+  giveawayParticipations            GiveawayParticipant[]
+  giveawayWinnings                  GiveawayWinner[]
 
   @@map("users")
 }

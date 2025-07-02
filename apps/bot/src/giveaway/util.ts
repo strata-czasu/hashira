@@ -98,20 +98,14 @@ export async function endGiveaway(
     ],
   });
 
-  const [rewards, participants, winners] = await prisma.$transaction([
+  const [rewards, participants] = await prisma.$transaction([
     prisma.giveawayReward.findMany({
       where: { giveawayId: giveaway.id },
     }),
     prisma.giveawayParticipant.findMany({
       where: { giveawayId: giveaway.id, isRemoved: false },
     }),
-    prisma.giveawayWinner.findMany({
-      where: { giveawayId: giveaway.id },
-    }),
   ]);
-
-  // To make sure results aren't sent twice (can be invoked by pressing giveaway button after end)
-  if (winners.length !== 0) return;
 
   // Shuffle participants
   const shuffledIds = shuffle(participants.map((p) => p.userId));
@@ -127,7 +121,13 @@ export async function endGiveaway(
         ...slice.map((userId) => ({
           giveawayId: giveaway.id,
           userId: userId,
-          rewardId: rewards.find((r) => r.reward === reward)?.id ?? 0,
+          rewardId: (() => {
+            const rewardEntry = rewards.find((r) => r.reward === reward);
+            if (!rewardEntry) {
+              throw new Error(`No matching reward found for reward: ${reward}`);
+            }
+            return rewardEntry.id;
+          })(),
         })),
       );
     }
