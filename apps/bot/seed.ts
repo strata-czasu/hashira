@@ -1,5 +1,6 @@
 import { Prisma, prisma, redis } from "@hashira/db";
 import {
+  DEFAULT_ITEMS,
   DEFAULT_LOG_CHANNELS,
   GUILD_IDS,
   STRATA_CZASU_CURRENCY,
@@ -24,6 +25,27 @@ const createDefaultStrataCzasuCurrency = async (guildId: string) => {
     },
     skipDuplicates: true,
   });
+};
+
+// FIXME)) Run this for each guild once items are per-guild
+const createDefaultItems = async () => {
+  const existingItems = await prisma.item.findMany({
+    where: { type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
+  });
+  const existingItemTypes = existingItems.map((item) => item.type);
+  console.log(`Default item types already exist: ${existingItemTypes.join(", ")}`);
+  const itemTypesToCreate = DEFAULT_ITEMS.filter(
+    ({ type }) => !existingItemTypes.includes(type),
+  );
+  for (const item of itemTypesToCreate) {
+    await prisma.item.create({
+      data: {
+        ...item,
+        createdBy: USER_IDS.Defous,
+      },
+    });
+    console.log(`Created default item of type ${item.type} '${item.name}'`);
+  }
 };
 
 const setDefaultLogChannels = async (guildId: string) => {
@@ -71,6 +93,7 @@ if (isProduction) {
     await setDefaultLogChannels(guildId);
     console.log(`Seeding completed for test guild ${guildId}`);
   }
+  await createDefaultItems();
 }
 
 console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);

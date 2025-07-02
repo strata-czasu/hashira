@@ -1,10 +1,44 @@
-import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
+import {
+  ConfirmationDialog,
+  type ExtractContext,
+  Hashira,
+  PaginatedView,
+} from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import {
+  type AutocompleteInteraction,
+  PermissionFlagsBits,
+  bold,
+  inlineCode,
+} from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { getInventoryItem, getItem } from "./util";
+import { getInventoryItem, getItem, getTypeNameForList } from "./util";
+
+const autocompleteItem = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction;
+}) => {
+  const results = await prisma.item.findMany({
+    where: {
+      deletedAt: null,
+      name: {
+        contains: itx.options.getFocused(),
+        mode: "insensitive",
+      },
+    },
+  });
+  return itx.respond(
+    results.map(({ id, name, type }) => ({
+      value: id,
+      name: `${name} ${getTypeNameForList(type)}`,
+    })),
+  );
+};
 
 export const inventory = new Hashira({ name: "inventory" })
   .use(base)
@@ -164,9 +198,14 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("dodaj", (command) =>
         command
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addInteger("przedmiot", (id) =>
+            id.setDescription("Przedmiot").setAutocomplete(true),
+          )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, economyLog }, { id: itemId, user }, itx) => {
+          .autocomplete(async ({ prisma }, _, itx) => {
+            return autocompleteItem({ prisma, itx });
+          })
+          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -194,16 +233,21 @@ export const inventory = new Hashira({ name: "inventory" })
               item,
             });
             await itx.editReply(
-              `Dodano ${bold(item.name)} do ekwipunku ${bold(user.tag)}`,
+              `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${bold(user.tag)}`,
             );
           }),
       )
       .addCommand("zabierz", (command) =>
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addInteger("przedmiot", (id) =>
+            id.setDescription("Przedmiot").setAutocomplete(true),
+          )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ prisma, economyLog }, { id: itemId, user }, itx) => {
+          .autocomplete(async ({ prisma }, _, itx) => {
+            return autocompleteItem({ prisma, itx });
+          })
+          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 

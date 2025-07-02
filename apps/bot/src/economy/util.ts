@@ -49,6 +49,12 @@ export const getTypeNameForList = (type: ItemType): string => {
       return "(T)";
     case "badge":
       return "(O)";
+    case "staticTintColor":
+      return "(K)";
+    case "customTintColorAccess":
+      return "(KC)";
+    case "dynamicTintColorAccess":
+      return "(KD)";
     case "item":
       return "";
   }

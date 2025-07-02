@@ -1,11 +1,21 @@
 model ProfileSettings {
-  userId  String @id @unique
-  titleId Int?
-  // TODO)) Tint color
+  userId          String        @id @unique
+  titleId         Int?
+  tintColorType   TintColorType @default(default)
+  customTintColor Int? // For TintColorType.custom
+  tintColorId     Int? // For TintColorType.fromItem
   // TODO)) Background image
 
-  user  User  @relation(fields: [userId], references: [id])
-  title Item? @relation(fields: [titleId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  title     Item?      @relation(fields: [titleId], references: [id])
+  tintColor TintColor? @relation(fields: [tintColorId], references: [id])
+}
+
+enum TintColorType {
+  default
+  fromItem
+  dynamic
+  custom
 }
 
 model DisplayedProfileBadge {

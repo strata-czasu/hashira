@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item } from "@hashira/db";
-import { PermissionFlagsBits, inlineCode, italic } from "discord.js";
+import { PermissionFlagsBits, bold, inlineCode, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -97,7 +97,7 @@ export const items = new Hashira({ name: "items" })
       )
       .addCommand("utwórz-tytuł", (command) =>
         command
-          .setDescription("Utwórz nowy tytuł")
+          .setDescription("Utwórz nowy tytuł profilu")
           .addString("name", (name) => name.setDescription("Nazwa tytułu"))
           .addString("description", (description) =>
             description.setDescription("Opis tytułu").setRequired(false),
@@ -122,7 +122,7 @@ export const items = new Hashira({ name: "items" })
       )
       .addCommand("utwórz-odznakę", (command) =>
         command
-          .setDescription("Utwórz nową odznakę")
+          .setDescription("Utwórz nową odznakę profilu")
           .addString("name", (name) => name.setDescription("Nazwa odznaki"))
           .addAttachment("image", (image) =>
             image.setDescription("Obrazek odznaki (PNG, 128x128px)"),
@@ -161,6 +161,40 @@ export const items = new Hashira({ name: "items" })
             );
           }),
       )
+      .addCommand("utwórz-kolor", (command) =>
+        command
+          .setDescription("Utwórz nowy kolor profilu")
+          .addString("name", (name) => name.setDescription("Nazwa koloru"))
+          .addString("hex", (hex) => hex.setDescription("Hex koloru (np. #ff5632)"))
+          .handle(async ({ prisma }, { name, hex }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const color = Bun.color(hex, "number");
+            if (!color) {
+              return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
+            }
+
+            await ensureUserExists(prisma, itx.user);
+            const item = await prisma.tintColor.create({
+              data: {
+                item: {
+                  create: {
+                    name,
+                    createdBy: itx.user.id,
+                    type: "staticTintColor",
+                  },
+                },
+                color,
+              },
+            });
+
+            await itx.editReply(
+              `Utworzono nowy kolor ${italic(name)} (${bold(hex)}) [${inlineCode(item.id.toString())}]`,
+            );
+          }),
+      )
+
       .addCommand("edytuj", (command) =>
         command
           .setDescription("Edytuj przedmiot")

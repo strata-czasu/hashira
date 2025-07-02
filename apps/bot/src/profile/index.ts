@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView } from "@hashira/core";
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import * as cheerio from "cheerio";
 import { differenceInDays, secondsToHours, sub } from "date-fns";
@@ -7,6 +7,7 @@ import {
   EmbedBuilder,
   RESTJSONErrorCodes,
   TimestampStyles,
+  bold,
   inlineCode,
   italic,
   subtext,
@@ -19,8 +20,11 @@ import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import { errorFollowUp } from "../util/errorFollowUp";
 import { ProfileImageBuilder } from "./imageBuilder";
 import { marriage } from "./marriage";
+
+type BaseContext = ExtractContext<typeof base>;
 
 async function fetchAsBuffer(url: string | URL) {
   const res = await fetch(url);
@@ -32,6 +36,28 @@ async function fetchAsBuffer(url: string | URL) {
   }
   const arrbuf = await res.arrayBuffer();
   return Buffer.from(arrbuf);
+}
+
+async function getUserAccesses(prisma: BaseContext["prisma"], userId: string) {
+  const ownedItems = await prisma.inventoryItem.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      item: {
+        type: {
+          in: ["dynamicTintColorAccess", "customTintColorAccess"],
+        },
+      },
+    },
+    select: {
+      item: {
+        select: {
+          type: true,
+        },
+      },
+    },
+  });
+  return ownedItems.map(({ item }) => item.type);
 }
 
 export const profile = new Hashira({ name: "profile" })
@@ -62,6 +88,7 @@ export const profile = new Hashira({ name: "profile" })
                 profileSettings: {
                   include: {
                     title: true,
+                    tintColor: true,
                   },
                 },
               },
@@ -129,7 +156,6 @@ export const profile = new Hashira({ name: "profile" })
             const svg = cheerio.load(await file.text());
             const image = new ProfileImageBuilder(svg);
             image
-              .tintColor("#aa85a4")
               .nickname(user.displayName)
               .balance(wallet.balance)
               .rep(0) // TODO)) Rep value
@@ -159,6 +185,23 @@ export const profile = new Hashira({ name: "profile" })
             );
             if (member?.joinedAt) {
               image.guildJoinDate(member.joinedAt);
+            }
+
+            if (
+              dbUser.profileSettings?.tintColorType === "dynamic" &&
+              member?.displayColor
+            ) {
+              image.tintColor(member.displayColor);
+            } else if (
+              dbUser.profileSettings?.tintColorType === "custom" &&
+              dbUser.profileSettings.customTintColor
+            ) {
+              image.tintColor(dbUser.profileSettings.customTintColor);
+            } else if (
+              dbUser.profileSettings?.tintColorType === "fromItem" &&
+              dbUser.profileSettings.tintColor
+            ) {
+              image.tintColor(dbUser.profileSettings.tintColor.color);
             }
 
             const avatarImageURL =
@@ -261,8 +304,29 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Ustaw wyświetlany tytuł profilu")
-              .addInteger("id", (command) => command.setDescription("ID tytułu"))
-              .handle(async ({ prisma }, { id }, itx) => {
+              .addInteger("tytuł", (command) =>
+                command.setDescription("Tytuł").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
+                  where: {
+                    userId: itx.user.id,
+                    deletedAt: null,
+                    item: {
+                      type: "profileTitle",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  include: { item: true },
+                });
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(async ({ prisma }, { tytuł: id }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
@@ -332,7 +396,6 @@ export const profile = new Hashira({ name: "profile" })
           .addCommand("ustaw", (command) =>
             command
               .setDescription("Wyświetl odznakę na profilu")
-              .addInteger("id", (id) => id.setDescription("ID odznaki"))
               .addInteger("wiersz", (row) =>
                 row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
               )
@@ -342,56 +405,83 @@ export const profile = new Hashira({ name: "profile" })
                   .setMinValue(1)
                   .setMaxValue(5),
               )
-              .handle(async ({ prisma }, { id, wiersz: row, kolumna: col }, itx) => {
-                if (!itx.inCachedGuild()) return;
-                await itx.deferReply();
-
-                const ownedBadge = await prisma.inventoryItem.findFirst({
+              // FIXME: This being auto-completed while row and column are not
+              //        can lead to an interaction error when trying to receive
+              //        autocomplete results, because row and column are not set.
+              .addInteger("odznaka", (id) =>
+                id.setDescription("Odznaka").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
                   where: {
-                    item: { id, type: "badge" },
                     userId: itx.user.id,
                     deletedAt: null,
-                  },
-                  include: {
                     item: {
-                      include: { badge: true },
+                      type: "badge",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
                     },
                   },
+                  include: { item: true },
                 });
-                if (!ownedBadge?.item.badge) {
-                  await itx.editReply(
-                    "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
-                  );
-                  return;
-                }
-
-                const {
-                  item: {
-                    name,
-                    badge: { id: badgeId },
-                  },
-                } = ownedBadge;
-
-                await ensureUserExists(prisma, itx.user);
-                await prisma.$transaction(async (tx) => {
-                  // Remove placement on the same row and column we're trying to place a new badge
-                  await tx.displayedProfileBadge.deleteMany({
-                    where: { userId: itx.user.id, row, col },
-                  });
-                  // Update badge on an existing placement
-                  await tx.displayedProfileBadge.upsert({
-                    create: { userId: itx.user.id, badgeId, row, col },
-                    update: { badgeId, row, col },
-                    where: {
-                      userId_badgeId: { userId: itx.user.id, badgeId },
-                    },
-                  });
-                });
-
-                await itx.editReply(
-                  `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
                 );
-              }),
+              })
+              .handle(
+                async ({ prisma }, { odznaka: id, wiersz: row, kolumna: col }, itx) => {
+                  if (!itx.inCachedGuild()) return;
+                  await itx.deferReply();
+
+                  const ownedBadge = await prisma.inventoryItem.findFirst({
+                    where: {
+                      item: { id, type: "badge" },
+                      userId: itx.user.id,
+                      deletedAt: null,
+                    },
+                    include: {
+                      item: {
+                        include: { badge: true },
+                      },
+                    },
+                  });
+                  if (!ownedBadge?.item.badge) {
+                    await itx.editReply(
+                      "Odznaka o tym ID nie istnieje lub jej nie posiadasz!",
+                    );
+                    return;
+                  }
+
+                  const {
+                    item: {
+                      name,
+                      badge: { id: badgeId },
+                    },
+                  } = ownedBadge;
+
+                  await ensureUserExists(prisma, itx.user);
+                  await prisma.$transaction(async (tx) => {
+                    // Remove placement on the same row and column we're trying to place a new badge
+                    await tx.displayedProfileBadge.deleteMany({
+                      where: { userId: itx.user.id, row, col },
+                    });
+                    // Update badge on an existing placement
+                    await tx.displayedProfileBadge.upsert({
+                      create: { userId: itx.user.id, badgeId, row, col },
+                      update: { badgeId, row, col },
+                      where: {
+                        userId_badgeId: { userId: itx.user.id, badgeId },
+                      },
+                    });
+                  });
+
+                  await itx.editReply(
+                    `Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`,
+                  );
+                },
+              ),
           )
           .addCommand("usuń", (command) =>
             command
@@ -419,6 +509,238 @@ export const profile = new Hashira({ name: "profile" })
                   return;
                 }
                 await itx.editReply(`Usunięto odznakę z pozycji ${row}:${col}`);
+              }),
+          ),
+      )
+      .addGroup("kolor", (group) =>
+        group
+          .setDescription("Kolor profilu")
+          .addCommand("lista", (command) =>
+            command
+              .setDescription("Wyświetl swoje kolory profilu")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const where: Prisma.InventoryItemWhereInput = {
+                  item: { type: "staticTintColor" },
+                  userId: itx.user.id,
+                  deletedAt: null,
+                };
+                const paginator = new DatabasePaginator(
+                  (props) =>
+                    prisma.inventoryItem.findMany({
+                      where,
+                      include: { item: true },
+                      ...props,
+                    }),
+                  () => prisma.inventoryItem.count({ where }),
+                );
+
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const accessBadges: { name: string; access: boolean }[] = [
+                  {
+                    name: "Dynamiczny kolor z nicku",
+                    access: accesses.includes("dynamicTintColorAccess"),
+                  },
+                  {
+                    name: "Dowolny kolor profilu",
+                    access: accesses.includes("customTintColorAccess"),
+                  },
+                ];
+                const accessesText = accessBadges
+                  .map(({ name, access }) => `${access ? "✅" : "❌"} ${name}`)
+                  .join("\n");
+
+                const paginatedView = new PaginatedView(
+                  paginator,
+                  "Posiadane kolory profilu",
+                  ({ item: { name, id }, createdAt }) =>
+                    `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
+                  false,
+                  accessesText,
+                );
+                await paginatedView.render(itx);
+              }),
+          )
+          .addCommand("domyślny", (command) =>
+            command
+              .setDescription("Ustaw domyślny kolor profilu")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "default",
+                    customTintColor: null,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "default",
+                    customTintColor: null,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply("Ustawiono domyślny kolor profilu");
+              }),
+          )
+          .addCommand("item", (command) =>
+            command
+              .setDescription("Ustaw kolor profilu z przedmiotu")
+              .addInteger("przedmiot", (id) =>
+                id.setDescription("Przedmiot").setAutocomplete(true),
+              )
+              .autocomplete(async ({ prisma }, _, itx) => {
+                const results = await prisma.inventoryItem.findMany({
+                  where: {
+                    userId: itx.user.id,
+                    deletedAt: null,
+                    item: {
+                      type: "staticTintColor",
+                      name: {
+                        contains: itx.options.getFocused(),
+                        mode: "insensitive",
+                      },
+                      tintColor: { isNot: null },
+                    },
+                  },
+                  include: { item: true },
+                });
+                await itx.respond(
+                  results.map(({ item: { id, name } }) => ({ value: id, name })),
+                );
+              })
+              .handle(async ({ prisma }, { przedmiot: id }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const ownedColor = await prisma.inventoryItem.findFirst({
+                  where: {
+                    item: { id, type: "staticTintColor" },
+                    userId: itx.user.id,
+                    deletedAt: null,
+                  },
+                  include: {
+                    item: {
+                      include: { tintColor: true },
+                    },
+                  },
+                });
+                if (!ownedColor?.item.tintColor) {
+                  await itx.editReply(
+                    "Kolor o tym ID nie istnieje lub go nie posiadasz!",
+                  );
+                  return;
+                }
+                const {
+                  item: {
+                    name,
+                    tintColor: { id: tintColorId },
+                  },
+                } = ownedColor;
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "fromItem",
+                    customTintColor: null,
+                    tintColorId,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "fromItem",
+                    customTintColor: null,
+                    tintColorId,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(`Ustawiono kolor profilu ${italic(name)}`);
+              }),
+          )
+          .addCommand("z-nicku", (command) =>
+            command
+              .setDescription("Ustaw dynamiczny kolor profilu z koloru nicku")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                await ensureUserExists(prisma, itx.user);
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const hasAccess = accesses.includes("dynamicTintColorAccess");
+                if (!hasAccess) {
+                  return await errorFollowUp(
+                    itx,
+                    "Nie posiadasz dostępu do ustawiania dowolnych kolorów profilu!",
+                  );
+                }
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "dynamic",
+                    customTintColor: null,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "dynamic",
+                    customTintColor: null,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(
+                  "Ustawiono dynamiczny kolor profilu z koloru nicku",
+                );
+              }),
+          )
+          .addCommand("hex", (command) =>
+            command
+              .setDescription("Ustaw dowolny kolor profilu")
+              .addString("hex", (hex) => hex.setDescription("Hex koloru (np. #ff5632)"))
+              .handle(async ({ prisma }, { hex }, itx) => {
+                if (!itx.inCachedGuild()) return;
+                await itx.deferReply();
+
+                const color = Bun.color(hex, "number");
+                if (!color) {
+                  return await errorFollowUp(itx, "Podany kolor nie jest poprawny!");
+                }
+
+                await ensureUserExists(prisma, itx.user);
+                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const hasAccess = accesses.includes("customTintColorAccess");
+                if (!hasAccess) {
+                  return await errorFollowUp(
+                    itx,
+                    "Nie posiadasz dostępu do ustawiania dowolnych kolorów profilu!",
+                  );
+                }
+
+                // TODO)) Wrap this into a less verbose utility
+                await prisma.profileSettings.upsert({
+                  create: {
+                    tintColorType: "custom",
+                    customTintColor: color,
+                    tintColorId: null,
+                    userId: itx.user.id,
+                  },
+                  update: {
+                    tintColorType: "custom",
+                    customTintColor: color,
+                    tintColorId: null,
+                  },
+                  where: { userId: itx.user.id },
+                });
+
+                await itx.editReply(`Ustawiono kolor profilu ${bold(hex)}`);
               }),
           ),
       ),
