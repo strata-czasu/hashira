@@ -352,6 +352,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             [RESTJSONErrorCodes.UnknownGuild],
             async () => null,
           );
+
           if (!guild) return;
 
           const channel = await discordTry(
@@ -359,14 +360,15 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             [RESTJSONErrorCodes.UnknownChannel],
             async () => null,
           );
-          if (!channel) return;
-          if (!channel.isTextBased()) return;
+
+          if (!channel?.isTextBased()) return;
 
           const message = await discordTry(
             async () => channel.messages.fetch(giveaway.messageId),
             [RESTJSONErrorCodes.UnknownChannel],
             async () => null,
           );
+
           if (!message) return;
 
           endGiveaway(message, prisma);

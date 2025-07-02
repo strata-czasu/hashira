@@ -229,7 +229,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           });
         }
 
-        returnMsg = `${itx.user} dołączyłx do giveaway!`;
+        returnMsg = `${itx.user} dołączyłxś do giveaway!`;
         updateGiveaway(itx, giveaway, prisma);
       }
 

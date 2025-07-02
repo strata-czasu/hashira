@@ -3,6 +3,7 @@ import type {
   Giveaway,
   GiveawayParticipant,
   GiveawayReward,
+  GiveawayWinner,
 } from "@hashira/db";
 import {
   ActionRowBuilder,
@@ -97,39 +98,47 @@ export async function endGiveaway(
     ],
   });
 
-  const rewards = await prisma.giveawayReward.findMany({
-    where: { giveawayId: giveaway.id },
-  });
-  const participants = await prisma.giveawayParticipant.findMany({
-    where: { giveawayId: giveaway.id, isRemoved: false },
-  });
+  const [rewards, participants] = await prisma.$transaction([
+    prisma.giveawayReward.findMany({
+      where: { giveawayId: giveaway.id },
+    }),
+    prisma.giveawayParticipant.findMany({
+      where: { giveawayId: giveaway.id, isRemoved: false },
+    }),
+  ]);
 
   // Shuffle participants
-  const shuffled = shuffle(participants.map((p) => p.userId));
+  const shuffledIds = shuffle(participants.map((p) => p.userId));
 
   // Assign rewards
   let idx = 0;
-  const results: string[] = [];
-  for (const reward of rewards) {
-    const winners = shuffled.slice(idx, idx + reward.amount);
-    if (winners.length === 0) {
-      results.push(`${reward.reward} nikt`);
-    } else {
-      results.push(`${reward.reward} ${winners.map((id) => `<@${id}>`).join(", ")}`);
+  const winningUsers: Omit<GiveawayWinner, "id">[] = [];
+  const results = rewards.map(({ reward, amount }) => {
+    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+    const slice = shuffledIds.slice(idx, (idx += amount));
+    if (slice.length > 0) {
+      winningUsers.push(
+        ...slice.map((userId) => ({
+          giveawayId: giveaway.id,
+          userId: userId,
+        })),
+      );
     }
-    idx += reward.amount;
+    const mention =
+      slice.length === 0 ? "nikt" : slice.map((id) => `<@${id}>`).join(", ");
+    return `${reward} ${mention}`;
+  });
+
+  // Saving winners in db
+  if (winningUsers.length > 0) {
+    await prisma.giveawayWinner.createMany({
+      data: winningUsers,
+      skipDuplicates: true,
+    });
   }
 
-  // Reply with results
   await message.reply({
     content: `:tada: Wyniki giveaway:\n${results.join("\n")}`,
     allowedMentions: { users: participants.map((p) => p.userId) },
   });
-
-  // Delete giveaway and FK's
-  // await prisma.$transaction([
-  //   prisma.giveawayParticipant.deleteMany({ where: { giveawayId: giveaway.id } }),
-  //   prisma.giveawayReward.deleteMany({ where: { giveawayId: giveaway.id } }),
-  //   prisma.giveaway.delete({ where: { id: giveaway.id } }),
-  // ]);
 }
