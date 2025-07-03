@@ -5,6 +5,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
   TimestampStyles,
   channelLink,
   time,
@@ -15,6 +16,7 @@ import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { ensureUserExists } from "./util/ensureUsersExist";
+import { errorFollowUp } from "./util/errorFollowUp";
 import { waitForButtonClick } from "./util/singleUseButton";
 
 const checkIfCanFish = async (
@@ -36,41 +38,50 @@ const checkIfCanFish = async (
 
 type FishRoll = { id: number; name: string; amount: number };
 
+const FISH_TABLE = [
+  { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 29 },
+  { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 19 },
+  { id: 4, name: "dorsza", minAmount: 60, maxAmount: 90, weight: 15 },
+  { id: 5, name: "pstrąga", minAmount: 80, maxAmount: 110, weight: 10 },
+  { id: 6, name: "szczupaka :crown:", minAmount: 90, maxAmount: 110, weight: 10 },
+  { id: 7, name: "suma", minAmount: 110, maxAmount: 130, weight: 10 },
+  { id: 8, name: "rekina", minAmount: 150, maxAmount: 180, weight: 3 },
+  {
+    id: 11,
+    name: "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>",
+    minAmount: 200,
+    maxAmount: 254,
+    weight: 1,
+  },
+  { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
+  { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
+] as const;
+
+const getFishById = (id: number): FishRoll | null => {
+  const fish = FISH_TABLE.find((f) => f.id === id);
+  if (!fish) return null;
+
+  return {
+    id: fish.id,
+    name: fish.name,
+    amount: randomInt(fish.minAmount, fish.maxAmount + 1),
+  };
+};
+
 const getRandomFish = (): FishRoll => {
-  const fishType = randomInt(1, 101);
+  const totalWeight = FISH_TABLE.reduce((sum, fish) => sum + fish.weight, 0);
+  let roll = randomInt(1, totalWeight + 1);
 
-  if (fishType === 1) {
-    return { id: 1, name: "buta", amount: 1 };
-  }
-  if (fishType >= 2 && fishType <= 30) {
-    return { id: 2, name: "karasia", amount: randomInt(30, 61) };
-  }
-  if (fishType >= 31 && fishType <= 49) {
-    return { id: 3, name: "śledzia", amount: randomInt(50, 81) };
-  }
-  if (fishType === 50) {
-    return { id: 10, name: "wonsza żecznego", amount: randomInt(-130, -70) };
-  }
-  if (fishType >= 51 && fishType <= 65) {
-    return { id: 4, name: "dorsza", amount: randomInt(60, 91) };
-  }
-  if (fishType >= 66 && fishType <= 75) {
-    return { id: 5, name: "pstrąga", amount: randomInt(80, 111) };
-  }
-  if (fishType >= 76 && fishType <= 85) {
-    return { id: 6, name: "szczupaka :crown:", amount: randomInt(90, 111) };
-  }
-  if (fishType >= 86 && fishType <= 95) {
-    return { id: 7, name: "suma", amount: randomInt(110, 131) };
-  }
-  if (fishType >= 96 && fishType <= 99) {
-    return { id: 8, name: "rekina", amount: randomInt(150, 181) };
-  }
-  if (fishType === 100) {
-    return { id: 9, name: "bombardiro crocodilo", amount: randomInt(900, 1101) };
+  for (const fish of FISH_TABLE) {
+    roll -= fish.weight;
+    if (roll <= 0) {
+      // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
+      return getFishById(fish.id)!;
+    }
   }
 
-  throw new Error("Unreachable path, all variants should've been handled above");
+  throw new Error("Failed to select random fish");
 };
 
 export const fish = new Hashira({ name: "fish" })
@@ -166,4 +177,55 @@ export const fish = new Hashira({ name: "fish" })
           });
         }
       }),
+  )
+  .group("wedka-admin", (group) =>
+    group
+      .setDescription("Administracja łowienia ryb")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+      .addCommand("force-fish", (command) =>
+        command
+          .setDescription("Zmusza użytkownika do złowienia ryby o konkretnym ID")
+          .addUser("user", (option) =>
+            option.setDescription("Użytkownik który ma złowić rybę").setRequired(true),
+          )
+          .addInteger("fish-id", (option) =>
+            option
+              .setDescription("ID ryby do złowienia")
+              .setRequired(true)
+              .addChoices(
+                ...FISH_TABLE.map((fish) => ({
+                  name: `${fish.id}: ${fish.name}`,
+                  value: fish.id,
+                })),
+              ),
+          )
+          .handle(async ({ prisma }, { user, "fish-id": fishId }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await ensureUserExists(prisma, user);
+
+            const fish = getFishById(fishId);
+
+            if (!fish) {
+              return errorFollowUp(itx, "Błąd: Nie znaleziono ryby o tym ID");
+            }
+
+            await addBalance({
+              prisma,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              reason: `Admin force fish ${fish.id}`,
+              guildId: itx.guildId,
+              toUserId: user.id,
+              amount: fish.amount,
+            });
+
+            const balance = formatBalance(fish.amount, STRATA_CZASU_CURRENCY.symbol);
+
+            await itx.reply({
+              content: `${user} został zmuszony do złowienia ${fish.name} wartego ${balance}`,
+              flags: "Ephemeral",
+            });
+          }),
+      ),
   );
