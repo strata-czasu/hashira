@@ -126,8 +126,8 @@ export async function endGiveaway(
       );
     }
     const mention =
-      slice.length === 0 ? "nikt" : slice.map((id) => `<@${id}>`).join(", ");
-    return `${reward} ${mention}`;
+      slice.length === 0 ? "nikt" : slice.map((id) => `<@${id}>`).join(" ");
+    return `> ${reward} ${mention}`;
   });
 
   // Saving winners in db
