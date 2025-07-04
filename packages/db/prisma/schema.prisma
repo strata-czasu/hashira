@@ -99,6 +99,7 @@ model Guild {
   voiceSessions       VoiceSession[]
   lastFishings        LastFishing[]
   giveaways           Giveaway[]
+  items               Item[]
 
   @@map("guild")
 }

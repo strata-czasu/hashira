@@ -1,23 +1,25 @@
 // TODO)) `canBeTraded` or something like that to limit trading of items.
 // For the time being, only type=`item` items are tradeable.
 // TODO)) Some items (like type=`profileTitle`) should be unique per user.
-// TODO)) Items should be guild-specific, along with all their relations!!!
 model Item {
-  id          Int       @id(map: "core_item_pkey") @default(autoincrement())
-  description String?
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  editedAt    DateTime? @db.Timestamp(6)
-  deletedAt   DateTime? @db.Timestamp(6)
-  createdBy   String
-  type        ItemType  @default(item)
-  name        String
+  id        Int       @id(map: "core_item_pkey") @default(autoincrement())
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  editedAt  DateTime? @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  guildId   String
+  createdBy String
 
-  inventoryItem   InventoryItem[]
+  type        ItemType @default(item)
+  name        String
+  description String?
+
+  guild           Guild             @relation(fields: [guildId], references: [id])
   creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
   shopItem        ShopItem[]
-  profileSettings ProfileSettings[]
+  inventoryItem   InventoryItem[]
   badge           Badge?
   tintColor       TintColor?
+  profileSettings ProfileSettings[]
 
   @@map("item")
 }
