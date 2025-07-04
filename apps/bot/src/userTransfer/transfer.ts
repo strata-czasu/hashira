@@ -1,5 +1,6 @@
-import type { User as DbUser, ExtendedPrismaClient } from "@hashira/db";
+import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
 import {
+  ChannelType,
   type User as DiscordUser,
   type Guild,
   RESTJSONErrorCodes,
@@ -201,6 +202,85 @@ const transferMarriage: TransferOperation = async ({ prisma, oldDbUser }) => {
   return `Stary user ma aktywne małżeństwo. Rozwiedziono ${userMention(oldDbUser.id)} (${oldDbUser.id}) z ${userMention(oldDbUser.marriedTo)} (${oldDbUser.marriedTo})`;
 };
 
+const transferChannelRestrictions: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+  moderator,
+}) => {
+  const where: Prisma.ChannelRestrictionWhereInput = {
+    guildId: guild.id,
+    userId: oldUser.id,
+  };
+  const restrictions = await prisma.channelRestriction.findMany({ where });
+  if (restrictions.length === 0) return null;
+
+  const { count: dbUpdateCount } = await prisma.channelRestriction.updateMany({
+    where,
+    data: { userId: newUser.id },
+  });
+
+  let alreadyEndedCount = 0;
+  let overwriteTransferredCount = 0;
+  let overwritePermissionErrors = 0;
+
+  for (const restriction of restrictions) {
+    if (restriction.deletedAt) {
+      alreadyEndedCount++;
+      continue;
+    }
+
+    const channel = await discordTry(
+      () => guild.channels.fetch(restriction.channelId),
+      [RESTJSONErrorCodes.UnknownChannel],
+      () => null,
+    );
+
+    if (channel?.type !== ChannelType.GuildText) {
+      continue;
+    }
+
+    const reason = `Przeniesienie ograniczenia kanału z użytkownika ${oldUser.tag} (${oldUser.id}) na ${newUser.tag} (${newUser.id}), moderator: ${moderator.tag} (${moderator.id})`;
+
+    await discordTry(
+      () => channel.permissionOverwrites.delete(oldUser, reason),
+      [
+        RESTJSONErrorCodes.MissingPermissions,
+        RESTJSONErrorCodes.UnknownPermissionOverwrite,
+      ],
+      () => null,
+    );
+
+    const permissionResult = await discordTry(
+      () =>
+        channel.permissionOverwrites.edit(newUser, { ViewChannel: false }, { reason }),
+      [RESTJSONErrorCodes.MissingPermissions],
+      (e) => {
+        console.error(`Error transferring channel restriction ${restriction.id}:`, e);
+      },
+    );
+
+    if (!permissionResult) {
+      overwritePermissionErrors++;
+    } else {
+      overwriteTransferredCount++;
+    }
+  }
+
+  const messageParts = [`Przeniesione ograniczenia kanałów: ${dbUpdateCount}`];
+  if (alreadyEndedCount > 0) {
+    messageParts.push(`wygaśnięte ograniczenia: ${alreadyEndedCount}`);
+  }
+  if (overwriteTransferredCount > 0) {
+    messageParts.push(`przeniesione uprawnienia: ${overwriteTransferredCount}`);
+  }
+  if (overwritePermissionErrors > 0) {
+    messageParts.push(`błędy w przenoszeniu uprawnień: ${overwritePermissionErrors}`);
+  }
+  return messageParts.join(", ");
+};
+
 // TODO: Voice activity
 // TODO: Experience and level
 
@@ -217,6 +297,7 @@ export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
   { name: "ultimatum", fn: transferUltimatum },
   { name: "wyciszenia", fn: transferMutes },
   { name: "ostrzeżenia", fn: transferWarns },
+  { name: "dostępy do kanałów", fn: transferChannelRestrictions },
   { name: "uczestnictwa w ankietach", fn: transferDmPollParticipations },
   { name: "głosy w ankietach", fn: transferDmPollVotes },
   { name: "wykluczenie z ankiet", fn: transferDmPollExclusion },
