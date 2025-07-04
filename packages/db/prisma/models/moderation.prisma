@@ -1,0 +1,68 @@
+model Warn {
+  id           Int       @id(map: "core_warn_pkey") @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  editedAt     DateTime? @db.Timestamp(6)
+  guildId      String
+  userId       String
+  moderatorId  String
+  reason       String
+  deletedAt    DateTime? @db.Timestamp(6)
+  deleteReason String?
+
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_guildId_guild_id_fk")
+  moderator User  @relation("warn_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_moderatorId_users_id_fk")
+  user      User  @relation("warn_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_userId_users_id_fk")
+
+  @@index([userId], map: "warn_userId_index")
+  @@map("warn")
+}
+
+model Mute {
+  id           Int       @id(map: "core_mute_pkey") @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  editedAt     DateTime? @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+  guildId      String
+  userId       String
+  moderatorId  String
+  reason       String
+  endsAt       DateTime  @db.Timestamp(6)
+  deleteReason String?
+
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_guildId_guild_id_fk")
+  moderator User  @relation("mute_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_moderatorId_users_id_fk")
+  user      User  @relation("mute_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_userId_users_id_fk")
+
+  @@index([userId], map: "mute_userId_index")
+  @@map("mute")
+}
+
+model ChannelRestriction {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+  guildId      String
+  channelId    String
+  userId       String
+  moderatorId  String
+  reason       String
+  endsAt       DateTime? @db.Timestamp(6)
+  deleteReason String?
+
+  guild     Guild @relation(fields: [guildId], references: [id])
+  moderator User  @relation("moderator", fields: [moderatorId], references: [id])
+  user      User  @relation("user", fields: [userId], references: [id])
+}
+
+model Ultimatum {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  endedAt   DateTime?
+  userId    String
+  guildId   String
+  reason    String
+
+  guild Guild @relation(fields: [guildId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+}
