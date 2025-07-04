@@ -1,0 +1,79 @@
+// TODO)) `canBeTraded` or something like that to limit trading of items.
+// For the time being, only type=`item` items are tradeable.
+// TODO)) Some items (like type=`profileTitle`) should be unique per user.
+model Item {
+  id        Int       @id(map: "core_item_pkey") @default(autoincrement())
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  editedAt  DateTime? @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  guildId   String
+  createdBy String
+
+  type        ItemType @default(item)
+  name        String
+  description String?
+
+  guild           Guild             @relation(fields: [guildId], references: [id])
+  creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
+  shopItem        ShopItem[]
+  inventoryItem   InventoryItem[]
+  badge           Badge?
+  tintColor       TintColor?
+  profileSettings ProfileSettings[]
+
+  @@map("item")
+}
+
+enum ItemType {
+  item
+  profileTitle
+  badge // Specifies `badge`
+  staticTintColor // Specifies `tintColor`
+  dynamicTintColorAccess
+  customTintColorAccess
+}
+
+model Badge {
+  id     Int   @id() @default(autoincrement())
+  itemId Int   @unique
+  image  Bytes // PNG binary data, 128x128px
+
+  item                Item                    @relation(fields: [itemId], references: [id])
+  displayedInProfiles DisplayedProfileBadge[]
+}
+
+model TintColor {
+  id     Int @id @default(autoincrement())
+  itemId Int @unique
+  color  Int
+
+  item           Item              @relation(fields: [itemId], references: [id])
+  usedInProfiles ProfileSettings[]
+}
+
+model ShopItem {
+  id        Int       @id(map: "core_shop_item_pkey") @default(autoincrement())
+  itemId    Int
+  price     Int
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  editedAt  DateTime? @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  createdBy String
+  creator   User      @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_createdBy_users_id_fk")
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_itemId_item_id_fk")
+
+  @@map("shopItem")
+}
+
+model InventoryItem {
+  id        Int       @id(map: "core_inventory_item_pkey") @default(autoincrement())
+  itemId    Int
+  userId    String
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
+
+  @@map("inventoryItem")
+}

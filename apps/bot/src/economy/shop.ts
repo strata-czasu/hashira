@@ -84,10 +84,12 @@ export const shop = new Hashira({ name: "shop" })
               .setMinValue(1),
           )
           .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
             const results = await prisma.shopItem.findMany({
               where: {
                 deletedAt: null,
                 item: {
+                  guildId: itx.guildId,
                   name: {
                     contains: itx.options.getFocused(),
                     mode: "insensitive",
@@ -112,7 +114,7 @@ export const shop = new Hashira({ name: "shop" })
             const amount = rawAmount ?? 1;
 
             const success = await prisma.$transaction(async (tx) => {
-              const shopItem = await getShopItem(tx, id);
+              const shopItem = await getShopItem(tx, id, itx.guildId);
               if (!shopItem) {
                 await errorFollowUp(
                   itx,
@@ -176,7 +178,7 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const item = await getItem(prisma, id);
+            const item = await getItem(prisma, id, itx.guildId);
             if (!item) {
               await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
               return;
@@ -203,7 +205,7 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const shopItem = await getShopItem(prisma, id);
+            const shopItem = await getShopItem(prisma, id, itx.guildId);
             if (!shopItem) {
               await errorFollowUp(
                 itx,
@@ -229,7 +231,7 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const shopItem = await getShopItem(prisma, id);
+            const shopItem = await getShopItem(prisma, id, itx.guildId);
             if (!shopItem) {
               await errorFollowUp(
                 itx,

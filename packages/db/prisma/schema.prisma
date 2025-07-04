@@ -32,22 +32,6 @@ model ColorRole {
   @@map("colorRole")
 }
 
-model Currency {
-  id                               Int      @id(map: "core_currency_pkey") @default(autoincrement())
-  name                             String
-  symbol                           String
-  guildId                          String
-  createdBy                        String
-  createdAt                        DateTime @default(now()) @db.Timestamp(6)
-  user                             User     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
-  guild                            Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
-  wallet_wallet_currencyTocurrency Wallet[] @relation("wallet_currencyTocurrency")
-
-  @@unique([guildId, name], map: "currency_guildId_name_unique")
-  @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")
-  @@map("currency")
-}
-
 model DailyPointsRedeems {
   id        Int      @id(map: "strata_daily_points_redeems_pkey") @default(autoincrement())
   guildId   String
@@ -99,6 +83,7 @@ model Guild {
   voiceSessions       VoiceSession[]
   lastFishings        LastFishing[]
   giveaways           Giveaway[]
+  items               Item[]
 
   @@map("guild")
 }
@@ -132,111 +117,6 @@ model ProtectedInvite {
   guildId String
   code    String
   guild   Guild  @relation(fields: [guildId], references: [id])
-}
-
-model InventoryItem {
-  id        Int       @id(map: "core_inventory_item_pkey") @default(autoincrement())
-  itemId    Int
-  userId    String
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt DateTime? @db.Timestamp(6)
-
-  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
-  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
-
-  @@map("inventoryItem")
-}
-
-// TODO)) `canBeTraded` or something like that to limit trading of items.
-// For the time being, only type=`item` items are tradeable.
-// TODO)) Some items (like type=`profileTitle`) should be unique per user.
-// TODO)) Items should be guild-specific, along with all their relations!!!
-model Item {
-  id          Int       @id(map: "core_item_pkey") @default(autoincrement())
-  description String?
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  editedAt    DateTime? @db.Timestamp(6)
-  deletedAt   DateTime? @db.Timestamp(6)
-  createdBy   String
-  type        ItemType  @default(item)
-  name        String
-
-  inventoryItem   InventoryItem[]
-  creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
-  shopItem        ShopItem[]
-  profileSettings ProfileSettings[]
-  badge           Badge?
-  tintColor       TintColor?
-
-  @@map("item")
-}
-
-model Badge {
-  id     Int   @id() @default(autoincrement())
-  itemId Int   @unique
-  image  Bytes // PNG binary data, 128x128px
-
-  item                Item                    @relation(fields: [itemId], references: [id])
-  displayedInProfiles DisplayedProfileBadge[]
-}
-
-model TintColor {
-  id     Int @id @default(autoincrement())
-  itemId Int @unique
-  color  Int
-
-  item           Item              @relation(fields: [itemId], references: [id])
-  usedInProfiles ProfileSettings[]
-}
-
-model Mute {
-  id           Int       @id(map: "core_mute_pkey") @default(autoincrement())
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  editedAt     DateTime? @db.Timestamp(6)
-  deletedAt    DateTime? @db.Timestamp(6)
-  guildId      String
-  userId       String
-  moderatorId  String
-  reason       String
-  endsAt       DateTime  @db.Timestamp(6)
-  deleteReason String?
-  guild        Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_guildId_guild_id_fk")
-  moderator    User      @relation("mute_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_moderatorId_users_id_fk")
-  user         User      @relation("mute_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "mute_userId_users_id_fk")
-
-  @@index([userId], map: "mute_userId_index")
-  @@map("mute")
-}
-
-model ShopItem {
-  id        Int       @id(map: "core_shop_item_pkey") @default(autoincrement())
-  itemId    Int
-  price     Int
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  editedAt  DateTime? @db.Timestamp(6)
-  deletedAt DateTime? @db.Timestamp(6)
-  createdBy String
-  creator   User      @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_createdBy_users_id_fk")
-  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_itemId_item_id_fk")
-
-  @@map("shopItem")
-}
-
-model Transaction {
-  id              Int             @id(map: "core_transaction_pkey") @default(autoincrement())
-  walletId        Int             @map("wallet")
-  relatedWalletId Int?            @map("relatedWallet")
-  relatedUserId   String?
-  amount          Int
-  createdAt       DateTime        @default(now()) @db.Timestamp(6)
-  reason          String?
-  transactionType TransactionType
-  entryType       EntryType
-  relatedUser     User?           @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
-  relatedWallet   Wallet?         @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
-  wallet          Wallet          @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
-
-  @@map("transaction")
 }
 
 model User {
@@ -280,55 +160,6 @@ model User {
   @@map("users")
 }
 
-model Wallet {
-  id                  Int           @id(map: "core_wallet_pkey") @default(autoincrement())
-  name                String
-  userId              String
-  currencyId          Int           @map("currency")
-  default             Boolean       @default(false)
-  createdAt           DateTime      @default(now()) @db.Timestamp(6)
-  guildId             String
-  balance             Int           @default(0)
-  relatedTransactions Transaction[] @relation("transaction_relatedWalletTowallet")
-  transactions        Transaction[] @relation("transaction_walletTowallet")
-  currency            Currency      @relation("wallet_currencyTocurrency", fields: [currencyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_currency_currency_id_fk")
-  guild               Guild         @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_guildId_guild_id_fk")
-  user                User          @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "wallet_userId_users_id_fk")
-
-  @@unique([userId, name, guildId], map: "wallet_userId_name_guildId_unique")
-  @@map("wallet")
-}
-
-model Warn {
-  id           Int       @id(map: "core_warn_pkey") @default(autoincrement())
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  editedAt     DateTime? @db.Timestamp(6)
-  guildId      String
-  userId       String
-  moderatorId  String
-  reason       String
-  deletedAt    DateTime? @db.Timestamp(6)
-  deleteReason String?
-  guild        Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_guildId_guild_id_fk")
-  moderator    User      @relation("warn_moderatorIdTousers", fields: [moderatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_moderatorId_users_id_fk")
-  user         User      @relation("warn_userIdTousers", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "warn_userId_users_id_fk")
-
-  @@index([userId], map: "warn_userId_index")
-  @@map("warn")
-}
-
-model Ultimatum {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now())
-  expiresAt DateTime
-  endedAt   DateTime?
-  userId    String
-  guildId   String
-  reason    String
-  guild     Guild     @relation(fields: [guildId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
-}
-
 model StickyMessage {
   id            Int     @id @default(autoincrement())
   guildId       String
@@ -337,36 +168,6 @@ model StickyMessage {
   content       Json
   enabled       Boolean
   guild         Guild   @relation(fields: [guildId], references: [id])
-}
-
-model ChannelRestriction {
-  id           Int       @id @default(autoincrement())
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt    DateTime? @db.Timestamp(6)
-  guildId      String
-  channelId    String
-  userId       String
-  moderatorId  String
-  reason       String
-  endsAt       DateTime? @db.Timestamp(6)
-  deleteReason String?
-  guild        Guild     @relation(fields: [guildId], references: [id])
-  moderator    User      @relation("moderator", fields: [moderatorId], references: [id])
-  user         User      @relation("user", fields: [userId], references: [id])
-}
-
-enum EntryType {
-  debit
-  credit
-
-  @@map("entry_type")
-}
-
-enum TransactionType {
-  transfer
-  add
-
-  @@map("transaction_type")
 }
 
 enum DiscordButtonStyle {
@@ -378,13 +179,4 @@ enum DiscordButtonStyle {
   premium
 
   @@map("button_style")
-}
-
-enum ItemType {
-  item
-  profileTitle
-  badge // Specifies `badge`
-  staticTintColor // Specifies `tintColor`
-  dynamicTintColorAccess
-  customTintColorAccess
 }
