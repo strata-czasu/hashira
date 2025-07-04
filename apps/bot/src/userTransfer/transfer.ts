@@ -238,7 +238,6 @@ const transferChannelRestrictions: TransferOperation = async ({
     );
 
     if (channel?.type !== ChannelType.GuildText) {
-      overwriteTransferredCount++;
       continue;
     }
 
