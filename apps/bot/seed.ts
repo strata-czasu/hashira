@@ -27,8 +27,7 @@ const createDefaultStrataCzasuCurrency = async (guildId: string) => {
   });
 };
 
-// FIXME)) Run this for each guild once items are per-guild
-const createDefaultItems = async () => {
+const createDefaultItems = async (guildId: string) => {
   const existingItems = await prisma.item.findMany({
     where: { type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
   });
@@ -41,6 +40,7 @@ const createDefaultItems = async () => {
     await prisma.item.create({
       data: {
         ...item,
+        guildId,
         createdBy: USER_IDS.Defous,
       },
     });
@@ -90,10 +90,10 @@ if (isProduction) {
   const testingServers = [GUILD_IDS.Homik, GUILD_IDS.Piwnica];
   for (const guildId of testingServers) {
     await createDefaultStrataCzasuCurrency(guildId);
+    await createDefaultItems(guildId);
     await setDefaultLogChannels(guildId);
     console.log(`Seeding completed for test guild ${guildId}`);
   }
-  await createDefaultItems();
 }
 
 console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);

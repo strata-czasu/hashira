@@ -4,7 +4,7 @@ import {
   Hashira,
   PaginatedView,
 } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
 import {
   type AutocompleteInteraction,
   PermissionFlagsBits,
@@ -21,11 +21,12 @@ const autocompleteItem = async ({
   itx,
 }: {
   prisma: ExtractContext<typeof base>["prisma"];
-  itx: AutocompleteInteraction;
+  itx: AutocompleteInteraction<"cached">;
 }) => {
   const results = await prisma.item.findMany({
     where: {
       deletedAt: null,
+      guildId: itx.guildId,
       name: {
         contains: itx.options.getFocused(),
         mode: "insensitive",
@@ -59,11 +60,16 @@ export const inventory = new Hashira({ name: "inventory" })
             const user = rawUser ?? itx.user;
 
             const items = await prisma.item.findMany({
+              where: { guildId: itx.guildId },
               select: { id: true, name: true },
             });
             const itemNames = new Map(items.map((item) => [item.id, item.name]));
 
-            const where = { userId: user.id, deletedAt: null };
+            const where: Prisma.InventoryItemWhereInput = {
+              item: { guildId: itx.guildId },
+              userId: user.id,
+              deletedAt: null,
+            };
             const paginator = new DatabasePaginator(
               (props, ordering) =>
                 prisma.inventoryItem.groupBy({
@@ -120,8 +126,9 @@ export const inventory = new Hashira({ name: "inventory" })
               const item = await prisma.item.findFirst({
                 where: {
                   id: itemId,
-                  type: "item",
                   deletedAt: null,
+                  guildId: itx.guildId,
+                  type: "item",
                 },
               });
               if (!item) {
@@ -143,6 +150,7 @@ export const inventory = new Hashira({ name: "inventory" })
                     const inventoryItem = await getInventoryItem(
                       tx,
                       itemId,
+                      itx.guildId,
                       itx.user.id,
                     );
                     if (!inventoryItem) {
@@ -178,7 +186,7 @@ export const inventory = new Hashira({ name: "inventory" })
               );
 
               await lock.run(
-                [`inventory_item_transfer_${itx.user.id}_${itemId}`],
+                [`inventory_item_transfer_${itx.guildId}_${itx.user.id}_${itemId}`],
                 async () => dialog.render({ send: itx.editReply.bind(itx) }),
                 () =>
                   errorFollowUp(
@@ -203,6 +211,7 @@ export const inventory = new Hashira({ name: "inventory" })
           )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
           .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
@@ -211,7 +220,7 @@ export const inventory = new Hashira({ name: "inventory" })
 
             await ensureUserExists(prisma, user);
             const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, itemId);
+              const item = await getItem(tx, itemId, itx.guildId);
               if (!item) {
                 await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
                 return null;
@@ -245,6 +254,7 @@ export const inventory = new Hashira({ name: "inventory" })
           )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
           .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
           .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
@@ -252,12 +262,17 @@ export const inventory = new Hashira({ name: "inventory" })
             await itx.deferReply();
 
             const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(prisma, itemId);
+              const item = await getItem(prisma, itemId, itx.guildId);
               if (!item) {
                 return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
               }
 
-              const inventoryItem = await getInventoryItem(tx, itemId, user.id);
+              const inventoryItem = await getInventoryItem(
+                tx,
+                itemId,
+                itx.guildId,
+                user.id,
+              );
               if (!inventoryItem) {
                 await errorFollowUp(
                   itx,
