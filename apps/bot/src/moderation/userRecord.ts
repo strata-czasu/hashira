@@ -75,6 +75,7 @@ export const userRecord = new Hashira({ name: "user-record" })
         if (member) {
           const mutes = await prisma.mute.findMany({
             where: {
+              deletedAt: null,
               guildId: itx.guild.id,
               userId: member.id,
             },
@@ -96,6 +97,7 @@ export const userRecord = new Hashira({ name: "user-record" })
 
           const warns = await prisma.warn.findMany({
             where: {
+              deletedAt: null,
               guildId: itx.guild.id,
               userId: member.id,
             },
