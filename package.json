@@ -40,7 +40,7 @@
   "workspaces": ["tooling/*", "packages/*", "apps/*"],
   "dependencies": {
     "@hashira/utils": "workspace:*",
-    "discord.js": "^14.19.2",
+    "discord.js": "^14.21.0",
     "es-toolkit": "^1.36.0",
     "valibot": "^1.0.0"
   }
