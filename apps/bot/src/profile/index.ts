@@ -18,6 +18,7 @@ import { base } from "../base";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -111,33 +112,19 @@ export const profile = new Hashira({ name: "profile" })
               wallet.balance,
               STRATA_CZASU_CURRENCY.symbol,
             );
-            const textActivity = await prisma.userTextActivity.count({
-              where: {
-                userId: user.id,
-                guildId: itx.guildId,
-                timestamp: {
-                  gte: sub(itx.createdAt, { days: 30 }),
-                },
-              },
+
+            const activitySince = sub(itx.createdAt, { days: 30 });
+            const textActivity = await getUserTextActivity({
+              prisma,
+              guildId: itx.guildId,
+              userId: user.id,
+              since: activitySince,
             });
-            const {
-              _sum: { secondsSpent: voiceActivitySeconds },
-            } = await prisma.voiceSessionTotal.aggregate({
-              _sum: {
-                secondsSpent: true,
-              },
-              where: {
-                isMuted: false,
-                isDeafened: false,
-                isAlone: false,
-                voiceSession: {
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  joinedAt: {
-                    gte: sub(itx.createdAt, { days: 30 }),
-                  },
-                },
-              },
+            const voiceActivitySeconds = await getUserVoiceActivity({
+              prisma,
+              guildId: itx.guildId,
+              userId: user.id,
+              since: activitySince,
             });
 
             const embed = new EmbedBuilder()
@@ -170,10 +157,8 @@ export const profile = new Hashira({ name: "profile" })
               .exp(1234, 23001) // TODO)) Exp value
               .level(42); // TODO)) Level value
 
-            if (voiceActivitySeconds) {
-              const voiceActivityHours = secondsToHours(voiceActivitySeconds);
-              image.voiceActivity(voiceActivityHours);
-            }
+            const voiceActivityHours = secondsToHours(voiceActivitySeconds);
+            image.voiceActivity(voiceActivityHours);
 
             // TODO)) Customizable background image
 
