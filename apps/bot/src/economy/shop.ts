@@ -1,7 +1,16 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Prisma } from "@hashira/db";
+import { Hashira } from "@hashira/core";
+import type { Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { PermissionFlagsBits } from "discord.js";
+import {
+  ButtonBuilder,
+  ButtonStyle,
+  ContainerBuilder,
+  PermissionFlagsBits,
+  SectionBuilder,
+  SeparatorBuilder,
+  TextDisplayBuilder,
+  heading,
+} from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -43,32 +52,52 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const paginator = new DatabasePaginator(
-              (props, price) =>
-                prisma.shopItem.findMany({
-                  ...props,
-                  orderBy: { price },
-                  include: { item: true },
-                }),
-              () => prisma.shopItem.count(),
+            const container = new ContainerBuilder();
+            container.addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(heading("Sklep")),
             );
+            container.addSeparatorComponents(new SeparatorBuilder().setDivider(false));
 
-            const paginatedView = new PaginatedView(
-              paginator,
-              "Sklep",
-              ({ id, price, item: { name, description, type } }) => {
-                const lines = [];
-                lines.push(
-                  `### ${name} - ${formatAmount(price)} [${id}] ${getTypeNameForList(type)}`,
-                );
-                if (description) lines.push(description);
-
-                return lines.join("\n");
+            const shopItems = await prisma.shopItem.findMany({
+              where: {
+                deletedAt: null,
+                item: {
+                  guildId: itx.guildId,
+                },
               },
-              true,
-              "T - tytuł profilu",
-            );
-            await paginatedView.render(itx);
+              orderBy: { price: "asc" },
+              include: {
+                item: true,
+              },
+            });
+
+            // TODO)) Icons?
+            // TODO)) Some indicators about item types?
+            for (const { id, price, item } of shopItems) {
+              const lines = [`**${item.name} - ${formatAmount(price)}**`];
+              if (item.description) lines.push(item.description);
+              container.addSectionComponents(
+                new SectionBuilder()
+                  .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(lines.join("\n")),
+                  )
+                  .setButtonAccessory(
+                    new ButtonBuilder()
+                      .setLabel("Kup")
+                      .setStyle(ButtonStyle.Success)
+                      .setCustomId(`shop-buy-${id}`),
+                  ),
+              );
+            }
+
+            // TODO)) Pagination
+            // TODO)) Ordering
+            await itx.editReply({
+              components: [container],
+              flags: "IsComponentsV2",
+            });
+
+            // TODO)) Handle button clicks
           }),
       )
       .addCommand("kup", (command) =>
