@@ -235,6 +235,9 @@ export const profile = new Hashira({ name: "profile" })
             try {
               const attachment = await image.toSharp().png().toBuffer();
               await itx.editReply({
+                content: subtext(
+                  "Profile graficzne są eksperymentalne, nie wszystkie statystyki są zgodne z prawdą.",
+                ),
                 files: [{ name: `profil-${user.tag}.png`, attachment }],
               });
             } catch (e) {
