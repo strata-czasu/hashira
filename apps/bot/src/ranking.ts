@@ -8,11 +8,6 @@ import { parseDate } from "./util/dateParsing";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
 
-const getMedal = (idx: number) => {
-  const medals = ["🥇", "🥈", "🥉"];
-  return medals[idx - 1] ?? null;
-};
-
 export const ranking = new Hashira({ name: "ranking" })
   .use(base)
   .group("ranking", (group) =>
@@ -92,81 +87,60 @@ export const ranking = new Hashira({ name: "ranking" })
           .addString("okres", (period) =>
             period.setDescription("Okres czasu, np. 2025-01"),
           )
-          .addBoolean("medale", (medals) =>
-            medals
-              .setDescription("Wyświetl medale dla pierwszych trzech miejsc")
-              .setRequired(false),
-          )
-          .handle(
-            async (
-              { prisma },
-              { kanał: channel, okres: rawPeriod, medale: showMedals },
-              itx,
+          .handle(async ({ prisma }, { kanał: channel, okres: rawPeriod }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const periodStart = parseDate(rawPeriod, "start", null);
+            if (!periodStart) {
+              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
+            }
+            const periodEnd = endOfMonth(periodStart);
+
+            const where = {
+              guildId: itx.guild.id,
+              channelId: channel.id,
+              timestamp: {
+                gte: periodStart,
+                lte: periodEnd,
+              },
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.userTextActivity.groupBy({
+                  ...props,
+                  by: "userId",
+                  where,
+                  _count: true,
+                  orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                }),
+              async () => {
+                const count = await prisma.userTextActivity.groupBy({
+                  by: "userId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const formatEntry = (
+              item: { userId: string; _count: number },
+              idx: number,
             ) => {
-              if (!itx.inCachedGuild()) return;
-
-              const periodStart = parseDate(rawPeriod, "start", null);
-              if (!periodStart) {
-                return await errorFollowUp(
-                  itx,
-                  "Nieprawidłowy okres. Przykład: 2025-01",
-                );
-              }
-              const periodEnd = endOfMonth(periodStart);
-
-              const where = {
-                guildId: itx.guild.id,
-                channelId: channel.id,
-                timestamp: {
-                  gte: periodStart,
-                  lte: periodEnd,
-                },
-              };
-              const paginate = new DatabasePaginator(
-                (props, ordering) =>
-                  prisma.userTextActivity.groupBy({
-                    ...props,
-                    by: "userId",
-                    where,
-                    _count: true,
-                    orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
-                  }),
-                async () => {
-                  const count = await prisma.userTextActivity.groupBy({
-                    by: "userId",
-                    where,
-                  });
-                  return count.length;
-                },
-                { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              return (
+                `${idx}\\.` +
+                ` <@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
               );
+            };
 
-              const formatEntry = (
-                item: { userId: string; _count: number },
-                idx: number,
-              ) => {
-                const parts: string[] = [`${idx}\\.`];
-
-                if (showMedals) {
-                  const medal = getMedal(idx);
-                  if (medal) parts.push(medal);
-                }
-
-                parts.push(
-                  `<@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`,
-                );
-                return parts.join(" ");
-              };
-
-              const paginator = new PaginatedView(
-                paginate,
-                `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
-                formatEntry,
-                true,
-              );
-              await paginator.render(itx);
-            },
-          ),
+            const paginator = new PaginatedView(
+              paginate,
+              `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
+              formatEntry,
+              true,
+            );
+            await paginator.render(itx);
+          }),
       )
       .addCommand("serwer", (command) =>
         command
@@ -174,12 +148,7 @@ export const ranking = new Hashira({ name: "ranking" })
           .addString("okres", (period) =>
             period.setDescription("Okres czasu, np. 2025-01"),
           )
-          .addBoolean("medale", (medals) =>
-            medals
-              .setDescription("Wyświetl medale dla pierwszych trzech miejsc")
-              .setRequired(false),
-          )
-          .handle(async ({ prisma }, { okres: rawPeriod, medale: showMedals }, itx) => {
+          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const periodStart = parseDate(rawPeriod, "start", null);
@@ -229,18 +198,11 @@ export const ranking = new Hashira({ name: "ranking" })
               item: { channelId: string; total: number; uniqueMembers: number },
               idx: number,
             ) => {
-              const parts: string[] = [`${idx}\\.`];
-
-              if (showMedals) {
-                const medal = getMedal(idx);
-                if (medal) parts.push(medal);
-              }
-
-              parts.push(
-                `<#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}`,
-                `[${item.uniqueMembers} :busts_in_silhouette:]`,
+              return (
+                `${idx}\\.` +
+                ` <#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
+                ` [${item.uniqueMembers} :busts_in_silhouette:]`
               );
-              return parts.join(" ");
             };
 
             const paginator = new PaginatedView(
@@ -255,7 +217,7 @@ export const ranking = new Hashira({ name: "ranking" })
 
       .addCommand("wedka", (command) =>
         command
-          .setDescription("Ranking łowienia")
+          .setDescription("Ranking wędkarzy")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
 
