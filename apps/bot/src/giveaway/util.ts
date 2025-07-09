@@ -6,12 +6,15 @@ import type {
   GiveawayWinner,
 } from "@hashira/db";
 import {
+  type APIContainerComponent,
   ActionRowBuilder,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  EmbedBuilder,
+  ComponentType,
+  ContainerBuilder,
   type Message,
+  TextDisplayBuilder,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
 
@@ -60,15 +63,27 @@ export async function updateGiveaway(
   giveaway: Giveaway,
   prisma: ExtendedPrismaClient,
 ) {
-  if (giveaway && i.message.embeds[0]) {
+  if (giveaway && i.message.components[0]) {
     const participants: GiveawayParticipant[] =
       await prisma.giveawayParticipant.findMany({
         where: { giveawayId: giveaway.id, isRemoved: false },
       });
-    const updatedEmbed = EmbedBuilder.from(i.message.embeds[0]).setFooter({
-      text: `Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
-    });
-    await i.message.edit({ embeds: [updatedEmbed] });
+
+    const container = new ContainerBuilder(
+      i.message.components[0].toJSON() as APIContainerComponent,
+    );
+
+    const footerIndex = container.components.findIndex(
+      (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+    );
+
+    if (footerIndex === -1) return;
+
+    container.components[footerIndex] = new TextDisplayBuilder().setContent(
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
+    );
+
+    await i.message.edit({ components: [container] });
   }
 }
 
@@ -82,20 +97,35 @@ export async function endGiveaway(
     where: { messageId: message.id, guildId: message.guildId },
   });
 
-  if (!giveaway) return;
+  if (!giveaway || !message.components[0]) return;
 
   // Disable giveaway buttons
-  await message.edit({
+  const container = new ContainerBuilder(
+    message.components[0].toJSON() as APIContainerComponent,
+  );
+
+  const actionRowIndex = container.components.findIndex(
+    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
+  );
+
+  if (actionRowIndex === -1) return;
+
+  const newRow = new ActionRowBuilder<ButtonBuilder>({
+    ...container.components[actionRowIndex]?.data,
     components: [
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ButtonBuilder.from(
-          giveawayButtonRow.components[0] as ButtonBuilder,
-        ).setDisabled(true),
-        ButtonBuilder.from(
-          giveawayButtonRow.components[1] as ButtonBuilder,
-        ).setDisabled(true),
+      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
+        true,
+      ),
+      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
+        true,
       ),
     ],
+  });
+
+  container.components[actionRowIndex] = newRow;
+
+  await message.edit({
+    components: [container],
   });
 
   const [rewards, participants] = await prisma.$transaction([

@@ -2,10 +2,10 @@ import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
 import { type Duration, addSeconds } from "date-fns";
 import {
-  ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder,
+  ContainerBuilder,
+  MessageFlags,
   time,
 } from "discord.js";
 import { base } from "../base";
@@ -65,33 +65,50 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
 
-          const embed = new EmbedBuilder()
-            .setColor(0x0099ff)
-            .setTitle(title || "Giveaway")
-            .setAuthor({
-              name: `${itx.user.username}`,
-              iconURL: itx.user.avatarURL() || "",
-            })
-            .setDescription(
-              `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
-            \nKoniec ${time(endTime, "R")}`,
-            )
-            .setFooter({ text: `Uczestnicy: 0 | Łącznie nagród: ${totalRewards}` });
-
           const confirmButton = new ButtonBuilder()
             .setCustomId("giveaway-option:confirm")
             .setLabel("Potwierdź poprawność")
             .setStyle(ButtonStyle.Secondary);
 
+          const messageContainer = new ContainerBuilder()
+            .setAccentColor(0x0099ff)
+            .addTextDisplayComponents((textDisplay) =>
+              textDisplay.setContent(`# ${title || "Giveaway"}`),
+            )
+            .addSeparatorComponents((separator) => separator)
+            // .setAuthor({
+            //   name: `${itx.user.username}`,
+            //   iconURL: itx.user.avatarURL() || "",
+            // })
+            .addTextDisplayComponents((textDisplay) =>
+              textDisplay.setContent(
+                `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
+            \nKoniec ${time(endTime, "R")}`,
+              ),
+            )
+            .addSeparatorComponents((separator) => separator)
+            .addTextDisplayComponents((textDisplay) =>
+              textDisplay
+                .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards}`)
+                .setId(1),
+            )
+            .addTextDisplayComponents((textDisplay) =>
+              textDisplay.setContent(
+                "Potwierdź jeśli wszystko się zgadza w giveawayu.",
+              ),
+            )
+            .addActionRowComponents((actionRow) =>
+              actionRow.addComponents([confirmButton]),
+            );
+
           const responseConfirm = await itx.reply({
-            content: "Potwierdź jeśli wszystko się zgadza w giveawayu.",
-            embeds: [embed],
-            components: [
-              new ActionRowBuilder<ButtonBuilder>().addComponents(confirmButton),
-            ],
+            components: [messageContainer],
             withResponse: true,
-            flags: "Ephemeral",
+            flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
           });
+
+          // Removes confirmation components
+          messageContainer.spliceComponents(5, 2);
 
           if (!responseConfirm.resource?.message) {
             throw new Error("Failed to receive response from interaction reply");
@@ -108,10 +125,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           itx.deleteReply();
 
+          messageContainer.addActionRowComponents(giveawayButtonRow.setId(2));
+
           const response = await itx.followUp({
-            embeds: [embed],
-            components: [giveawayButtonRow],
+            components: [messageContainer],
             withResponse: true,
+            flags: MessageFlags.IsComponentsV2,
           });
 
           if (!response) {
