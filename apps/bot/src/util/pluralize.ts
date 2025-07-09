@@ -42,6 +42,12 @@ export const pluralizers = {
     1: "wiadomość",
     2: "wiadomości",
   }),
+  points: createPluralize({
+    0: "punktów",
+    1: "punkt",
+    2: "punkty",
+    5: "punktów",
+  }),
   days: createPluralize({
     0: "dni",
     1: "dzień",

@@ -195,7 +195,6 @@ export const ranking = new Hashira({ name: "ranking" })
                 lte: periodEnd,
               },
             };
-            Prisma.SortOrder;
             const paginate = new DatabasePaginator(
               (props, ordering) => {
                 const sqlOrdering = Prisma.sql([ordering]);
@@ -248,6 +247,64 @@ export const ranking = new Hashira({ name: "ranking" })
               paginate,
               `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
               formatEntry,
+              true,
+            );
+            await paginator.render(itx);
+          }),
+      )
+
+      .addCommand("wedka", (command) =>
+        command
+          .setDescription("Ranking łowienia")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const where: Prisma.TransactionWhereInput = {
+              wallet: { guildId: itx.guild.id },
+              reason: { startsWith: "Łowienie" },
+              transactionType: "add",
+              entryType: "credit",
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.transaction.groupBy({
+                  ...props,
+                  by: "walletId",
+                  where,
+                  _count: true,
+                  _sum: { amount: true },
+                  orderBy: [{ _sum: { amount: ordering } }, { walletId: ordering }],
+                }),
+              async () => {
+                const count = await prisma.transaction.groupBy({
+                  by: "walletId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const wallets = await prisma.wallet.findMany({
+              where: { guildId: itx.guild.id },
+              select: { id: true, userId: true },
+            });
+            const walletToUserId = new Map<number, string>(
+              wallets.map((wallet) => [wallet.id, wallet.userId]),
+            );
+
+            const paginator = new PaginatedView(
+              paginate,
+              "Ranking wędkarzy",
+              (item, idx) => {
+                const amountSum = item._sum.amount ?? 0;
+                const userId = walletToUserId.get(item.walletId);
+                return (
+                  `${idx}\\.` +
+                  ` <@${userId}> - ${amountSum.toLocaleString("pl-PL")} ${pluralizers.points(amountSum)} ` +
+                  `[${item._count} :fishing_pole_and_fish:]`
+                );
+              },
               true,
             );
             await paginator.render(itx);
