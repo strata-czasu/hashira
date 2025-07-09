@@ -21,6 +21,7 @@ import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { ping } from "./ping";
 import { profile } from "./profile";
+import { ranking } from "./ranking";
 import { roles } from "./roles";
 import { settings } from "./settings";
 import { stickyMessage } from "./stickyMessage/stickyMessage";
@@ -73,6 +74,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(massDM)
   .use(fish)
   .use(giveaway)
+  .use(ranking)
   .handle("ready", async () => {
     console.log("Bot is ready!");
   });
