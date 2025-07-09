@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Item } from "@hashira/db";
+import { DatabasePaginator, type Item, type Prisma } from "@hashira/db";
 import { PermissionFlagsBits, bold, inlineCode, italic } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
@@ -29,7 +29,10 @@ export const items = new Hashira({ name: "items" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const where = { deletedAt: null };
+            const where: Prisma.ItemWhereInput = {
+              deletedAt: null,
+              guildId: itx.guildId,
+            };
 
             const paginator = new DatabasePaginator(
               (props) => prisma.item.findMany({ where, ...props }),
@@ -66,10 +69,11 @@ export const items = new Hashira({ name: "items" })
               await ensureUserExists(tx, itx.user);
               const item = await tx.item.create({
                 data: {
-                  name,
-                  description,
+                  guildId: itx.guildId,
                   createdBy: itx.user.id,
                   type: "item",
+                  name,
+                  description,
                 },
               });
 
@@ -111,6 +115,7 @@ export const items = new Hashira({ name: "items" })
               data: {
                 name,
                 description,
+                guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "profileTitle",
               },
@@ -148,6 +153,7 @@ export const items = new Hashira({ name: "items" })
                 item: {
                   create: {
                     name,
+                    guildId: itx.guildId,
                     createdBy: itx.user.id,
                     type: "badge",
                   },
@@ -181,6 +187,7 @@ export const items = new Hashira({ name: "items" })
                 item: {
                   create: {
                     name,
+                    guildId: itx.guildId,
                     createdBy: itx.user.id,
                     type: "staticTintColor",
                   },
@@ -215,7 +222,7 @@ export const items = new Hashira({ name: "items" })
             }
 
             const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, id);
+              const item = await getItem(tx, id, itx.guildId);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;
@@ -245,7 +252,7 @@ export const items = new Hashira({ name: "items" })
             await itx.deferReply();
 
             const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, id);
+              const item = await getItem(tx, id, itx.guildId);
               if (!item) {
                 await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
                 return null;

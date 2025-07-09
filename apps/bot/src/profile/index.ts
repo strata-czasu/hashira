@@ -18,6 +18,7 @@ import { base } from "../base";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -38,12 +39,17 @@ async function fetchAsBuffer(url: string | URL) {
   return Buffer.from(arrbuf);
 }
 
-async function getUserAccesses(prisma: BaseContext["prisma"], userId: string) {
+async function getUserAccesses(
+  prisma: BaseContext["prisma"],
+  guildId: string,
+  userId: string,
+) {
   const ownedItems = await prisma.inventoryItem.findMany({
     where: {
       userId,
       deletedAt: null,
       item: {
+        guildId,
         type: {
           in: ["dynamicTintColorAccess", "customTintColorAccess"],
         },
@@ -106,33 +112,19 @@ export const profile = new Hashira({ name: "profile" })
               wallet.balance,
               STRATA_CZASU_CURRENCY.symbol,
             );
-            const textActivity = await prisma.userTextActivity.count({
-              where: {
-                userId: user.id,
-                guildId: itx.guildId,
-                timestamp: {
-                  gte: sub(itx.createdAt, { days: 30 }),
-                },
-              },
+
+            const activitySince = sub(itx.createdAt, { days: 30 });
+            const textActivity = await getUserTextActivity({
+              prisma,
+              guildId: itx.guildId,
+              userId: user.id,
+              since: activitySince,
             });
-            const {
-              _sum: { secondsSpent: voiceActivitySeconds },
-            } = await prisma.voiceSessionTotal.aggregate({
-              _sum: {
-                secondsSpent: true,
-              },
-              where: {
-                isMuted: false,
-                isDeafened: false,
-                isAlone: false,
-                voiceSession: {
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  joinedAt: {
-                    gte: sub(itx.createdAt, { days: 30 }),
-                  },
-                },
-              },
+            const voiceActivitySeconds = await getUserVoiceActivity({
+              prisma,
+              guildId: itx.guildId,
+              userId: user.id,
+              since: activitySince,
             });
 
             const embed = new EmbedBuilder()
@@ -165,10 +157,8 @@ export const profile = new Hashira({ name: "profile" })
               .exp(1234, 23001) // TODO)) Exp value
               .level(42); // TODO)) Level value
 
-            if (voiceActivitySeconds) {
-              const voiceActivityHours = secondsToHours(voiceActivitySeconds);
-              image.voiceActivity(voiceActivityHours);
-            }
+            const voiceActivityHours = secondsToHours(voiceActivitySeconds);
+            image.voiceActivity(voiceActivityHours);
 
             // TODO)) Customizable background image
 
@@ -245,6 +235,9 @@ export const profile = new Hashira({ name: "profile" })
             try {
               const attachment = await image.toSharp().png().toBuffer();
               await itx.editReply({
+                content: subtext(
+                  "Profile graficzne są eksperymentalne, nie wszystkie statystyki są zgodne z prawdą.",
+                ),
                 files: [{ name: `profil-${user.tag}.png`, attachment }],
               });
             } catch (e) {
@@ -277,7 +270,7 @@ export const profile = new Hashira({ name: "profile" })
                 if (!itx.inCachedGuild()) return;
 
                 const where: Prisma.InventoryItemWhereInput = {
-                  item: { type: "profileTitle" },
+                  item: { guildId: itx.guildId, type: "profileTitle" },
                   userId: itx.user.id,
                   deletedAt: null,
                 };
@@ -308,11 +301,13 @@ export const profile = new Hashira({ name: "profile" })
                 command.setDescription("Tytuł").setAutocomplete(true),
               )
               .autocomplete(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
                 const results = await prisma.inventoryItem.findMany({
                   where: {
                     userId: itx.user.id,
                     deletedAt: null,
                     item: {
+                      guildId: itx.guildId,
                       type: "profileTitle",
                       name: {
                         contains: itx.options.getFocused(),
@@ -332,7 +327,11 @@ export const profile = new Hashira({ name: "profile" })
 
                 const ownedTitle = await prisma.inventoryItem.findFirst({
                   where: {
-                    item: { id, type: "profileTitle" },
+                    item: {
+                      id,
+                      guildId: itx.guildId,
+                      type: "profileTitle",
+                    },
                     userId: itx.user.id,
                     deletedAt: null,
                   },
@@ -369,7 +368,7 @@ export const profile = new Hashira({ name: "profile" })
                 if (!itx.inCachedGuild()) return;
 
                 const where: Prisma.InventoryItemWhereInput = {
-                  item: { type: "badge" },
+                  item: { guildId: itx.guildId, type: "badge" },
                   userId: itx.user.id,
                   deletedAt: null,
                 };
@@ -412,11 +411,13 @@ export const profile = new Hashira({ name: "profile" })
                 id.setDescription("Odznaka").setAutocomplete(true),
               )
               .autocomplete(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
                 const results = await prisma.inventoryItem.findMany({
                   where: {
                     userId: itx.user.id,
                     deletedAt: null,
                     item: {
+                      guildId: itx.guildId,
                       type: "badge",
                       name: {
                         contains: itx.options.getFocused(),
@@ -437,7 +438,11 @@ export const profile = new Hashira({ name: "profile" })
 
                   const ownedBadge = await prisma.inventoryItem.findFirst({
                     where: {
-                      item: { id, type: "badge" },
+                      item: {
+                        id,
+                        guildId: itx.guildId,
+                        type: "badge",
+                      },
                       userId: itx.user.id,
                       deletedAt: null,
                     },
@@ -523,7 +528,7 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.deferReply();
 
                 const where: Prisma.InventoryItemWhereInput = {
-                  item: { type: "staticTintColor" },
+                  item: { guildId: itx.guildId, type: "staticTintColor" },
                   userId: itx.user.id,
                   deletedAt: null,
                 };
@@ -537,7 +542,11 @@ export const profile = new Hashira({ name: "profile" })
                   () => prisma.inventoryItem.count({ where }),
                 );
 
-                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const accesses = await getUserAccesses(
+                  prisma,
+                  itx.guildId,
+                  itx.user.id,
+                );
                 const accessBadges: { name: string; access: boolean }[] = [
                   {
                     name: "Dynamiczny kolor z nicku",
@@ -596,11 +605,13 @@ export const profile = new Hashira({ name: "profile" })
                 id.setDescription("Przedmiot").setAutocomplete(true),
               )
               .autocomplete(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
                 const results = await prisma.inventoryItem.findMany({
                   where: {
                     userId: itx.user.id,
                     deletedAt: null,
                     item: {
+                      guildId: itx.guildId,
                       type: "staticTintColor",
                       name: {
                         contains: itx.options.getFocused(),
@@ -621,7 +632,11 @@ export const profile = new Hashira({ name: "profile" })
 
                 const ownedColor = await prisma.inventoryItem.findFirst({
                   where: {
-                    item: { id, type: "staticTintColor" },
+                    item: {
+                      id,
+                      guildId: itx.guildId,
+                      type: "staticTintColor",
+                    },
                     userId: itx.user.id,
                     deletedAt: null,
                   },
@@ -671,7 +686,11 @@ export const profile = new Hashira({ name: "profile" })
                 await itx.deferReply();
 
                 await ensureUserExists(prisma, itx.user);
-                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const accesses = await getUserAccesses(
+                  prisma,
+                  itx.guildId,
+                  itx.user.id,
+                );
                 const hasAccess = accesses.includes("dynamicTintColorAccess");
                 if (!hasAccess) {
                   return await errorFollowUp(
@@ -715,7 +734,11 @@ export const profile = new Hashira({ name: "profile" })
                 }
 
                 await ensureUserExists(prisma, itx.user);
-                const accesses = await getUserAccesses(prisma, itx.user.id);
+                const accesses = await getUserAccesses(
+                  prisma,
+                  itx.guildId,
+                  itx.user.id,
+                );
                 const hasAccess = accesses.includes("customTintColorAccess");
                 if (!hasAccess) {
                   return await errorFollowUp(

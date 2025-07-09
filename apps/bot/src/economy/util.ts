@@ -5,19 +5,25 @@ export type GetCurrencyConditionOptions =
   | { currencySymbol: string }
   | { currencyId: number };
 
-export const getItem = (prisma: PrismaTransaction, id: number) =>
+export const getItem = (prisma: PrismaTransaction, id: number, guildId: string) =>
   prisma.item.findFirst({
     where: {
       id,
       deletedAt: null,
+      guildId,
     },
   });
 
-export const getShopItem = async (prisma: PrismaTransaction, id: number) =>
+export const getShopItem = async (
+  prisma: PrismaTransaction,
+  id: number,
+  guildId: string,
+) =>
   prisma.shopItem.findFirst({
     where: {
       id,
       deletedAt: null,
+      item: { guildId },
     },
     include: {
       item: true,
@@ -27,6 +33,7 @@ export const getShopItem = async (prisma: PrismaTransaction, id: number) =>
 export const getInventoryItem = async (
   prisma: PrismaTransaction,
   itemId: number,
+  guildId: string,
   userId: string,
 ) =>
   prisma.inventoryItem.findFirst({
@@ -34,6 +41,7 @@ export const getInventoryItem = async (
       itemId,
       userId,
       deletedAt: null,
+      item: { guildId },
     },
   });
 

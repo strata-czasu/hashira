@@ -9,6 +9,7 @@ import {
   time,
 } from "discord.js";
 import { base } from "../base";
+import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { formatMuteLength } from "./util";
@@ -75,6 +76,7 @@ export const userRecord = new Hashira({ name: "user-record" })
         if (member) {
           const mutes = await prisma.mute.findMany({
             where: {
+              deletedAt: null,
               guildId: itx.guild.id,
               userId: member.id,
             },
@@ -96,6 +98,7 @@ export const userRecord = new Hashira({ name: "user-record" })
 
           const warns = await prisma.warn.findMany({
             where: {
+              deletedAt: null,
               guildId: itx.guild.id,
               userId: member.id,
             },
@@ -115,36 +118,21 @@ export const userRecord = new Hashira({ name: "user-record" })
             });
           }
 
-          const textActivity = await prisma.userTextActivity.count({
-            where: {
-              userId: user.id,
-              guildId: itx.guildId,
-              timestamp: {
-                gte: sub(itx.createdAt, { days: 30 }),
-              },
-            },
+          const activitySince = sub(itx.createdAt, { days: 30 });
+          const textActivity = await getUserTextActivity({
+            prisma,
+            guildId: itx.guildId,
+            userId: user.id,
+            since: activitySince,
           });
-          const {
-            _sum: { secondsSpent: voiceActivitySeconds },
-          } = await prisma.voiceSessionTotal.aggregate({
-            _sum: {
-              secondsSpent: true,
-            },
-            where: {
-              isMuted: false,
-              isDeafened: false,
-              isAlone: false,
-              voiceSession: {
-                guildId: itx.guildId,
-                userId: user.id,
-                joinedAt: {
-                  gte: sub(itx.createdAt, { days: 30 }),
-                },
-              },
-            },
+          const voiceActivitySeconds = await getUserVoiceActivity({
+            prisma,
+            guildId: itx.guildId,
+            userId: user.id,
+            since: activitySince,
           });
           const activityLines = [
-            `🎙️ ${secondsToHours(voiceActivitySeconds ?? 0)}h`,
+            `🎙️ ${secondsToHours(voiceActivitySeconds)}h`,
             `🗨️ ${textActivity} wiad.`,
           ];
           embed.addFields({
