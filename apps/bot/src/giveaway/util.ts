@@ -14,6 +14,8 @@ import {
   ComponentType,
   ContainerBuilder,
   type Message,
+  MessageFlags,
+  SeparatorSpacingSize,
   TextDisplayBuilder,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
@@ -168,8 +170,15 @@ export async function endGiveaway(
     });
   }
 
+  const resultContainer = new ContainerBuilder()
+    .setAccentColor(0x00ff99)
+    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway:"))
+    .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
+    .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
+
   await message.reply({
-    content: `:tada: Wyniki giveaway:\n${results.join("\n")}`,
+    components: [resultContainer],
     allowedMentions: { users: participants.map((p) => p.userId) },
+    flags: MessageFlags.IsComponentsV2,
   });
 }

@@ -4,8 +4,10 @@ import { type Duration, addSeconds } from "date-fns";
 import {
   ButtonBuilder,
   ButtonStyle,
+  ComponentType,
   ContainerBuilder,
   MessageFlags,
+  SeparatorSpacingSize,
   time,
 } from "discord.js";
 import { base } from "../base";
@@ -75,11 +77,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
             .addTextDisplayComponents((textDisplay) =>
               textDisplay.setContent(`# ${title || "Giveaway"}`),
             )
-            .addSeparatorComponents((separator) => separator)
-            // .setAuthor({
-            //   name: `${itx.user.username}`,
-            //   iconURL: itx.user.avatarURL() || "",
-            // })
+            .addTextDisplayComponents((textDisplay) =>
+              textDisplay.setContent(`-# Host: ${itx.user}`),
+            )
+            .addSeparatorComponents((separator) =>
+              separator.setSpacing(SeparatorSpacingSize.Large),
+            )
             .addTextDisplayComponents((textDisplay) =>
               textDisplay.setContent(
                 `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
@@ -93,9 +96,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 .setId(1),
             )
             .addTextDisplayComponents((textDisplay) =>
-              textDisplay.setContent(
-                "Potwierdź jeśli wszystko się zgadza w giveawayu.",
-              ),
+              textDisplay
+                .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
+                .setId(99),
             )
             .addActionRowComponents((actionRow) =>
               actionRow.addComponents([confirmButton]),
@@ -108,7 +111,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
           });
 
           // Removes confirmation components
-          messageContainer.spliceComponents(5, 2);
+          const confirmIndex = messageContainer.components.findIndex(
+            (c) => c.data?.id === 99 && c.data?.type === ComponentType.TextDisplay,
+          );
+          messageContainer.spliceComponents(confirmIndex, 2);
 
           if (!responseConfirm.resource?.message) {
             throw new Error("Failed to receive response from interaction reply");
