@@ -14,6 +14,7 @@ import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
+import { writeHealthCheck } from "./healthcheck";
 import { inviteManagement } from "./inviteManagement";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
@@ -77,6 +78,8 @@ export const bot = new Hashira({ name: "bot" })
   .use(ranking)
   .handle("ready", async () => {
     console.log("Bot is ready!");
+    await writeHealthCheck(); // Initial write on startup
+    setInterval(writeHealthCheck, 1000 * 60); // Write heartbeat every minute
   });
 
 if (import.meta.main) {
