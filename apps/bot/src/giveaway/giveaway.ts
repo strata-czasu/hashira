@@ -74,35 +74,27 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           const messageContainer = new ContainerBuilder()
             .setAccentColor(0x0099ff)
-            .addTextDisplayComponents((textDisplay) =>
-              textDisplay.setContent(`# ${title || "Giveaway"}`),
-            )
-            .addTextDisplayComponents((textDisplay) =>
-              textDisplay.setContent(`-# Host: ${itx.user}`),
-            )
-            .addSeparatorComponents((separator) =>
-              separator.setSpacing(SeparatorSpacingSize.Large),
-            )
-            .addTextDisplayComponents((textDisplay) =>
-              textDisplay.setContent(
+            .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
+            .addTextDisplayComponents((td) => td.setContent(`-# Host: ${itx.user}`))
+            .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
+            .addTextDisplayComponents((td) =>
+              td.setContent(
                 `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
             \nKoniec ${time(endTime, "R")}`,
               ),
             )
-            .addSeparatorComponents((separator) => separator)
-            .addTextDisplayComponents((textDisplay) =>
-              textDisplay
+            .addSeparatorComponents((s) => s)
+            .addTextDisplayComponents((td) =>
+              td
                 .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards}`)
                 .setId(1),
             )
-            .addTextDisplayComponents((textDisplay) =>
-              textDisplay
+            .addTextDisplayComponents((td) =>
+              td
                 .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
                 .setId(99),
             )
-            .addActionRowComponents((actionRow) =>
-              actionRow.addComponents([confirmButton]),
-            );
+            .addActionRowComponents((ar) => ar.addComponents([confirmButton]));
 
           const responseConfirm = await itx.reply({
             components: [messageContainer],
