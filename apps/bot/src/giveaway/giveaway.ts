@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
 import { type Duration, addSeconds } from "date-fns";
 import {
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
@@ -10,6 +11,7 @@ import {
   SeparatorSpacingSize,
   time,
 } from "discord.js";
+import { round } from "es-toolkit";
 import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -17,6 +19,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   endGiveaway,
+  formatBanner,
   giveawayButtonRow,
   leaveButtonRow,
   parseRewards,
@@ -44,14 +47,42 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .setDescription("Tytuł giveaway'a, domyślnie 'Giveaway'")
           .setRequired(false),
       )
+      .addAttachment("baner", (baner) =>
+        baner
+          .setDescription("Baner wyświetlany na górze giveawaya.")
+          .setRequired(false),
+      )
       .handle(
         async (
           { prisma, messageQueue },
-          { nagrody: rewards, "czas-trwania": duration, tytul: title },
+          { nagrody: rewards, "czas-trwania": duration, tytul: title, baner: banner },
           itx,
         ) => {
           if (!itx.inCachedGuild()) return;
           await ensureUserExists(prisma, itx.user);
+
+          await itx.deferReply({
+            flags: MessageFlags.Ephemeral,
+          });
+
+          const files: AttachmentBuilder[] = [];
+          if (banner) {
+            if (banner.size > 4_000_000) {
+              return await errorFollowUp(
+                itx,
+                `Baner jest za duży (>4MB). Aktualny rozmiar pliku: ${round(banner.size / 1_000_000, 1)} MB.`,
+              );
+            }
+            const buffer = await formatBanner(banner);
+            if (!buffer) {
+              return await errorFollowUp(
+                itx,
+                `Podano nieprawidłowy format baneru. (${banner.contentType})`,
+              );
+            }
+            const attachment = new AttachmentBuilder(buffer).setName("banner.webp");
+            attachment && files.push(attachment);
+          }
 
           const parsedRewards: GiveawayReward[] = parseRewards(rewards);
 
@@ -68,12 +99,23 @@ export const giveaway = new Hashira({ name: "giveaway" })
           const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
 
           const confirmButton = new ButtonBuilder()
-            .setCustomId("giveaway-option:confirm")
+            .setCustomId("confirm")
             .setLabel("Potwierdź poprawność")
             .setStyle(ButtonStyle.Secondary);
 
           const messageContainer = new ContainerBuilder()
             .setAccentColor(0x0099ff)
+            .addMediaGalleryComponents((mg) =>
+              mg.addItems((mgi) =>
+                mgi
+                  .setDescription("cool banner :like:")
+                  .setURL(
+                    banner
+                      ? "attachment://banner.webp"
+                      : "https://i.imgur.com/iov10WG.png",
+                  ),
+              ),
+            )
             .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
             .addTextDisplayComponents((td) => td.setContent(`-# Host: ${itx.user}`))
             .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
@@ -96,10 +138,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             )
             .addActionRowComponents((ar) => ar.addComponents([confirmButton]));
 
-          const responseConfirm = await itx.reply({
+          const responseConfirm = await itx.editReply({
             components: [messageContainer],
-            withResponse: true,
-            flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
+            files: files,
+            flags: [MessageFlags.IsComponentsV2],
           });
 
           // Removes confirmation components
@@ -108,13 +150,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
           );
           messageContainer.spliceComponents(confirmIndex, 2);
 
-          if (!responseConfirm.resource?.message) {
+          if (!responseConfirm) {
             throw new Error("Failed to receive response from interaction reply");
           }
 
           const confirmation = await waitForButtonClick(
-            responseConfirm.resource.message,
-            "giveaway-option:confirm",
+            responseConfirm,
+            "confirm",
             { minutes: 1 },
             (interaction) => interaction.user.id === itx.user.id,
           );
@@ -127,6 +169,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           const response = await itx.followUp({
             components: [messageContainer],
+            files: files,
             withResponse: true,
             flags: MessageFlags.IsComponentsV2,
           });

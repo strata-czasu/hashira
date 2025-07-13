@@ -8,6 +8,7 @@ import type {
 import {
   type APIContainerComponent,
   ActionRowBuilder,
+  type Attachment,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
@@ -19,6 +20,7 @@ import {
   TextDisplayBuilder,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
+import sharp from "sharp";
 
 const joinButton = new ButtonBuilder()
   .setCustomId("giveaway-option:join")
@@ -58,6 +60,54 @@ export function parseRewards(input: string): GiveawayReward[] {
       }
       return { id: 0, giveawayId: 0, amount: 1, reward: item };
     });
+}
+
+const allowedMimeTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/apng",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+];
+
+const targetAspect = 800 / 260;
+
+export async function formatBanner(banner: Attachment) {
+  if (
+    !banner.contentType ||
+    !allowedMimeTypes.includes(banner.contentType) ||
+    !banner.width ||
+    !banner.height
+  )
+    return null;
+
+  const origAspect = banner.width / banner.height;
+  const maxSide = Math.max(banner.width, banner.height);
+
+  let targetWidth: number;
+  let targetHeight: number;
+
+  if (origAspect >= targetAspect) {
+    targetHeight = maxSide;
+    targetWidth = Math.round(maxSide * targetAspect);
+  } else {
+    targetWidth = maxSide;
+    targetHeight = Math.round(maxSide / targetAspect);
+  }
+
+  const res = await fetch(banner.url);
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  const formatted = await sharp(buffer, { animated: true })
+    .resize(targetWidth, targetHeight, {
+      fit: "cover",
+      position: "centre",
+    })
+    .toFormat("webp")
+    .toBuffer();
+
+  return formatted;
 }
 
 export async function updateGiveaway(
@@ -172,7 +222,7 @@ export async function endGiveaway(
 
   const resultContainer = new ContainerBuilder()
     .setAccentColor(0x00ff99)
-    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway:"))
+    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway"))
     .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
     .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
 
