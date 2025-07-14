@@ -78,19 +78,37 @@ const allowedMimeTypes = [
   "image/avif",
 ];
 
-export async function formatBanner(banner: Attachment, ratio: GiveawayBannerRatio) {
+export function getExtension(mimeType: string | null) {
+  if (!mimeType) return "webp";
+  switch (mimeType) {
+    case "image/jpeg":
+      return "jpg";
+
+    default:
+      return mimeType.split("/")[1];
+  }
+}
+
+export async function formatBanner(
+  banner: Attachment,
+  ratio: GiveawayBannerRatio,
+): Promise<[Buffer | null, string]> {
   if (
     !banner.contentType ||
     !allowedMimeTypes.includes(banner.contentType) ||
     !banner.width ||
     !banner.height
   )
-    return null;
+    return [null, ""];
 
   const res = await fetch(banner.url);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  if (ratio === GiveawayBannerRatio.Auto) return buffer;
+  if (ratio === GiveawayBannerRatio.Auto) {
+    const ext = getExtension(banner.contentType);
+    if (!ext) return [null, ""];
+    return [buffer, ext];
+  }
 
   const targetAspect = (() => {
     switch (ratio) {
@@ -105,7 +123,7 @@ export async function formatBanner(banner: Attachment, ratio: GiveawayBannerRati
     }
   })();
 
-  if (!targetAspect) return null;
+  if (!targetAspect) return [null, ""];
 
   const origAspect = banner.width / banner.height;
   const maxSide = Math.max(banner.width, banner.height);
@@ -129,7 +147,7 @@ export async function formatBanner(banner: Attachment, ratio: GiveawayBannerRati
     .toFormat("webp")
     .toBuffer();
 
-  return formatted;
+  return [formatted, "webp"];
 }
 
 export function getStaticBanner(title: string) {

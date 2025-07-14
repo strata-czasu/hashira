@@ -21,6 +21,7 @@ import {
   GiveawayBannerRatio,
   endGiveaway,
   formatBanner,
+  getExtension,
   getStaticBanner,
   giveawayButtonRow,
   leaveButtonRow,
@@ -101,7 +102,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 `Baner jest za duży (>4MB). Aktualny rozmiar pliku: ${round(banner.size / 1_000_000, 1)} MB.`,
               );
             }
-            const buffer = await formatBanner(banner, ratio);
+            const [buffer, ext] = await formatBanner(banner, ratio);
             if (!buffer) {
               return await errorFollowUp(
                 itx,
@@ -109,7 +110,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               );
             }
 
-            const attachment = new AttachmentBuilder(buffer).setName("banner.webp");
+            const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
             attachment && files.push(attachment);
           }
 
@@ -141,7 +142,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   .setDescription("cool banner :like:")
                   .setURL(
                     banner
-                      ? "attachment://banner.webp"
+                      ? `attachment://banner.${getExtension(banner.contentType)}`
                       : getStaticBanner(title || "Giveaway"),
                   ),
               ),
