@@ -21,6 +21,7 @@ import {
   GiveawayBannerRatio,
   endGiveaway,
   formatBanner,
+  getStaticBanner,
   giveawayButtonRow,
   leaveButtonRow,
   parseRewards,
@@ -58,10 +59,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .setDescription("Konwertuje baner do wybranego współczynnika proporcji.")
           .setRequired(false)
           .addChoices(
-            { name: "Brak", value: GiveawayBannerRatio.None },
-            { name: "Auto", value: GiveawayBannerRatio.Auto },
-            { name: "Landscape", value: GiveawayBannerRatio.Landscape },
-            { name: "Portrait", value: GiveawayBannerRatio.Portrait },
+            { name: "Brak baneru", value: GiveawayBannerRatio.None },
+            { name: "Bez zmian", value: GiveawayBannerRatio.Auto },
+            { name: "Szeroki", value: GiveawayBannerRatio.Landscape },
+            { name: "Wysoki", value: GiveawayBannerRatio.Portrait },
           ),
       )
       .handle(
@@ -137,7 +138,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   .setURL(
                     banner
                       ? "attachment://banner.webp"
-                      : "https://i.imgur.com/iov10WG.png",
+                      : getStaticBanner(title || "Giveaway"),
                   ),
               ),
             );

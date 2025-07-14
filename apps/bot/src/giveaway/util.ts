@@ -132,6 +132,12 @@ export async function formatBanner(banner: Attachment, ratio: GiveawayBannerRati
   return formatted;
 }
 
+export function getStaticBanner(title: string) {
+  if (title.toLowerCase().includes("ruletka")) return "https://i.imgur.com/0O3wOcx.png";
+
+  return "https://i.imgur.com/iov10WG.png";
+}
+
 export async function updateGiveaway(
   i: ButtonInteraction,
   giveaway: Giveaway,
