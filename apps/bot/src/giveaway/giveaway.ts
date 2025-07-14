@@ -18,6 +18,7 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
+  GiveawayBannerRatio,
   endGiveaway,
   formatBanner,
   giveawayButtonRow,
@@ -52,10 +53,27 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .setDescription("Baner wyświetlany na górze giveawaya.")
           .setRequired(false),
       )
+      .addNumber("format-baneru", (format) =>
+        format
+          .setDescription("Konwertuje baner do wybranego współczynnika proporcji.")
+          .setRequired(false)
+          .addChoices(
+            { name: "Brak", value: GiveawayBannerRatio.None },
+            { name: "Auto", value: GiveawayBannerRatio.Auto },
+            { name: "Landscape", value: GiveawayBannerRatio.Landscape },
+            { name: "Portrait", value: GiveawayBannerRatio.Portrait },
+          ),
+      )
       .handle(
         async (
           { prisma, messageQueue },
-          { nagrody: rewards, "czas-trwania": duration, tytul: title, baner: banner },
+          {
+            nagrody: rewards,
+            "czas-trwania": duration,
+            tytul: title,
+            baner: banner,
+            "format-baneru": format,
+          },
           itx,
         ) => {
           if (!itx.inCachedGuild()) return;
@@ -65,21 +83,27 @@ export const giveaway = new Hashira({ name: "giveaway" })
             flags: MessageFlags.Ephemeral,
           });
 
+          const ratio: GiveawayBannerRatio =
+            format !== null
+              ? (format as GiveawayBannerRatio)
+              : GiveawayBannerRatio.Auto;
+
           const files: AttachmentBuilder[] = [];
-          if (banner) {
+          if (banner && ratio !== GiveawayBannerRatio.None) {
             if (banner.size > 4_000_000) {
               return await errorFollowUp(
                 itx,
                 `Baner jest za duży (>4MB). Aktualny rozmiar pliku: ${round(banner.size / 1_000_000, 1)} MB.`,
               );
             }
-            const buffer = await formatBanner(banner);
+            const buffer = await formatBanner(banner, ratio);
             if (!buffer) {
               return await errorFollowUp(
                 itx,
                 `Podano nieprawidłowy format baneru. (${banner.contentType})`,
               );
             }
+
             const attachment = new AttachmentBuilder(buffer).setName("banner.webp");
             attachment && files.push(attachment);
           }
@@ -103,9 +127,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             .setLabel("Potwierdź poprawność")
             .setStyle(ButtonStyle.Secondary);
 
-          const messageContainer = new ContainerBuilder()
-            .setAccentColor(0x0099ff)
-            .addMediaGalleryComponents((mg) =>
+          const messageContainer = new ContainerBuilder();
+
+          if (ratio !== GiveawayBannerRatio.None) {
+            messageContainer.addMediaGalleryComponents((mg) =>
               mg.addItems((mgi) =>
                 mgi
                   .setDescription("cool banner :like:")
@@ -115,7 +140,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                       : "https://i.imgur.com/iov10WG.png",
                   ),
               ),
-            )
+            );
+          }
+
+          messageContainer
+            .setAccentColor(0x0099ff)
             .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
             .addTextDisplayComponents((td) => td.setContent(`-# Host: ${itx.user}`))
             .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))

@@ -22,6 +22,13 @@ import {
 import { shuffle } from "es-toolkit";
 import sharp from "sharp";
 
+enum GiveawayBannerRatio {
+  None = 0, // No Banner
+  Auto = 1,
+  Landscape = 2, //4:1
+  Portrait = 3, //2:3
+}
+
 const joinButton = new ButtonBuilder()
   .setCustomId("giveaway-option:join")
   .setLabel("Dołącz")
@@ -44,7 +51,7 @@ const leaveButton = new ButtonBuilder()
 
 const leaveButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
 
-export { giveawayButtonRow, leaveButtonRow };
+export { GiveawayBannerRatio, giveawayButtonRow, leaveButtonRow };
 
 export function parseRewards(input: string): GiveawayReward[] {
   return input
@@ -71,9 +78,7 @@ const allowedMimeTypes = [
   "image/avif",
 ];
 
-const targetAspect = 800 / 260;
-
-export async function formatBanner(banner: Attachment) {
+export async function formatBanner(banner: Attachment, ratio: GiveawayBannerRatio) {
   if (
     !banner.contentType ||
     !allowedMimeTypes.includes(banner.contentType) ||
@@ -81,6 +86,26 @@ export async function formatBanner(banner: Attachment) {
     !banner.height
   )
     return null;
+
+  const res = await fetch(banner.url);
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  if (ratio === GiveawayBannerRatio.Auto) return buffer;
+
+  const targetAspect = (() => {
+    switch (ratio) {
+      case GiveawayBannerRatio.Landscape:
+        return 4 / 1;
+
+      case GiveawayBannerRatio.Portrait:
+        return 2 / 3;
+
+      default:
+        return null;
+    }
+  })();
+
+  if (!targetAspect) return null;
 
   const origAspect = banner.width / banner.height;
   const maxSide = Math.max(banner.width, banner.height);
@@ -95,9 +120,6 @@ export async function formatBanner(banner: Attachment) {
     targetWidth = maxSide;
     targetHeight = Math.round(maxSide / targetAspect);
   }
-
-  const res = await fetch(banner.url);
-  const buffer = Buffer.from(await res.arrayBuffer());
 
   const formatted = await sharp(buffer, { animated: true })
     .resize(targetWidth, targetHeight, {
