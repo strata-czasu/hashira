@@ -51,12 +51,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
       )
       .addAttachment("baner", (baner) =>
         baner
-          .setDescription("Baner wyświetlany na górze giveawaya.")
+          .setDescription("Baner wyświetlany na górze giveaway'a. Domyślny można wyłączyć ustawiając format-baneru na 'Brak baneru'.")
           .setRequired(false),
       )
       .addNumber("format-baneru", (format) =>
         format
-          .setDescription("Konwertuje baner do wybranego współczynnika proporcji.")
+          .setDescription("Konwertuje baner do wybranego współczynnika proporcji, domyślnie 'Bez zmian'.")
           .setRequired(false)
           .addChoices(
             { name: "Brak baneru", value: GiveawayBannerRatio.None },
