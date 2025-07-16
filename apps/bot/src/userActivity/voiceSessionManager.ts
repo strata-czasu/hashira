@@ -1,8 +1,9 @@
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 import { type RangeUnion, range } from "@hashira/utils/range";
-import { differenceInSeconds } from "date-fns";
+import { type Duration, differenceInSeconds } from "date-fns";
 import type { Guild, VoiceBasedChannel, VoiceState } from "discord.js";
 import * as v from "valibot";
+import { durationToSeconds } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import {
   AnyVersionVoiceSessionSchema,
@@ -13,6 +14,9 @@ import {
 
 const stateRange = range(0, 32);
 type RangeState = RangeUnion<0, 32>;
+
+const MAX_SESSION_DURATION = { minutes: 15 } as const satisfies Duration;
+const MAX_SESSION_DURATION_SECONDS = durationToSeconds(MAX_SESSION_DURATION);
 
 export class VoiceSessionManager {
   private redis: RedisClient;
@@ -25,6 +29,13 @@ export class VoiceSessionManager {
 
   private getSessionKey(guildId: string, userId: string): string {
     return `voiceSession:${guildId}:${userId}`;
+  }
+
+  private hasSessionExceededDuration(session: VoiceSession): boolean {
+    const now = new Date();
+    const durationSeconds = differenceInSeconds(now, session.joinedAt);
+
+    return durationSeconds > MAX_SESSION_DURATION_SECONDS;
   }
 
   private tryUpdateSession(session: AnyVersionVoiceSessionSchema): VoiceSession {
@@ -217,8 +228,11 @@ export class VoiceSessionManager {
     }
   }
 
-  async startVoiceSession(channelId: string, state: VoiceState): Promise<void> {
-    const now = new Date();
+  async startVoiceSession(
+    channelId: string,
+    state: VoiceState,
+    now: Date,
+  ): Promise<void> {
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
@@ -238,15 +252,22 @@ export class VoiceSessionManager {
     const key = this.getSessionKey(guildId, userId);
     const session = await this.getVoiceSession(guildId, userId);
 
+    const now = new Date();
+
     if (!session) {
       if (!newState.channel) return;
-      return await this.startVoiceSession(newState.channel.id, newState);
+      return await this.startVoiceSession(newState.channel.id, newState, now);
     }
 
-    const now = new Date();
     const delta = differenceInSeconds(now, session.lastUpdate);
 
     this.updateSessionTimes(session, delta);
+
+    if (this.hasSessionExceededDuration(session)) {
+      await this.endVoiceSession(newState, now);
+      await this.startVoiceSession(session.channelId, newState, now);
+      return;
+    }
 
     session.state = this.encodeState(newState);
     session.lastUpdate = now;
@@ -285,9 +306,10 @@ export class VoiceSessionManager {
 
     const key = this.getSessionKey(voiceState.guild.id, voiceState.id);
     const session = await this.getVoiceSession(voiceState.guild.id, voiceState.id);
+    const now = new Date();
 
     if (!session) {
-      await this.startVoiceSession(voiceState.channel.id, voiceState);
+      await this.startVoiceSession(voiceState.channel.id, voiceState, now);
       return [key];
     }
 
@@ -296,7 +318,7 @@ export class VoiceSessionManager {
     } else {
       // We don't have a way to get the leftAt time, so we use the lastUpdate time
       await this.endVoiceSession(voiceState, session.lastUpdate);
-      await this.startVoiceSession(voiceState.channel.id, voiceState);
+      await this.startVoiceSession(voiceState.channel.id, voiceState, now);
     }
 
     return [key];
@@ -351,9 +373,10 @@ export class VoiceSessionManager {
     oldState: VoiceState,
     newState: VoiceState,
   ): Promise<void> {
+    const now = new Date();
     // User joins a voice channel
     if (!oldState.channel && newState.channel) {
-      await this.startVoiceSession(newState.channel.id, newState);
+      await this.startVoiceSession(newState.channel.id, newState, now);
 
       await this.updateUsersAfterJoin(newState.channel, newState.id);
       return;
@@ -363,7 +386,7 @@ export class VoiceSessionManager {
     if (oldState.channel && !newState.channel) {
       await this.updateRemainingUsersAfterLeave(oldState.channel);
 
-      return await this.endVoiceSession(newState, new Date());
+      return await this.endVoiceSession(newState, now);
     }
 
     // User moves between channels or updates voice state within a channel
@@ -371,8 +394,8 @@ export class VoiceSessionManager {
       if (oldState.channel.id !== newState.channel.id) {
         await this.updateRemainingUsersAfterLeave(oldState.channel);
 
-        await this.endVoiceSession(newState, new Date());
-        await this.startVoiceSession(newState.channel.id, newState);
+        await this.endVoiceSession(newState, now);
+        await this.startVoiceSession(newState.channel.id, newState, now);
 
         await this.updateUsersAfterJoin(newState.channel, newState.id);
 
