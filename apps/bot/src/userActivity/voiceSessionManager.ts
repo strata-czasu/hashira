@@ -31,13 +31,6 @@ export class VoiceSessionManager {
     return `voiceSession:${guildId}:${userId}`;
   }
 
-  private hasSessionExceededDuration(session: VoiceSession): boolean {
-    const now = new Date();
-    const durationSeconds = differenceInSeconds(now, session.joinedAt);
-
-    return durationSeconds > MAX_SESSION_DURATION_SECONDS;
-  }
-
   private tryUpdateSession(session: AnyVersionVoiceSessionSchema): VoiceSession {
     let updatedSession = session;
 
@@ -263,7 +256,7 @@ export class VoiceSessionManager {
 
     this.updateSessionTimes(session, delta);
 
-    if (this.hasSessionExceededDuration(session)) {
+    if (delta > MAX_SESSION_DURATION_SECONDS) {
       await this.endVoiceSession(newState, now);
       await this.startVoiceSession(session.channelId, newState, now);
       return;
