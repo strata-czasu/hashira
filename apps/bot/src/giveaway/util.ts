@@ -25,8 +25,8 @@ import sharp from "sharp";
 enum GiveawayBannerRatio {
   None = 0, // No Banner
   Auto = 1,
-  Landscape = 2, //4:1
-  Portrait = 3, //2:3
+  Landscape = 2, // 4:1
+  Portrait = 3, // 2:3
 }
 
 const joinButton = new ButtonBuilder()
@@ -85,7 +85,7 @@ export function getExtension(mimeType: string | null) {
       return "jpg";
 
     default:
-      return mimeType.split("/")[1];
+      return mimeType.split("/")[1] ?? "webp";
   }
 }
 
@@ -106,7 +106,6 @@ export async function formatBanner(
 
   if (ratio === GiveawayBannerRatio.Auto) {
     const ext = getExtension(banner.contentType);
-    if (!ext) return [null, ""];
     return [buffer, ext];
   }
 

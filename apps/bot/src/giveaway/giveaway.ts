@@ -111,7 +111,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             }
 
             const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
-            attachment && files.push(attachment);
+            files.push(attachment);
           }
 
           const parsedRewards: GiveawayReward[] = parseRewards(rewards);
@@ -139,7 +139,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             messageContainer.addMediaGalleryComponents((mg) =>
               mg.addItems((mgi) =>
                 mgi
-                  .setDescription("cool banner :like:")
+                  .setDescription(`Banner for giveaway: ${title || "Giveaway"}`)
                   .setURL(
                     banner
                       ? `attachment://banner.${getExtension(banner.contentType)}`
