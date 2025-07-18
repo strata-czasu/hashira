@@ -1,0 +1,2 @@
+# Keep the client-facing env variables
+!.env
