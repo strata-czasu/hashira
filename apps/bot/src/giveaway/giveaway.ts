@@ -19,7 +19,6 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   GiveawayBannerRatio,
-  endGiveaway,
   formatBanner,
   getExtension,
   getStaticBanner,
@@ -230,13 +229,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
           await messageQueue.push(
             "giveawayEnd",
             { giveawayId: giveaway.id },
-            Math.floor((endTime.valueOf() - itx.createdAt.valueOf()) / 1000),
+            Math.floor((endTime.valueOf() - response.createdAt.valueOf()) / 1000),
             giveaway.id.toString(),
           );
         },
       ),
   )
-  .handle("ready", async ({ prisma, messageQueue }, client) => {
+  .handle("ready", async ({ prisma }, client) => {
     client.on("interactionCreate", async (itx) => {
       if (!itx.isButton()) return;
       // giveaway-option:optionId
@@ -258,7 +257,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
       if (!giveaway)
         return await itx.followUp({
-          content: "Ten giveaway już się zakończył!",
+          content: "Ten giveaway nie istnieje!",
           flags: "Ephemeral",
         });
 
@@ -273,9 +272,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
       }
 
       if (giveaway.endAt <= itx.createdAt) {
-        await messageQueue.cancel("giveawayEnd", giveaway.id.toString());
-        await endGiveaway(message, prisma);
-        return;
+        return await itx.followUp({
+          content: "Ten giveaway już się zakończył!",
+          flags: "Ephemeral",
+        });
       }
 
       if (itx.customId.endsWith("list")) {
