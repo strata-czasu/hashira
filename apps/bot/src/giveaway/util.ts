@@ -196,35 +196,6 @@ export async function endGiveaway(
 
   if (!giveaway || !message.components[0]) return;
 
-  // Disable giveaway buttons
-  const container = new ContainerBuilder(
-    message.components[0].toJSON() as APIContainerComponent,
-  );
-
-  const actionRowIndex = container.components.findIndex(
-    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
-  );
-
-  if (actionRowIndex === -1) return;
-
-  const newRow = new ActionRowBuilder<ButtonBuilder>({
-    ...container.components[actionRowIndex]?.data,
-    components: [
-      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
-        true,
-      ),
-      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
-        true,
-      ),
-    ],
-  });
-
-  container.components[actionRowIndex] = newRow;
-
-  await message.edit({
-    components: [container],
-  });
-
   const [rewards, participants] = await prisma.$transaction([
     prisma.giveawayReward.findMany({
       where: { giveawayId: giveaway.id },
@@ -275,5 +246,34 @@ export async function endGiveaway(
     components: [resultContainer],
     allowedMentions: { users: participants.map((p) => p.userId) },
     flags: MessageFlags.IsComponentsV2,
+  });
+
+  // Disable giveaway buttons
+  const container = new ContainerBuilder(
+    message.components[0].toJSON() as APIContainerComponent,
+  );
+
+  const actionRowIndex = container.components.findIndex(
+    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
+  );
+
+  if (actionRowIndex === -1) return;
+
+  const newRow = new ActionRowBuilder<ButtonBuilder>({
+    ...container.components[actionRowIndex]?.data,
+    components: [
+      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
+        true,
+      ),
+      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
+        true,
+      ),
+    ],
+  });
+
+  container.components[actionRowIndex] = newRow;
+
+  await message.edit({
+    components: [container],
   });
 }
