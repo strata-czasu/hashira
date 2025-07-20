@@ -37,8 +37,11 @@
       "name": "@hashira/wordle",
       "version": "0.1.0",
       "dependencies": {
+        "@discord/embedded-app-sdk": "^2.1.0",
+        "@discordjs/rest": "^2.5.1",
         "@hashira/env": "workspace:*",
         "bun-plugin-tailwind": "^0.0.14",
+        "discord-api-types": "^0.38.16",
         "react": "^19",
         "react-dom": "^19",
         "tailwindcss": "^4.0.6",
