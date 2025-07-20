@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
-import { addMinutes, hoursToSeconds, isAfter } from "date-fns";
+import { sleep } from "bun";
+import { addMinutes, hoursToSeconds, isAfter, secondsToMilliseconds } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -156,19 +157,22 @@ export const fish = new Hashira({ name: "fish" })
           (interaction) => interaction.user.id === itx.user.id,
         );
 
-        await clickInfo.editButton((builder) => {
-          builder.setDisabled(true);
+        if (!clickInfo.interaction) {
+          return await clickInfo.removeButton();
+        }
 
-          if (clickInfo.interaction) {
-            builder.setLabel("Widzimy się za godzinę");
-            builder.setStyle(ButtonStyle.Success);
-          }
-
-          return builder;
-        });
-
-        if (clickInfo.interaction) {
-          await messageQueue.push(
+        await Promise.all([
+          clickInfo.interaction.reply({
+            content: "Przypomnę Ci o łowieniu za godzinę!",
+            flags: "Ephemeral",
+          }),
+          clickInfo.editButton((builder) =>
+            builder
+              .setDisabled(true)
+              .setLabel("Widzimy się za godzinę")
+              .setStyle(ButtonStyle.Success),
+          ),
+          messageQueue.push(
             "reminder",
             {
               userId: itx.user.id,
@@ -176,13 +180,12 @@ export const fish = new Hashira({ name: "fish" })
               text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
             },
             hoursToSeconds(1),
-          );
-          // Any response is required to acknowledge the button click
-          clickInfo.interaction.reply({
-            content: "Przypomnę Ci o łowieniu za godzinę!",
-            flags: "Ephemeral",
-          });
-        }
+          ),
+        ]);
+
+        await sleep(secondsToMilliseconds(15));
+
+        await clickInfo.removeButton();
       }),
   )
   .group("wedka-admin", (group) =>
