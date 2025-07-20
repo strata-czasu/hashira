@@ -6,14 +6,28 @@ import type {
   GiveawayWinner,
 } from "@hashira/db";
 import {
+  type APIContainerComponent,
   ActionRowBuilder,
+  type Attachment,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  EmbedBuilder,
+  ComponentType,
+  ContainerBuilder,
   type Message,
+  MessageFlags,
+  SeparatorSpacingSize,
+  TextDisplayBuilder,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
+import sharp from "sharp";
+
+enum GiveawayBannerRatio {
+  None = 0, // No Banner
+  Auto = 1,
+  Landscape = 2, // 4:1
+  Portrait = 3, // 2:3
+}
 
 const joinButton = new ButtonBuilder()
   .setCustomId("giveaway-option:join")
@@ -37,7 +51,7 @@ const leaveButton = new ButtonBuilder()
 
 const leaveButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
 
-export { giveawayButtonRow, leaveButtonRow };
+export { GiveawayBannerRatio, giveawayButtonRow, leaveButtonRow };
 
 export function parseRewards(input: string): GiveawayReward[] {
   return input
@@ -55,20 +69,118 @@ export function parseRewards(input: string): GiveawayReward[] {
     });
 }
 
+const allowedMimeTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/apng",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+];
+
+export function getExtension(mimeType: string | null) {
+  if (!mimeType) return "webp";
+  switch (mimeType) {
+    case "image/jpeg":
+      return "jpg";
+
+    default:
+      return mimeType.split("/")[1] ?? "webp";
+  }
+}
+
+export async function formatBanner(
+  banner: Attachment,
+  ratio: GiveawayBannerRatio,
+): Promise<[Buffer | null, string]> {
+  if (
+    !banner.contentType ||
+    !allowedMimeTypes.includes(banner.contentType) ||
+    !banner.width ||
+    !banner.height
+  )
+    return [null, ""];
+
+  const res = await fetch(banner.url);
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  if (ratio === GiveawayBannerRatio.Auto) {
+    const ext = getExtension(banner.contentType);
+    return [buffer, ext];
+  }
+
+  const targetAspect = (() => {
+    switch (ratio) {
+      case GiveawayBannerRatio.Landscape:
+        return 4 / 1;
+
+      case GiveawayBannerRatio.Portrait:
+        return 2 / 3;
+
+      default:
+        return null;
+    }
+  })();
+
+  if (!targetAspect) return [null, ""];
+
+  const origAspect = banner.width / banner.height;
+  const maxSide = Math.max(banner.width, banner.height);
+
+  let targetWidth: number;
+  let targetHeight: number;
+
+  if (origAspect >= targetAspect) {
+    targetHeight = maxSide;
+    targetWidth = Math.round(maxSide * targetAspect);
+  } else {
+    targetWidth = maxSide;
+    targetHeight = Math.round(maxSide / targetAspect);
+  }
+
+  const formatted = await sharp(buffer, { animated: true })
+    .resize(targetWidth, targetHeight, {
+      fit: "cover",
+      position: "centre",
+    })
+    .toFormat("webp")
+    .toBuffer();
+
+  return [formatted, "webp"];
+}
+
+export function getStaticBanner(title: string) {
+  if (title.toLowerCase().includes("ruletka")) return "https://i.imgur.com/0O3wOcx.png";
+
+  return "https://i.imgur.com/iov10WG.png";
+}
+
 export async function updateGiveaway(
   i: ButtonInteraction,
   giveaway: Giveaway,
   prisma: ExtendedPrismaClient,
 ) {
-  if (giveaway && i.message.embeds[0]) {
+  if (giveaway && i.message.components[0]) {
     const participants: GiveawayParticipant[] =
       await prisma.giveawayParticipant.findMany({
         where: { giveawayId: giveaway.id, isRemoved: false },
       });
-    const updatedEmbed = EmbedBuilder.from(i.message.embeds[0]).setFooter({
-      text: `Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
-    });
-    await i.message.edit({ embeds: [updatedEmbed] });
+
+    const container = new ContainerBuilder(
+      i.message.components[0].toJSON() as APIContainerComponent,
+    );
+
+    const footerIndex = container.components.findIndex(
+      (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+    );
+
+    if (footerIndex === -1) return;
+
+    container.components[footerIndex] = new TextDisplayBuilder().setContent(
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
+    );
+
+    await i.message.edit({ components: [container] });
   }
 }
 
@@ -82,20 +194,35 @@ export async function endGiveaway(
     where: { messageId: message.id, guildId: message.guildId },
   });
 
-  if (!giveaway) return;
+  if (!giveaway || !message.components[0]) return;
 
   // Disable giveaway buttons
-  await message.edit({
+  const container = new ContainerBuilder(
+    message.components[0].toJSON() as APIContainerComponent,
+  );
+
+  const actionRowIndex = container.components.findIndex(
+    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
+  );
+
+  if (actionRowIndex === -1) return;
+
+  const newRow = new ActionRowBuilder<ButtonBuilder>({
+    ...container.components[actionRowIndex]?.data,
     components: [
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ButtonBuilder.from(
-          giveawayButtonRow.components[0] as ButtonBuilder,
-        ).setDisabled(true),
-        ButtonBuilder.from(
-          giveawayButtonRow.components[1] as ButtonBuilder,
-        ).setDisabled(true),
+      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
+        true,
+      ),
+      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
+        true,
       ),
     ],
+  });
+
+  container.components[actionRowIndex] = newRow;
+
+  await message.edit({
+    components: [container],
   });
 
   const [rewards, participants] = await prisma.$transaction([
@@ -138,8 +265,15 @@ export async function endGiveaway(
     });
   }
 
+  const resultContainer = new ContainerBuilder()
+    .setAccentColor(0x00ff99)
+    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway"))
+    .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
+    .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
+
   await message.reply({
-    content: `:tada: Wyniki giveaway:\n${results.join("\n")}`,
+    components: [resultContainer],
     allowedMentions: { users: participants.map((p) => p.userId) },
+    flags: MessageFlags.IsComponentsV2,
   });
 }

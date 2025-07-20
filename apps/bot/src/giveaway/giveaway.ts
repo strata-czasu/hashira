@@ -2,19 +2,27 @@ import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
 import { type Duration, addSeconds } from "date-fns";
 import {
-  ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder,
+  ComponentType,
+  ContainerBuilder,
+  MessageFlags,
+  SeparatorSpacingSize,
   time,
 } from "discord.js";
+import { round } from "es-toolkit";
 import { base } from "../base";
 import { durationToSeconds, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
+  GiveawayBannerRatio,
   endGiveaway,
+  formatBanner,
+  getExtension,
+  getStaticBanner,
   giveawayButtonRow,
   leaveButtonRow,
   parseRewards,
@@ -42,14 +50,69 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .setDescription("Tytuł giveaway'a, domyślnie 'Giveaway'")
           .setRequired(false),
       )
+      .addAttachment("baner", (baner) =>
+        baner
+          .setDescription(
+            "Baner wyświetlany na górze giveaway'a. Domyślny można wyłączyć ustawiając format na brak.",
+          )
+          .setRequired(false),
+      )
+      .addNumber("format-baneru", (format) =>
+        format
+          .setDescription(
+            "Konwertuje baner do wybranego współczynnika proporcji, domyślnie 'Bez zmian'.",
+          )
+          .setRequired(false)
+          .addChoices(
+            { name: "Brak baneru", value: GiveawayBannerRatio.None },
+            { name: "Bez zmian", value: GiveawayBannerRatio.Auto },
+            { name: "Szeroki", value: GiveawayBannerRatio.Landscape },
+            { name: "Wysoki", value: GiveawayBannerRatio.Portrait },
+          ),
+      )
       .handle(
         async (
           { prisma, messageQueue },
-          { nagrody: rewards, "czas-trwania": duration, tytul: title },
+          {
+            nagrody: rewards,
+            "czas-trwania": duration,
+            tytul: title,
+            baner: banner,
+            "format-baneru": format,
+          },
           itx,
         ) => {
           if (!itx.inCachedGuild()) return;
           await ensureUserExists(prisma, itx.user);
+
+          await itx.deferReply({
+            flags: MessageFlags.Ephemeral,
+          });
+
+          const ratio: GiveawayBannerRatio =
+            format !== null
+              ? (format as GiveawayBannerRatio)
+              : GiveawayBannerRatio.Auto;
+
+          const files: AttachmentBuilder[] = [];
+          if (banner && ratio !== GiveawayBannerRatio.None) {
+            if (banner.size > 4_000_000) {
+              return await errorFollowUp(
+                itx,
+                `Baner jest za duży (>4MB). Aktualny rozmiar pliku: ${round(banner.size / 1_000_000, 1)} MB.`,
+              );
+            }
+            const [buffer, ext] = await formatBanner(banner, ratio);
+            if (!buffer) {
+              return await errorFollowUp(
+                itx,
+                `Podano nieprawidłowy format baneru. (${banner.contentType})`,
+              );
+            }
+
+            const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
+            files.push(attachment);
+          }
 
           const parsedRewards: GiveawayReward[] = parseRewards(rewards);
 
@@ -65,41 +128,70 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
 
-          const embed = new EmbedBuilder()
-            .setColor(0x0099ff)
-            .setTitle(title || "Giveaway")
-            .setAuthor({
-              name: `${itx.user.username}`,
-              iconURL: itx.user.avatarURL() || "",
-            })
-            .setDescription(
-              `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
-            \nKoniec ${time(endTime, "R")}`,
-            )
-            .setFooter({ text: `Uczestnicy: 0 | Łącznie nagród: ${totalRewards}` });
-
           const confirmButton = new ButtonBuilder()
-            .setCustomId("giveaway-option:confirm")
+            .setCustomId("confirm")
             .setLabel("Potwierdź poprawność")
             .setStyle(ButtonStyle.Secondary);
 
-          const responseConfirm = await itx.reply({
-            content: "Potwierdź jeśli wszystko się zgadza w giveawayu.",
-            embeds: [embed],
-            components: [
-              new ActionRowBuilder<ButtonBuilder>().addComponents(confirmButton),
-            ],
-            withResponse: true,
-            flags: "Ephemeral",
+          const messageContainer = new ContainerBuilder();
+
+          if (ratio !== GiveawayBannerRatio.None) {
+            messageContainer.addMediaGalleryComponents((mg) =>
+              mg.addItems((mgi) =>
+                mgi
+                  .setDescription(`Banner for giveaway: ${title || "Giveaway"}`)
+                  .setURL(
+                    banner
+                      ? `attachment://banner.${getExtension(banner.contentType)}`
+                      : getStaticBanner(title || "Giveaway"),
+                  ),
+              ),
+            );
+          }
+
+          messageContainer
+            .setAccentColor(0x0099ff)
+            .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
+            .addTextDisplayComponents((td) => td.setContent(`-# Host: ${itx.user}`))
+            .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
+            .addTextDisplayComponents((td) =>
+              td.setContent(
+                `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}
+            \nKoniec ${time(endTime, "R")}`,
+              ),
+            )
+            .addSeparatorComponents((s) => s)
+            .addTextDisplayComponents((td) =>
+              td
+                .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards}`)
+                .setId(1),
+            )
+            .addTextDisplayComponents((td) =>
+              td
+                .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
+                .setId(99),
+            )
+            .addActionRowComponents((ar) => ar.addComponents([confirmButton]));
+
+          const responseConfirm = await itx.editReply({
+            components: [messageContainer],
+            files: files,
+            flags: [MessageFlags.IsComponentsV2],
           });
 
-          if (!responseConfirm.resource?.message) {
+          // Removes confirmation components
+          const confirmIndex = messageContainer.components.findIndex(
+            (c) => c.data?.id === 99 && c.data?.type === ComponentType.TextDisplay,
+          );
+          messageContainer.spliceComponents(confirmIndex, 2);
+
+          if (!responseConfirm) {
             throw new Error("Failed to receive response from interaction reply");
           }
 
           const confirmation = await waitForButtonClick(
-            responseConfirm.resource.message,
-            "giveaway-option:confirm",
+            responseConfirm,
+            "confirm",
             { minutes: 1 },
             (interaction) => interaction.user.id === itx.user.id,
           );
@@ -108,10 +200,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
           itx.deleteReply();
 
+          messageContainer.addActionRowComponents(giveawayButtonRow.setId(2));
+
           const response = await itx.followUp({
-            embeds: [embed],
-            components: [giveawayButtonRow],
+            components: [messageContainer],
+            files: files,
             withResponse: true,
+            flags: MessageFlags.IsComponentsV2,
           });
 
           if (!response) {

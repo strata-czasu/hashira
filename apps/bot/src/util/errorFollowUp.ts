@@ -11,6 +11,10 @@ export const errorFollowUp = async (itx: RepliableInteraction, content: string) 
     await itx.reply({ content, flags: "Ephemeral" });
     return;
   }
+  if (itx.deferred && itx.ephemeral) {
+    await itx.editReply({ content });
+    return;
+  }
   if (itx.deferred && !itx.ephemeral) {
     await itx.deleteReply();
   }
