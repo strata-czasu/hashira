@@ -19,7 +19,7 @@ export async function getAuthorizationCode(sdk: DiscordSDK): Promise<string> {
 }
 
 export async function getAccessToken(code: string): Promise<string> {
-  const tokenRes = await fetch("/.proxy/api/token", {
+  const tokenRes = await fetch("/api/token", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

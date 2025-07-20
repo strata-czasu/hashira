@@ -1,7 +1,7 @@
 import "./index.css";
 
-import { DiscordSDK } from "@discord/embedded-app-sdk";
-import { useState } from "react";
+import { DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
+import { useLayoutEffect, useState } from "react";
 import {
   fetchGuilds,
   getAccessToken,
@@ -23,6 +23,10 @@ export function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const [guild, setGuild] = useState<any | null>(null);
+
+  useLayoutEffect(() => {
+    patchUrlMappings([{ prefix: "/", target: "/.proxy" }]);
+  });
 
   const onAuthorizeClick = async () => {
     await discordSdk.ready();
