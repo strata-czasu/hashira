@@ -34,7 +34,8 @@
         let
           db = devDB.outputs.packages.${system};
 
-          bunVersion = "1.2.15";
+          # TODO: finalize the upgrade with new hashes
+          bunVersion = "1.2.19";
           bunSources = {
             "aarch64-darwin" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
