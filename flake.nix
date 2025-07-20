@@ -34,15 +34,15 @@
         let
           db = devDB.outputs.packages.${system};
 
-          bunVersion = "1.2.15";
+          bunVersion = "1.2.19";
           bunSources = {
             "aarch64-darwin" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
-              hash = "sha256-qwzW/H/I0e5PgWbZm3EIbUeTxa7g0LXHP9+bcPpH3tQ=";
+              hash = "sha256-Z0pIN4NC76rcPCkVlrVzAQ88I4iVj3xEZ42H9vt1mZE=";
             };
             "x86_64-linux" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-linux-x64.zip";
-              hash = "sha256-omFiY2eDW7N1SgGuB/iESE7RewiGsB5Be3mVkfpNeQE=";
+              hash = "sha256-w9PBTppeyD/2fQrP525DFa0G2p809Z/HsTgTeCyvH2Y=";
             };
           };
           bun = pkgs.bun.overrideAttrs {

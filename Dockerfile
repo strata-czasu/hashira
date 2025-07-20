@@ -1,4 +1,4 @@
-ARG BUN_VERSION=1.2.15
+ARG BUN_VERSION=1.2.19
 
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
@@ -12,7 +12,7 @@ RUN fc-cache -f -v
 
 WORKDIR /app
 
-COPY --link bun.lockb package.json ./
+COPY --link bun.lock package.json ./
 COPY --link apps/bot/package.json apps/bot/package.json
 COPY --link packages/core/package.json packages/core/package.json
 COPY --link packages/db/package.json packages/db/package.json
