@@ -3,7 +3,7 @@ ARG BUN_VERSION=1.2.15
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends fontconfig \
+    && apt-get -y install --no-install-recommends openssl fontconfig \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

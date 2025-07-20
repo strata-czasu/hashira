@@ -99,6 +99,7 @@
               prisma
               prisma-engines
               postgresql_17
+              openssl
               db.start-database
               db.stop-database
               db.psql-wrapped
