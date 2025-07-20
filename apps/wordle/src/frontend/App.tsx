@@ -1,15 +1,13 @@
 import "./index.css";
 
 import { DiscordSDK } from "@discord/embedded-app-sdk";
-import { REST } from "@discordjs/rest";
-import {
-  CDNRoutes,
-  ImageFormat,
-  type ImageSize,
-  type RESTGetAPICurrentUserGuildsResult,
-  Routes,
-} from "discord-api-types/v10";
 import { useState } from "react";
+import {
+  fetchGuilds,
+  getAccessToken,
+  getAuthorizationCode,
+  getGuildIconUrl,
+} from "./discordApi";
 import logo from "./logo.svg";
 import reactLogo from "./react.svg";
 
@@ -78,6 +76,7 @@ export function App() {
           Authorize
         </button>
       )}
+
       {guild && (
         <div className="my-4 gap-2 flex flex-col items-center">
           <img
@@ -94,49 +93,3 @@ export function App() {
   );
 }
 export default App;
-
-async function getAuthorizationCode(sdk: DiscordSDK): Promise<string> {
-  const { code } = await sdk.commands.authorize({
-    client_id: OAUTH_CLIENT_ID,
-    response_type: "code",
-    scope: ["identify", "guilds"],
-  });
-  return code;
-}
-
-async function getAccessToken(code: string): Promise<string> {
-  const tokenRes = await fetch("/.proxy/api/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ code }),
-  });
-
-  const { access_token } = await tokenRes.json();
-  if (typeof access_token !== "string") {
-    throw new Error("Invalid access token received");
-  }
-
-  return access_token;
-}
-
-async function fetchGuilds(accessToken: string) {
-  return getRESTClient(accessToken).get(
-    Routes.userGuilds(),
-  ) as Promise<RESTGetAPICurrentUserGuildsResult>;
-}
-
-function getGuildIconUrl(guildId: string, iconHash: string, size: ImageSize): string {
-  const route = CDNRoutes.guildIcon(guildId, iconHash, ImageFormat.PNG);
-  const url = new URL(route, "https://cdn.discordapp.com");
-  return `${url}?${getCDNQueryParams(size)}`;
-}
-
-function getRESTClient(accessToken: string) {
-  return new REST({ authPrefix: "Bearer" }).setToken(accessToken);
-}
-
-function getCDNQueryParams(size: ImageSize) {
-  return new URLSearchParams({ size: size.toString() });
-}
