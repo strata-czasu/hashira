@@ -18,6 +18,7 @@ type BaseResult = {
   editButton: (
     fn: (builder: ButtonBuilder) => Promise<ButtonBuilder> | ButtonBuilder,
   ) => Promise<void>;
+  removeButton: () => Promise<void>;
 };
 
 type Result = BaseResult & ({ interaction: ButtonInteraction } | { interaction: null });
@@ -29,6 +30,9 @@ function ok(interaction: ButtonInteraction, component: ButtonComponent): Result 
     editButton(fn) {
       return editButton(interaction.message, component, fn);
     },
+    removeButton() {
+      return removeButton(interaction.message);
+    },
   };
 }
 
@@ -38,6 +42,9 @@ function err(component: ButtonComponent, message: Message<boolean>): Result {
     component,
     editButton(fn) {
       return editButton(message, component, fn);
+    },
+    removeButton() {
+      return removeButton(message);
     },
   };
 }
@@ -114,4 +121,8 @@ async function editButton(
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(builder);
 
   await message.edit({ components: [row] });
+}
+
+async function removeButton(message: Message<boolean>) {
+  await message.edit({ components: [] });
 }
