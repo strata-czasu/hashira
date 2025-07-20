@@ -1,6 +1,10 @@
 import Env from "@hashira/env";
 import { serve } from "bun";
-import { Routes } from "discord-api-types/v10";
+import {
+  OAuth2Routes,
+  type RESTPostOAuth2AccessTokenResult,
+} from "discord-api-types/v10";
+import * as v from "valibot";
 import index from "./frontend/index.html";
 
 const client_id = Env.OAUTH_CLIENT_ID;
@@ -10,6 +14,10 @@ if (!client_id || !client_secret) {
 }
 console.log("Using OAuth client ID:", client_id);
 
+const ApiTokenRequestSchema = v.object({
+  code: v.string(),
+});
+
 const server = serve({
   routes: {
     // Serve index.html for all unmatched routes.
@@ -17,15 +25,9 @@ const server = serve({
 
     "/api/token": {
       async POST(req) {
-        const { code } = await req.json();
-        if (!code) {
-          return Response.json({ error: "Code is required" }, { status: 400 });
-        }
-        if (typeof code !== "string") {
-          return Response.json({ error: "Invalid code format" }, { status: 400 });
-        }
+        const { code } = v.parse(ApiTokenRequestSchema, await req.json());
 
-        const tokenRes = await fetch(Routes.oauth2TokenExchange(), {
+        const tokenRes = await fetch(OAuth2Routes.tokenURL, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -37,18 +39,30 @@ const server = serve({
             code,
           }),
         });
+
         if (tokenRes.status !== 200) {
-          console.log(tokenRes);
+          console.log("Error from oauth2 token exchange:", tokenRes);
           return Response.json(
-            { error: "Failed to exchange code for token" },
+            { message: "Failed to exchange code for token" },
             { status: tokenRes.status },
           );
         }
 
-        const { access_token } = await tokenRes.json();
+        const { access_token } =
+          (await tokenRes.json()) as RESTPostOAuth2AccessTokenResult;
         return Response.json({ access_token });
       },
     },
+  },
+
+  error(error) {
+    if (v.isValiError(error)) {
+      return Response.json(
+        { message: error.message, issues: error.issues },
+        { status: 400 },
+      );
+    }
+    throw error;
   },
 
   development: process.env.NODE_ENV !== "production" && {
