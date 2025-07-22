@@ -1,6 +1,6 @@
 import "./index.css";
 
-import { DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
+import { type DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
 import { useLayoutEffect, useState } from "react";
 import {
   fetchGuilds,
@@ -10,16 +10,14 @@ import {
 } from "./discordApi";
 import logo from "./logo.svg";
 import reactLogo from "./react.svg";
-
-// TODO)) Get this from somewhere more configurable
-const OAUTH_CLIENT_ID = "1395837579861037216";
+import { useDiscordSdk } from "./sdk";
 
 type AuthSession = Awaited<
   ReturnType<typeof DiscordSDK.prototype.commands.authenticate>
 >;
 
 export function App() {
-  const [discordSdk] = useState(() => new DiscordSDK(OAUTH_CLIENT_ID));
+  const { discordSdk } = useDiscordSdk("mock");
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const [guild, setGuild] = useState<any | null>(null);
