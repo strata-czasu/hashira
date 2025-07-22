@@ -2,6 +2,7 @@ import "./index.css";
 
 import { type DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
 import { useLayoutEffect, useState } from "react";
+import Wordle from "./Wordle";
 import {
   fetchGuilds,
   getAccessToken,
@@ -46,6 +47,8 @@ export function App() {
 
   return (
     <div className="max-w-7xl mx-auto p-8 text-center">
+      <Wordle />
+
       {authSession !== null ? (
         <p className="my-4">{`Welcome, ${authSession.user.username}!`}</p>
       ) : (
