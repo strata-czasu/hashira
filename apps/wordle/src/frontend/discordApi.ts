@@ -1,4 +1,4 @@
-import type { DiscordSDK } from "@discord/embedded-app-sdk";
+import type { IDiscordSDK } from "@discord/embedded-app-sdk";
 import { REST } from "@discordjs/rest";
 import {
   CDNRoutes,
@@ -9,7 +9,7 @@ import {
   Routes,
 } from "discord-api-types/v10";
 
-export async function getAuthorizationCode(sdk: DiscordSDK): Promise<string> {
+export async function getAuthorizationCode(sdk: IDiscordSDK): Promise<string> {
   const { code } = await sdk.commands.authorize({
     client_id: sdk.clientId,
     response_type: "code",
