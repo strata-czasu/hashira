@@ -14,6 +14,7 @@
     "@discordjs/rest": "^2.5.1",
     "@hashira/env": "workspace:*",
     "bun-plugin-tailwind": "^0.0.14",
+    "clsx": "^2.1.1",
     "discord-api-types": "^0.38.16",
     "react": "^19",
     "react-dom": "^19",

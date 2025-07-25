@@ -1,3 +1,4 @@
+import { clsx } from "clsx";
 import {
   type Dispatch,
   type SetStateAction,
@@ -41,7 +42,7 @@ function WordleInner() {
 
       if (!/^[a-zA-Z]$/.test(e.key)) return;
       if (pendingInput.length < WORD_LENGTH) {
-        setPendingInput((prev) => prev + e.key.toUpperCase());
+        setPendingInput((prev) => prev + e.key.toLowerCase());
       }
     },
     [pushGuess, pendingInput, setPendingInput],
@@ -80,28 +81,48 @@ function Row({ index }: RowProps) {
   const rowGuess = guesses[index];
   const isPending = index === guesses.length;
 
-  const getLetter = (col: number) => {
+  const getLetter = (col: number): string | null => {
     if (rowGuess) return rowGuess[col] ?? null;
     if (isPending) return pendingInput[col] ?? null;
     return null;
   };
 
+  const getState = (col: number): CellState => {
+    // TODO)) Actually check the word against the solution
+    if (rowGuess) return "absent";
+    return "pending";
+  };
+
   return (
     <div className="flex gap-2">
       {Array.from({ length: WORD_LENGTH }, (_, col) => (
-        <Cell key={(index + 1) * (col + 1)} letter={getLetter(col)} />
+        <Cell
+          key={(index + 1) * (col + 1)}
+          letter={getLetter(col)}
+          state={getState(col)}
+        />
       ))}
     </div>
   );
 }
 
+type CellState = "correct" | "present" | "absent" | "pending";
 type CellProps = {
   letter: string | null;
+  state: CellState;
 };
-function Cell({ letter }: CellProps) {
+function Cell({ letter, state }: CellProps) {
   return (
-    <div className="w-20 h-20 border border-gray-300 flex items-center justify-center">
-      {letter && <div className="text-4xl font-bold">{letter}</div>}
+    <div
+      className={clsx([
+        "w-20 h-20 flex items-center justify-center",
+        state === "correct" && "bg-green-500",
+        state === "present" && "bg-yellow-500",
+        state === "absent" && "bg-gray-500",
+        state === "pending" && "border-2 border-gray-500",
+      ])}
+    >
+      {letter && <div className="text-4xl font-bold uppercase">{letter}</div>}
     </div>
   );
 }
