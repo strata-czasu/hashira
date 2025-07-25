@@ -47,6 +47,8 @@ export function App() {
 
   return (
     <div className="max-w-7xl mx-auto p-8 text-center">
+      <div className="text-5xl mb-4">Wordle</div>
+
       <Wordle />
 
       {authSession !== null ? (
