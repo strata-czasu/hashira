@@ -7,7 +7,13 @@ import {
 import * as v from "valibot";
 import { ApiError, GameAlreadyFinishedError, NotFoundError } from "./error";
 import index from "./frontend/index.html";
-import { type Game, WORDLE_ATTEMPTS, getRandomWord, validateGuess } from "./game";
+import {
+  type Game,
+  WORDLE_ATTEMPTS,
+  getRandomWord,
+  mergeValidationResults,
+  validateGuess,
+} from "./game";
 
 const client_id = Env.OAUTH_CLIENT_ID;
 const client_secret = Env.OAUTH_CLIENT_SECRET;
@@ -27,6 +33,18 @@ const GetGameRequestSchema = v.object({
 const GameGuessRequestSchema = v.object({
   guess: v.string(),
 });
+
+function serializeGame(game: Game): object {
+  return {
+    id: game.id,
+    userId: game.userId,
+    state: game.state,
+    guesses: game.guesses,
+    correct: game.result.correct,
+    present: game.result.present,
+    absent: Array.from(game.result.absent).sort(),
+  };
+}
 
 const server = serve({
   routes: {
@@ -77,18 +95,17 @@ const server = serve({
             solution: getRandomWord(),
             state: "inProgress",
             guesses: [],
+            result: {
+              correct: [],
+              present: [],
+              absent: new Set<string>(),
+            },
           };
           games.push(game);
         }
         console.log("Found game", game);
 
-        return Response.json({
-          id: game.id,
-          userId: game.userId,
-          state: game.state,
-          guesses: game.guesses,
-          // TODO)) Also send validated letters from previous attempts
-        });
+        return Response.json(serializeGame(game));
       },
     },
     "/api/game/:id/guess": {
@@ -110,17 +127,14 @@ const server = serve({
         else if (game.guesses.length === WORDLE_ATTEMPTS) game.state = "failed";
 
         // Validate the guess even if the game is already solved or failed
-        const { correct, present, absent } = validateGuess(guess, game.solution);
+        const validationResult = mergeValidationResults(
+          game.result,
+          validateGuess(guess, game.solution),
+        );
+        game.result = validationResult;
 
-        console.log("after guess", game);
-        return Response.json({
-          id: game.id,
-          state: game.state,
-          guesses: game.guesses,
-          correct,
-          present,
-          absent,
-        });
+        console.log("after guess", game.result);
+        return Response.json(serializeGame(game));
       },
     },
   },
