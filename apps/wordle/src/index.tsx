@@ -4,9 +4,10 @@ import {
   OAuth2Routes,
   type RESTPostOAuth2AccessTokenResult,
 } from "discord-api-types/v10";
-import { randomInt } from "es-toolkit";
 import * as v from "valibot";
+import { ApiError, GameAlreadyFinishedError, NotFoundError } from "./error";
 import index from "./frontend/index.html";
+import { type Game, WORDLE_ATTEMPTS, getRandomWord, validateGuess } from "./game";
 
 const client_id = Env.OAUTH_CLIENT_ID;
 const client_secret = Env.OAUTH_CLIENT_SECRET;
@@ -19,11 +20,6 @@ const ApiTokenRequestSchema = v.object({
   code: v.string(),
 });
 
-type Game = {
-  id: string;
-  userId: string;
-  solution: string;
-};
 const games: Game[] = [];
 const GetGameRequestSchema = v.object({
   userId: v.string(),
@@ -31,16 +27,6 @@ const GetGameRequestSchema = v.object({
 const GameGuessRequestSchema = v.object({
   guess: v.string(),
 });
-
-// TODO)) Get the wordlist from DB
-const WORDLE_WORDS = ["fishy", "crane", "abcde", "ports", "fizzy"];
-
-function getRandomWord(): string {
-  // biome-ignore lint/style/noNonNullAssertion: Prototype
-  return WORDLE_WORDS[randomInt(WORDLE_WORDS.length)]!;
-}
-
-class NotFoundError extends Error {}
 
 const server = serve({
   routes: {
@@ -85,15 +71,23 @@ const server = serve({
         // TODO)) Use a DB
         let game = games.find((g) => g.userId === userId);
         if (!game) {
-          game = { id: randomUUIDv7(), userId, solution: getRandomWord() };
+          game = {
+            id: randomUUIDv7(),
+            userId,
+            solution: getRandomWord(),
+            state: "inProgress",
+            guesses: [],
+          };
           games.push(game);
-          console.log("Created game", game);
         }
         console.log("Found game", game);
 
         return Response.json({
           id: game.id,
           userId: game.userId,
+          state: game.state,
+          guesses: game.guesses,
+          // TODO)) Also send validated letters from previous attempts
         });
       },
     },
@@ -101,23 +95,28 @@ const server = serve({
       async POST(req) {
         const game = games.find((g) => g.id === req.params.id);
         if (!game) throw new NotFoundError();
-
         const { guess } = v.parse(GameGuessRequestSchema, await req.json());
-        // TODO)) We need to know on which position the letter is correct/present/etc
-        // NOTE)) Absent letters don't require a position
-        const correct: string[] = [];
-        const present: string[] = [];
-        const absent: string[] = [];
-        let idx = 0;
-        for (const letter of guess.split("")) {
-          if (letter === game.solution[idx]) correct.push(letter);
-          else if (game.solution.includes(letter)) present.push(letter);
-          else absent.push(letter);
-          idx++;
+
+        // Game is already finished -> don't accept guess
+        if (game.state !== "inProgress") {
+          throw new GameAlreadyFinishedError(game.id, game.state);
         }
 
+        game.guesses.push(guess);
+
+        // Guessed on any attempt -> game is solved
+        if (guess === game.solution) game.state = "solved";
+        // Did not guess on the last attempt -> game is failed
+        else if (game.guesses.length === WORDLE_ATTEMPTS) game.state = "failed";
+
+        // Validate the guess even if the game is already solved or failed
+        const { correct, present, absent } = validateGuess(guess, game.solution);
+
+        console.log("after guess", game);
         return Response.json({
           id: game.id,
+          state: game.state,
+          guesses: game.guesses,
           correct,
           present,
           absent,
@@ -133,8 +132,8 @@ const server = serve({
         { status: 400 },
       );
     }
-    if (error instanceof NotFoundError) {
-      return Response.json({ message: "Not found" }, { status: 404 });
+    if (error instanceof ApiError) {
+      return Response.json(error.json(), { status: error.status });
     }
     throw error;
   },
