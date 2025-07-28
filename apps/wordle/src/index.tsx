@@ -31,7 +31,7 @@ const GetGameRequestSchema = v.object({
   userId: v.string(),
 });
 const GameGuessRequestSchema = v.object({
-  guess: v.string(),
+  guess: v.pipe(v.string(), v.length(5)),
 });
 
 function serializeGame(game: Game): object {
