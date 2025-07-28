@@ -5,7 +5,14 @@ import {
   type RESTPostOAuth2AccessTokenResult,
 } from "discord-api-types/v10";
 import * as v from "valibot";
-import { ApiError, GameAlreadyFinishedError, NotFoundError } from "./error";
+import {
+  ApiError,
+  GameAlreadyActiveError,
+  GameAlreadyFinishedError,
+  GameNotActiveError,
+  NotFoundError,
+  UnauthorizedError,
+} from "./error";
 import index from "./frontend/index.html";
 import {
   type Game,
@@ -37,7 +44,6 @@ const GameGuessRequestSchema = v.object({
 function serializeGame(game: Game): object {
   return {
     id: game.id,
-    userId: game.userId,
     state: game.state,
     guesses: game.guesses,
     correct: game.result.correct,
@@ -82,28 +88,43 @@ const server = serve({
       },
     },
 
-    "/api/game": {
+    "/api/game/new": {
       async POST(req) {
-        const { userId } = v.parse(GetGameRequestSchema, await req.json());
+        // TODO)) Actually authenticate the user
+        const userId = req.headers.get("User-ID");
+        if (!userId) throw new UnauthorizedError();
 
         // TODO)) Use a DB
-        let game = games.find((g) => g.userId === userId);
-        if (!game) {
-          game = {
-            id: randomUUIDv7(),
-            userId,
-            solution: getRandomWord(),
-            state: "inProgress",
-            guesses: [],
-            result: {
-              correct: [],
-              present: [],
-              absent: new Set<string>(),
-            },
-          };
-          games.push(game);
-        }
-        console.log("Found game", game);
+        const existingGame = games.find((g) => g.userId === userId);
+        if (existingGame) throw new GameAlreadyActiveError(existingGame.id);
+
+        const game: Game = {
+          id: randomUUIDv7(),
+          userId,
+          solution: getRandomWord(),
+          state: "inProgress",
+          guesses: [],
+          result: {
+            correct: [],
+            present: [],
+            absent: new Set<string>(),
+          },
+        };
+        games.push(game);
+        console.log("New game", game);
+
+        return Response.json(serializeGame(game), { status: 201 });
+      },
+    },
+    "/api/game/current": {
+      async GET(req) {
+        // TODO)) Actually authenticate the user
+        const userId = req.headers.get("User-ID");
+        if (!userId) throw new UnauthorizedError();
+
+        // TODO)) Use a DB
+        const game = games.find((g) => g.userId === userId);
+        if (!game) throw new GameNotActiveError();
 
         return Response.json(serializeGame(game));
       },
