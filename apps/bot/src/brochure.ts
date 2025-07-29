@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { type GuildMember, type PartialGuildMember, userMention } from "discord.js";
 import { BROCHURE_ROLES } from "./specializedConstants";
+import { getGuildSetting } from "./util/getGuildSetting";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 const addedRole = (
@@ -20,8 +21,7 @@ Nie tolerujemy takich obrzydliwych zachowań na Stracie Czasu[.](${imageUrl}) Ni
 export const brochure = new Hashira({ name: "brochure" }).handle(
   "guildMemberUpdate",
   async (_, oldMember, newMember) => {
-    const brochureRoles =
-      BROCHURE_ROLES[newMember.guild.id as keyof typeof BROCHURE_ROLES];
+    const brochureRoles = getGuildSetting(BROCHURE_ROLES, newMember.guild.id);
     if (!brochureRoles) return;
 
     if (addedRole(oldMember, newMember, brochureRoles.FEMALE)) {

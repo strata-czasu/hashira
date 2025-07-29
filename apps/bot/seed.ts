@@ -7,6 +7,7 @@ import {
   USER_IDS,
 } from "./src/specializedConstants";
 import { ensureUserExists } from "./src/util/ensureUsersExist";
+import { getGuildSetting } from "./src/util/getGuildSetting";
 
 const isProduction = process.argv.includes("--production");
 
@@ -49,8 +50,7 @@ const createDefaultItems = async (guildId: string) => {
 };
 
 const setDefaultLogChannels = async (guildId: string) => {
-  const defaultLogChannels =
-    DEFAULT_LOG_CHANNELS[guildId as keyof typeof DEFAULT_LOG_CHANNELS];
+  const defaultLogChannels = getGuildSetting(DEFAULT_LOG_CHANNELS, guildId);
   if (!defaultLogChannels) return;
 
   await createGuild(guildId);

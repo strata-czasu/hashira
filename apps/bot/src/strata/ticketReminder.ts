@@ -1,16 +1,14 @@
 import { Hashira } from "@hashira/core";
 import type { GuildChannel } from "discord.js";
 import { TICKET_REMINDER_SETTINGS } from "../specializedConstants";
+import { getGuildSetting } from "../util/getGuildSetting";
 
 export const ticketReminder = new Hashira({ name: "ticketReminder" }).handle(
   "channelCreate",
   async (_, channel: GuildChannel) => {
-    const settings =
-      TICKET_REMINDER_SETTINGS[
-        channel.guild.id as keyof typeof TICKET_REMINDER_SETTINGS
-      ];
-
+    const settings = getGuildSetting(TICKET_REMINDER_SETTINGS, channel.guild.id);
     if (!settings) return;
+
     if (channel.parent?.id !== settings.CATEGORY) return;
 
     const pingChannel = await channel.client.channels.fetch(settings.TICKET_PING);
