@@ -14,9 +14,9 @@ const WORD_LENGTH = 5;
 
 export function Wordle() {
   return (
-    <WorldeContextProvider>
+    <WordleContextProvider>
       <WordleInner />
-    </WorldeContextProvider>
+    </WordleContextProvider>
   );
 }
 
@@ -134,14 +134,14 @@ type WordleContextType = {
   setPendingInput: Dispatch<SetStateAction<string>>;
 };
 
-const WorldeContext = createContext<WordleContextType | undefined>(undefined);
+const WordleContext = createContext<WordleContextType | undefined>(undefined);
 
-function WorldeContextProvider({ children }: { children: React.ReactNode }) {
+function WordleContextProvider({ children }: { children: React.ReactNode }) {
   const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
 
   return (
-    <WorldeContext.Provider
+    <WordleContext.Provider
       value={{
         guesses,
         setGuesses,
@@ -150,14 +150,14 @@ function WorldeContextProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-    </WorldeContext.Provider>
+    </WordleContext.Provider>
   );
 }
 
 function useWordleState() {
-  const context = useContext(WorldeContext);
+  const context = useContext(WordleContext);
   if (!context) {
-    throw new Error("useWordleContext must be used within a WorldeContextProvider");
+    throw new Error("useWordleContext must be used within a WordleContextProvider");
   }
 
   return {
