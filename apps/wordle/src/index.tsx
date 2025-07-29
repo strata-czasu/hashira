@@ -57,7 +57,7 @@ const server = serve({
     // Serve index.html for all unmatched routes.
     "/*": index,
 
-    "/api/token": {
+    "/api/auth/token": {
       async POST(req) {
         const { code } = v.parse(ApiTokenRequestSchema, await req.json());
 
