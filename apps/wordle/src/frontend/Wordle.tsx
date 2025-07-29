@@ -1,13 +1,16 @@
 import { clsx } from "clsx";
+import { isEqual } from "es-toolkit";
 import {
   type Dispatch,
   type SetStateAction,
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from "react";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
+import { type Game, getCurrentGame, startNewGame, submitGuess } from "./wordleApi";
 
 const ATTEMPTS = 6;
 const WORD_LENGTH = 5;
@@ -21,10 +24,10 @@ export function Wordle() {
 }
 
 function WordleInner() {
-  const { pushGuess, pendingInput, setPendingInput, resetGame } = useWordleState();
+  const { pushGuess, pendingInput, setPendingInput } = useWordleState();
 
   const onKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    async (e: KeyboardEvent) => {
       if (e.repeat) return;
       // TODO)) Handle game state (win/loss)
 
@@ -36,7 +39,7 @@ function WordleInner() {
       if (e.key === "Enter") {
         if (pendingInput.length === WORD_LENGTH) {
           // TODO)) Validate word
-          pushGuess(pendingInput);
+          await pushGuess(pendingInput);
         }
       }
 
@@ -57,16 +60,6 @@ function WordleInner() {
           <Row key={row} index={row} />
         ))}
       </div>
-
-      <div>
-        <button
-          type="button"
-          className="px-4 py-2 my-4 text-white rounded bg-red-400 hover:bg-red-500 transition-colors"
-          onClick={resetGame}
-        >
-          Reset
-        </button>
-      </div>
     </div>
   );
 }
@@ -77,7 +70,7 @@ type RowProps = {
   index: number;
 };
 function Row({ index }: RowProps) {
-  const { guesses, pendingInput } = useWordleState();
+  const { gameState, guesses, pendingInput } = useWordleState();
   const rowGuess = guesses[index];
   const isPending = index === guesses.length;
 
@@ -88,8 +81,20 @@ function Row({ index }: RowProps) {
   };
 
   const getState = (col: number): CellState => {
-    // TODO)) Actually check the word against the solution
+    // TODO)) Is this correct?
+    if (!gameState) return "pending";
+    if (isPending) return "pending";
+
+    const guess = { letter: getLetter(col), position: col };
+
+    const correctGuess = gameState.correct.find((c) => isEqual(c, guess));
+    if (correctGuess) return "correct";
+
+    const presentGuess = gameState.present.find((p) => isEqual(p, guess));
+    if (presentGuess) return "present";
+
     if (rowGuess) return "absent";
+
     return "pending";
   };
 
@@ -128,6 +133,9 @@ function Cell({ letter, state }: CellProps) {
 }
 
 type WordleContextType = {
+  // TODO)) Can we somehow ensure gameState is always not null?
+  gameState: Game | null;
+  setGameState: Dispatch<SetStateAction<Game | null>>;
   guesses: string[];
   setGuesses: Dispatch<SetStateAction<string[]>>;
   pendingInput: string;
@@ -136,13 +144,30 @@ type WordleContextType = {
 
 const WordleContext = createContext<WordleContextType | undefined>(undefined);
 
-function WordleContextProvider({ children }: { children: React.ReactNode }) {
+export function WordleContextProvider({ children }: { children: React.ReactNode }) {
+  const [gameState, setGameState] = useState<Game | null>(null);
+  // TODO)) Deduplicate this state with gameState.guesses
   const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
+
+  useEffect(() => {
+    if (gameState) return;
+
+    const inner = async () => {
+      const game = await getOrCreateGame("1234");
+      if (!game) throw new Error("Failed to load or start game");
+      setGameState(game);
+      setGuesses(game.guesses);
+    };
+
+    inner();
+  }, [gameState]);
 
   return (
     <WordleContext.Provider
       value={{
+        gameState,
+        setGameState,
         guesses,
         setGuesses,
         pendingInput,
@@ -154,23 +179,41 @@ function WordleContextProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useWordleState() {
+export function useWordleState() {
   const context = useContext(WordleContext);
   if (!context) {
     throw new Error("useWordleContext must be used within a WordleContextProvider");
   }
 
   return {
+    gameState: context.gameState,
     pendingInput: context.pendingInput,
     setPendingInput: context.setPendingInput,
     guesses: context.guesses,
-    pushGuess(guess: string) {
-      context.setGuesses((prev) => [...prev, guess]);
-      context.setPendingInput("");
-    },
-    resetGame() {
-      context.setGuesses([]);
+    async pushGuess(guess: string) {
+      if (!context.gameState) throw new Error("Game is not active");
+      // TODO)) Don't submit when game is complete/failed
+
+      const res = await submitGuess(context.gameState.id, guess);
+      context.setGameState(res);
+      context.setGuesses(res.guesses);
       context.setPendingInput("");
     },
   };
+}
+
+async function getOrCreateGame(userId: string) {
+  const activeGame = await getCurrentGame(userId);
+  if (activeGame) {
+    console.debug("Active game found", activeGame.id);
+    return activeGame;
+  }
+
+  const newGame = await startNewGame(userId);
+  if (newGame) {
+    console.debug("New game started", newGame.id);
+    return newGame;
+  }
+
+  return null;
 }
