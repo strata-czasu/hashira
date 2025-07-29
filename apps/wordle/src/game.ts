@@ -34,7 +34,7 @@ export function validateGuess(guess: string, solution: string): ValidationResult
   const absent = new Set<string>();
 
   let position = 0;
-  for (const letter of guess.split("")) {
+  for (const letter of guess) {
     if (letter === solution[position]) correct.push({ letter, position });
     else if (solution.includes(letter)) present.push({ letter, position });
     else absent.add(letter);
