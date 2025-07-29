@@ -15,6 +15,7 @@ import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
+import { level100Tracker } from "./level100Tracker";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
@@ -51,6 +52,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(autoRole)
   .use(avatar)
   .use(strataCzasu)
+  .use(level100Tracker)
   .use(dmForwarding)
   .use(economy)
   .use(emojiCounting)

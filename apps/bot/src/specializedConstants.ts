@@ -32,6 +32,12 @@ export const STRATA_CZASU = {
   BAN_APPEAL_URL: "https://bit.ly/unban_na_stracie",
 } as const;
 
+// TODO: remove this after bug on Bruno is fixed or resolved in other way
+export const LEVEL_100_RESTORE_ROLES = {
+  [GUILD_IDS.StrataCzasu]: "412358723802234881",
+  [GUILD_IDS.Homik]: "1245119959563112549",
+} as const;
+
 export const BROCHURE_ROLES = {
   [GUILD_IDS.Piwnica]: {
     FEMALE: "1344071005319987312", // @k
