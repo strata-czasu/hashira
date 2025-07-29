@@ -1,4 +1,4 @@
-import type { GameState } from "./game";
+import type { GameState } from "@/game";
 
 export abstract class ApiError extends Error {
   abstract status: number;
