@@ -115,6 +115,7 @@ type TransferBalanceOptions = {
   reason: string | null;
   fromWalletName?: string;
   toWalletName?: string;
+  skipAmountCheck?: boolean;
 } & GetCurrencyConditionOptions;
 
 export const transferBalance = async ({
@@ -126,10 +127,11 @@ export const transferBalance = async ({
   reason,
   fromWalletName,
   toWalletName,
+  skipAmountCheck = false,
   ...currencyOptions
 }: TransferBalanceOptions) => {
   return await prisma.$transaction(async (tx) => {
-    if (amount <= 0) throw new InvalidAmountError();
+    if (!skipAmountCheck && amount <= 0) throw new InvalidAmountError();
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
@@ -196,6 +198,7 @@ type TransferBalancesOptions = {
   guildId: string;
   amount: number;
   reason: string | null;
+  skipAmountCheck?: boolean;
 } & GetCurrencyConditionOptions;
 
 export const transferBalances = async ({
@@ -205,10 +208,11 @@ export const transferBalances = async ({
   guildId,
   amount,
   reason,
+  skipAmountCheck = false,
   ...currencyOptions
 }: TransferBalancesOptions) => {
   return await prisma.$transaction(async (tx) => {
-    if (amount <= 0) throw new InvalidAmountError();
+    if (!skipAmountCheck && amount <= 0) throw new InvalidAmountError();
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
