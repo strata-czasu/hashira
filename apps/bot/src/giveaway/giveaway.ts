@@ -93,7 +93,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               : GiveawayBannerRatio.Auto;
 
           const files: AttachmentBuilder[] = [];
-          let ext: string | undefined;
+          let imageURL: string;
 
           if (banner && ratio !== GiveawayBannerRatio.None) {
             if (banner.size > 4_000_000) {
@@ -103,8 +103,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               );
             }
 
-            const [buffer, returnedExt] = await formatBanner(banner, ratio);
-            ext = returnedExt;
+            const [buffer, ext] = await formatBanner(banner, ratio);
             if (!buffer) {
               return await errorFollowUp(
                 itx,
@@ -114,6 +113,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
             const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
             files.push(attachment);
+            imageURL = `attachment://banner.${ext}`;
+          } else {
+            imageURL = getStaticBanner(title || "Giveaway");
           }
 
           const parsedRewards: GiveawayReward[] = parseRewards(rewards);
@@ -142,11 +144,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               mg.addItems((mgi) =>
                 mgi
                   .setDescription(`Banner for giveaway: ${title || "Giveaway"}`)
-                  .setURL(
-                    banner
-                      ? `attachment://banner.${ext}`
-                      : getStaticBanner(title || "Giveaway"),
-                  ),
+                  .setURL(imageURL),
               ),
             );
           }

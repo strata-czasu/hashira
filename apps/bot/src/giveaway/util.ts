@@ -133,7 +133,7 @@ export async function formatBanner(
 
   // Gets animation loop count from metadata, defaults to 0 (infinite)
   const metadata = await sharp(buffer, { animated: true }).metadata();
-  const loop = typeof metadata.loop === "number" ? metadata.loop : 0;
+  const loop = metadata.loop ?? 0;
 
   const formatted = await sharp(buffer, { animated: true })
     .resize(targetWidth, targetHeight, {
