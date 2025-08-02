@@ -1,12 +1,12 @@
-import { isEqual, randomInt } from "es-toolkit";
-import type { KnownLetter } from "./db";
+import { isEqual, sample } from "es-toolkit";
+import { type KnownLetter, prisma } from "./db";
 
-// TODO)) Get the wordlist from DB
-const WORDLE_WORDS = ["fishy", "crane", "abcde", "ports", "fizzy"];
-
-export function getRandomWord(): string {
-  // biome-ignore lint/style/noNonNullAssertion: Prototype
-  return WORDLE_WORDS[randomInt(WORDLE_WORDS.length)]!;
+export async function getRandomWord(guildId: string): Promise<string> {
+  const availableWords = await prisma.availableWord.findMany({
+    where: { guildId },
+  });
+  // TODO)) Pick a word that a given user has not guessed yet
+  return sample(availableWords.map((aw) => aw.word));
 }
 
 export type GameState = "inProgress" | "solved" | "failed";
