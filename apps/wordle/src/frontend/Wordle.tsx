@@ -1,3 +1,5 @@
+import { getCurrentGame, startNewGame, submitGuess } from "@/api/game";
+import type { GameDetail } from "@/api/types";
 import { clsx } from "clsx";
 import { isEqual } from "es-toolkit";
 import {
@@ -10,7 +12,6 @@ import {
   useState,
 } from "react";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
-import { type Game, getCurrentGame, startNewGame, submitGuess } from "./wordleApi";
 
 const ATTEMPTS = 6;
 const WORD_LENGTH = 5;
@@ -70,7 +71,7 @@ type RowProps = {
   index: number;
 };
 function Row({ index }: RowProps) {
-  const { gameState, guesses, pendingInput } = useWordleState();
+  const { gameData, guesses, pendingInput } = useWordleState();
   const rowGuess = guesses[index];
   const isPending = index === guesses.length;
 
@@ -82,15 +83,15 @@ function Row({ index }: RowProps) {
 
   const getState = (col: number): CellState => {
     // TODO)) Is this correct?
-    if (!gameState) return "pending";
+    if (!gameData) return "pending";
     if (isPending) return "pending";
 
     const guess = { letter: getLetter(col), position: col };
 
-    const correctGuess = gameState.correct.find((c) => isEqual(c, guess));
+    const correctGuess = gameData.correct.find((c) => isEqual(c, guess));
     if (correctGuess) return "correct";
 
-    const presentGuess = gameState.present.find((p) => isEqual(p, guess));
+    const presentGuess = gameData.present.find((p) => isEqual(p, guess));
     if (presentGuess) return "present";
 
     if (rowGuess) return "absent";
@@ -130,9 +131,9 @@ function Cell({ letter, state }: CellProps) {
 }
 
 type WordleContextType = {
-  // TODO)) Can we somehow ensure gameState is always not null?
-  gameState: Game | null;
-  setGameState: Dispatch<SetStateAction<Game | null>>;
+  // TODO)) Can we somehow ensure gameData is always not null?
+  gameData: GameDetail | null;
+  setGameData: Dispatch<SetStateAction<GameDetail | null>>;
   guesses: string[];
   setGuesses: Dispatch<SetStateAction<string[]>>;
   pendingInput: string;
@@ -142,29 +143,30 @@ type WordleContextType = {
 const WordleContext = createContext<WordleContextType | undefined>(undefined);
 
 export function WordleContextProvider({ children }: { children: React.ReactNode }) {
-  const [gameState, setGameState] = useState<Game | null>(null);
+  const [gameData, setGameData] = useState<GameDetail | null>(null);
   // TODO)) Deduplicate this state with gameState.guesses
   const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
 
   useEffect(() => {
-    if (gameState) return;
+    if (gameData) return;
 
     const inner = async () => {
-      const game = await getOrCreateGame("1234");
+      // TODO)) Actual userId and guildId
+      const game = await getOrCreateGame("1234", "5678");
       if (!game) throw new Error("Failed to load or start game");
-      setGameState(game);
+      setGameData(game);
       setGuesses(game.guesses);
     };
 
     inner();
-  }, [gameState]);
+  }, [gameData]);
 
   return (
     <WordleContext.Provider
       value={{
-        gameState,
-        setGameState,
+        gameData,
+        setGameData,
         guesses,
         setGuesses,
         pendingInput,
@@ -183,30 +185,30 @@ export function useWordleState() {
   }
 
   return {
-    gameState: context.gameState,
+    gameData: context.gameData,
     pendingInput: context.pendingInput,
     setPendingInput: context.setPendingInput,
     guesses: context.guesses,
     async pushGuess(guess: string) {
-      if (!context.gameState) throw new Error("Game is not active");
+      if (!context.gameData) throw new Error("Game is not active");
       // TODO)) Don't submit when game is complete/failed
 
-      const res = await submitGuess(context.gameState.id, guess);
-      context.setGameState(res);
+      const res = await submitGuess("1234", "5678", context.gameData.id, guess);
+      context.setGameData(res);
       context.setGuesses(res.guesses);
       context.setPendingInput("");
     },
   };
 }
 
-async function getOrCreateGame(userId: string) {
-  const activeGame = await getCurrentGame(userId);
+async function getOrCreateGame(userId: string, guildId: string) {
+  const activeGame = await getCurrentGame(userId, guildId);
   if (activeGame) {
     console.debug("Active game found", activeGame.id);
     return activeGame;
   }
 
-  const newGame = await startNewGame(userId);
+  const newGame = await startNewGame(userId, guildId);
   if (newGame) {
     console.debug("New game started", newGame.id);
     return newGame;

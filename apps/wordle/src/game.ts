@@ -19,7 +19,7 @@ export type Game = {
   result: ValidationResult;
 };
 
-type KnownLetter = {
+export type KnownLetter = {
   letter: string;
   position: number;
 };

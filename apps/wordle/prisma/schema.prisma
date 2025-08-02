@@ -6,3 +6,34 @@ datasource db {
   provider = "sqlite"
   url      = env("WORDLE_DATABASE_URL")
 }
+
+model Game {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  userId    String
+  guildId   String
+  state     GameState @default(inProgress)
+  solution  String
+
+  guesses Guess[]
+}
+
+model Guess {
+  gameId  Int
+  index   Int
+  letters String
+  correct Json
+  present Json
+  absent  Json
+
+  game Game @relation(fields: [gameId], references: [id])
+
+  @@id([gameId, index])
+}
+
+enum GameState {
+  inProgress
+  solved
+  failed
+}
