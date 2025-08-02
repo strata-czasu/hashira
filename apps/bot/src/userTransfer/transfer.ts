@@ -1,4 +1,5 @@
 import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import {
   ChannelType,
   type User as DiscordUser,
@@ -6,7 +7,7 @@ import {
   RESTJSONErrorCodes,
   userMention,
 } from "discord.js";
-import { transferBalances } from "../economy/managers/transferManager";
+import { transferBalance } from "../economy/managers/transferManager";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { formatVerificationType } from "../moderation/verification";
@@ -116,18 +117,56 @@ const transferWallets: TransferOperation = async ({
     guildId: guild.id,
     currencySymbol: STRATA_CZASU_CURRENCY.symbol,
   });
-  if (!oldWallet.balance) return null;
-  await transferBalances({
+  const oldWalletTransactions = await prisma.transaction.count({
+    where: { walletId: oldWallet.id },
+  });
+  if (!oldWalletTransactions) return null;
+
+  const newWallet = await getDefaultWallet({
     prisma,
-    fromUserId: oldUser.id,
-    toUserIds: [newUser.id],
+    userId: newUser.id,
     guildId: guild.id,
     currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-    amount: oldWallet.balance,
-    reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
   });
+
+  await prisma.$transaction(async (tx) => {
+    // Move transactions between wallets directly
+    await tx.transaction.updateMany({
+      where: { walletId: oldWallet.id },
+      data: { walletId: newWallet.id },
+    });
+    // Update wallet balances to match the new state
+    await tx.wallet.update({
+      where: { id: oldWallet.id },
+      data: {
+        balance: { decrement: oldWallet.balance },
+      },
+    });
+    await tx.wallet.update({
+      where: { id: newWallet.id },
+      data: {
+        balance: { increment: oldWallet.balance },
+      },
+    });
+    // Symbolic transaction to keep the transfer in history
+    await transferBalance({
+      prisma: nestedTransaction(tx),
+      fromUserId: oldUser.id,
+      toUserId: newUser.id,
+      guildId: guild.id,
+      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+      amount: 0,
+      skipAmountCheck: true,
+      reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
+    });
+  });
+
   // TODO: Wallet transfer for custom currencies
-  return `Przeniesiono ${formatBalance(oldWallet.balance, STRATA_CZASU_CURRENCY.symbol)}`;
+  const formattedBalance = formatBalance(
+    oldWallet.balance,
+    STRATA_CZASU_CURRENCY.symbol,
+  );
+  return `Przeniesiono ${formattedBalance} (${oldWalletTransactions} transakcji)`;
 };
 
 const transferUltimatum: TransferOperation = async ({
