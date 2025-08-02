@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mergeKnownLetters, mergeValidationResults, validateGuess } from "./game";
+import { mergeKnownLetters, mergeValidationResults, validateGuess } from "./validation";
 
 describe("validateGuess", () => {
   test("absent letters", () => {

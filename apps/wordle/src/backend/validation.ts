@@ -1,5 +1,5 @@
 import { isEqual, sample } from "es-toolkit";
-import { type KnownLetter, prisma } from "./db";
+import { type Guess, type KnownLetter, prisma } from "../db";
 
 export async function getRandomWord(guildId: string): Promise<string> {
   const availableWords = await prisma.availableWord.findMany({
@@ -14,6 +14,21 @@ export type ValidationResult = {
   present: KnownLetter[];
   absent: Set<string>;
 };
+
+/**
+ * Transform a Guess object into a ValidationResult
+ */
+export function parseValidationResult(guess: Guess): ValidationResult {
+  return {
+    correct: guess.correct,
+    present: guess.present,
+    absent: new Set(guess.absent),
+  };
+}
+
+/**
+ * Validate a wordle guess against the solution
+ */
 export function validateGuess(guess: string, solution: string): ValidationResult {
   const correct: KnownLetter[] = [];
   const present: KnownLetter[] = [];

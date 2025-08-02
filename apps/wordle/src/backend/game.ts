@@ -1,13 +1,14 @@
 import type { GameDetail } from "@/api/types";
-import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
-import { type GameState, prisma } from "@/db";
-import { type GameWithGuesses, parseValidationResult } from "@/db/game";
 import {
   type ValidationResult,
   getRandomWord,
   mergeValidationResults,
+  parseValidationResult,
   validateGuess,
-} from "@/game";
+} from "@/backend/validation";
+import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
+import { type GameState, prisma } from "@/db";
+import type { GameWithGuesses } from "@/db/game";
 import type { BunRequest } from "bun";
 import * as v from "valibot";
 import {
