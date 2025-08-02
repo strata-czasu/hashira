@@ -17,8 +17,6 @@ const Env = v.object({
   BOT_CLIENT_ID: ID,
   BOT_DEVELOPER_GUILD_IDS: SpaceSeparatedArray(ID),
   BOT_TOKEN: v.string(),
-  OAUTH_CLIENT_ID: v.optional(ID),
-  OAUTH_CLIENT_SECRET: v.optional(v.string()),
   SENTRY_DSN: v.optional(v.string()),
   DATABASE_URL: v.pipe(v.string(), v.url()),
   DATABASE_TEST_URL: v.pipe(v.string(), v.url()),

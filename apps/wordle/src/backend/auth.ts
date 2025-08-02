@@ -1,17 +1,12 @@
-import Env from "@hashira/env";
 import type { BunRequest } from "bun";
 import {
   OAuth2Routes,
   type RESTPostOAuth2AccessTokenResult,
 } from "discord-api-types/v10";
+import env from "env";
 import * as v from "valibot";
 
-const client_id = Env.OAUTH_CLIENT_ID;
-const client_secret = Env.OAUTH_CLIENT_SECRET;
-if (!client_id || !client_secret) {
-  throw new Error("OAuth client ID and secret must be set in the environment");
-}
-console.log("[auth] Using OAuth client ID:", client_id);
+console.log("[auth] Using OAuth client ID:", env.WORDLE_OAUTH_CLIENT_ID);
 
 const ApiTokenRequestSchema = v.object({
   code: v.string(),
@@ -28,8 +23,8 @@ export const authApi = {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          client_id,
-          client_secret,
+          client_id: env.WORDLE_OAUTH_CLIENT_ID,
+          client_secret: env.WORDLE_OAUTH_CLIENT_SECRET,
           grant_type: "authorization_code",
           code,
         }),
