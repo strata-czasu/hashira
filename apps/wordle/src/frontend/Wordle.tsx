@@ -101,11 +101,8 @@ function Row({ index }: RowProps) {
   return (
     <div className="flex gap-2">
       {Array.from({ length: WORD_LENGTH }, (_, col) => (
-        <Cell
-          key={(index + 1) * (col + 1)}
-          letter={getLetter(col)}
-          state={getState(col)}
-        />
+        // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
+        <Cell key={`${index}:${col}`} letter={getLetter(col)} state={getState(col)} />
       ))}
     </div>
   );
