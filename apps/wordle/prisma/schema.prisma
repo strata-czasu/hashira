@@ -23,6 +23,12 @@ model Game {
   guesses Guess[]
 }
 
+enum GameState {
+  inProgress
+  solved
+  failed
+}
+
 model Guess {
   gameId  Int
   index   Int
@@ -39,8 +45,11 @@ model Guess {
   @@id([gameId, index])
 }
 
-enum GameState {
-  inProgress
-  solved
-  failed
+model AvailableWord {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  guildId   String
+  createdBy String
+  word      String    @unique
 }

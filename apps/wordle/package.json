@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "bun --hot src/index.tsx",
     "start": "NODE_ENV=production bun src/index.tsx",
+    "seed": "bun run seed.ts",
     "prisma-studio": "prisma studio --port 5556",
     "prisma-generate": "prisma generate",
     "prisma-migrate": "prisma migrate dev",
