@@ -1,5 +1,6 @@
 import { getCurrentGame, startNewGame, submitGuess } from "@/api/game";
 import type { GameDetail } from "@/api/types";
+import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
 import { clsx } from "clsx";
 import { isEqual } from "es-toolkit";
 import {
@@ -12,9 +13,6 @@ import {
   useState,
 } from "react";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
-
-const ATTEMPTS = 6;
-const WORD_LENGTH = 5;
 
 export function Wordle() {
   return (
@@ -38,14 +36,14 @@ function WordleInner() {
         }
       }
       if (e.key === "Enter") {
-        if (pendingInput.length === WORD_LENGTH) {
+        if (pendingInput.length === WORDLE_WORD_LENGTH) {
           // TODO)) Validate word
           await pushGuess(pendingInput);
         }
       }
 
       if (!/^[a-zA-Z]$/.test(e.key)) return;
-      if (pendingInput.length < WORD_LENGTH) {
+      if (pendingInput.length < WORDLE_WORD_LENGTH) {
         setPendingInput((prev) => prev + e.key.toLowerCase());
       }
     },
@@ -56,7 +54,7 @@ function WordleInner() {
   return (
     <div>
       <div className="flex flex-col gap-2">
-        {Array.from({ length: ATTEMPTS }, (_, row) => (
+        {Array.from({ length: WORDLE_ATTEMPTS }, (_, row) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
           <Row key={row} index={row} />
         ))}
@@ -101,7 +99,7 @@ function Row({ index }: RowProps) {
 
   return (
     <div className="flex gap-2">
-      {Array.from({ length: WORD_LENGTH }, (_, col) => (
+      {Array.from({ length: WORDLE_WORD_LENGTH }, (_, col) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
         <Cell key={`${index}:${col}`} letter={getLetter(col)} state={getState(col)} />
       ))}

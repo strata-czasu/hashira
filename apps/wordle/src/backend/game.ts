@@ -1,9 +1,9 @@
 import type { GameDetail } from "@/api/types";
+import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
 import { type GameState, prisma } from "@/db";
 import { type GameWithGuesses, parseValidationResult } from "@/db/game";
 import {
   type ValidationResult,
-  WORDLE_ATTEMPTS,
   getRandomWord,
   mergeValidationResults,
   validateGuess,
@@ -19,7 +19,7 @@ import {
 } from "./error";
 
 const GameGuessRequestSchema = v.object({
-  guess: v.pipe(v.string(), v.length(5)),
+  guess: v.pipe(v.string(), v.length(WORDLE_WORD_LENGTH)),
 });
 
 function serializeGame(game: GameWithGuesses): GameDetail {
