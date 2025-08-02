@@ -3,7 +3,6 @@ import type { KnownLetter } from "./db";
 
 // TODO)) Get the wordlist from DB
 const WORDLE_WORDS = ["fishy", "crane", "abcde", "ports", "fizzy"];
-export const WORDLE_ATTEMPTS = 6;
 
 export function getRandomWord(): string {
   // biome-ignore lint/style/noNonNullAssertion: Prototype
