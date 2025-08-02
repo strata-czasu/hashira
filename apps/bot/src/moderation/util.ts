@@ -24,11 +24,23 @@ export const formatUserWithId = (user: User | GuildMember) => {
   return `${bold(tag)} (${inlineCode(user.id)})`;
 };
 
-export const getMuteRoleId = async (prisma: ExtendedPrismaClient, guildId: string) => {
+export const getGuildRolesIds = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+) => {
   const settings = await prisma.guildSettings.findFirst({ where: { guildId } });
 
-  if (!settings) return null;
-  return settings.muteRoleId;
+  if (!settings) {
+    return {
+      muteRoleId: null,
+      plus18RoleId: null,
+    } as const;
+  }
+
+  return {
+    muteRoleId: settings.muteRoleId,
+    plus18RoleId: settings.plus18RoleId,
+  } as const;
 };
 
 export const formatMuteLength = (mute: Mute) => {

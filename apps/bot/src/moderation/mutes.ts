@@ -38,7 +38,12 @@ import { discordTry } from "../util/discordTry";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
-import { applyMute, formatMuteLength, formatUserWithId, getMuteRoleId } from "./util";
+import {
+  applyMute,
+  formatMuteLength,
+  formatUserWithId,
+  getGuildRolesIds,
+} from "./util";
 
 type Context = ExtractContext<typeof base>;
 
@@ -216,8 +221,8 @@ export const universalAddMute = async ({
     return;
   }
 
-  const muteRoleId = await getMuteRoleId(prisma, guildId);
-  if (!muteRoleId) {
+  const guildRoles = await getGuildRolesIds(prisma, guildId);
+  if (!guildRoles.muteRoleId) {
     await reply(
       "Rola do wyciszeń nie jest ustawiona. Użyj komendy `/settings mute-role`",
     );
@@ -261,7 +266,7 @@ export const universalAddMute = async ({
 
   const appliedMute = await applyMute(
     member,
-    muteRoleId,
+    guildRoles.muteRoleId,
     `Wyciszenie: ${reason} [${mute.id}]`,
   );
 
@@ -773,9 +778,14 @@ export const mutes = new Hashira({ name: "mutes" })
 
     if (!activeMute) return;
 
-    const muteRoleId = await getMuteRoleId(prisma, member.guild.id);
-    if (!muteRoleId) return;
-    await applyMute(member, muteRoleId, `Przywrócone wyciszenie [${activeMute.id}]`);
+    const guildRoles = await getGuildRolesIds(prisma, member.guild.id);
+    if (!guildRoles.muteRoleId) return;
+
+    await applyMute(
+      member,
+      guildRoles.muteRoleId,
+      `Przywrócone wyciszenie [${activeMute.id}]`,
+    );
   })
   .userContextMenu(
     "mute",
