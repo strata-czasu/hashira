@@ -56,7 +56,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 });
                 return count.length;
               },
-              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatEntry = (
@@ -120,7 +120,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 });
                 return count.length;
               },
-              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatEntry = (
@@ -191,7 +191,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 });
                 return count.length;
               },
-              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatEntry = (
@@ -244,7 +244,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 });
                 return count.length;
               },
-              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
             const wallets = await prisma.wallet.findMany({
