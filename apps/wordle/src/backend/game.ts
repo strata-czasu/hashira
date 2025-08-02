@@ -1,13 +1,14 @@
 import type { GameDetail } from "@/api/types";
+import { type GameState, prisma } from "@/db";
+import { type GameWithGuesses, parseValidationResult } from "@/db/game";
 import {
-  type KnownLetter,
+  type ValidationResult,
   WORDLE_ATTEMPTS,
   getRandomWord,
   mergeValidationResults,
   validateGuess,
 } from "@/game";
 import type { BunRequest } from "bun";
-import { type Game, type GameState, type Guess, prisma } from "db";
 import * as v from "valibot";
 import {
   GameAlreadyActiveError,
@@ -21,24 +22,10 @@ const GameGuessRequestSchema = v.object({
   guess: v.pipe(v.string(), v.length(5)),
 });
 
-type GameWithGuesses = Game & { guesses: Guess[] };
-
 function serializeGame(game: GameWithGuesses): GameDetail {
-  const mergedResults = game.guesses.reduce(
-    // TODO)) Validate schema of JSON data from DB
-    (acc, guess) => {
-      const res = {
-        correct: guess.correct as KnownLetter[],
-        present: guess.present as KnownLetter[],
-        absent: new Set(guess.absent as string[]),
-      };
-      return mergeValidationResults(acc, res);
-    },
-    {
-      correct: [] as KnownLetter[],
-      present: [] as KnownLetter[],
-      absent: new Set<string>(),
-    },
+  const mergedResults = game.guesses.reduce<ValidationResult>(
+    (acc, guess) => mergeValidationResults(acc, parseValidationResult(guess)),
+    { correct: [], present: [], absent: new Set<string>() },
   );
 
   return {
@@ -124,7 +111,6 @@ export const gameApi = {
             create: {
               index: game.guesses.length,
               letters: guess,
-              // TODO)) Validate the shape of this data before saving
               correct: validatedGuess.correct,
               present: validatedGuess.present,
               absent: Array.from(validatedGuess.absent),

@@ -1,5 +1,4 @@
-import type { KnownLetter } from "@/game";
-import type { GameState } from "db";
+import type { GameState, KnownLetter } from "@/db";
 
 export type GameDetail = {
   id: number;
