@@ -9,16 +9,6 @@ export async function getRandomWord(guildId: string): Promise<string> {
   return sample(availableWords.map((aw) => aw.word));
 }
 
-export type GameState = "inProgress" | "solved" | "failed";
-export type Game = {
-  id: string;
-  userId: string;
-  solution: string;
-  guesses: string[];
-  state: GameState;
-  result: ValidationResult;
-};
-
 export type ValidationResult = {
   correct: KnownLetter[];
   present: KnownLetter[];
