@@ -20,7 +20,6 @@ import { waitForButtonClick } from "../util/singleUseButton";
 import {
   GiveawayBannerRatio,
   formatBanner,
-  getExtension,
   getStaticBanner,
   giveawayButtonRow,
   leaveButtonRow,
@@ -65,8 +64,8 @@ export const giveaway = new Hashira({ name: "giveaway" })
           .addChoices(
             { name: "Brak baneru", value: GiveawayBannerRatio.None },
             { name: "Bez zmian", value: GiveawayBannerRatio.Auto },
-            { name: "Szeroki", value: GiveawayBannerRatio.Landscape },
-            { name: "Wysoki", value: GiveawayBannerRatio.Portrait },
+            { name: "Szeroki (3:1)", value: GiveawayBannerRatio.Landscape },
+            { name: "Wysoki (2:3)", value: GiveawayBannerRatio.Portrait },
           ),
       )
       .handle(
@@ -94,6 +93,8 @@ export const giveaway = new Hashira({ name: "giveaway" })
               : GiveawayBannerRatio.Auto;
 
           const files: AttachmentBuilder[] = [];
+          let imageURL: string;
+
           if (banner && ratio !== GiveawayBannerRatio.None) {
             if (banner.size > 4_000_000) {
               return await errorFollowUp(
@@ -101,6 +102,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 `Baner jest za duży (>4MB). Aktualny rozmiar pliku: ${round(banner.size / 1_000_000, 1)} MB.`,
               );
             }
+
             const [buffer, ext] = await formatBanner(banner, ratio);
             if (!buffer) {
               return await errorFollowUp(
@@ -111,6 +113,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
             const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
             files.push(attachment);
+            imageURL = `attachment://banner.${ext}`;
+          } else {
+            imageURL = getStaticBanner(title || "Giveaway");
           }
 
           const parsedRewards: GiveawayReward[] = parseRewards(rewards);
@@ -139,11 +144,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               mg.addItems((mgi) =>
                 mgi
                   .setDescription(`Banner for giveaway: ${title || "Giveaway"}`)
-                  .setURL(
-                    banner
-                      ? `attachment://banner.${getExtension(banner.contentType)}`
-                      : getStaticBanner(title || "Giveaway"),
-                  ),
+                  .setURL(imageURL),
               ),
             );
           }
