@@ -1,4 +1,4 @@
-import type { GameState } from "@/game";
+import type { GameState } from "db";
 
 export abstract class ApiError extends Error {
   abstract status: number;
@@ -31,34 +31,31 @@ export class GameNotActiveError extends ApiError {
 
 export class GameAlreadyActiveError extends ApiError {
   status = 400;
-  #gameId: string;
 
-  constructor(gameId: string) {
+  constructor(readonly gameId: number) {
     super();
-    this.#gameId = gameId;
   }
 
   json() {
-    return { message: "A game is already active", gameId: this.#gameId };
+    return { message: "A game is already active", gameId: this.gameId };
   }
 }
 
 export class GameAlreadyFinishedError extends ApiError {
   status = 400;
-  #gameId: string;
-  #gameState: GameState;
 
-  constructor(gameId: string, gameState: GameState) {
+  constructor(
+    readonly gameId: number,
+    readonly gameState: GameState,
+  ) {
     super();
-    this.#gameId = gameId;
-    this.#gameState = gameState;
   }
 
   json() {
     return {
       message: "Game is already finished",
-      gameId: this.#gameId,
-      gameState: this.#gameState,
+      gameId: this.gameId,
+      gameState: this.gameState,
     };
   }
 }
