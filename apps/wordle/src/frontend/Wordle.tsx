@@ -14,6 +14,10 @@ import {
 } from "react";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
 
+// TODO)) Actual userId and guildId
+const USER_ID = "195935967440404480";
+const GUILD_ID = "342022299957854220";
+
 export function Wordle() {
   return (
     <WordleContextProvider>
@@ -22,13 +26,15 @@ export function Wordle() {
   );
 }
 
+export default Wordle;
+
 function WordleInner() {
-  const { pushGuess, pendingInput, setPendingInput } = useWordleState();
+  const { gameData, pendingInput, setPendingInput, pushGuess } = useWordleState();
 
   const onKeyDown = useCallback(
     async (e: KeyboardEvent) => {
       if (e.repeat) return;
-      // TODO)) Handle game state (win/loss)
+      if (gameData?.state !== "inProgress") return;
 
       if (e.key === "Backspace") {
         if (pendingInput.length > 0) {
@@ -47,12 +53,19 @@ function WordleInner() {
         setPendingInput((prev) => prev + e.key.toLowerCase());
       }
     },
-    [pushGuess, pendingInput, setPendingInput],
+    [gameData, pendingInput, setPendingInput, pushGuess],
   );
   useKeyDownListener(onKeyDown);
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
+      {gameData?.state !== "inProgress" && (
+        <div className="text-2xl">
+          {gameData?.state === "solved"
+            ? `Congratulations! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
+            : "Game over! 😭"}
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         {Array.from({ length: WORDLE_ATTEMPTS }, (_, row) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
@@ -62,8 +75,6 @@ function WordleInner() {
     </div>
   );
 }
-
-export default Wordle;
 
 type RowProps = {
   index: number;
@@ -142,7 +153,7 @@ const WordleContext = createContext<WordleContextType | undefined>(undefined);
 
 export function WordleContextProvider({ children }: { children: React.ReactNode }) {
   const [gameData, setGameData] = useState<GameDetail | null>(null);
-  // TODO)) Deduplicate this state with gameState.guesses
+  // TODO)) Deduplicate this state with gameData.guesses
   const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
 
@@ -150,8 +161,7 @@ export function WordleContextProvider({ children }: { children: React.ReactNode 
     if (gameData) return;
 
     const inner = async () => {
-      // TODO)) Actual userId and guildId
-      const game = await getOrCreateGame("1234", "5678");
+      const game = await getOrCreateGame(USER_ID, GUILD_ID);
       if (!game) throw new Error("Failed to load or start game");
       setGameData(game);
       setGuesses(game.guesses);
@@ -189,9 +199,11 @@ export function useWordleState() {
     guesses: context.guesses,
     async pushGuess(guess: string) {
       if (!context.gameData) throw new Error("Game is not active");
-      // TODO)) Don't submit when game is complete/failed
+      if (context.gameData.state !== "inProgress") {
+        throw new Error("Game is not in progress");
+      }
 
-      const res = await submitGuess("1234", "5678", context.gameData.id, guess);
+      const res = await submitGuess(USER_ID, GUILD_ID, context.gameData.id, guess);
       context.setGameData(res);
       context.setGuesses(res.guesses);
       context.setPendingInput("");

@@ -5,6 +5,9 @@ export async function getRandomWord(guildId: string): Promise<string> {
   const availableWords = await prisma.availableWord.findMany({
     where: { guildId },
   });
+  if (availableWords.length === 0) {
+    throw new Error("No words available for this guild");
+  }
   // TODO)) Pick a word that a given user has not guessed yet
   return sample(availableWords.map((aw) => aw.word));
 }
