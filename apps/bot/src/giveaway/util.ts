@@ -25,7 +25,7 @@ import sharp from "sharp";
 enum GiveawayBannerRatio {
   None = 0, // No Banner
   Auto = 1,
-  Landscape = 2, // 4:1
+  Landscape = 2, // 3:1
   Portrait = 3, // 2:3
 }
 
@@ -69,14 +69,7 @@ export function parseRewards(input: string): GiveawayReward[] {
     });
 }
 
-const allowedMimeTypes = [
-  "image/png",
-  "image/jpeg",
-  "image/apng",
-  "image/webp",
-  "image/gif",
-  "image/avif",
-];
+const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export function getExtension(mimeType: string | null) {
   if (!mimeType) return "webp";
@@ -112,7 +105,7 @@ export async function formatBanner(
   const targetAspect = (() => {
     switch (ratio) {
       case GiveawayBannerRatio.Landscape:
-        return 4 / 1;
+        return 3 / 1;
 
       case GiveawayBannerRatio.Portrait:
         return 2 / 3;
@@ -138,12 +131,16 @@ export async function formatBanner(
     targetHeight = Math.round(maxSide / targetAspect);
   }
 
+  // Gets animation loop count from metadata, defaults to 0 (infinite)
+  const metadata = await sharp(buffer, { animated: true }).metadata();
+  const loop = typeof metadata.loop === "number" ? metadata.loop : 0;
+
   const formatted = await sharp(buffer, { animated: true })
     .resize(targetWidth, targetHeight, {
       fit: "cover",
       position: "centre",
     })
-    .toFormat("webp")
+    .toFormat("webp", { loop })
     .toBuffer();
 
   return [formatted, "webp"];
