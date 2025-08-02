@@ -1,4 +1,4 @@
-import type { GameState } from "db";
+import type { GameState } from "@/db";
 
 export abstract class ApiError extends Error {
   abstract status: number;

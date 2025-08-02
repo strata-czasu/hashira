@@ -2,6 +2,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator json {
+  provider = "prisma-json-types-generator"
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("WORDLE_DATABASE_URL")
@@ -23,8 +27,11 @@ model Guess {
   gameId  Int
   index   Int
   letters String
+  /// [KnownLetter[]]
   correct Json
+  /// [KnownLetter[]]
   present Json
+  /// [string[]]
   absent  Json
 
   game Game @relation(fields: [gameId], references: [id])

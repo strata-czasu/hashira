@@ -1,4 +1,5 @@
 import { isEqual, randomInt } from "es-toolkit";
+import type { KnownLetter } from "./db";
 
 // TODO)) Get the wordlist from DB
 const WORDLE_WORDS = ["fishy", "crane", "abcde", "ports", "fizzy"];
@@ -19,10 +20,6 @@ export type Game = {
   result: ValidationResult;
 };
 
-export type KnownLetter = {
-  letter: string;
-  position: number;
-};
 export type ValidationResult = {
   correct: KnownLetter[];
   present: KnownLetter[];
