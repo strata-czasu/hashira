@@ -3,6 +3,7 @@ import {
   type KnownLetter,
   WORDLE_ATTEMPTS,
   getRandomWord,
+  mergeValidationResults,
   validateGuess,
 } from "@/game";
 import type { BunRequest } from "bun";
@@ -23,17 +24,30 @@ const GameGuessRequestSchema = v.object({
 type GameWithGuesses = Game & { guesses: Guess[] };
 
 function serializeGame(game: GameWithGuesses): GameDetail {
+  const mergedResults = game.guesses.reduce(
+    // TODO)) Validate schema of JSON data from DB
+    (acc, guess) => {
+      const res = {
+        correct: guess.correct as KnownLetter[],
+        present: guess.present as KnownLetter[],
+        absent: new Set(guess.absent as string[]),
+      };
+      return mergeValidationResults(acc, res);
+    },
+    {
+      correct: [] as KnownLetter[],
+      present: [] as KnownLetter[],
+      absent: new Set<string>(),
+    },
+  );
+
   return {
     id: game.id,
     state: game.state,
     guesses: game.guesses.map((g) => g.letters),
-    // TODO)) Validate schema in a common place
-    // TODO)) Merge all game results before returning
-    correct: game.guesses.flatMap((g) => g.correct as KnownLetter[]),
-    present: game.guesses.flatMap((g) => g.present as KnownLetter[]),
-    absent: Array.from(
-      new Set(game.guesses.flatMap((g) => g.absent as string[])),
-    ).sort(),
+    correct: mergedResults.correct,
+    present: mergedResults.present,
+    absent: Array.from(mergedResults.absent).sort(),
   };
 }
 
