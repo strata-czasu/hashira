@@ -51,7 +51,7 @@ export const transferRoles: TransferOperation = async ({
     roles,
     `Przeniesienie roli z użytkownika ${oldMember.user.tag} (${oldMember.id}), moderator: ${moderator.tag} (${moderator.id})`,
   );
-  return `Skopiowano ${roles.length} ról.`;
+  return `Skopiowano ${roles.length} ról`;
 };
 
 const transferVerification: TransferOperation = async ({
@@ -64,7 +64,7 @@ const transferVerification: TransferOperation = async ({
     where: { id: newDbUser.id },
     data: { verificationLevel: oldDbUser?.verificationLevel },
   });
-  return `Skopiowano poziom weryfikacji (${formatVerificationType(oldDbUser.verificationLevel)})...`;
+  return `Skopiowano poziom weryfikacji (${formatVerificationType(oldDbUser.verificationLevel)})`;
 };
 
 const transferTextActivity: TransferOperation = async ({
@@ -78,7 +78,7 @@ const transferTextActivity: TransferOperation = async ({
     data: { userId: newUser.id },
   });
   if (!count) return null;
-  return `Przeniesiono aktywność tekstową (${count})...`;
+  return `Przeniesiono aktywność tekstową (${count})`;
 };
 
 const transferVoiceActivity: TransferOperation = async ({
