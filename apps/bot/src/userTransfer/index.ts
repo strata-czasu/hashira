@@ -1,9 +1,15 @@
 import { Hashira, waitForConfirmation } from "@hashira/core";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { PermissionFlagsBits, bold, inlineCode } from "discord.js";
+import {
+  PermissionFlagsBits,
+  bold,
+  inlineCode,
+  unorderedList,
+  userMention,
+} from "discord.js";
 import { base } from "../base";
 import { ensureUsersExist } from "../util/ensureUsersExist";
-import { runOperations } from "./transfer";
+import { TRANSFER_OPERATIONS, runOperations } from "./transfer";
 
 export const userTransfer = new Hashira({ name: "user-transfer" })
   .use(base)
@@ -23,9 +29,17 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
 
+          const confirmationLines = [
+            "Czy na pewno chcesz przenieść dane?",
+            `Z ${bold(oldUser.tag)} (${inlineCode(oldUser.id)}) - ${userMention(oldUser.id)}`,
+            `DO ${bold(newUser.tag)} (${inlineCode(newUser.id)}) - ${userMention(newUser.id)}`,
+            "",
+            `Dane, które zostaną przeniesione (${TRANSFER_OPERATIONS.length}):`,
+            unorderedList(TRANSFER_OPERATIONS.map((op) => op.name)),
+          ];
           const confirmation = await waitForConfirmation(
             { send: itx.editReply.bind(itx) },
-            `Czy na pewno chcesz przenieść dane?\nZ ${bold(oldUser.tag)} (${inlineCode(newUser.id)})\nDO ${bold(newUser.tag)} (${inlineCode(newUser.id)})`,
+            confirmationLines.join("\n"),
             "Tak",
             "Nie",
             (action) => action.user.id === itx.user.id,
