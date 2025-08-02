@@ -1,4 +1,5 @@
 import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import {
   ChannelType,
   type User as DiscordUser,
@@ -6,7 +7,7 @@ import {
   RESTJSONErrorCodes,
   userMention,
 } from "discord.js";
-import { transferBalances } from "../economy/managers/transferManager";
+import { transferBalance } from "../economy/managers/transferManager";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { formatVerificationType } from "../moderation/verification";
@@ -51,7 +52,7 @@ export const transferRoles: TransferOperation = async ({
     roles,
     `Przeniesienie roli z użytkownika ${oldMember.user.tag} (${oldMember.id}), moderator: ${moderator.tag} (${moderator.id})`,
   );
-  return `Skopiowano ${roles.length} ról.`;
+  return `Skopiowano ${roles.length} ról`;
 };
 
 const transferVerification: TransferOperation = async ({
@@ -64,7 +65,7 @@ const transferVerification: TransferOperation = async ({
     where: { id: newDbUser.id },
     data: { verificationLevel: oldDbUser?.verificationLevel },
   });
-  return `Skopiowano poziom weryfikacji (${formatVerificationType(oldDbUser.verificationLevel)})...`;
+  return `Skopiowano poziom weryfikacji (${formatVerificationType(oldDbUser.verificationLevel)})`;
 };
 
 const transferTextActivity: TransferOperation = async ({
@@ -78,7 +79,21 @@ const transferTextActivity: TransferOperation = async ({
     data: { userId: newUser.id },
   });
   if (!count) return null;
-  return `Przeniesiono aktywność tekstową (${count})...`;
+  return `Przeniesiono aktywność tekstową (${count})`;
+};
+
+const transferVoiceActivity: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
+  const { count } = await prisma.voiceSession.updateMany({
+    where: { userId: oldUser.id, guildId: guild.id },
+    data: { userId: newUser.id },
+  });
+  if (!count) return null;
+  return `Przeniesiono aktywność głosową (${count})...`;
 };
 
 const transferInventory: TransferOperation = async ({ prisma, oldUser, newUser }) => {
@@ -102,18 +117,56 @@ const transferWallets: TransferOperation = async ({
     guildId: guild.id,
     currencySymbol: STRATA_CZASU_CURRENCY.symbol,
   });
-  if (!oldWallet.balance) return null;
-  await transferBalances({
+  const oldWalletTransactions = await prisma.transaction.count({
+    where: { walletId: oldWallet.id },
+  });
+  if (!oldWalletTransactions) return null;
+
+  const newWallet = await getDefaultWallet({
     prisma,
-    fromUserId: oldUser.id,
-    toUserIds: [newUser.id],
+    userId: newUser.id,
     guildId: guild.id,
     currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-    amount: oldWallet.balance,
-    reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
   });
+
+  await prisma.$transaction(async (tx) => {
+    // Move transactions between wallets directly
+    await tx.transaction.updateMany({
+      where: { walletId: oldWallet.id },
+      data: { walletId: newWallet.id },
+    });
+    // Update wallet balances to match the new state
+    await tx.wallet.update({
+      where: { id: oldWallet.id },
+      data: {
+        balance: { decrement: oldWallet.balance },
+      },
+    });
+    await tx.wallet.update({
+      where: { id: newWallet.id },
+      data: {
+        balance: { increment: oldWallet.balance },
+      },
+    });
+    // Symbolic transaction to keep the transfer in history
+    await transferBalance({
+      prisma: nestedTransaction(tx),
+      fromUserId: oldUser.id,
+      toUserId: newUser.id,
+      guildId: guild.id,
+      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+      amount: 0,
+      skipAmountCheck: true,
+      reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
+    });
+  });
+
   // TODO: Wallet transfer for custom currencies
-  return `Przeniesiono ${formatBalance(oldWallet.balance, STRATA_CZASU_CURRENCY.symbol)}`;
+  const formattedBalance = formatBalance(
+    oldWallet.balance,
+    STRATA_CZASU_CURRENCY.symbol,
+  );
+  return `Przeniesiono ${formattedBalance} (${oldWalletTransactions} transakcji)`;
 };
 
 const transferUltimatum: TransferOperation = async ({
@@ -281,7 +334,6 @@ const transferChannelRestrictions: TransferOperation = async ({
   return messageParts.join(", ");
 };
 
-// TODO: Voice activity
 // TODO: Experience and level
 
 type OperationDescriptor = {
@@ -292,6 +344,7 @@ export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
   { name: "role", fn: transferRoles },
   { name: "weryfikacja", fn: transferVerification },
   { name: "aktywność tekstowa", fn: transferTextActivity },
+  { name: "aktywność głosowa", fn: transferVoiceActivity },
   { name: "ekwipunek", fn: transferInventory },
   { name: "portfele", fn: transferWallets },
   { name: "ultimatum", fn: transferUltimatum },
