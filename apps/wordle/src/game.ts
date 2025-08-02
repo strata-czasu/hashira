@@ -23,7 +23,7 @@ export type KnownLetter = {
   letter: string;
   position: number;
 };
-type ValidationResult = {
+export type ValidationResult = {
   correct: KnownLetter[];
   present: KnownLetter[];
   absent: Set<string>;
