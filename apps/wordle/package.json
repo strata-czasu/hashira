@@ -18,7 +18,6 @@
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.1.0",
     "@discordjs/rest": "^2.5.1",
-    "@hashira/env": "workspace:*",
     "@prisma/client": "^6.13.0",
     "bun-plugin-tailwind": "^0.0.14",
     "clsx": "^2.1.1",
