@@ -7,15 +7,23 @@
   "module": "src/index.tsx",
   "scripts": {
     "dev": "bun --hot src/index.tsx",
-    "start": "NODE_ENV=production bun src/index.tsx"
+    "start": "NODE_ENV=production bun src/index.tsx",
+    "prisma-studio": "prisma studio --port 5556",
+    "prisma-generate": "prisma generate",
+    "prisma-migrate": "prisma migrate dev",
+    "prisma-push": "prisma db push",
+    "prisma-reset": "prisma migrate reset",
+    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/ --to-schema-datasource ./prisma/"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.1.0",
     "@discordjs/rest": "^2.5.1",
     "@hashira/env": "workspace:*",
+    "@prisma/client": "^6.13.0",
     "bun-plugin-tailwind": "^0.0.14",
     "clsx": "^2.1.1",
     "discord-api-types": "^0.38.16",
+    "prisma": "^6.13.0",
     "react": "^19",
     "react-dom": "^19",
     "tailwindcss": "^4.0.6"
