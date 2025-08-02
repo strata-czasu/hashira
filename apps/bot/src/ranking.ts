@@ -218,14 +218,35 @@ export const ranking = new Hashira({ name: "ranking" })
       .addCommand("wedka", (command) =>
         command
           .setDescription("Ranking wędkarzy")
-          .handle(async ({ prisma }, _, itx) => {
+
+          .addString("okres", (period) =>
+            period.setDescription("Okres czasu, np. 2025-01").setRequired(false),
+          )
+          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
             if (!itx.inCachedGuild()) return;
+
+            const periodWhere: Prisma.TransactionWhereInput = {};
+            if (rawPeriod) {
+              const periodStart = parseDate(rawPeriod, "start", null);
+              if (!periodStart) {
+                return await errorFollowUp(
+                  itx,
+                  "Nieprawidłowy okres. Przykład: 2025-01",
+                );
+              }
+              const periodEnd = endOfMonth(periodStart);
+              periodWhere.createdAt = {
+                gte: periodStart,
+                lte: periodEnd,
+              };
+            }
 
             const where: Prisma.TransactionWhereInput = {
               wallet: { guildId: itx.guild.id },
               reason: { startsWith: "Łowienie" },
               transactionType: "add",
               entryType: "credit",
+              ...periodWhere,
             };
             const paginate = new DatabasePaginator(
               (props, ordering) =>
@@ -255,9 +276,12 @@ export const ranking = new Hashira({ name: "ranking" })
               wallets.map((wallet) => [wallet.id, wallet.userId]),
             );
 
+            const titleParts = ["Ranking wędkarzy"];
+            if (rawPeriod) titleParts.push(`(${rawPeriod})`);
+
             const paginator = new PaginatedView(
               paginate,
-              "Ranking wędkarzy",
+              titleParts.join(" "),
               (item, idx) => {
                 const amountSum = item._sum.amount ?? 0;
                 const userId = walletToUserId.get(item.walletId);
