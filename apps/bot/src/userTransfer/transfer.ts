@@ -81,6 +81,20 @@ const transferTextActivity: TransferOperation = async ({
   return `Przeniesiono aktywność tekstową (${count})...`;
 };
 
+const transferVoiceActivity: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+}) => {
+  const { count } = await prisma.voiceSession.updateMany({
+    where: { userId: oldUser.id, guildId: guild.id },
+    data: { userId: newUser.id },
+  });
+  if (!count) return null;
+  return `Przeniesiono aktywność głosową (${count})...`;
+};
+
 const transferInventory: TransferOperation = async ({ prisma, oldUser, newUser }) => {
   const { count } = await prisma.inventoryItem.updateMany({
     where: { userId: oldUser.id },
@@ -281,7 +295,6 @@ const transferChannelRestrictions: TransferOperation = async ({
   return messageParts.join(", ");
 };
 
-// TODO: Voice activity
 // TODO: Experience and level
 
 type OperationDescriptor = {
@@ -292,6 +305,7 @@ export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
   { name: "role", fn: transferRoles },
   { name: "weryfikacja", fn: transferVerification },
   { name: "aktywność tekstowa", fn: transferTextActivity },
+  { name: "aktywność głosowa", fn: transferVoiceActivity },
   { name: "ekwipunek", fn: transferInventory },
   { name: "portfele", fn: transferWallets },
   { name: "ultimatum", fn: transferUltimatum },
