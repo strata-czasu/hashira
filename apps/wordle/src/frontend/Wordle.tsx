@@ -57,13 +57,31 @@ function WordleInner() {
   );
   useKeyDownListener(onKeyDown);
 
+  const onShareClick = () => {
+    if (!gameData) return;
+    const shareText = getShareText(gameData);
+    navigator.clipboard.writeText(shareText).then(() => {
+      console.log("Share text copied to clipboard");
+      // TODO)) Show a toast
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {gameData?.state !== "inProgress" && (
-        <div className="text-2xl">
-          {gameData?.state === "solved"
-            ? `Congratulations! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
-            : "Game over! 😭"}
+        <div className="flex flex-row gap-6 justify-center">
+          <div className="text-2xl">
+            {gameData?.state === "solved"
+              ? `Gratulacje! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
+              : "Koniec gry 😭"}
+          </div>
+          <button
+            type="button"
+            className="px-4 py-2 text-white rounded bg-green-600 hover:bg-green-700 transition-colors"
+            onClick={onShareClick}
+          >
+            Udostępnij
+          </button>
         </div>
       )}
       <div className="flex flex-col gap-2">
@@ -74,6 +92,32 @@ function WordleInner() {
       </div>
     </div>
   );
+}
+
+function getShareText({ guesses, correct, present, absent }: GameDetail): string {
+  const lines: string[] = [`Wordle (${guesses.length}/${WORDLE_ATTEMPTS})`];
+
+  for (const guess of guesses) {
+    const line: string[] = [];
+    for (const [idx, letter] of Array.from(guess).entries()) {
+      const isCorrect = correct.some((c) => c.letter === letter && c.position === idx);
+      if (isCorrect) {
+        line.push("🟩");
+        continue;
+      }
+
+      const isPresent = present.some((c) => c.letter === letter && c.position === idx);
+      if (isPresent) {
+        line.push("🟨");
+        continue;
+      }
+
+      line.push("⬜");
+    }
+    guesses.push(line.join(""));
+  }
+
+  return lines.join("\n");
 }
 
 type RowProps = {
