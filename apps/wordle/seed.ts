@@ -1,3 +1,4 @@
+import { WORDLE_WORD_LENGTH } from "@/constants";
 import { prisma } from "@/db";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -14,6 +15,9 @@ async function loadWordList(): Promise<string[]> {
     !parsedWords.every((word) => typeof word === "string")
   ) {
     throw new Error("Invalid words.json format. Expected an array of strings.");
+  }
+  if (!parsedWords.every((word) => word.length === WORDLE_WORD_LENGTH)) {
+    throw new Error(`All words must be exactly ${WORDLE_WORD_LENGTH} characters long.`);
   }
   return parsedWords;
 }
