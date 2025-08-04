@@ -10,6 +10,7 @@ import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
 import { type GameState, prisma } from "@/db";
 import type { GameWithGuesses } from "@/db/game";
 import type { BunRequest } from "bun";
+import { endOfDay, startOfToday } from "date-fns";
 import * as v from "valibot";
 import {
   GameAlreadyActiveError,
@@ -52,11 +53,8 @@ export const gameApi = {
     async POST(req: BunRequest<"/api/game/new">): Promise<Response> {
       const { userId, guildId } = getAuthHeaders(req);
 
-      const existingGame = await prisma.game.findFirst({
-        where: { userId, guildId },
-        select: { id: true },
-      });
-      if (existingGame) throw new GameAlreadyActiveError(existingGame.id);
+      const currentGame = await getCurrentGame(userId, guildId);
+      if (currentGame) throw new GameAlreadyActiveError(currentGame.id);
 
       const solution = await getRandomWord(guildId);
       const newGame = await prisma.game.create({
@@ -76,10 +74,7 @@ export const gameApi = {
     async GET(req: BunRequest<"/api/game/current">): Promise<Response> {
       const { userId, guildId } = getAuthHeaders(req);
 
-      const game = await prisma.game.findFirst({
-        where: { userId, guildId },
-        include: { guesses: true },
-      });
+      const game = await getCurrentGame(userId, guildId);
       if (!game) throw new GameNotActiveError();
 
       return Response.json(serializeGame(game));
@@ -91,10 +86,7 @@ export const gameApi = {
 
       const { guess } = v.parse(GameGuessRequestSchema, await req.json());
 
-      const game = await prisma.game.findFirst({
-        where: { id: Number.parseInt(req.params.id), userId, guildId },
-        include: { guesses: true },
-      });
+      const game = await getCurrentGame(userId, guildId);
       if (!game) throw new NotFoundError();
 
       // Game is already finished -> don't accept guess
@@ -126,6 +118,26 @@ export const gameApi = {
     },
   },
 };
+
+function getCurrentGame(
+  userId: string,
+  guildId: string,
+): Promise<GameWithGuesses | null> {
+  const todayStart = startOfToday();
+  const todayEnd = endOfDay(todayStart);
+
+  return prisma.game.findFirst({
+    where: {
+      userId,
+      guildId,
+      createdAt: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+    },
+    include: { guesses: true },
+  });
+}
 
 function getNewGameState(game: GameWithGuesses, guess: string): GameState {
   // Guessed on any attempt -> game is solved

@@ -42,6 +42,7 @@
         "@prisma/client": "^6.13.0",
         "bun-plugin-tailwind": "^0.0.14",
         "clsx": "^2.1.1",
+        "date-fns": "^4.1.0",
         "discord-api-types": "^0.38.16",
         "prisma": "^6.13.0",
         "react": "^19",
