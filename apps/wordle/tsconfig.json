@@ -4,7 +4,7 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "bundler",
-    "lib": ["DOM"],
+    "lib": ["DOM", "ESNext"],
     "jsx": "react-jsx",
     "allowJs": true,
     "strict": true,
