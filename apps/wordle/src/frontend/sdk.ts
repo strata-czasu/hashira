@@ -4,6 +4,7 @@ import {
   type IDiscordSDK,
 } from "@discord/embedded-app-sdk";
 import { useState } from "react";
+import { getAccessToken, getAuthorizationCode } from "./discordApi";
 
 export type DiscordSDKMode = "mock" | "live";
 
@@ -12,9 +13,14 @@ const OAUTH_CLIENT_ID = "1395837579861037216";
 const MOCK_GUILD_ID = "342022299957854220";
 const MOCK_CHANNEL_ID = "483273472555089930";
 
+export type AuthSession = Awaited<
+  ReturnType<typeof DiscordSDK.prototype.commands.authenticate>
+>;
+
 export type UseDiscordSDKReturn = {
   discordSdk: IDiscordSDK;
   sdkMode: DiscordSDKMode;
+  authenticate: () => Promise<AuthSession>;
 };
 
 export function useDiscordSdk(sdkMode: DiscordSDKMode): UseDiscordSDKReturn {
@@ -36,5 +42,27 @@ export function useDiscordSdk(sdkMode: DiscordSDKMode): UseDiscordSDKReturn {
     return new DiscordSDKMock(OAUTH_CLIENT_ID, MOCK_GUILD_ID, MOCK_CHANNEL_ID, null);
   });
 
-  return { discordSdk, sdkMode };
+  return {
+    discordSdk,
+    sdkMode,
+    authenticate: async () => {
+      const authorizationCode = await getAuthorizationCode(discordSdk);
+      console.log("Authorization code received");
+
+      let accessToken: string;
+      if (sdkMode === "mock") {
+        accessToken = "MOCK_ACCESS_TOKEN";
+        console.log("Using mock access token");
+      } else {
+        accessToken = await getAccessToken(authorizationCode);
+        console.log("Access token received");
+      }
+
+      const session = await discordSdk.commands.authenticate({
+        access_token: accessToken,
+      });
+      console.log(`Authenticated user ${session.user.username} (${session.user.id})`);
+      return session;
+    },
+  };
 }

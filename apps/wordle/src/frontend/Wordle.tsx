@@ -14,13 +14,14 @@ import {
 } from "react";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
 
-// TODO)) Actual userId and guildId
-const USER_ID = "195935967440404480";
-const GUILD_ID = "342022299957854220";
+type WordleProps = {
+  guildId: string;
+  userId: string;
+};
 
-export function Wordle() {
+export function Wordle({ userId, guildId }: WordleProps) {
   return (
-    <WordleContextProvider>
+    <WordleContextProvider userId={userId} guildId={guildId}>
       <WordleInner />
     </WordleContextProvider>
   );
@@ -183,7 +184,15 @@ function Cell({ letter, state }: CellProps) {
   );
 }
 
+type WordleContextProps = {
+  userId: string;
+  guildId: string;
+  children: React.ReactNode;
+};
+
 type WordleContextType = {
+  userId: string;
+  guildId: string;
   // TODO)) Can we somehow ensure gameData is always not null?
   gameData: GameDetail | null;
   setGameData: Dispatch<SetStateAction<GameDetail | null>>;
@@ -195,7 +204,11 @@ type WordleContextType = {
 
 const WordleContext = createContext<WordleContextType | undefined>(undefined);
 
-export function WordleContextProvider({ children }: { children: React.ReactNode }) {
+export function WordleContextProvider({
+  userId,
+  guildId,
+  children,
+}: WordleContextProps) {
   const [gameData, setGameData] = useState<GameDetail | null>(null);
   // TODO)) Deduplicate this state with gameData.guesses
   const [guesses, setGuesses] = useState<string[]>([]);
@@ -205,18 +218,20 @@ export function WordleContextProvider({ children }: { children: React.ReactNode 
     if (gameData) return;
 
     const inner = async () => {
-      const game = await getOrCreateGame(USER_ID, GUILD_ID);
+      const game = await getOrCreateGame(userId, guildId);
       if (!game) throw new Error("Failed to load or start game");
       setGameData(game);
       setGuesses(game.guesses);
     };
 
     inner();
-  }, [gameData]);
+  }, [gameData, userId, guildId]);
 
   return (
     <WordleContext.Provider
       value={{
+        userId,
+        guildId,
         gameData,
         setGameData,
         guesses,
@@ -247,7 +262,12 @@ export function useWordleState() {
         throw new Error("Game is not in progress");
       }
 
-      const res = await submitGuess(USER_ID, GUILD_ID, context.gameData.id, guess);
+      const res = await submitGuess(
+        context.userId,
+        context.guildId,
+        context.gameData.id,
+        guess,
+      );
       context.setGameData(res);
       context.setGuesses(res.guesses);
       context.setPendingInput("");
