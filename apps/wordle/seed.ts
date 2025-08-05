@@ -5,6 +5,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const TESTING_GUILDS = [
   { guildId: "342022299957854220", ownerId: "195935967440404480" },
+  { guildId: "1110671571384803350", ownerId: "503299438757019659" },
 ];
 
 async function loadWordList(): Promise<string[]> {
