@@ -12,6 +12,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { WordleKeyboard } from "./WordleKeyboard";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
 
 type WordleProps = {
@@ -109,6 +110,11 @@ function WordleInner() {
           <Row key={row} index={row} />
         ))}
       </div>
+      <WordleKeyboard
+        onLetterClick={handleLetterClick}
+        onBackspace={handleBackspace}
+        onEnter={handleEnter}
+      />
     </div>
   );
 }
@@ -181,7 +187,7 @@ function Row({ index }: RowProps) {
   );
 }
 
-type CellState = "correct" | "present" | "absent" | "pending";
+export type CellState = "correct" | "present" | "absent" | "pending";
 type CellProps = {
   letter: string | null;
   state: CellState;
