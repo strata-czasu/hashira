@@ -48,7 +48,6 @@ export function WordleKeyboard({
     [letterStates],
   );
 
-
   return (
     <div className="flex flex-col gap-2 items-center mt-4">
       {KEYBOARD_ROWS.map((row, rowIndex) => (
@@ -56,7 +55,7 @@ export function WordleKeyboard({
           key={row.join("")}
           row={row}
           rowIndex={rowIndex}
-          onLetterClick={handleLetterClick}
+          onLetterClick={onLetterClick}
           onBackspace={onBackspace}
           onEnter={onEnter}
           getLetterState={getLetterState}
