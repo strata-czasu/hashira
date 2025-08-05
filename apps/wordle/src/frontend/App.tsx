@@ -1,16 +1,10 @@
 import "./index.css";
 
-import { patchUrlMappings } from "@discord/embedded-app-sdk";
-import { useLayoutEffect } from "react";
 import Wordle from "./Wordle";
 import { useDiscordSdk } from "./sdk";
 
 export function App() {
   const { discordSdk, authSession, authenticate } = useDiscordSdk("mock");
-
-  useLayoutEffect(() => {
-    patchUrlMappings([{ prefix: "/", target: "/.proxy" }]);
-  });
 
   const onAuthorizeClick = async () => {
     await discordSdk.ready();
