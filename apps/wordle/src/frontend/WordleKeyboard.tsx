@@ -48,12 +48,6 @@ export function WordleKeyboard({
     [letterStates],
   );
 
-  const handleLetterClick = useCallback(
-    (letter: string) => {
-      onLetterClick(letter);
-    },
-    [onLetterClick],
-  );
 
   return (
     <div className="flex flex-col gap-2 items-center mt-4">
