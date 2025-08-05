@@ -1,3 +1,3 @@
-export function getAuthHeaders(userId: string, guildId: string) {
-  return { "User-ID": userId, "Guild-ID": guildId };
+export function getAuthHeaders(accessToken: string) {
+  return { Authorization: `Bearer ${accessToken}` };
 }

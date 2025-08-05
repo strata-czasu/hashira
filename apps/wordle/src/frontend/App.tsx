@@ -4,7 +4,7 @@ import Wordle from "./Wordle";
 import { useDiscordSdk } from "./sdk";
 
 export function App() {
-  const { discordSdk, authSession, authenticate } = useDiscordSdk("mock");
+  const { discordSdk, authSession, accessToken, authenticate } = useDiscordSdk("live");
 
   const onAuthorizeClick = async () => {
     await discordSdk.ready();
@@ -16,15 +16,19 @@ export function App() {
     <div className="max-w-7xl mx-auto p-8 text-center">
       <div className="text-5xl mb-4">Wordle</div>
 
-      {discordSdk.guildId && authSession ? (
-        <Wordle guildId={discordSdk.guildId} userId={authSession.user.id} />
+      {discordSdk.guildId && authSession && accessToken ? (
+        <Wordle
+          guildId={discordSdk.guildId}
+          userId={authSession.user.id}
+          accessToken={accessToken}
+        />
       ) : (
         <button
           type="button"
           className="px-4 py-2 my-4 text-white rounded bg-blue-600 hover:bg-blue-700 transition-colors"
           onClick={onAuthorizeClick}
         >
-          Authorize
+          Log In
         </button>
       )}
     </div>

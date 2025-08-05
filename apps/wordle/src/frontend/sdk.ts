@@ -1,10 +1,11 @@
+import { exchangeCodeForAccessToken, getBackendAccessToken } from "@/api/auth";
 import {
   DiscordSDK,
   DiscordSDKMock,
   type IDiscordSDK,
 } from "@discord/embedded-app-sdk";
 import { useState } from "react";
-import { getAccessToken, getAuthorizationCode } from "./discordApi";
+import { getAuthorizationCode } from "./discordApi";
 
 export type DiscordSDKMode = "mock" | "live";
 
@@ -21,6 +22,8 @@ export type UseDiscordSDKReturn = {
   discordSdk: IDiscordSDK;
   sdkMode: DiscordSDKMode;
   authSession: AuthSession | null;
+  // Access token for the backend API
+  accessToken: string | null;
   authenticate: () => Promise<AuthSession>;
 };
 
@@ -43,25 +46,38 @@ export function useDiscordSdk(sdkMode: DiscordSDKMode): UseDiscordSDKReturn {
     return new DiscordSDKMock(OAUTH_CLIENT_ID, MOCK_GUILD_ID, MOCK_CHANNEL_ID, null);
   });
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const authenticate = async () => {
+    if (!discordSdk.guildId) {
+      throw new Error("Discord SDK is not initialized with a guild ID");
+    }
+
     const authorizationCode = await getAuthorizationCode(discordSdk);
     console.log("Authorization code received");
 
-    let accessToken: string;
+    let discordAccessToken: string;
     if (sdkMode === "mock") {
-      accessToken = "MOCK_ACCESS_TOKEN";
+      discordAccessToken = "MOCK_ACCESS_TOKEN";
       console.log("Using mock access token");
     } else {
-      accessToken = await getAccessToken(authorizationCode);
+      discordAccessToken = await exchangeCodeForAccessToken(authorizationCode);
       console.log("Access token received");
     }
 
     const session = await discordSdk.commands.authenticate({
-      access_token: accessToken,
+      access_token: discordAccessToken,
     });
     console.log(`Authenticated user ${session.user.username} (${session.user.id})`);
     setAuthSession(session);
+
+    const backendToken = await getBackendAccessToken(
+      discordAccessToken,
+      discordSdk.guildId,
+    );
+    console.log("Backend access token received");
+    setAccessToken(backendToken);
+
     return session;
   };
 
@@ -69,6 +85,7 @@ export function useDiscordSdk(sdkMode: DiscordSDKMode): UseDiscordSDKReturn {
     discordSdk,
     sdkMode,
     authSession,
+    accessToken,
     authenticate,
   };
 }

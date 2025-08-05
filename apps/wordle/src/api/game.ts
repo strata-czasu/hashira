@@ -5,10 +5,10 @@ import { getAuthHeaders } from "./util";
  * Start a new Wordle game for the given user.
  * @returns The new game object or null if a game is already active.
  */
-export async function startNewGame(userId: string, guildId: string) {
+export async function startNewGame(accessToken: string) {
   const res = await fetch("/api/game/new", {
     method: "POST",
-    headers: getAuthHeaders(userId, guildId),
+    headers: getAuthHeaders(accessToken),
   });
 
   if (res.status === 401) throw new Error("Unauthorized");
@@ -22,9 +22,9 @@ export async function startNewGame(userId: string, guildId: string) {
  * Get the current active game for the user.
  * @returns The current game object or null if no game is active.
  */
-export async function getCurrentGame(userId: string, guildId: string) {
+export async function getCurrentGame(accessToken: string) {
   const res = await fetch("/api/game/current", {
-    headers: getAuthHeaders(userId, guildId),
+    headers: getAuthHeaders(accessToken),
   });
 
   if (res.status === 401) throw new Error("Unauthorized");
@@ -34,15 +34,10 @@ export async function getCurrentGame(userId: string, guildId: string) {
   return res.json() as Promise<GameDetail>;
 }
 
-export async function submitGuess(
-  userId: string,
-  guildId: string,
-  gameId: number,
-  guess: string,
-) {
+export async function submitGuess(accessToken: string, gameId: number, guess: string) {
   const res = await fetch(`/api/game/${gameId}/guess`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...getAuthHeaders(userId, guildId) },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(accessToken) },
     body: JSON.stringify({ guess }),
   });
 

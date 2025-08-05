@@ -21,11 +21,12 @@ import allWords from "./valid_words.json" with { type: "json" };
 type WordleProps = {
   guildId: string;
   userId: string;
+  accessToken: string;
 };
 
-export function Wordle({ userId, guildId }: WordleProps) {
+export function Wordle({ userId, guildId, accessToken }: WordleProps) {
   return (
-    <WordleContextProvider userId={userId} guildId={guildId}>
+    <WordleContextProvider userId={userId} guildId={guildId} accessToken={accessToken}>
       <WordleInner />
     </WordleContextProvider>
   );
@@ -247,12 +248,15 @@ function Cell({ letter, state }: CellProps) {
 type WordleContextProps = {
   userId: string;
   guildId: string;
+  accessToken: string;
   children: React.ReactNode;
 };
 
 type WordleContextType = {
+  // TODO)) Move userId, guildId, accessToken to a separate auth context
   userId: string;
   guildId: string;
+  accessToken: string;
   // TODO)) Can we somehow ensure gameData is always not null?
   gameData: GameDetail | null;
   setGameData: Dispatch<SetStateAction<GameDetail | null>>;
@@ -267,6 +271,7 @@ const WordleContext = createContext<WordleContextType | undefined>(undefined);
 export function WordleContextProvider({
   userId,
   guildId,
+  accessToken,
   children,
 }: WordleContextProps) {
   const [gameData, setGameData] = useState<GameDetail | null>(null);
@@ -278,20 +283,21 @@ export function WordleContextProvider({
     if (gameData) return;
 
     const inner = async () => {
-      const game = await getOrCreateGame(userId, guildId);
+      const game = await getOrCreateGame(accessToken);
       if (!game) throw new Error("Failed to load or start game");
       setGameData(game);
       setGuesses(game.guesses);
     };
 
     inner();
-  }, [gameData, userId, guildId]);
+  }, [gameData, accessToken]);
 
   return (
     <WordleContext.Provider
       value={{
         userId,
         guildId,
+        accessToken,
         gameData,
         setGameData,
         guesses,
@@ -322,12 +328,7 @@ export function useWordleState() {
         throw new Error("Game is not in progress");
       }
 
-      const res = await submitGuess(
-        context.userId,
-        context.guildId,
-        context.gameData.id,
-        guess,
-      );
+      const res = await submitGuess(context.accessToken, context.gameData.id, guess);
       context.setGameData(res);
       context.setGuesses(res.guesses);
       context.setPendingInput("");
@@ -335,14 +336,14 @@ export function useWordleState() {
   };
 }
 
-async function getOrCreateGame(userId: string, guildId: string) {
-  const activeGame = await getCurrentGame(userId, guildId);
+async function getOrCreateGame(accessToken: string) {
+  const activeGame = await getCurrentGame(accessToken);
   if (activeGame) {
     console.debug("Active game found", activeGame.id);
     return activeGame;
   }
 
-  const newGame = await startNewGame(userId, guildId);
+  const newGame = await startNewGame(accessToken);
   if (newGame) {
     console.debug("New game started", newGame.id);
     return newGame;

@@ -17,8 +17,8 @@ import {
   GameAlreadyFinishedError,
   GameNotActiveError,
   NotFoundError,
-  UnauthorizedError,
 } from "./error";
+import { authenticateRequest } from "./util";
 
 const GameGuessRequestSchema = v.object({
   guess: v.pipe(v.string(), v.length(WORDLE_WORD_LENGTH)),
@@ -40,18 +40,10 @@ function serializeGame(game: GameWithGuesses): GameDetail {
   };
 }
 
-function getAuthHeaders(req: BunRequest): { userId: string; guildId: string } {
-  const userId = req.headers.get("User-ID");
-  const guildId = req.headers.get("Guild-ID");
-  // TODO)) Authenticate the user
-  if (!userId || !guildId) throw new UnauthorizedError();
-  return { userId, guildId };
-}
-
 export const gameApi = {
   "/api/game/new": {
     async POST(req: BunRequest<"/api/game/new">): Promise<Response> {
-      const { userId, guildId } = getAuthHeaders(req);
+      const { userId, guildId } = await authenticateRequest(req);
 
       const currentGame = await getCurrentGame(userId, guildId);
       if (currentGame) throw new GameAlreadyActiveError(currentGame.id);
@@ -72,7 +64,7 @@ export const gameApi = {
   },
   "/api/game/current": {
     async GET(req: BunRequest<"/api/game/current">): Promise<Response> {
-      const { userId, guildId } = getAuthHeaders(req);
+      const { userId, guildId } = await authenticateRequest(req);
 
       const game = await getCurrentGame(userId, guildId);
       if (!game) throw new GameNotActiveError();
@@ -82,7 +74,7 @@ export const gameApi = {
   },
   "/api/game/:id/guess": {
     async POST(req: BunRequest<"/api/game/:id/guess">): Promise<Response> {
-      const { userId, guildId } = getAuthHeaders(req);
+      const { userId, guildId } = await authenticateRequest(req);
 
       const { guess } = v.parse(GameGuessRequestSchema, await req.json());
 

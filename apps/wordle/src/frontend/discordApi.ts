@@ -18,23 +18,6 @@ export async function getAuthorizationCode(sdk: IDiscordSDK): Promise<string> {
   return code;
 }
 
-export async function getAccessToken(code: string): Promise<string> {
-  const tokenRes = await fetch("/api/auth/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ code }),
-  });
-
-  const { access_token } = (await tokenRes.json()) as { access_token: string };
-  if (typeof access_token !== "string") {
-    throw new Error("Invalid access token received");
-  }
-
-  return access_token;
-}
-
 export async function fetchGuilds(accessToken: string) {
   return getRESTClient(accessToken).get(
     Routes.userGuilds(),
