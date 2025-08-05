@@ -13,7 +13,10 @@ import {
   useState,
 } from "react";
 import { WordleKeyboard } from "./WordleKeyboard";
+import { Toast } from "./components/Toast";
 import { useKeyDownListener } from "./hooks/useKeyDownListener";
+import { useToast } from "./hooks/useToast";
+import allWords from "./valid_words.json" with { type: "json" };
 
 type WordleProps = {
   guildId: string;
@@ -30,8 +33,22 @@ export function Wordle({ userId, guildId }: WordleProps) {
 
 export default Wordle;
 
+type ValidationResult = { isValid: true } | { isValid: false; reason: string };
+
+function validateWord(word: string): ValidationResult {
+  if (word.length !== WORDLE_WORD_LENGTH) {
+    return { isValid: false, reason: "Słowo musi mieć dokładnie 6 liter" };
+  }
+  if (!allWords.includes(word)) {
+    return { isValid: false, reason: "To słowo nie znajduje się w słowniku" };
+  }
+
+  return { isValid: true };
+}
+
 function WordleInner() {
   const { gameData, pendingInput, setPendingInput, pushGuess } = useWordleState();
+  const { toast, showToast } = useToast();
 
   const handleLetterClick = useCallback(
     (letter: string) => {
@@ -52,11 +69,25 @@ function WordleInner() {
 
   const handleEnter = useCallback(async () => {
     if (gameData?.state !== "inProgress") return;
-    if (pendingInput.length === WORDLE_WORD_LENGTH) {
-      // TODO)) Validate word
-      await pushGuess(pendingInput);
+    const validation = validateWord(pendingInput);
+
+    if (!validation.isValid) {
+      showToast(validation.reason, "error");
+
+      const currentRow = document.querySelector(
+        `[data-row="${gameData.guesses.length}"]`,
+      );
+
+      if (currentRow) {
+        currentRow.classList.add("shake");
+        setTimeout(() => currentRow.classList.remove("shake"), 600);
+      }
+
+      return;
     }
-  }, [gameData, pendingInput, pushGuess]);
+
+    await pushGuess(pendingInput);
+  }, [gameData, pendingInput, pushGuess, showToast]);
 
   const onKeyDown = useCallback(
     async (e: KeyboardEvent) => {
@@ -80,14 +111,19 @@ function WordleInner() {
   const onShareClick = () => {
     if (!gameData) return;
     const shareText = getShareText(gameData);
-    navigator.clipboard.writeText(shareText).then(() => {
-      console.log("Share text copied to clipboard");
-      // TODO)) Show a toast
-    });
+    navigator.clipboard
+      .writeText(shareText)
+      .then(() => {
+        showToast("Skopiowano do schowka! 📋", "success");
+      })
+      .catch(() => {
+        showToast("Nie udało się skopiować", "error");
+      });
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 relative">
+      {toast && <Toast toast={toast} />}
       {gameData?.state !== "inProgress" && (
         <div className="flex flex-row gap-6 justify-center">
           <div className="text-2xl">
@@ -178,7 +214,7 @@ function Row({ index }: RowProps) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" data-row={index}>
       {Array.from({ length: WORDLE_WORD_LENGTH }, (_, col) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
         <Cell key={`${index}:${col}`} letter={getLetter(col)} state={getState(col)} />
