@@ -51,5 +51,7 @@ model AvailableWord {
   updatedAt DateTime? @updatedAt
   guildId   String
   createdBy String
-  word      String    @unique
+  word      String  
+
+  @@unique([guildId, word])
 }
