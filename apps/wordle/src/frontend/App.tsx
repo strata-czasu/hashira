@@ -1,17 +1,12 @@
 import "./index.css";
 
-import { type DiscordSDK, patchUrlMappings } from "@discord/embedded-app-sdk";
-import { useLayoutEffect, useState } from "react";
+import { patchUrlMappings } from "@discord/embedded-app-sdk";
+import { useLayoutEffect } from "react";
 import Wordle from "./Wordle";
 import { useDiscordSdk } from "./sdk";
 
-type AuthSession = Awaited<
-  ReturnType<typeof DiscordSDK.prototype.commands.authenticate>
->;
-
 export function App() {
-  const { discordSdk, authenticate } = useDiscordSdk("mock");
-  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const { discordSdk, authSession, authenticate } = useDiscordSdk("mock");
 
   useLayoutEffect(() => {
     patchUrlMappings([{ prefix: "/", target: "/.proxy" }]);
@@ -20,9 +15,7 @@ export function App() {
   const onAuthorizeClick = async () => {
     await discordSdk.ready();
     console.log("Discord SDK is ready");
-
-    const session = await authenticate();
-    setAuthSession(session);
+    await authenticate();
   };
 
   return (
