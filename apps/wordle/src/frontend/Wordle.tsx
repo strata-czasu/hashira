@@ -32,29 +32,47 @@ export default Wordle;
 function WordleInner() {
   const { gameData, pendingInput, setPendingInput, pushGuess } = useWordleState();
 
+  const handleLetterClick = useCallback(
+    (letter: string) => {
+      if (gameData?.state !== "inProgress") return;
+      if (pendingInput.length < WORDLE_WORD_LENGTH) {
+        setPendingInput((prev) => prev + letter.toLowerCase());
+      }
+    },
+    [gameData, pendingInput, setPendingInput],
+  );
+
+  const handleBackspace = useCallback(() => {
+    if (gameData?.state !== "inProgress") return;
+    if (pendingInput.length > 0) {
+      setPendingInput(pendingInput.slice(0, -1));
+    }
+  }, [gameData, pendingInput, setPendingInput]);
+
+  const handleEnter = useCallback(async () => {
+    if (gameData?.state !== "inProgress") return;
+    if (pendingInput.length === WORDLE_WORD_LENGTH) {
+      // TODO)) Validate word
+      await pushGuess(pendingInput);
+    }
+  }, [gameData, pendingInput, pushGuess]);
+
   const onKeyDown = useCallback(
     async (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (gameData?.state !== "inProgress") return;
 
       if (e.key === "Backspace") {
-        if (pendingInput.length > 0) {
-          setPendingInput(pendingInput.slice(0, -1));
-        }
+        handleBackspace();
       }
       if (e.key === "Enter") {
-        if (pendingInput.length === WORDLE_WORD_LENGTH) {
-          // TODO)) Validate word
-          await pushGuess(pendingInput);
-        }
+        await handleEnter();
       }
 
       if (!/^[a-zA-Z]$/.test(e.key)) return;
-      if (pendingInput.length < WORDLE_WORD_LENGTH) {
-        setPendingInput((prev) => prev + e.key.toLowerCase());
-      }
+      handleLetterClick(e.key);
     },
-    [gameData, pendingInput, setPendingInput, pushGuess],
+    [gameData, handleLetterClick, handleBackspace, handleEnter],
   );
   useKeyDownListener(onKeyDown);
 
