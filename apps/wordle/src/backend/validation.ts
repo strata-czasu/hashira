@@ -1,15 +1,75 @@
-import { isEqual, sample } from "es-toolkit";
+import { isEqual } from "es-toolkit";
 import { type Guess, type KnownLetter, prisma } from "../db";
 
 export async function getRandomWord(guildId: string): Promise<string> {
   const availableWords = await prisma.availableWord.findMany({
     where: { guildId },
   });
+
   if (availableWords.length === 0) {
     throw new Error("No words available for this guild");
   }
-  // TODO)) Pick a word that a given user has not guessed yet
-  return sample(availableWords.map((aw) => aw.word));
+
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  const solutionCounts = await prisma.game.groupBy({
+    by: ["solution"],
+    where: {
+      guildId,
+      createdAt: {
+        gte: startOfDay,
+        lt: endOfDay,
+      },
+    },
+    _count: {
+      solution: true,
+    },
+    orderBy: {
+      _count: { solution: "desc" },
+    },
+  });
+
+  const weightedWords: { word: string; weight: number }[] = [];
+  for (const availableWord of availableWords) {
+    const solutionCount = solutionCounts.find(
+      (sc) => sc.solution === availableWord.word,
+    );
+
+    const count = solutionCount?._count.solution || 0;
+    const weight = 1 / (count + 1);
+
+    weightedWords.push({ word: availableWord.word, weight });
+  }
+
+  return weightedRandomSelect(weightedWords);
+}
+
+function weightedRandomSelect(
+  weightedWords: { word: string; weight: number }[],
+): string {
+  if (weightedWords.length === 0) {
+    throw new Error("No words available for selection");
+  }
+
+  const totalWeight = weightedWords.reduce((sum, item) => sum + item.weight, 0);
+  let random = Math.random() * totalWeight;
+
+  for (const item of weightedWords) {
+    random -= item.weight;
+    if (random <= 0) {
+      return item.word;
+    }
+  }
+
+  const lastWord = weightedWords[weightedWords.length - 1];
+
+  if (!lastWord) {
+    throw new Error("No words available for selection");
+  }
+
+  return lastWord.word;
 }
 
 export type ValidationResult = {
