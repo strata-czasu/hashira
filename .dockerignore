@@ -1,12 +1,17 @@
 **/node_modules
 **/.env
+**/.env.example
+**/*.db
 .git
 .gitignore
 .github
 .idea
 .vscode
 .devcontainer
+.direnv
 lefthook.yml
 biome.json
 knip.ts
 README.md
+PG_DATA
+REDIS_DATA
