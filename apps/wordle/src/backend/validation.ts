@@ -1,3 +1,4 @@
+import { endOfDay, startOfToday } from "date-fns";
 import { isEqual } from "es-toolkit";
 import { type Guess, type KnownLetter, prisma } from "../db";
 
@@ -10,17 +11,16 @@ export async function getRandomWord(guildId: string): Promise<string> {
     throw new Error("No words available for this guild");
   }
 
-  const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const todayStart = startOfToday();
+  const todayEnd = endOfDay(todayStart);
 
   const solutionCounts = await prisma.game.groupBy({
     by: ["solution"],
     where: {
       guildId,
       createdAt: {
-        gte: startOfDay,
-        lt: endOfDay,
+        gte: todayStart,
+        lt: todayEnd,
       },
     },
     _count: {
