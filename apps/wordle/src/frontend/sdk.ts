@@ -7,12 +7,11 @@ import {
 import { useState } from "react";
 import { getAuthorizationCode } from "./discordApi";
 
-export type DiscordSDKMode = "mock" | "live";
+const OAUTH_CLIENT_ID = process.env.WORDLE_PUBLIC_OAUTH_CLIENT_ID;
+const MOCK_GUILD_ID = process.env.WORDLE_PUBLIC_MOCK_GUILD_ID;
+const MOCK_CHANNEL_ID = process.env.WORDLE_PUBLIC_MOCK_CHANNEL_ID;
 
-// TODO)) Get this from somewhere more configurable
-const OAUTH_CLIENT_ID = "1395837579861037216";
-const MOCK_GUILD_ID = "342022299957854220";
-const MOCK_CHANNEL_ID = "483273472555089930";
+export type DiscordSDKMode = "mock" | "live";
 
 export type AuthSession = Awaited<
   ReturnType<typeof DiscordSDK.prototype.commands.authenticate>
@@ -29,15 +28,19 @@ export type UseDiscordSDKReturn = {
 
 export function useDiscordSdk(sdkMode: DiscordSDKMode): UseDiscordSDKReturn {
   const [discordSdk] = useState(() => {
+    if (!OAUTH_CLIENT_ID) {
+      throw new Error("WORDLE_PUBLIC_OAUTH_CLIENT_ID is not set");
+    }
+
     if (sdkMode === "live") {
       return new DiscordSDK(OAUTH_CLIENT_ID);
     }
 
     if (!MOCK_GUILD_ID) {
-      throw new Error("Mock guild ID must be set in mock SDK mode");
+      throw new Error("WORDLE_PUBLIC_MOCK_GUILD_ID must be set for mock SDK mode");
     }
     if (!MOCK_CHANNEL_ID) {
-      throw new Error("Mock channel ID must be set in mock SDK mode");
+      throw new Error("WORDLE_PUBLIC_MOCK_CHANNEL_ID must be set for mock SDK mode");
     }
     console.debug("Using mock Discord SDK");
     console.debug("Client ID:", OAUTH_CLIENT_ID);

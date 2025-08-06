@@ -12,7 +12,7 @@ import * as jose from "jose";
 import * as v from "valibot";
 import { authenticateRequest } from "./util";
 
-console.log("[auth] Using OAuth client ID:", env.WORDLE_OAUTH_CLIENT_ID);
+console.log("[auth] Using OAuth client ID:", env.WORDLE_PUBLIC_OAUTH_CLIENT_ID);
 
 const ApiTokenRequestSchema = v.object({
   code: v.string(),
@@ -35,7 +35,7 @@ export const authApi = {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          client_id: env.WORDLE_OAUTH_CLIENT_ID,
+          client_id: env.WORDLE_PUBLIC_OAUTH_CLIENT_ID,
           client_secret: env.WORDLE_OAUTH_CLIENT_SECRET,
           grant_type: "authorization_code",
           code,
@@ -77,7 +77,7 @@ export const authApi = {
       const jwtSecret = new TextEncoder().encode(env.WORDLE_JWT_SECRET);
       const jwt = await new jose.SignJWT({ userId: user.id, guildId })
         .setProtectedHeader({ alg: "HS256" })
-        .setIssuer(env.WORDLE_OAUTH_CLIENT_ID)
+        .setIssuer(env.WORDLE_PUBLIC_OAUTH_CLIENT_ID)
         .setIssuedAt()
         .setExpirationTime(jwtExpiry)
         .sign(jwtSecret);
