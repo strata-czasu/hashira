@@ -46,6 +46,7 @@
         "discord-api-types": "^0.38.16",
         "jose": "^6.0.12",
         "prisma": "^6.13.0",
+        "prisma-json-types-generator": "^3.5.1",
         "react": "^19",
         "react-dom": "^19",
         "tailwindcss": "^4.0.6",
@@ -55,7 +56,6 @@
         "@types/bun": "latest",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "prisma-json-types-generator": "^3.5.1",
       },
     },
     "packages/core": {
