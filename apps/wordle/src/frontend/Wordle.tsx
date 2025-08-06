@@ -127,10 +127,10 @@ function WordleInner() {
   return (
     <div className="flex flex-col gap-4 relative">
       {toast && <Toast toast={toast} />}
-      {gameData?.state !== "inProgress" && (
+      {gameData && gameData.state !== "inProgress" && (
         <div className="flex flex-row gap-6 justify-center">
           <div className="text-2xl">
-            {gameData?.state === "solved"
+            {gameData.state === "solved"
               ? `Gratulacje! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
               : "Koniec gry 😭"}
           </div>
