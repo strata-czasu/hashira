@@ -48,7 +48,8 @@ function validateWord(word: string): ValidationResult {
 }
 
 function WordleInner() {
-  const { gameData, pendingInput, setPendingInput, pushGuess } = useWordleState();
+  const { gameData, pendingInput, setPendingInput, pushGuess, isSubmitting } =
+    useWordleState();
   const { toast, showToast } = useToast();
 
   const handleLetterClick = useCallback(
@@ -70,6 +71,7 @@ function WordleInner() {
 
   const handleEnter = useCallback(async () => {
     if (gameData?.state !== "inProgress") return;
+    if (isSubmitting) return;
     const validation = validateWord(pendingInput);
 
     if (!validation.isValid) {
@@ -88,7 +90,7 @@ function WordleInner() {
     }
 
     await pushGuess(pendingInput);
-  }, [gameData, pendingInput, pushGuess, showToast]);
+  }, [gameData, pendingInput, pushGuess, showToast, isSubmitting]);
 
   const onKeyDown = useCallback(
     async (e: KeyboardEvent) => {
@@ -233,7 +235,7 @@ function Cell({ letter, state }: CellProps) {
   return (
     <div
       className={clsx([
-        "w-20 h-20 flex items-center justify-center",
+        "cell w-20 h-20 flex items-center justify-center",
         state === "correct" && "bg-green-500",
         state === "present" && "bg-yellow-500",
         state === "absent" && "bg-gray-500",
@@ -264,6 +266,8 @@ type WordleContextType = {
   setGuesses: Dispatch<SetStateAction<string[]>>;
   pendingInput: string;
   setPendingInput: Dispatch<SetStateAction<string>>;
+  isSubmitting: boolean;
+  setIsSubmitting: Dispatch<SetStateAction<boolean>>;
 };
 
 const WordleContext = createContext<WordleContextType | undefined>(undefined);
@@ -278,6 +282,7 @@ export function WordleContextProvider({
   // TODO)) Deduplicate this state with gameData.guesses
   const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (gameData) return;
@@ -304,6 +309,8 @@ export function WordleContextProvider({
         setGuesses,
         pendingInput,
         setPendingInput,
+        isSubmitting,
+        setIsSubmitting,
       }}
     >
       {children}
@@ -322,16 +329,32 @@ export function useWordleState() {
     pendingInput: context.pendingInput,
     setPendingInput: context.setPendingInput,
     guesses: context.guesses,
+    isSubmitting: context.isSubmitting,
     async pushGuess(guess: string) {
       if (!context.gameData) throw new Error("Game is not active");
       if (context.gameData.state !== "inProgress") {
         throw new Error("Game is not in progress");
       }
 
-      const res = await submitGuess(context.accessToken, context.gameData.id, guess);
-      context.setGameData(res);
-      context.setGuesses(res.guesses);
-      context.setPendingInput("");
+      if (context.isSubmitting) return;
+
+      context.setIsSubmitting(true);
+
+      try {
+        const currentRow = document.querySelector(
+          `[data-row="${context.gameData.guesses.length}"]`,
+        );
+
+        currentRow?.classList.add("wave");
+        setTimeout(() => currentRow?.classList.remove("wave"), 700);
+
+        const res = await submitGuess(context.accessToken, context.gameData.id, guess);
+        context.setGameData(res);
+        context.setGuesses(res.guesses);
+        context.setPendingInput("");
+      } finally {
+        context.setIsSubmitting(false);
+      }
     },
   };
 }
