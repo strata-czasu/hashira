@@ -52,8 +52,6 @@
         "tailwindcss": "^4.0.6",
       },
       "devDependencies": {
-        "@hashira/tsconfig": "workspace:*",
-        "@types/bun": "latest",
         "@types/react": "^19",
         "@types/react-dom": "^19",
       },
