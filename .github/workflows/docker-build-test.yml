@@ -27,7 +27,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: ["APP=bot"]
+          build-args: APP=bot
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -53,7 +53,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: ["APP=wordle"]
+          build-args: APP=wordle
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
