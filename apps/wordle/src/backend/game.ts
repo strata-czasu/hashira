@@ -48,7 +48,7 @@ export const gameApi = {
       const currentGame = await getCurrentGame(userId, guildId);
       if (currentGame) throw new GameAlreadyActiveError(currentGame.id);
 
-      const solution = await getRandomWord(guildId);
+      const solution = await getRandomWord(userId, guildId);
       const newGame = await prisma.game.create({
         data: {
           userId,

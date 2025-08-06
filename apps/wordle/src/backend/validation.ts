@@ -2,9 +2,18 @@ import { endOfDay, startOfToday } from "date-fns";
 import { isEqual } from "es-toolkit";
 import { type Guess, type KnownLetter, prisma } from "../db";
 
-export async function getRandomWord(guildId: string): Promise<string> {
+export async function getRandomWord(userId: string, guildId: string): Promise<string> {
+  const previouslyUsedWords = await prisma.game.findMany({
+    where: { userId, guildId },
+    select: { solution: true },
+    distinct: ["solution"],
+  });
+
   const availableWords = await prisma.availableWord.findMany({
-    where: { guildId },
+    where: {
+      guildId,
+      word: { notIn: previouslyUsedWords.map((game) => game.solution) },
+    },
   });
 
   if (availableWords.length === 0) {
