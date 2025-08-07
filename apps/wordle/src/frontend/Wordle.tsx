@@ -158,7 +158,7 @@ function WordleInner() {
   );
 }
 
-function getShareText({ guesses, correct, present, absent }: GameDetail): string {
+function getShareText({ guesses, correct, present }: GameDetail): string {
   const lines: string[] = [`Wordle (${guesses.length}/${WORDLE_ATTEMPTS})`];
 
   for (const guess of guesses) {
@@ -178,7 +178,7 @@ function getShareText({ guesses, correct, present, absent }: GameDetail): string
 
       line.push("⬜");
     }
-    guesses.push(line.join(""));
+    lines.push(line.join(""));
   }
 
   return lines.join("\n");
@@ -199,7 +199,6 @@ function Row({ index }: RowProps) {
   };
 
   const getState = (col: number): CellState => {
-    // TODO)) Is this correct?
     if (!gameData) return "pending";
     if (isPending) return "pending";
 
@@ -235,7 +234,7 @@ function Cell({ letter, state }: CellProps) {
   return (
     <div
       className={clsx([
-        "cell w-20 h-20 flex items-center justify-center",
+        "cell w-20 h-20 flex items-center justify-center select-none",
         state === "correct" && "bg-green-500",
         state === "present" && "bg-yellow-500",
         state === "absent" && "bg-gray-500",
