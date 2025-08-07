@@ -51,7 +51,11 @@ async function createAvailableWords(guildId: string, ownerId: string) {
 
   const wordsToCreate = Array.from(allWords);
   const createdWords = await prisma.availableWord.createManyAndReturn({
-    data: wordsToCreate.map((word) => ({ guildId, createdBy: ownerId, word })),
+    data: wordsToCreate.map((word) => ({
+      guildId,
+      createdBy: ownerId,
+      word: word.toLowerCase(),
+    })),
   });
   console.log(
     `Created ${createdWords.length} available words for guild ${guildId}. ${existingWords.length} already existed.`,
