@@ -154,7 +154,7 @@ function WordleInner() {
                 className="resize-none"
                 readOnly
                 rows={getShareText(gameData).split("\n").length}
-                cols={15}
+                cols={16}
               >
                 {getShareText(gameData)}
               </textarea>
