@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator json {
+  provider = "prisma-json-types-generator"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("WORDLE_DATABASE_URL")
+}
+
+model Game {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  userId    String
+  guildId   String
+  state     GameState @default(inProgress)
+  solution  String
+
+  guesses Guess[]
+}
+
+enum GameState {
+  inProgress
+  solved
+  failed
+}
+
+model Guess {
+  gameId  Int
+  index   Int
+  letters String
+  /// [KnownLetter[]]
+  correct Json
+  /// [KnownLetter[]]
+  present Json
+  /// [string[]]
+  absent  Json
+
+  game Game @relation(fields: [gameId], references: [id])
+
+  @@id([gameId, index])
+}
+
+model AvailableWord {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  guildId   String
+  createdBy String
+  word      String  
+
+  @@unique([guildId, word])
+}
