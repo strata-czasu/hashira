@@ -127,31 +127,31 @@ function WordleInner() {
   };
 
   return (
-    <div className="flex flex-col gap-4 relative">
+    <div className="flex flex-col gap-2 sm:gap-4 relative items-center w-full">
       {toast && <Toast toast={toast} />}
       {gameData && gameData.state !== "inProgress" && (
-        <div>
-          <div className="flex flex-row gap-6 justify-center">
-            <div className="text-2xl">
+        <div className="space-y-2 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center">
+            <div className="text-lg sm:text-xl md:text-2xl text-center">
               {gameData.state === "solved"
                 ? `Gratulacje! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
                 : "Koniec gry 😭"}
             </div>
             <button
               type="button"
-              className="px-4 py-2 text-white rounded bg-green-600 hover:bg-green-700 transition-colors"
+              className="px-4 py-2 text-white rounded bg-green-600 hover:bg-green-700 transition-colors whitespace-nowrap"
               onClick={onShareClick}
             >
               Udostępnij
             </button>
           </div>
           {failedToCopyShareText && (
-            <div>
-              <div className="text-red-500">
+            <div className="max-w-sm mx-auto">
+              <div className="text-red-500 text-sm sm:text-base">
                 Nie udało się skopiować tekstu do schowka. Możesz skopiować go ręcznie:
               </div>
               <textarea
-                className="resize-none"
+                className="resize-none w-full mt-2 text-black"
                 readOnly
                 rows={getShareText(gameData).split("\n").length}
                 cols={16}
@@ -162,17 +162,19 @@ function WordleInner() {
           )}
         </div>
       )}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 sm:gap-2 items-center">
         {Array.from({ length: WORDLE_ATTEMPTS }, (_, row) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
           <Row key={row} index={row} />
         ))}
       </div>
-      <WordleKeyboard
-        onLetterClick={handleLetterClick}
-        onBackspace={handleBackspace}
-        onEnter={handleEnter}
-      />
+      <div className="w-full max-w-lg">
+        <WordleKeyboard
+          onLetterClick={handleLetterClick}
+          onBackspace={handleBackspace}
+          onEnter={handleEnter}
+        />
+      </div>
     </div>
   );
 }
@@ -235,7 +237,7 @@ function Row({ index }: RowProps) {
   };
 
   return (
-    <div className="flex gap-2" data-row={index}>
+    <div className="flex gap-1 sm:gap-2" data-row={index}>
       {Array.from({ length: WORDLE_WORD_LENGTH }, (_, col) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
         <Cell key={`${index}:${col}`} letter={getLetter(col)} state={getState(col)} />
@@ -253,14 +255,18 @@ function Cell({ letter, state }: CellProps) {
   return (
     <div
       className={clsx([
-        "cell w-20 h-20 flex items-center justify-center select-none",
+        "cell w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 flex items-center justify-center select-none",
         state === "correct" && "bg-green-500",
         state === "present" && "bg-yellow-500",
         state === "absent" && "bg-gray-500",
         state === "pending" && "border-2 border-gray-500",
       ])}
     >
-      {letter && <div className="text-4xl font-bold uppercase">{letter}</div>}
+      {letter && (
+        <div className="text-2xl sm:text-3xl md:text-4xl font-bold uppercase">
+          {letter}
+        </div>
+      )}
     </div>
   );
 }
