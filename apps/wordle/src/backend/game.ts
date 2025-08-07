@@ -57,7 +57,6 @@ export const gameApi = {
         },
         include: { guesses: true },
       });
-      console.log("New game", newGame);
 
       return Response.json(serializeGame(newGame), { status: 201 });
     },
@@ -105,7 +104,6 @@ export const gameApi = {
         include: { guesses: true },
       });
 
-      console.log("after guess", game);
       return Response.json(serializeGame(updatedGame));
     },
   },
