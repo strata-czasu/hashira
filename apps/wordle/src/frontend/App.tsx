@@ -1,16 +1,32 @@
 import "./index.css";
 
+import { useLayoutEffect, useState } from "react";
 import Wordle from "./Wordle";
-import { useDiscordSdk } from "./sdk";
+import { type DiscordSDKMode, useDiscordSdk } from "./sdk";
+
+const SDK_MODE: DiscordSDKMode = "live";
 
 export function App() {
-  const { discordSdk, authSession, accessToken, authenticate } = useDiscordSdk("live");
+  const { discordSdk, authSession, accessToken, authenticate } =
+    useDiscordSdk(SDK_MODE);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  const onAuthorizeClick = async () => {
+  const startAuth = async () => {
+    if (isAuthenticating) return;
+
     await discordSdk.ready();
     console.log("Discord SDK is ready");
+
+    setIsAuthenticating(true);
     await authenticate();
+    setIsAuthenticating(false);
   };
+
+  // Automatically start authentication on app load
+  useLayoutEffect(() => {
+    if (authSession && accessToken) return;
+    startAuth();
+  });
 
   return (
     <div className="max-w-7xl mx-auto p-8 text-center">
@@ -21,13 +37,20 @@ export function App() {
           accessToken={accessToken}
         />
       ) : (
-        <button
-          type="button"
-          className="px-4 py-2 my-4 text-white rounded bg-blue-600 hover:bg-blue-700 transition-colors"
-          onClick={onAuthorizeClick}
-        >
-          Log In
-        </button>
+        <div>
+          <div className="text-5xl mb-4">Wordle</div>
+          {isAuthenticating ? (
+            <div className="text-gray-500">Logowanie...</div>
+          ) : (
+            <button
+              type="button"
+              className="px-4 py-2 my-4 text-white rounded bg-blue-600 hover:bg-blue-700 transition-colors"
+              onClick={startAuth}
+            >
+              Zaloguj się przez Discord aby zagrać
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
