@@ -6,7 +6,7 @@
   }
 
   body {
-    @apply grid place-items-center min-w-[320px] min-h-screen relative m-0;
+    @apply grid place-items-center min-w-[280px] min-h-screen relative m-0;
   }
 }
 

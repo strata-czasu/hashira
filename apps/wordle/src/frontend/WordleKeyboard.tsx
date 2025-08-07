@@ -49,7 +49,7 @@ export function WordleKeyboard({
   );
 
   return (
-    <div className="flex flex-col gap-2 items-center mt-4">
+    <div className="flex flex-col gap-1 sm:gap-2 items-center mt-4 w-full">
       {KEYBOARD_ROWS.map((row, rowIndex) => (
         <KeyboardRow
           key={row.join("")}
@@ -83,9 +83,9 @@ function KeyboardRow({
   getLetterState,
 }: KeyboardRowProps) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-0.5 sm:gap-1 justify-center w-full">
       {rowIndex === 2 && (
-        <KeyboardKey onClick={onEnter} className="px-4" state="pending">
+        <KeyboardKey onClick={onEnter} className="px-2 sm:px-4 text-xs" state="pending">
           ENTER
         </KeyboardKey>
       )}
@@ -99,7 +99,7 @@ function KeyboardRow({
         </KeyboardKey>
       ))}
       {rowIndex === 2 && (
-        <KeyboardKey onClick={onBackspace} className="px-4" state="pending">
+        <KeyboardKey onClick={onBackspace} className="px-2 sm:px-4" state="pending">
           ⌫
         </KeyboardKey>
       )}
@@ -125,7 +125,7 @@ const KeyboardKey = React.memo(function KeyboardKey({
       type="button"
       onClick={onClick}
       className={clsx([
-        "min-w-10 h-12 flex items-center justify-center rounded font-bold text-white transition-colors hover:opacity-70 active:scale-95",
+        "min-w-9 sm:min-w-10 h-11 sm:h-12 flex items-center justify-center rounded font-bold text-white transition-colors hover:opacity-70 active:scale-95 text-xs sm:text-sm",
         {
           "bg-green-500": state === "correct",
           "bg-yellow-500": state === "present",
