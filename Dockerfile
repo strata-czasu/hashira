@@ -41,7 +41,7 @@ FROM base AS wordle
 WORKDIR /app/apps/wordle
 RUN bun prisma-generate
 RUN mkdir -p /appdata/wordle && chown -R bun:bun /appdata/wordle
-CMD ["bun", "start"]
+CMD ["bun", "start:prod"]
 
 
 # Final image
