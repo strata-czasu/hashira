@@ -125,12 +125,12 @@ const KeyboardKey = React.memo(function KeyboardKey({
       type="button"
       onClick={onClick}
       className={clsx([
-        "min-w-10 h-12 flex items-center justify-center rounded font-bold text-white transition-colors hover:opacity-80 active:scale-95",
+        "min-w-10 h-12 flex items-center justify-center rounded font-bold text-white transition-colors hover:opacity-70 active:scale-95",
         {
-          "bg-green-500 hover:bg-green-600": state === "correct",
-          "bg-yellow-500 hover:bg-yellow-600": state === "present",
-          "bg-gray-500 hover:bg-gray-600": state === "absent",
-          "bg-gray-600 hover:bg-gray-500": state === "pending",
+          "bg-green-500": state === "correct",
+          "bg-yellow-500": state === "present",
+          "bg-gray-500": state === "absent",
+          "bg-gray-700": state === "pending",
         },
         className,
       ])}
