@@ -51,6 +51,7 @@ function WordleInner() {
   const { gameData, pendingInput, setPendingInput, pushGuess, isSubmitting } =
     useWordleState();
   const { toast, showToast } = useToast();
+  const [failedToCopyShareText, setFailedToCopyShareText] = useState(false);
 
   const handleLetterClick = useCallback(
     (letter: string) => {
@@ -120,6 +121,7 @@ function WordleInner() {
         showToast("Skopiowano do schowka! 📋", "success");
       })
       .catch(() => {
+        setFailedToCopyShareText(true);
         showToast("Nie udało się skopiować", "error");
       });
   };
@@ -128,19 +130,36 @@ function WordleInner() {
     <div className="flex flex-col gap-4 relative">
       {toast && <Toast toast={toast} />}
       {gameData && gameData.state !== "inProgress" && (
-        <div className="flex flex-row gap-6 justify-center">
-          <div className="text-2xl">
-            {gameData.state === "solved"
-              ? `Gratulacje! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
-              : "Koniec gry 😭"}
+        <div>
+          <div className="flex flex-row gap-6 justify-center">
+            <div className="text-2xl">
+              {gameData.state === "solved"
+                ? `Gratulacje! 🎉 (${gameData.guesses.length}/${WORDLE_ATTEMPTS})`
+                : "Koniec gry 😭"}
+            </div>
+            <button
+              type="button"
+              className="px-4 py-2 text-white rounded bg-green-600 hover:bg-green-700 transition-colors"
+              onClick={onShareClick}
+            >
+              Udostępnij
+            </button>
           </div>
-          <button
-            type="button"
-            className="px-4 py-2 text-white rounded bg-green-600 hover:bg-green-700 transition-colors"
-            onClick={onShareClick}
-          >
-            Udostępnij
-          </button>
+          {failedToCopyShareText && (
+            <div>
+              <div className="text-red-500">
+                Nie udało się skopiować tekstu do schowka. Możesz skopiować go ręcznie:
+              </div>
+              <textarea
+                className="resize-none"
+                readOnly
+                rows={getShareText(gameData).split("\n").length}
+                cols={15}
+              >
+                {getShareText(gameData)}
+              </textarea>
+            </div>
+          )}
         </div>
       )}
       <div className="flex flex-col gap-2">
