@@ -207,7 +207,7 @@ export const ai = new Hashira({ name: "ai" })
 
       const runner = ai.beta.chat.completions
         .runTools({
-          model: "gpt-4.1-2025-04-14",
+          model: "gpt-5",
           messages: [
             {
               role: "system",
