@@ -18,6 +18,7 @@
   "formatter": {
     "lineWidth": 88,
     "enabled": true,
-    "indentStyle": "space"
+    "indentStyle": "space",
+    "ignore": ["apps/wordle/src/frontend/valid_words.json"]
   }
 }
