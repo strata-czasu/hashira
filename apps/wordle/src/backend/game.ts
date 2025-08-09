@@ -129,12 +129,15 @@ function getCurrentGame(
   });
 }
 
-function getNewGameState(game: GameWithGuesses, guess: string): GameState {
+/**
+ * Get the new game state for the next guess based on the current game state.
+ */
+export function getNewGameState(game: GameWithGuesses, guess: string): GameState {
   // Guessed on any attempt -> game is solved
   if (guess === game.solution) return "solved";
 
   // Did not guess on the last attempt -> game is failed
-  if (game.guesses.length === WORDLE_ATTEMPTS) return "failed";
+  if (game.guesses.length === WORDLE_ATTEMPTS - 1) return "failed";
 
   // Otherwise, game is still in progress
   return game.state;
