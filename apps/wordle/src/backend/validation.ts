@@ -98,20 +98,37 @@ export function parseValidationResult(guess: Guess): ValidationResult {
   };
 }
 
+export function countLetters(word: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const letter of word) {
+    counts.set(letter, (counts.get(letter) || 0) + 1);
+  }
+  return counts;
+}
+
 /**
  * Validate a wordle guess against the solution
  */
 export function validateGuess(guess: string, solution: string): ValidationResult {
+  const lettersToGuess = countLetters(solution);
   const correct: KnownLetter[] = [];
   const present: KnownLetter[] = [];
   const absent = new Set<string>();
 
-  let position = 0;
-  for (const letter of guess) {
-    if (letter === solution[position]) correct.push({ letter, position });
-    else if (solution.includes(letter)) present.push({ letter, position });
-    else absent.add(letter);
-    position++;
+  for (const [position, letter] of Array.from(guess).entries()) {
+    if (letter === solution[position]) {
+      correct.push({ letter, position });
+      lettersToGuess.set(letter, (lettersToGuess.get(letter) || 0) - 1);
+    } else if (!solution.includes(letter)) {
+      absent.add(letter);
+    }
+  }
+
+  for (const [position, letter] of Array.from(guess).entries()) {
+    if (!solution.includes(letter)) continue;
+    // Letter already has all correct positions guessed
+    if (lettersToGuess.get(letter) === 0) continue;
+    present.push({ letter, position });
   }
 
   return { correct, present, absent };
