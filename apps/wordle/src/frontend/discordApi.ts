@@ -13,6 +13,7 @@ export async function getAuthorizationCode(sdk: IDiscordSDK): Promise<string> {
   const { code } = await sdk.commands.authorize({
     client_id: sdk.clientId,
     response_type: "code",
+    prompt: "none",
     scope: ["identify", "guilds"],
   });
   return code;
