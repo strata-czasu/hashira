@@ -127,7 +127,7 @@ export function validateGuess(guess: string, solution: string): ValidationResult
   for (const [position, letter] of Array.from(guess).entries()) {
     if (!solution.includes(letter)) continue;
     // Letter already has all correct positions guessed
-    if (lettersToGuess.get(letter) === 0) continue;
+    if ((lettersToGuess.get(letter) || 0) <= 0) continue;
     present.push({ letter, position });
   }
 
