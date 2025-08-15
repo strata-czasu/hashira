@@ -26,16 +26,18 @@ export function WordleKeyboard({
 
     const states = new Map<string, CellState>();
 
-    for (const letter of gameData.absent) {
-      states.set(letter, "absent");
-    }
+    for (const guess of gameData.guesses) {
+      for (const letter of guess.absent) {
+        states.set(letter, "absent");
+      }
 
-    for (const { letter } of gameData.present) {
-      states.set(letter, "present");
-    }
+      for (const { letter } of guess.present) {
+        states.set(letter, "present");
+      }
 
-    for (const { letter } of gameData.correct) {
-      states.set(letter, "correct");
+      for (const { letter } of guess.correct) {
+        states.set(letter, "correct");
+      }
     }
 
     return states;

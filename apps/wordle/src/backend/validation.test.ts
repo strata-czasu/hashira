@@ -20,6 +20,20 @@ describe("validateGuess", () => {
     expect(correct).toContainEqual({ letter: "i", position: 1 });
     expect(correct).toContainEqual({ letter: "y", position: 4 });
   });
+  test("present letters already in correct", () => {
+    const { correct, present, absent } = validateGuess("grader", "graves");
+
+    expect(correct).toHaveLength(4);
+    expect(correct).toContainEqual({ letter: "g", position: 0 });
+    expect(correct).toContainEqual({ letter: "r", position: 1 });
+    expect(correct).toContainEqual({ letter: "a", position: 2 });
+    expect(correct).toContainEqual({ letter: "e", position: 4 });
+
+    expect(present).toHaveLength(0);
+
+    expect(absent).toHaveLength(1);
+    expect(absent).toContain("d");
+  });
 });
 
 describe("mergeKnownLetters", () => {

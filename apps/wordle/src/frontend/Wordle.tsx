@@ -1,5 +1,5 @@
 import { getCurrentGame, startNewGame, submitGuess } from "@/api/game";
-import type { GameDetail } from "@/api/types";
+import type { GameDetail, GuessDetail } from "@/api/types";
 import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
 import { clsx } from "clsx";
 import { isEqual } from "es-toolkit";
@@ -164,8 +164,13 @@ function WordleInner() {
       )}
       <div className="flex flex-col gap-1 sm:gap-2 items-center">
         {Array.from({ length: WORDLE_ATTEMPTS }, (_, row) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
-          <Row key={row} index={row} />
+          <Row
+            // biome-ignore lint/suspicious/noArrayIndexKey: No better alternative here
+            key={row}
+            index={row}
+            guess={gameData?.guesses.find((g) => g.index === row) ?? null}
+            isPending={gameData?.guesses.length === row}
+          />
         ))}
       </div>
       <div className="w-full max-w-lg">
@@ -179,19 +184,23 @@ function WordleInner() {
   );
 }
 
-function getShareText({ guesses, correct, present }: GameDetail): string {
+function getShareText({ guesses }: GameDetail): string {
   const lines: string[] = [`Wordle (${guesses.length}/${WORDLE_ATTEMPTS})`];
 
   for (const guess of guesses) {
     const line: string[] = [];
-    for (const [idx, letter] of Array.from(guess).entries()) {
-      const isCorrect = correct.some((c) => c.letter === letter && c.position === idx);
+    for (const [idx, letter] of Array.from(guess.letters).entries()) {
+      const isCorrect = guess.correct.some(
+        (c) => c.letter === letter && c.position === idx,
+      );
       if (isCorrect) {
         line.push("🟩");
         continue;
       }
 
-      const isPresent = present.some((c) => c.letter === letter && c.position === idx);
+      const isPresent = guess.present.some(
+        (c) => c.letter === letter && c.position === idx,
+      );
       if (isPresent) {
         line.push("🟨");
         continue;
@@ -207,33 +216,31 @@ function getShareText({ guesses, correct, present }: GameDetail): string {
 
 type RowProps = {
   index: number;
+  guess: GuessDetail | null;
+  isPending: boolean;
 };
-function Row({ index }: RowProps) {
-  const { gameData, guesses, pendingInput } = useWordleState();
-  const rowGuess = guesses[index];
-  const isPending = index === guesses.length;
+function Row({ index, guess, isPending }: RowProps) {
+  const { pendingInput } = useWordleState();
 
   const getLetter = (col: number): string | null => {
-    if (rowGuess) return rowGuess[col] ?? null;
+    if (guess) return guess.letters[col] ?? null;
     if (isPending) return pendingInput[col] ?? null;
     return null;
   };
 
   const getState = (col: number): CellState => {
-    if (!gameData) return "pending";
+    if (!guess) return "pending";
     if (isPending) return "pending";
 
-    const guess = { letter: getLetter(col), position: col };
+    const g = { letter: getLetter(col), position: col };
 
-    const correctGuess = gameData.correct.find((c) => isEqual(c, guess));
+    const correctGuess = guess.correct.find((c) => isEqual(c, g));
     if (correctGuess) return "correct";
 
-    const presentGuess = gameData.present.find((p) => isEqual(p, guess));
+    const presentGuess = guess.present.find((p) => isEqual(p, g));
     if (presentGuess) return "present";
 
-    if (rowGuess) return "absent";
-
-    return "pending";
+    return "absent";
   };
 
   return (
@@ -283,11 +290,10 @@ type WordleContextType = {
   userId: string;
   guildId: string;
   accessToken: string;
+
   // TODO)) Can we somehow ensure gameData is always not null?
   gameData: GameDetail | null;
   setGameData: Dispatch<SetStateAction<GameDetail | null>>;
-  guesses: string[];
-  setGuesses: Dispatch<SetStateAction<string[]>>;
   pendingInput: string;
   setPendingInput: Dispatch<SetStateAction<string>>;
   isSubmitting: boolean;
@@ -303,8 +309,6 @@ export function WordleContextProvider({
   children,
 }: WordleContextProps) {
   const [gameData, setGameData] = useState<GameDetail | null>(null);
-  // TODO)) Deduplicate this state with gameData.guesses
-  const [guesses, setGuesses] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -315,7 +319,6 @@ export function WordleContextProvider({
       const game = await getOrCreateGame(accessToken);
       if (!game) throw new Error("Failed to load or start game");
       setGameData(game);
-      setGuesses(game.guesses);
     };
 
     inner();
@@ -329,8 +332,6 @@ export function WordleContextProvider({
         accessToken,
         gameData,
         setGameData,
-        guesses,
-        setGuesses,
         pendingInput,
         setPendingInput,
         isSubmitting,
@@ -352,7 +353,6 @@ export function useWordleState() {
     gameData: context.gameData,
     pendingInput: context.pendingInput,
     setPendingInput: context.setPendingInput,
-    guesses: context.guesses,
     isSubmitting: context.isSubmitting,
     async pushGuess(guess: string) {
       if (!context.gameData) throw new Error("Game is not active");
@@ -374,7 +374,6 @@ export function useWordleState() {
 
         const res = await submitGuess(context.accessToken, context.gameData.id, guess);
         context.setGameData(res);
-        context.setGuesses(res.guesses);
         context.setPendingInput("");
       } finally {
         context.setIsSubmitting(false);
