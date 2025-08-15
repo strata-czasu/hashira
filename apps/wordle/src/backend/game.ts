@@ -1,11 +1,5 @@
-import type { GameDetail } from "@/api/types";
-import {
-  type ValidationResult,
-  getRandomWord,
-  mergeValidationResults,
-  parseValidationResult,
-  validateGuess,
-} from "@/backend/validation";
+import type { GameDetail, GuessDetail } from "@/api/types";
+import { getRandomWord, validateGuess } from "@/backend/validation";
 import { WORDLE_ATTEMPTS, WORDLE_WORD_LENGTH } from "@/constants";
 import { type GameState, prisma } from "@/db";
 import type { GameWithGuesses } from "@/db/game";
@@ -25,18 +19,15 @@ const GameGuessRequestSchema = v.object({
 });
 
 function serializeGame(game: GameWithGuesses): GameDetail {
-  const mergedResults = game.guesses.reduce<ValidationResult>(
-    (acc, guess) => mergeValidationResults(acc, parseValidationResult(guess)),
-    { correct: [], present: [], absent: new Set<string>() },
-  );
+  const guesses: GuessDetail[] = game.guesses.map((guess) => ({
+    ...guess,
+    absent: Array.from(new Set(guess.absent)).sort(),
+  }));
 
   return {
     id: game.id,
     state: game.state,
-    guesses: game.guesses.map((g) => g.letters),
-    correct: mergedResults.correct,
-    present: mergedResults.present,
-    absent: Array.from(mergedResults.absent).sort(),
+    guesses,
   };
 }
 
