@@ -2,6 +2,7 @@
 **/.env
 **/.env.example
 **/*.db
+**/*.tsbuildinfo
 .git
 .gitignore
 .github
@@ -9,6 +10,10 @@
 .vscode
 .devcontainer
 .direnv
+.envrc
+.envrc.local
+flake.nix
+flake.lock
 lefthook.yml
 biome.json
 knip.ts
