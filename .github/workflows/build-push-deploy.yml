@@ -1,4 +1,4 @@
-name: Build, Push and Deploy Bot
+name: Build, Push and Deploy
 
 on:
   push:

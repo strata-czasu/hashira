@@ -15,8 +15,6 @@
     "debug": "bun run --cwd apps/bot debug",
     "start": "bun run --cwd apps/bot start",
     "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
-    "wordle:dev": "bun run --cwd apps/wordle dev",
-    "wordle:start": "bun run --cwd apps/wordle start",
     "prisma-studio": "bun run --cwd packages/db prisma-studio",
     "prisma-generate": "bun run --cwd packages/db prisma generate",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
