@@ -227,6 +227,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               const giveaway = await prisma.giveaway.create({
                 data: {
+                  authorId: itx.user.id,
                   messageId: response.id,
                   channelId: response.channelId,
                   guildId: response.guildId,
