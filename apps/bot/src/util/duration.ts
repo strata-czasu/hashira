@@ -6,23 +6,44 @@ import type { Duration } from "date-fns";
  * @returns A duration object or null if the duration is invalid
  */
 export const parseDuration = (duration: string): Duration | null => {
-  const match = duration.match(/(\d+)([smhdSMHD])/);
-  if (!match) return null;
+  // Detect a global leading sign that should apply to any units that don't have their own sign.
+  const trimmed = duration.trim();
+  const signMatch = trimmed.match(/^([+-])\s*/);
+  const sign = signMatch && signMatch[1] === "-" ? -1 : 1;
 
-  // TODO: Add support for multiple units at once
-  const [, amount, unit] = match;
-  switch (unit?.toLowerCase()) {
-    case "s":
-      return { seconds: Number(amount) };
-    case "m":
-      return { minutes: Number(amount) };
-    case "h":
-      return { hours: Number(amount) };
-    case "d":
-      return { days: Number(amount) };
-    default:
-      return null;
+  // Match numbers (allowing optional + or -) + optional spaces + unit (s|m|h|d) (global)
+  const re = /([+-]?\d+(?:\.\d+)?)\s*([smhdSMHD])/g;
+  let match: RegExpExecArray | null;
+
+  const result: Duration = {};
+  let found = false;
+
+  // biome-ignore lint/suspicious/noAssignInExpressions: more readable this way
+  while ((match = re.exec(duration)) !== null) {
+    if (!match[1] || !match[2]) continue;
+    found = true;
+    const amount = Number(match[1]) * sign;
+    const unit = match[2].toLowerCase();
+
+    if (Number.isNaN(amount)) continue;
+
+    switch (unit) {
+      case "s":
+        result.seconds = (result.seconds ?? 0) + amount;
+        break;
+      case "m":
+        result.minutes = (result.minutes ?? 0) + amount;
+        break;
+      case "h":
+        result.hours = (result.hours ?? 0) + amount;
+        break;
+      case "d":
+        result.days = (result.days ?? 0) + amount;
+        break;
+    }
   }
+
+  return found ? result : null;
 };
 
 export const durationToSeconds = (duration: Duration): number => {
