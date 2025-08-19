@@ -18,6 +18,7 @@ import {
   MessageFlags,
   SeparatorSpacingSize,
   TextDisplayBuilder,
+  messageLink,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
 import sharp from "sharp";
@@ -144,6 +145,10 @@ export async function formatBanner(
     .toBuffer();
 
   return [formatted, "webp"];
+}
+
+export function giveawayFooter(giveaway: Giveaway) {
+  return `\n-# Id: ${giveaway.id} ${messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}`;
 }
 
 export function getStaticBanner(title: string) {

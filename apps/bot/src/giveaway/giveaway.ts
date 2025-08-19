@@ -24,6 +24,7 @@ import {
   formatBanner,
   getStaticBanner,
   giveawayButtonRow,
+  giveawayFooter,
   leaveButtonRow,
   parseRewards,
   updateGiveaway,
@@ -35,7 +36,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
     group
       .setDescription("Komendy do givków.")
       .setDMPermission(false)
-      .addCommand("stworz", (command) =>
+      .addCommand("create", (command) =>
         command
           .setDescription("Tworzenie giveawayów z różnymi nagrodami")
           .addString("nagrody", (rewards) =>
@@ -264,7 +265,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             },
           ),
       )
-      .addCommand("dodaj-czas", (command) =>
+      .addCommand("time-add", (command) =>
         command
           .setDescription("Dodawanie czasu do istniejącego giveaway'a.")
           .addInteger("id", (id) =>
@@ -345,6 +346,90 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
             await itx.reply({
               content: `Pomyślnie dodano do czasu ${formatDuration(parsedTime)}, giveaway zakończy się ${time(newEndTime, "R")}.\n-# Id: ${giveaway.id}`,
+              flags: "Ephemeral",
+            });
+          }),
+      )
+      .addCommand("reroll", (command) =>
+        command
+          .setDescription(
+            "Losuje jednego użytkownika spośród tych którzy nie wygrali giveaway'a.",
+          )
+          .addInteger("id", (id) =>
+            id.setDescription("Id giveaway'a.").setRequired(true),
+          )
+          .handle(async ({ prisma }, { id }, itx) => {
+            const giveaway = await prisma.giveaway.findFirst({
+              where: {
+                id: id,
+              },
+            });
+
+            if (!giveaway)
+              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+
+            if (itx.user.id !== giveaway.authorId)
+              return await errorFollowUp(
+                itx,
+                "Nie masz uprawnień do rerollowania tego giveaway'a!",
+              );
+
+            const [participants, winners] = await prisma.$transaction([
+              prisma.giveawayParticipant.findMany({
+                where: { giveawayId: giveaway.id, isRemoved: false },
+              }),
+              prisma.giveawayWinner.findMany({
+                where: { giveawayId: giveaway.id },
+              }),
+            ]);
+
+            const newWinner = participants.find(
+              (p) => !winners.some((w) => w.userId === p.userId),
+            );
+
+            if (!newWinner) {
+              return await errorFollowUp(
+                itx,
+                `Brak dostępnych uczestników do rerollowania!${giveawayFooter(giveaway)}`,
+              );
+            }
+
+            await itx.reply({
+              content: `Nowy wygrany: <@${newWinner.userId}>${giveawayFooter(giveaway)}`,
+              allowedMentions: { users: [newWinner.userId] },
+            });
+          }),
+      )
+      .addCommand("list-users", (command) =>
+        command
+          .setDescription(
+            "Pokazuje liste użytkowników w giveaway'u, w razie gdy się zakończy.",
+          )
+          .addInteger("id", (id) =>
+            id.setDescription("Id giveaway'a.").setRequired(true),
+          )
+          .handle(async ({ prisma }, { id }, itx) => {
+            const giveaway = await prisma.giveaway.findFirst({
+              where: {
+                id: id,
+              },
+            });
+
+            if (!giveaway)
+              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+
+            const participants: GiveawayParticipant[] =
+              await prisma.giveawayParticipant.findMany({
+                where: { giveawayId: giveaway.id, isRemoved: false },
+              });
+
+            const fmtParticipants =
+              participants.length > 0
+                ? participants.map((user) => `<@${user.userId}>`).join(", ")
+                : "Brak uczestników";
+
+            await itx.reply({
+              content: `Uczestnicy: ${fmtParticipants}${giveawayFooter(giveaway)}`,
               flags: "Ephemeral",
             });
           }),
