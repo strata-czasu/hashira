@@ -74,6 +74,16 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 { name: "Wysoki (2:3)", value: GiveawayBannerRatio.Portrait },
               ),
           )
+          .addRole("wymagana-rola", (whitelist) =>
+            whitelist
+              .setDescription("Wymagana rola do wzięcia udziału.")
+              .setRequired(false),
+          )
+          .addRole("zakazana-rola", (blacklist) =>
+            blacklist
+              .setDescription("Zakazana rola do wzięcia udziału.")
+              .setRequired(false),
+          )
           .handle(
             async (
               { prisma, messageQueue },
@@ -83,6 +93,8 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 tytul: title,
                 baner: banner,
                 "format-baneru": format,
+                "wymagana-rola": whitelist,
+                "zakazana-rola": blacklist,
               },
               itx,
             ) => {
@@ -157,8 +169,15 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 );
               }
 
+              let roleRestriction = "## Restrykcje:";
+
+              if (!whitelist && !blacklist) roleRestriction += "\nBrak.";
+              if (whitelist) roleRestriction += `\nWymagane role: ${whitelist}`;
+              if (blacklist) roleRestriction += `\nZakazane role: ${blacklist}`;
+
               messageContainer
                 .setAccentColor(0x0099ff)
+                .addTextDisplayComponents((td) => td.setContent(roleRestriction))
                 .addTextDisplayComponents((td) =>
                   td.setContent(`# ${title || "Giveaway"}`),
                 )
@@ -184,7 +203,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                     .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
                     .setId(99),
                 )
-                .addActionRowComponents((ar) => ar.addComponents([confirmButton]));
+                .addActionRowComponents((ar) => ar.setComponents([confirmButton]));
 
               const responseConfirm = await itx.editReply({
                 components: [messageContainer],
@@ -233,6 +252,8 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   channelId: response.channelId,
                   guildId: response.guildId,
                   endAt: endTime,
+                  roleWhitelist: whitelist ? [whitelist.id] : [],
+                  roleBlacklist: blacklist ? [blacklist.id] : [],
                   participants: { create: [] },
                   rewards: {
                     create: parsedRewards.map(({ amount, reward }) => ({
@@ -345,7 +366,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             });
 
             await itx.reply({
-              content: `Pomyślnie dodano do czasu ${formatDuration(parsedTime)}, giveaway zakończy się ${time(newEndTime, "R")}.\n-# Id: ${giveaway.id}`,
+              content: `Pomyślnie dodano do czasu ${formatDuration(parsedTime)}, giveaway zakończy się ${time(newEndTime, "R")}.${giveawayFooter(giveaway)}`,
               flags: "Ephemeral",
             });
           }),
@@ -433,6 +454,63 @@ export const giveaway = new Hashira({ name: "giveaway" })
               flags: "Ephemeral",
             });
           }),
+      )
+      .addCommand("remove-user", (command) =>
+        command
+          .setDescription("Usuwa użytkownika z giveaway'a.")
+          .addInteger("id", (id) =>
+            id.setDescription("Id giveaway'a.").setRequired(true),
+          )
+          .addUser("user", (user) =>
+            user.setDescription("Użytkownik do usunięcia.").setRequired(true),
+          )
+          .handle(async ({ prisma }, { id, user: userToRemove }, itx) => {
+            const giveaway = await prisma.giveaway.findFirst({
+              where: {
+                id: id,
+              },
+            });
+
+            if (!giveaway)
+              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+
+            if (itx.user.id !== giveaway.authorId)
+              return await errorFollowUp(
+                itx,
+                "Nie masz uprawnień do edytowania tego giveaway'a!",
+              );
+
+            const participant = await prisma.giveawayParticipant.findFirst({
+              where: { giveawayId: giveaway.id, userId: userToRemove.id },
+            });
+
+            if (!participant)
+              return await errorFollowUp(
+                itx,
+                "Ten użytkownik nie bierze udziału w giveaway'u!",
+              );
+
+            await prisma.giveawayParticipant.update({
+              where: { id: participant.id },
+              data: { forcefullyRemoved: true, isRemoved: true },
+            });
+
+            await itx.reply({
+              content: `Pomyślnie usunięto ${userToRemove} z giveaway'a!`,
+            });
+
+            const channel = await itx.client.channels.cache.get(giveaway.channelId);
+            if (!channel || !channel.isSendable()) {
+              throw new Error(`Channel ${channel} is not sendable or not found.`);
+            }
+
+            const message = await channel.messages.fetch(giveaway.messageId);
+            if (!message) {
+              throw new Error(`Message ${message} not found.`);
+            }
+
+            await updateGiveaway(message, giveaway, prisma);
+          }),
       ),
   )
   .handle("ready", async ({ prisma }, client) => {
@@ -510,7 +588,36 @@ export const giveaway = new Hashira({ name: "giveaway" })
         where: { userId: itx.user.id, giveawayId: giveaway.id },
       });
 
+      if (existing?.forcefullyRemoved) {
+        await itx.followUp({
+          content: "Usunięto cię z giveaway'u i nie możesz już do niego dołączyć.",
+          flags: "Ephemeral",
+        });
+        return;
+      }
+
       if (!existing || existing.isRemoved) {
+        // check if user has required roles and doesn't have banned roles
+        for (const roleId of giveaway.roleWhitelist) {
+          if (!itx.member.roles.cache.has(roleId)) {
+            await itx.followUp({
+              content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveaway'u.`,
+              flags: "Ephemeral",
+            });
+            return;
+          }
+        }
+
+        for (const roleId of giveaway.roleBlacklist) {
+          if (itx.member.roles.cache.has(roleId)) {
+            await itx.followUp({
+              content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveaway'u.`,
+              flags: "Ephemeral",
+            });
+            return;
+          }
+        }
+
         if (!existing) {
           await prisma.giveawayParticipant.create({
             data: {
@@ -526,7 +633,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         }
 
         returnMsg = `${itx.user} dołączyłxś do giveaway!`;
-        updateGiveaway(itx, giveaway, prisma);
+        await updateGiveaway(itx.message, giveaway, prisma);
       }
 
       const joinResponse = await itx.followUp({
@@ -563,7 +670,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         where: { userId: itx.user.id, giveawayId: giveaway.id, isRemoved: false },
         data: { isRemoved: true },
       });
-      updateGiveaway(itx, giveaway, prisma);
+      await updateGiveaway(itx.message, giveaway, prisma);
 
       await itx.followUp({
         content: "Opuściłxś giveaway.",

@@ -10,7 +10,6 @@ import {
   ActionRowBuilder,
   type Attachment,
   ButtonBuilder,
-  type ButtonInteraction,
   ButtonStyle,
   ComponentType,
   ContainerBuilder,
@@ -158,18 +157,18 @@ export function getStaticBanner(title: string) {
 }
 
 export async function updateGiveaway(
-  i: ButtonInteraction,
+  message: Message<boolean>,
   giveaway: Giveaway,
   prisma: ExtendedPrismaClient,
 ) {
-  if (giveaway && i.message.components[0]) {
+  if (giveaway && message.components[0]) {
     const participants: GiveawayParticipant[] =
       await prisma.giveawayParticipant.findMany({
         where: { giveawayId: giveaway.id, isRemoved: false },
       });
 
     const container = new ContainerBuilder(
-      i.message.components[0].toJSON() as APIContainerComponent,
+      message.components[0].toJSON() as APIContainerComponent,
     );
 
     const footerIndex = container.components.findIndex(
@@ -182,7 +181,7 @@ export async function updateGiveaway(
       `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
     );
 
-    await i.message.edit({ components: [container] });
+    await message.edit({ components: [container] });
   }
 }
 
