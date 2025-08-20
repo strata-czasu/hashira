@@ -5,45 +5,30 @@ import type { Duration } from "date-fns";
  * @param duration The duration string to parse
  * @returns A duration object or null if the duration is invalid
  */
-export const parseDuration = (duration: string): Duration | null => {
-  // Detect a global leading sign that should apply to any units that don't have their own sign.
-  const trimmed = duration.trim();
-  const signMatch = trimmed.match(/^([+-])\s*/);
-  const sign = signMatch && signMatch[1] === "-" ? -1 : 1;
+export const parseDuration = (input: string): Duration | null => {
+  const trimmed = input.trim();
+  const globalSign = trimmed.startsWith("-") ? -1 : 1;
 
-  // Match numbers (allowing optional + or -) + optional spaces + unit (s|m|h|d) (global)
-  const re = /([+-]?\d+(?:\.\d+)?)\s*([smhdSMHD])/g;
-  let match: RegExpExecArray | null;
+  const re = /([+-]?)(\d+)\s*([smhd])/gi;
+  const unitMap = {
+    s: "seconds",
+    m: "minutes",
+    h: "hours",
+    d: "days",
+  } as const;
 
-  const result: Duration = {};
-  let found = false;
+  const out: Duration = {};
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: more readable this way
-  while ((match = re.exec(duration)) !== null) {
-    if (!match[1] || !match[2]) continue;
-    found = true;
-    const amount = Number(match[1]) * sign;
-    const unit = match[2].toLowerCase();
-
-    if (Number.isNaN(amount)) continue;
-
-    switch (unit) {
-      case "s":
-        result.seconds = (result.seconds ?? 0) + amount;
-        break;
-      case "m":
-        result.minutes = (result.minutes ?? 0) + amount;
-        break;
-      case "h":
-        result.hours = (result.hours ?? 0) + amount;
-        break;
-      case "d":
-        result.days = (result.days ?? 0) + amount;
-        break;
-    }
+  for (const [, signChar, value, unit] of trimmed.matchAll(re)) {
+    if (!value || !unit) return null;
+    const sign = signChar === "-" ? -1 : signChar === "+" ? 1 : globalSign;
+    const key = unitMap[unit.toLowerCase() as keyof typeof unitMap];
+    const val = sign * Number.parseInt(value, 10);
+    if (!key || Number.isNaN(val)) return null; // parsing went wrong
+    out[key] = (out[key] ?? 0) + val;
   }
 
-  return found ? result : null;
+  return Object.keys(out).length > 0 ? out : null;
 };
 
 export const durationToSeconds = (duration: Duration): number => {
