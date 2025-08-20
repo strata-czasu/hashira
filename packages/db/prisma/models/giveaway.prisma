@@ -2,11 +2,16 @@ model Giveaway {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   endAt     DateTime
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
 
   guild     Guild  @relation(fields: [guildId], references: [id])
   guildId   String
   channelId String
   messageId String
+
+  roleWhitelist String[]
+  roleBlacklist String[]
 
   participants GiveawayParticipant[]
   winners      GiveawayWinner[]
@@ -19,9 +24,10 @@ model GiveawayParticipant {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
-  user      User    @relation(fields: [userId], references: [id])
-  userId    String
-  isRemoved Boolean @default(false)
+  user              User    @relation(fields: [userId], references: [id])
+  userId            String
+  isRemoved         Boolean @default(false)
+  forcefullyRemoved Boolean @default(false)
 }
 
 model GiveawayWinner {

@@ -156,6 +156,7 @@ model User {
   receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
   giveawayParticipations            GiveawayParticipant[]
   giveawayWinnings                  GiveawayWinner[]
+  createdGiveaways                  Giveaway[]
 
   @@map("users")
 }

@@ -5,24 +5,30 @@ import type { Duration } from "date-fns";
  * @param duration The duration string to parse
  * @returns A duration object or null if the duration is invalid
  */
-export const parseDuration = (duration: string): Duration | null => {
-  const match = duration.match(/(\d+)([smhdSMHD])/);
-  if (!match) return null;
+export const parseDuration = (input: string): Duration | null => {
+  const trimmed = input.trim();
+  const globalSign = trimmed.startsWith("-") ? -1 : 1;
 
-  // TODO: Add support for multiple units at once
-  const [, amount, unit] = match;
-  switch (unit?.toLowerCase()) {
-    case "s":
-      return { seconds: Number(amount) };
-    case "m":
-      return { minutes: Number(amount) };
-    case "h":
-      return { hours: Number(amount) };
-    case "d":
-      return { days: Number(amount) };
-    default:
-      return null;
+  const re = /([+-]?)(\d+)\s*([smhd])/gi;
+  const unitMap = {
+    s: "seconds",
+    m: "minutes",
+    h: "hours",
+    d: "days",
+  } as const;
+
+  const out: Duration = {};
+
+  for (const [, signChar, value, unit] of trimmed.matchAll(re)) {
+    if (!value || !unit) return null;
+    const sign = signChar === "-" ? -1 : signChar === "+" ? 1 : globalSign;
+    const key = unitMap[unit.toLowerCase() as keyof typeof unitMap];
+    const val = sign * Number.parseInt(value, 10);
+    if (!key || Number.isNaN(val)) return null; // parsing went wrong
+    out[key] = (out[key] ?? 0) + val;
   }
+
+  return Object.keys(out).length > 0 ? out : null;
 };
 
 export const durationToSeconds = (duration: Duration): number => {
