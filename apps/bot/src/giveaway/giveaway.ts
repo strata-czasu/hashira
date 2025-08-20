@@ -51,13 +51,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
           )
           .addString("tytul", (tytul) =>
             tytul
-              .setDescription("Tytuł giveaway'a, domyślnie 'Giveaway'")
+              .setDescription("Tytuł giveawaya, domyślnie 'Giveaway'")
               .setRequired(false),
           )
           .addAttachment("baner", (baner) =>
             baner
               .setDescription(
-                "Baner wyświetlany na górze giveaway'a. Domyślny można wyłączyć ustawiając format na brak.",
+                "Baner wyświetlany na górze giveawaya. Domyślny można wyłączyć ustawiając format na brak.",
               )
               .setRequired(false),
           )
@@ -288,9 +288,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
       )
       .addCommand("time-add", (command) =>
         command
-          .setDescription("Dodawanie czasu do istniejącego giveaway'a.")
+          .setDescription("Dodawanie czasu do istniejącego giveawaya.")
           .addInteger("id", (id) =>
-            id.setDescription("Id giveaway'a.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true),
           )
           .addString("czas", (czas) =>
             czas.setDescription("Czas do dodania (np. 1d, 2h, 5m).").setRequired(true),
@@ -311,10 +311,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             if (itx.user.id !== giveaway.authorId)
               return await errorFollowUp(
                 itx,
-                "Nie masz uprawnień do edycji tego giveaway'a!",
+                "Nie masz uprawnień do edycji tego giveawaya!",
               );
 
-            const channel = await itx.client.channels.cache.get(giveaway.channelId);
+            const channel = await itx.client.channels.fetch(giveaway.channelId);
             if (!channel || !channel.isSendable()) {
               throw new Error(`Channel ${channel} is not sendable or not found.`);
             }
@@ -374,10 +374,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
       .addCommand("reroll", (command) =>
         command
           .setDescription(
-            "Losuje jednego użytkownika spośród tych którzy nie wygrali giveaway'a.",
+            "Losuje jednego użytkownika spośród tych którzy nie wygrali giveawaya.",
           )
           .addInteger("id", (id) =>
-            id.setDescription("Id giveaway'a.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true),
           )
           .handle(async ({ prisma }, { id }, itx) => {
             const giveaway = await prisma.giveaway.findFirst({
@@ -392,7 +392,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             if (itx.user.id !== giveaway.authorId)
               return await errorFollowUp(
                 itx,
-                "Nie masz uprawnień do rerollowania tego giveaway'a!",
+                "Nie masz uprawnień do rerollowania tego giveawaya!",
               );
 
             const [participants, winners] = await prisma.$transaction([
@@ -424,10 +424,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
       .addCommand("list-users", (command) =>
         command
           .setDescription(
-            "Pokazuje liste użytkowników w giveaway'u, w razie gdy się zakończy.",
+            "Pokazuje liste użytkowników w giveawayu, w razie gdy się zakończy.",
           )
           .addInteger("id", (id) =>
-            id.setDescription("Id giveaway'a.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true),
           )
           .handle(async ({ prisma }, { id }, itx) => {
             const giveaway = await prisma.giveaway.findFirst({
@@ -457,9 +457,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
       )
       .addCommand("remove-user", (command) =>
         command
-          .setDescription("Usuwa użytkownika z giveaway'a.")
+          .setDescription("Usuwa użytkownika z giveawaya.")
           .addInteger("id", (id) =>
-            id.setDescription("Id giveaway'a.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true),
           )
           .addUser("user", (user) =>
             user.setDescription("Użytkownik do usunięcia.").setRequired(true),
@@ -477,7 +477,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             if (itx.user.id !== giveaway.authorId)
               return await errorFollowUp(
                 itx,
-                "Nie masz uprawnień do edytowania tego giveaway'a!",
+                "Nie masz uprawnień do edytowania tego giveawaya!",
               );
 
             const participant = await prisma.giveawayParticipant.findFirst({
@@ -487,7 +487,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             if (!participant)
               return await errorFollowUp(
                 itx,
-                "Ten użytkownik nie bierze udziału w giveaway'u!",
+                "Ten użytkownik nie bierze udziału w giveawayu!",
               );
 
             await prisma.giveawayParticipant.update({
@@ -496,10 +496,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             });
 
             await itx.reply({
-              content: `Pomyślnie usunięto ${userToRemove} z giveaway'a!`,
+              content: `Pomyślnie usunięto ${userToRemove} z giveawaya!`,
             });
 
-            const channel = await itx.client.channels.cache.get(giveaway.channelId);
+            const channel = await itx.client.channels.fetch(giveaway.channelId);
             if (!channel || !channel.isSendable()) {
               throw new Error(`Channel ${channel} is not sendable or not found.`);
             }
@@ -539,7 +539,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           flags: "Ephemeral",
         });
 
-      const channel = await client.channels.cache.get(giveaway.channelId);
+      const channel = await client.channels.fetch(giveaway.channelId);
       if (!channel || !channel.isSendable()) {
         throw new Error(`Channel ${channel} is not sendable or not found.`);
       }
@@ -590,7 +590,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
       if (existing?.forcefullyRemoved) {
         await itx.followUp({
-          content: "Usunięto cię z giveaway'u i nie możesz już do niego dołączyć.",
+          content: "Usunięto cię z giveawayu i nie możesz już do niego dołączyć.",
           flags: "Ephemeral",
         });
         return;
@@ -601,7 +601,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         for (const roleId of giveaway.roleWhitelist) {
           if (!itx.member.roles.cache.has(roleId)) {
             await itx.followUp({
-              content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveaway'u.`,
+              content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveawayu.`,
               flags: "Ephemeral",
             });
             return;
@@ -611,7 +611,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
         for (const roleId of giveaway.roleBlacklist) {
           if (itx.member.roles.cache.has(roleId)) {
             await itx.followUp({
-              content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveaway'u.`,
+              content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveawayu.`,
               flags: "Ephemeral",
             });
             return;
