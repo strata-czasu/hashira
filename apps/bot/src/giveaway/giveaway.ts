@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
-import { type Duration, addSeconds, formatDuration } from "date-fns";
+import { type Duration, addSeconds } from "date-fns";
 import {
   type APIContainerComponent,
   AttachmentBuilder,
@@ -15,7 +15,7 @@ import {
 } from "discord.js";
 import { round } from "es-toolkit";
 import { base } from "../base";
-import { durationToSeconds, parseDuration } from "../util/duration";
+import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
