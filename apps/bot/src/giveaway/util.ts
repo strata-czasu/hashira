@@ -1,3 +1,4 @@
+import type { ExtractContext } from "@hashira/core";
 import type {
   ExtendedPrismaClient,
   Giveaway,
@@ -9,6 +10,7 @@ import {
   type APIContainerComponent,
   ActionRowBuilder,
   type Attachment,
+  type AutocompleteInteraction,
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
@@ -21,6 +23,7 @@ import {
 } from "discord.js";
 import { shuffle } from "es-toolkit";
 import sharp from "sharp";
+import type { base } from "../base";
 
 enum GiveawayBannerRatio {
   None = 0, // No Banner
@@ -156,6 +159,34 @@ export function getStaticBanner(title: string) {
   return "https://i.imgur.com/iov10WG.png";
 }
 
+export const autocompleteGiveawayId = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction<"cached">;
+}) => {
+  const focused = Number(itx.options.getFocused());
+  if (Number.isNaN(focused)) return;
+
+  const results = await prisma.giveaway.findMany({
+    where: {
+      id: { gte: focused },
+      guildId: itx.guildId,
+      authorId: itx.user.id,
+    },
+    orderBy: { endAt: "desc" },
+    take: 5,
+  });
+
+  return itx.respond(
+    results.map(({ id }) => ({
+      value: id,
+      name: `${id}`,
+    })),
+  );
+};
+
 export async function updateGiveaway(
   message: Message<boolean>,
   giveaway: Giveaway,
@@ -178,7 +209,7 @@ export async function updateGiveaway(
     if (footerIndex === -1) return;
 
     container.components[footerIndex] = new TextDisplayBuilder().setContent(
-      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards}`,
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id}`,
     );
 
     await message.edit({ components: [container] });

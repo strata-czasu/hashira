@@ -13,7 +13,7 @@ import {
   TextDisplayBuilder,
   time,
 } from "discord.js";
-import { round } from "es-toolkit";
+import { round, shuffle } from "es-toolkit";
 import { base } from "../base";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -21,6 +21,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   GiveawayBannerRatio,
+  autocompleteGiveawayId,
   formatBanner,
   getStaticBanner,
   giveawayButtonRow,
@@ -169,19 +170,20 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 );
               }
 
-              let roleRestriction = "## Restrykcje:";
+              let roleRestriction = "";
 
-              if (!whitelist && !blacklist) roleRestriction += "\nBrak.";
-              if (whitelist) roleRestriction += `\nWymagane role: ${whitelist}`;
-              if (blacklist) roleRestriction += `\nZakazane role: ${blacklist}`;
+              if (whitelist || blacklist) roleRestriction += "\n### Restrykcje:";
+              if (whitelist) roleRestriction += `\n-# Wymagane role: ${whitelist}`;
+              if (blacklist) roleRestriction += `\n-# Zakazane role: ${blacklist}`;
 
               messageContainer
                 .setAccentColor(0x0099ff)
-                .addTextDisplayComponents((td) => td.setContent(roleRestriction))
                 .addTextDisplayComponents((td) =>
                   td.setContent(`# ${title || "Giveaway"}`),
                 )
-                .addTextDisplayComponents((td) => td.setContent(`-# Host: ${itx.user}`))
+                .addTextDisplayComponents((td) =>
+                  td.setContent(`-# Host: ${itx.user}${roleRestriction}`),
+                )
                 .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
                 .addTextDisplayComponents((td) =>
                   td.setContent(
@@ -194,10 +196,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 .addSeparatorComponents((s) => s)
                 .addTextDisplayComponents((td) =>
                   td
-                    .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards}`)
+                    .setContent(
+                      `-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`,
+                    )
                     .setId(1),
                 )
-                .addTextDisplayComponents((td) => td.setContent("-# Id: ?").setId(3))
                 .addTextDisplayComponents((td) =>
                   td
                     .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
@@ -272,17 +275,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 giveaway.id.toString(),
               );
 
-              const giveawayIdIndex = messageContainer.components.findIndex(
-                (c) => c.data?.id === 3 && c.data?.type === ComponentType.TextDisplay,
-              );
-
-              messageContainer.components[giveawayIdIndex] =
-                new TextDisplayBuilder().setContent(`-# Id: ${giveaway.id}`);
-
-              await response.edit({
-                components: [messageContainer],
-                flags: MessageFlags.IsComponentsV2,
-              });
+              updateGiveaway(response, giveaway, prisma);
             },
           ),
       )
@@ -290,11 +283,15 @@ export const giveaway = new Hashira({ name: "giveaway" })
         command
           .setDescription("Dodawanie czasu do istniejącego giveawaya.")
           .addInteger("id", (id) =>
-            id.setDescription("Id giveawaya.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
           .addString("czas", (czas) =>
             czas.setDescription("Czas do dodania (np. 1d, 2h, 5m).").setRequired(true),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteGiveawayId({ prisma, itx });
+          })
           .handle(async ({ prisma, messageQueue }, { id, czas }, itx) => {
             const giveaway = await prisma.giveaway.findFirst({
               where: {
@@ -377,8 +374,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
             "Losuje jednego użytkownika spośród tych którzy nie wygrali giveawaya.",
           )
           .addInteger("id", (id) =>
-            id.setDescription("Id giveawaya.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteGiveawayId({ prisma, itx });
+          })
           .handle(async ({ prisma }, { id }, itx) => {
             const giveaway = await prisma.giveaway.findFirst({
               where: {
@@ -404,9 +405,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
               }),
             ]);
 
-            const newWinner = participants.find(
+            const filtered = participants.filter(
               (p) => !winners.some((w) => w.userId === p.userId),
             );
+
+            const newWinner = filtered.length > 0 ? shuffle(filtered)[0] : null;
 
             if (!newWinner) {
               return await errorFollowUp(
@@ -427,8 +430,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
             "Pokazuje liste użytkowników w giveawayu, w razie gdy się zakończy.",
           )
           .addInteger("id", (id) =>
-            id.setDescription("Id giveawaya.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteGiveawayId({ prisma, itx });
+          })
           .handle(async ({ prisma }, { id }, itx) => {
             const giveaway = await prisma.giveaway.findFirst({
               where: {
@@ -459,8 +466,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
         command
           .setDescription("Usuwa użytkownika z giveawaya.")
           .addInteger("id", (id) =>
-            id.setDescription("Id giveawaya.").setRequired(true),
+            id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteGiveawayId({ prisma, itx });
+          })
           .addUser("user", (user) =>
             user.setDescription("Użytkownik do usunięcia.").setRequired(true),
           )
