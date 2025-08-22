@@ -170,11 +170,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 );
               }
 
-              let roleRestriction = "";
+              const roleRestriction: string[] = [];
 
-              if (whitelist || blacklist) roleRestriction += "\n### Restrykcje:";
-              if (whitelist) roleRestriction += `\n-# Wymagane role: ${whitelist}`;
-              if (blacklist) roleRestriction += `\n-# Zakazane role: ${blacklist}`;
+              if (whitelist || blacklist) roleRestriction.push("### Restrykcje:");
+              if (whitelist) roleRestriction.push(`-# Wymagane role: ${whitelist}`);
+              if (blacklist) roleRestriction.push(`-# Zakazane role: ${blacklist}`);
 
               messageContainer
                 .setAccentColor(0x0099ff)
@@ -182,7 +182,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   td.setContent(`# ${title || "Giveaway"}`),
                 )
                 .addTextDisplayComponents((td) =>
-                  td.setContent(`-# Host: ${itx.user}${roleRestriction}`),
+                  td.setContent(`-# Host: ${itx.user}\n${roleRestriction.join("\n")}`),
                 )
                 .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
                 .addTextDisplayComponents((td) =>
