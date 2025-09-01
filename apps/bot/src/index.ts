@@ -19,6 +19,7 @@ import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
+import { pearto } from "./pearto";
 import { ping } from "./ping";
 import { profile } from "./profile";
 import { ranking } from "./ranking";
@@ -74,6 +75,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(massDM)
   .use(fish)
   .use(giveaway)
+  .use(pearto)
   .use(ranking)
   .handle("ready", async () => {
     console.log("Bot is ready!");
