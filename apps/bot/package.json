@@ -14,6 +14,7 @@
     "test": "bun test test/"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.4.1",
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
@@ -21,7 +22,6 @@
     "@sentry/bun": "^9.15.0",
     "cheerio": "^1.0.0",
     "date-fns": "4.1.0",
-    "date-fns-tz": "^3.2.0",
     "openai": "4.67.3",
     "sharp": "^0.34.1"
   }

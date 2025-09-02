@@ -1,6 +1,6 @@
+import { TZDate } from "@date-fns/tz";
 import { Hashira } from "@hashira/core";
 import { startOfDay } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
 
@@ -16,9 +16,9 @@ export const pearto = new Hashira({ name: "pearto" })
 
     if (!message.content.includes("🍐")) return;
 
-    const localDate = toZonedTime(message.createdAt, "Europe/Warsaw");
+    const localDate = new TZDate(message.createdAt, "Europe/Warsaw");
     const startOfDayLocal = startOfDay(localDate);
-    const startOfDayUTC = fromZonedTime(startOfDayLocal, "Europe/Warsaw");
+    const startOfDayUTC = new Date(startOfDayLocal.getTime());
 
     const todaysMessages = await prisma.userTextActivity.count({
       where: {
@@ -36,9 +36,9 @@ export const pearto = new Hashira({ name: "pearto" })
 
     if (!threshold) return;
 
-    const fillValue = Math.ceil((todaysMessages / threshold) * 10);
+    const fillValue = Math.floor((todaysMessages / threshold) * 20);
 
     message.reply(
-      `${resEmoji} [${"█".repeat(fillValue)}${"░".repeat(10 - fillValue)}] ${todaysMessages}/${threshold} ${resEmoji}`,
+      `${resEmoji} [${"█".repeat(fillValue)}${"░".repeat(20 - fillValue)}] ${todaysMessages}/${threshold} ${resEmoji}`,
     );
   });
