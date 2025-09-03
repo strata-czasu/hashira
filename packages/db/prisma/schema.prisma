@@ -26,6 +26,7 @@ model ColorRole {
   roleId     String
   expiration DateTime? @db.Timestamp(6)
   slots      Int
+  gradient   Boolean   @default(false)
   guild      Guild     @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "colorRole_guildId_guild_id_fk")
   owner      User      @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "colorRole_ownerId_users_id_fk")
 
