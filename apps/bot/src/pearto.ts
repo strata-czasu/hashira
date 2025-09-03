@@ -8,13 +8,19 @@ const channelId = "683025889658929231";
 const guildId = STRATA_CZASU.GUILD_ID;
 const resEmoji = "<a:peartotanczy:1410749447608205322>";
 
+let sendCooldown = 0;
+
 export const pearto = new Hashira({ name: "pearto" })
   .use(base)
   .handle("messageCreate", async ({ prisma }, message) => {
-    if (message.author.bot) return;
-    if (!message.inGuild()) return;
-
-    if (!message.content.includes("🍐")) return;
+    if (
+      message.channelId !== channelId ||
+      message.author.bot ||
+      !message.inGuild() ||
+      message.content.trim() !== "🍐" ||
+      sendCooldown >= Date.now() - 60_000
+    )
+      return;
 
     const localDate = new TZDate(message.createdAt, "Europe/Warsaw");
     const startOfDayLocal = startOfDay(localDate);
@@ -41,4 +47,6 @@ export const pearto = new Hashira({ name: "pearto" })
     message.reply(
       `${resEmoji} [${"█".repeat(fillValue)}${"░".repeat(20 - fillValue)}] ${todaysMessages}/${threshold} ${resEmoji}`,
     );
+
+    sendCooldown = Date.now();
   });
