@@ -65,6 +65,14 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
         newNickname: newMember.nickname,
       });
     }
+
+    if (oldMember.user.primaryGuild !== newMember.user.primaryGuild) {
+      log.push("guildMemberTagUpdate", newMember.guild, {
+        member: newMember,
+        oldTag: oldMember.user.primaryGuild?.tag ?? null,
+        newTag: newMember.user.primaryGuild?.tag ?? null,
+      });
+    }
   })
   .handle("guildMemberUpdate", async ({ roleLog: log }, oldMember, newMember) => {
     if (!log.isRegistered(newMember.guild)) return;
