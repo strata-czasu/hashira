@@ -297,10 +297,12 @@ export const colorRoles = new Hashira({ name: "color-role" })
               );
 
               if (result) {
+                const colorStrings = [`#${primaryColor.toString(16)}`];
+                if (newColors.secondaryColor) {
+                  colorStrings.push(`#${newColors.secondaryColor.toString(16)}`);
+                }
                 await itx.editReply({
-                  content: `Zmieniono kolor roli ${role.name} na #${primaryColor.toString(
-                    16,
-                  )}`,
+                  content: `Zmieniono kolor roli ${role.name} na ${colorStrings.join(" -> ")}}`,
                 });
               }
             },
