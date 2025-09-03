@@ -1,6 +1,6 @@
 import { TZDate } from "@date-fns/tz";
 import { Hashira } from "@hashira/core";
-import { type Duration, addMinutes, startOfDay } from "date-fns";
+import { type Duration, add as addDuration, startOfDay } from "date-fns";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
 
@@ -8,19 +8,19 @@ const channelId = "683025889658929231";
 const guildId = STRATA_CZASU.GUILD_ID;
 const resEmoji = "<a:peartotanczy:1410749447608205322>";
 
-class Cooldown {
-  private lastReset: Date;
-  private readonly duration: Duration;
+export class Cooldown {
+  readonly duration: Duration;
+  #lastReset: Date;
 
   constructor(duration: Duration) {
     this.duration = duration;
-    this.lastReset = new Date(0);
+    this.#lastReset = new Date(0);
   }
 
   ended(now: Date = new Date()): boolean {
-    const endTime = addMinutes(this.lastReset, this.duration.minutes ?? 0);
+    const endTime = addDuration(this.#lastReset, this.duration);
     if (now >= endTime) {
-      this.lastReset = now;
+      this.#lastReset = now;
       return true;
     }
     return false;
