@@ -4,12 +4,14 @@ import {
   type ColorResolvable,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  type RoleColorsResolvable,
   inlineCode,
   resolveColor,
   time,
 } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
+import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 
 const preprocessColor = (color: string): `#${string}` => {
@@ -81,6 +83,9 @@ export const colorRoles = new Hashira({ name: "color-role" })
               { name: "10", value: 10 },
             ),
           )
+          .addBoolean("gradient", (gradient) =>
+            gradient.setDescription("Czy kolor roli może używać gradientów"),
+          )
           .handle(
             async (
               { prisma },
@@ -89,6 +94,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                 właściciel: owner,
                 wygaśnięcie: rawExpiration,
                 sloty: slots,
+                gradient,
               },
               itx,
             ) => {
@@ -120,6 +126,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
               );
               if (!role) return;
 
+              await ensureUserExists(prisma, owner.id);
               await prisma.colorRole.create({
                 data: {
                   name,
@@ -128,6 +135,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                   expiration,
                   roleId: role.id,
                   slots,
+                  gradient,
                 },
               });
 
@@ -154,10 +162,16 @@ export const colorRoles = new Hashira({ name: "color-role" })
           .addInteger("sloty", (slots) =>
             slots.setDescription("Ilość slotów na użytkowników"),
           )
+
+          .addBoolean("gradient", (gradient) =>
+            gradient
+              .setDescription("Czy kolor roli może używać gradientów")
+              .setRequired(false),
+          )
           .handle(
             async (
               { prisma },
-              { rola: role, właściciel: owner, sloty: slots },
+              { rola: role, właściciel: owner, sloty: slots, gradient },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
@@ -182,6 +196,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                       data: {
                         ownerId: owner.id,
                         slots,
+                        ...(gradient !== null ? { gradient } : {}),
                       },
                     });
 
@@ -196,6 +211,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                 return;
               }
 
+              await ensureUserExists(prisma, owner.id);
               await prisma.colorRole.create({
                 data: {
                   name: role.name,
@@ -219,42 +235,77 @@ export const colorRoles = new Hashira({ name: "color-role" })
           .addRole("rola", (role) =>
             role.setDescription("Rola której kolor zmienić").setRequired(true),
           )
-          .addString("kolor", (color) =>
-            color.setDescription("Hex jaki ustawić").setRequired(true),
+          .addString("kolor", (primaryColor) =>
+            primaryColor.setDescription("Hex jaki ustawić").setRequired(true),
           )
-          .handle(async ({ prisma }, { rola: role, kolor: color }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addString("kolor2", (secondaryColor) =>
+            secondaryColor
+              .setDescription("Drugi kolor do gradientu (jeśli rola może ich używać)")
+              .setRequired(false),
+          )
+          .handle(
+            async (
+              { prisma },
+              { rola: role, kolor: rawPrimaryColor, kolor2: rawSecondaryColor },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            await itx.deferReply();
+              await itx.deferReply();
 
-            const hexColor = getColor(color);
-            if (!hexColor) return await errorFollowUp(itx, "Invalid color");
+              const primaryColor = getColor(rawPrimaryColor);
+              if (!primaryColor)
+                return await errorFollowUp(
+                  itx,
+                  `Niepoprawny kolor: ${rawPrimaryColor}`,
+                );
 
-            const colorRole = await prisma.colorRole.findFirst({
-              where: {
-                ownerId: itx.user.id,
-                guildId: itx.guildId,
-                roleId: role.id,
-              },
-            });
-
-            if (!colorRole) {
-              return await errorFollowUp(itx, "You do not own this role");
-            }
-
-            const result = await discordTry(
-              () => role.setColor(hexColor),
-              [RESTJSONErrorCodes.MissingPermissions],
-              () => errorFollowUp(itx, "Missing permissions"),
-            );
-
-            if (result) {
-              await itx.editReply({
-                content: `Zmieniono kolor roli ${role.name} na #${hexColor.toString(
-                  16,
-                )}`,
+              const colorRole = await prisma.colorRole.findFirst({
+                where: {
+                  ownerId: itx.user.id,
+                  guildId: itx.guildId,
+                  roleId: role.id,
+                },
               });
-            }
-          }),
+
+              if (!colorRole) {
+                return await errorFollowUp(itx, "Nie jesteś właścicielem tej roli");
+              }
+
+              const newColors: RoleColorsResolvable = { primaryColor };
+
+              if (rawSecondaryColor) {
+                if (!colorRole.gradient) {
+                  return await errorFollowUp(itx, "Ta rola nie może używać gradientów");
+                }
+
+                const secondaryColor = getColor(rawSecondaryColor);
+                if (!secondaryColor) {
+                  return await errorFollowUp(
+                    itx,
+                    `Niepoprawny kolor: ${rawSecondaryColor}`,
+                  );
+                }
+
+                newColors.secondaryColor = secondaryColor;
+              }
+
+              const result = await discordTry(
+                () => role.setColors(newColors),
+                [RESTJSONErrorCodes.MissingPermissions],
+                () => errorFollowUp(itx, "Missing permissions"),
+              );
+
+              if (result) {
+                const colorStrings = [`#${primaryColor.toString(16)}`];
+                if (newColors.secondaryColor) {
+                  colorStrings.push(`#${newColors.secondaryColor.toString(16)}`);
+                }
+                await itx.editReply({
+                  content: `Zmieniono kolor roli ${role.name} na ${colorStrings.join(" -> ")}}`,
+                });
+              }
+            },
+          ),
       ),
   );
