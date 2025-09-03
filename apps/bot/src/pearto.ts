@@ -1,35 +1,17 @@
 import { TZDate } from "@date-fns/tz";
 import { Hashira } from "@hashira/core";
-import { type Duration, add as addDuration, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
+import { Cooldown } from "./util/cooldown";
 
 const channelId = "683025889658929231";
 const guildId = STRATA_CZASU.GUILD_ID;
 const resEmoji = "<a:peartotanczy:1410749447608205322>";
 
-export class Cooldown {
-  readonly duration: Duration;
-  #lastReset: Date;
-
-  constructor(duration: Duration) {
-    this.duration = duration;
-    this.#lastReset = new Date(0);
-  }
-
-  ended(now: Date = new Date()): boolean {
-    const endTime = addDuration(this.#lastReset, this.duration);
-    if (now >= endTime) {
-      this.#lastReset = now;
-      return true;
-    }
-    return false;
-  }
-}
-
 export const pearto = new Hashira({ name: "pearto" })
-  .const("peartoCooldown", new Cooldown({ minutes: 1 }))
   .use(base)
+  .const("peartoCooldown", new Cooldown({ minutes: 1 }))
   .handle("messageCreate", async ({ prisma, peartoCooldown }, message) => {
     if (
       message.channelId !== channelId ||
