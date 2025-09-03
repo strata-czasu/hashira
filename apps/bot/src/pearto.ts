@@ -3,6 +3,7 @@ import { Hashira } from "@hashira/core";
 import { startOfDay } from "date-fns";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
+import { Cooldown } from "./util/cooldown";
 
 const channelId = "683025889658929231";
 const guildId = STRATA_CZASU.GUILD_ID;
@@ -10,11 +11,16 @@ const resEmoji = "<a:peartotanczy:1410749447608205322>";
 
 export const pearto = new Hashira({ name: "pearto" })
   .use(base)
-  .handle("messageCreate", async ({ prisma }, message) => {
-    if (message.author.bot) return;
-    if (!message.inGuild()) return;
-
-    if (!message.content.includes("🍐")) return;
+  .const("peartoCooldown", new Cooldown({ minutes: 1 }))
+  .handle("messageCreate", async ({ prisma, peartoCooldown }, message) => {
+    if (
+      message.channelId !== channelId ||
+      message.author.bot ||
+      !message.inGuild() ||
+      message.content.trim() !== "🍐" ||
+      !peartoCooldown.ended(message.createdAt)
+    )
+      return;
 
     const localDate = new TZDate(message.createdAt, "Europe/Warsaw");
     const startOfDayLocal = startOfDay(localDate);
