@@ -1,18 +1,18 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    devDB = {
+    postgres-dev-db = {
       url = "github:hermann-p/nix-postgres-dev-db";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    redis-dev-db = {
+      url = "github:Daste745/nix-redis-dev-db";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs =
-    {
-      nixpkgs,
-      devDB,
-      ...
-    }:
+    inputs:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -20,11 +20,11 @@
       ];
       eachSupportedSystem =
         f:
-        nixpkgs.lib.genAttrs supportedSystems (
+        inputs.nixpkgs.lib.genAttrs supportedSystems (
           system:
           f {
             inherit system;
-            pkgs = import nixpkgs { inherit system; };
+            pkgs = import inputs.nixpkgs { inherit system; };
           }
         );
     in
@@ -32,7 +32,8 @@
       devShells = eachSupportedSystem (
         { system, pkgs }:
         let
-          db = devDB.outputs.packages.${system};
+          postgres-dev-db = inputs.postgres-dev-db.outputs.packages.${system};
+          redis-dev-db = inputs.redis-dev-db.outputs.packages.${system};
 
           bunVersion = "1.2.19";
           bunSources = {
@@ -49,48 +50,6 @@
             version = bunVersion;
             src = bunSources.${system} or (throw "Unsupported system for bun: ${system}");
           };
-
-          # TODO: Move redis commands to a separate flake
-          redis-data-env-var = "$REDIS_DATA";
-          check-redis-env = pkgs.writeShellScriptBin "check-redis-env" ''
-            if [ -z "${redis-data-env-var}" ]; then
-              echo "${redis-data-env-var} is not set, cannot start Redis server."
-              exit 1
-            fi
-          '';
-          start-redis = pkgs.writeShellScriptBin "start-redis" ''
-            set -e
-            ${check-redis-env}/bin/check-redis-env
-            if [[ -f ${redis-data-env-var}/redis.pid ]]; then
-              echo "Redis server is already running with PID $(cat ${redis-data-env-var}/redis.pid)"
-              exit 0
-            fi
-            if [[ ! -d ${redis-data-env-var} ]]; then
-              echo "Creating Redis data directory: ${redis-data-env-var}"
-              mkdir -p ${redis-data-env-var}
-            fi
-            touch ${redis-data-env-var}/redis.log
-            ${pkgs.redis}/bin/redis-server \
-              --bind 127.0.0.1 \
-              --port 6379 \
-              --daemonize yes \
-              --dir ${redis-data-env-var} \
-              --logfile ${redis-data-env-var}/redis.log \
-              --pidfile ${redis-data-env-var}/redis.pid
-            echo "Redis server started at ${redis-data-env-var}"
-          '';
-          stop-redis = pkgs.writeShellScriptBin "stop-redis" ''
-            set -e
-            ${check-redis-env}/bin/check-redis-env
-            if [[ ! -f ${redis-data-env-var}/redis.pid ]]; then
-              echo "Redis server is not running, no PID file found."
-              exit 0
-            fi
-            redis_pid=$(cat ${redis-data-env-var}/redis.pid)
-            echo "Stopping Redis server with PID $redis_pid"
-            kill $redis_pid || true
-            echo "Redis server stopped."
-          '';
         in
         {
           default = pkgs.mkShell {
@@ -100,12 +59,13 @@
               prisma-engines
               postgresql_17
               openssl
-              db.start-database
-              db.stop-database
-              db.psql-wrapped
+              postgres-dev-db.start-database
+              postgres-dev-db.stop-database
+              postgres-dev-db.psql-wrapped
               redis
-              start-redis
-              stop-redis
+              redis-dev-db.start-redis
+              redis-dev-db.stop-redis
+              redis-dev-db.redis-cli-wrapped
               fontconfig
             ];
             FONT_PATH = pkgs.runCommand "custom-fonts" { } ''
@@ -122,6 +82,7 @@
 
               export PG_ROOT=$(git rev-parse --show-toplevel)
               export REDIS_DATA=$(git rev-parse --show-toplevel)/REDIS_DATA
+              export REDIS_PORT=6379
 
               export FONTCONFIG_FILE="${pkgs.fontconfig.out}/etc/fonts/fonts.conf"
               export FONTCONFIG_PATH="$FONT_PATH/etc/fonts"
