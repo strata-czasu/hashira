@@ -85,6 +85,7 @@ model Guild {
   lastFishings        LastFishing[]
   giveaways           Giveaway[]
   items               Item[]
+  moderatorLeaves     ModeratorLeave[]
 
   @@map("guild")
 }
@@ -158,8 +159,21 @@ model User {
   giveawayParticipations            GiveawayParticipant[]
   giveawayWinnings                  GiveawayWinner[]
   createdGiveaways                  Giveaway[]
+  moderatorLeaves                   ModeratorLeave[]
 
   @@map("users")
+}
+
+model ModeratorLeave {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  endsAt    DateTime  @db.Timestamp(6)
+  guildId   String
+  userId    String
+
+  guild Guild @relation(fields: [guildId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
 }
 
 model StickyMessage {
