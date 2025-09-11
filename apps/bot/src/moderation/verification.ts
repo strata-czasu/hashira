@@ -160,6 +160,7 @@ const acceptVerification = async ({
           moderatorId: moderator.id,
           type: verificationType,
           status: "accepted",
+          acceptedAt,
         },
       });
     }
