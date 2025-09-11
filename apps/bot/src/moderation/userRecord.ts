@@ -6,6 +6,7 @@ import {
   RESTJSONErrorCodes,
   TimestampStyles,
   italic,
+  strikethrough,
   time,
 } from "discord.js";
 import { base } from "../base";
@@ -115,6 +116,27 @@ export const userRecord = new Hashira({ name: "user-record" })
             embed.addFields({
               name: "⚠️ Ostatnie ostrzeżenia",
               value: forceNewline(joinedWarns),
+            });
+          }
+
+          const channelRestrictions = await prisma.channelRestriction.findMany({
+            where: {
+              guildId: itx.guild.id,
+              userId: member.id,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 3,
+          });
+          if (channelRestrictions.length > 0) {
+            const joinedRestrictions = channelRestrictions
+              .map((cr) => {
+                const line = `${time(cr.createdAt, TimestampStyles.ShortDateTime)} ${italic(cr.reason)}`;
+                return cr.deletedAt ? strikethrough(line) : line;
+              })
+              .join("\n");
+            embed.addFields({
+              name: "🚫 Ostatnio odebrane dostępy",
+              value: forceNewline(joinedRestrictions),
             });
           }
 
