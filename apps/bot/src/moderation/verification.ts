@@ -663,19 +663,34 @@ export const verification = new Hashira({ name: "verification" })
       }),
   )
   .handle("guildMemberAdd", async ({ prisma }, member) => {
+    const { muteRoleId, plus18RoleId } = await getGuildRolesIds(
+      prisma,
+      member.guild.id,
+    );
+
+    const dbUser = await prisma.user.findFirst({ where: { id: member.user.id } });
+    if (
+      dbUser &&
+      satisfiesVerificationLevel(dbUser.verificationLevel, "plus18") &&
+      plus18RoleId
+    ) {
+      await discordTry(
+        () => member.roles.add(plus18RoleId, "Przywrócenie roli za weryfikację 18+"),
+        [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownMember],
+        () => console.warn(`Couldn't restore 18+ role for user ${member.user.id}`),
+      );
+    }
+
     const verificationInProgress = await getActive16PlusVerification(
       prisma,
       member.guild.id,
       member.id,
     );
-    if (!verificationInProgress) return;
-
-    const guildRoles = await getGuildRolesIds(prisma, member.guild.id);
-    if (!guildRoles.muteRoleId) return;
-
-    await applyMute(
-      member,
-      guildRoles.muteRoleId,
-      `Przywrócone wyciszenie (weryfikacja 16+) [${verificationInProgress.id}]`,
-    );
+    if (verificationInProgress && muteRoleId) {
+      await applyMute(
+        member,
+        muteRoleId,
+        `Przywrócone wyciszenie (weryfikacja 16+) [${verificationInProgress.id}]`,
+      );
+    }
   });
