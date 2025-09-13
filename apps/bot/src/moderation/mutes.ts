@@ -7,6 +7,7 @@ import {
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { type Duration, add, intervalToDuration } from "date-fns";
+import { differenceInDays } from "date-fns/fp";
 import {
   ActionRowBuilder,
   type ContextMenuCommandInteraction,
@@ -153,8 +154,7 @@ const handleUltimatum = async (
   }
 
   if (latestUltimatum.endedAt) {
-    const daysSinceEnd =
-      intervalToDuration({ start: latestUltimatum.endedAt, end: new Date() }).days ?? 0;
+    const daysSinceEnd = differenceInDays(latestUltimatum.endedAt, new Date());
     if (daysSinceEnd < 30) {
       await replyToModerator(
         `Ostatnie ultimatum użytkownika ${formatUserWithId(member)} zakończyło się ${time(
