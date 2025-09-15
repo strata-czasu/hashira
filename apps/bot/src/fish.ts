@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { sleep } from "bun";
-import { addMinutes, hoursToSeconds, isAfter, secondsToMilliseconds } from "date-fns";
+import { addMinutes, isAfter, secondsToMilliseconds } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -179,7 +179,7 @@ export const fish = new Hashira({ name: "fish" })
               guildId: itx.guildId,
               text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
             },
-            hoursToSeconds(1),
+            addMinutes(itx.createdAt, 60),
           ),
         ]);
 
