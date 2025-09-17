@@ -54,6 +54,16 @@ type ChannelRestrictionEndData = {
   restrictionId: number;
 };
 
+type ModeratorLeaveStartData = {
+  userId: string;
+  guildId: string;
+};
+
+type ModeratorLeaveEndData = {
+  userId: string;
+  guildId: string;
+};
+
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(database)
   .use(loggingBase)
@@ -372,6 +382,23 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           if (!message) return;
 
           endGiveaway(message, prisma);
-        }),
+        })
+        .addHandler(
+          "moderatorLeaveStart",
+          async ({ client }, { userId, guildId }: ModeratorLeaveStartData) => {
+            console.log("ModeratorLeaveStartHandler");
+            // TODO)) Add the leave role to the moderator
+            // TODO)) Notify the moderator about their leave start
+            // TODO)) Notify the leave manager about the leave start
+          },
+        )
+        .addHandler(
+          "moderatorLeaveEnd",
+          async ({ client }, { userId, guildId }: ModeratorLeaveEndData) => {
+            console.log("ModeratorLeaveEndHandler");
+            // TODO)) Remove the leave role from the moderator
+            // TODO)) Notify the moderator about their leave end
+          },
+        ),
     };
   });

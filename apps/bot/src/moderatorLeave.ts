@@ -1,6 +1,8 @@
+import { TZDate } from "@date-fns/tz";
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
+import { endOfDay, startOfDay } from "date-fns";
 import {
   PermissionFlagsBits,
   TimestampStyles,
@@ -10,6 +12,10 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "./base";
+import { parseDate } from "./util/dateParsing";
+import { errorFollowUp } from "./util/errorFollowUp";
+
+const TZ = "Europe/Warsaw";
 
 export const moderatorLeave = new Hashira({ name: "moderator-leave" })
   .use(base)
@@ -22,20 +28,82 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
         command
           .setDescription("Dodaj urlop")
           .addUser("user", (user) => user.setDescription("Moderator"))
-          .addString("start", (start) => start.setDescription("Początek urlopu"))
-          .addString("koniec", (end) => end.setDescription("Koniec urlopu"))
+          .addString("start", (start) =>
+            start.setDescription("Początek urlopu, np. 2025-05-15"),
+          )
+          .addString("koniec", (end) =>
+            end.setDescription("Koniec urlopu, np. 2025-05-20"),
+          )
           .handle(
-            async ({ prisma }, { user, start: rawStart, koniec: rawEnd }, itx) => {
+            async (
+              { prisma, messageQueue },
+              { user, start: rawStart, koniec: rawEnd },
+              itx,
+            ) => {
               if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-              // TODO)) Save the moderatorLeave record
+              const activeOrScheduledLeave = await prisma.moderatorLeave.findFirst({
+                where: {
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  endsAt: { gt: new Date() },
+                  deletedAt: null,
+                },
+              });
+              if (activeOrScheduledLeave) {
+                return errorFollowUp(
+                  itx,
+                  "Ten moderator ma już aktywny lub zaplanowany urlop",
+                );
+              }
 
-              // TODO)) Add "leave" role if start is now or in the past
-              // TODO)) Schedule job to add "leave" role if start is in the future
-              // TODO)) Schedule job to remove "leave" role if end is in the future
+              const parsedStart = parseDate(rawStart, "start", null);
+              if (!parsedStart) {
+                return errorFollowUp(
+                  itx,
+                  "Nieprawidłowa data początku urlopu. Podaj datę w formacie RRRR-MM-DD (bez godziny)",
+                );
+              }
+              const parsedEnd = parseDate(rawEnd, "end", null);
+              if (!parsedEnd) {
+                return errorFollowUp(
+                  itx,
+                  "Nieprawidłowa data końca urlopu. Podaj datę w formacie RRRR-MM-DD (bez godziny)",
+                );
+              }
+              if (parsedEnd <= parsedStart) {
+                return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
+              }
 
-              // TODO)) Notify the moderator about their leave start
-              // TODO)) Notify the moderator about their leave end
+              const start = startOfDay(new TZDate(parsedStart, TZ));
+              const end = endOfDay(new TZDate(parsedEnd, TZ));
+
+              const leave = await prisma.moderatorLeave.create({
+                data: {
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  createdAt: start,
+                  endsAt: end,
+                },
+              });
+
+              await messageQueue.push(
+                "moderatorLeaveStart",
+                { userId: user.id, guildId: itx.guildId },
+                start,
+                leave.id.toString(),
+              );
+              await messageQueue.push(
+                "moderatorLeaveEnd",
+                { userId: user.id, guildId: itx.guildId },
+                end,
+                leave.id.toString(),
+              );
+
+              itx.editReply(
+                `Dodano urlop dla ${userMention(user.id)} od ${time(start, TimestampStyles.LongDate)} do ${time(end, TimestampStyles.LongDate)}`,
+              );
             },
           ),
       )
