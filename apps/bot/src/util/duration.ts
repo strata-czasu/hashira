@@ -36,7 +36,10 @@ export const durationToSeconds = (duration: Duration): number => {
     (duration.seconds ?? 0) +
     (duration.minutes ?? 0) * 60 +
     (duration.hours ?? 0) * 60 * 60 +
-    (duration.days ?? 0) * 60 * 60 * 24
+    (duration.days ?? 0) * 60 * 60 * 24 +
+    (duration.weeks ?? 0) * 60 * 60 * 24 * 7 +
+    (duration.months ?? 0) * 60 * 60 * 24 * 30 +
+    (duration.years ?? 0) * 60 * 60 * 24 * 365
   );
 };
 
@@ -47,6 +50,7 @@ export const formatDuration = (duration: Duration): string => {
   const parts = [];
   if (duration.years) parts.push(`${duration.years}y`);
   if (duration.months) parts.push(`${duration.months}mo`);
+  if (duration.weeks) parts.push(`${duration.weeks}w`);
   if (duration.days) parts.push(`${duration.days}d`);
   if (duration.hours) parts.push(`${duration.hours}h`);
   if (duration.minutes) parts.push(`${duration.minutes}m`);
