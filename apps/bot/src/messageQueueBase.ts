@@ -404,13 +404,12 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const settings = await prisma.guildSettings.findFirst({
               where: { guildId },
             });
-            if (!settings || !settings.moderatorLeaveRoleId) return;
-            const moderatorLeaveRoleId = settings.moderatorLeaveRoleId;
 
             const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
-            if (leave.addRole) {
+            const moderatorLeaveRoleId = settings?.moderatorLeaveRoleId;
+            if (leave.addRole && moderatorLeaveRoleId) {
               await discordTry(
                 async () => {
                   await member.roles.add(
@@ -434,11 +433,12 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.ShortDateTime)}).`,
             );
 
-            if (settings.moderatorLeaveManagerId) {
+            const moderatorLeaveManagerId = settings?.moderatorLeaveManagerId;
+            if (moderatorLeaveManagerId) {
               const leaveManager = await fetchGuildMember(
                 client,
                 guildId,
-                settings.moderatorLeaveManagerId,
+                moderatorLeaveManagerId,
               );
               if (leaveManager) {
                 await sendDirectMessage(
@@ -460,13 +460,12 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const settings = await prisma.guildSettings.findFirst({
               where: { guildId },
             });
-            if (!settings || !settings.moderatorLeaveRoleId) return;
-            const moderatorLeaveRoleId = settings.moderatorLeaveRoleId;
 
             const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
-            if (leave.addRole) {
+            const moderatorLeaveRoleId = settings?.moderatorLeaveRoleId;
+            if (leave.addRole && moderatorLeaveRoleId) {
               await discordTry(
                 async () => {
                   await member.roles.remove(
