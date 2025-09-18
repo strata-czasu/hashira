@@ -72,12 +72,12 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                   "Nieprawidłowa data końca urlopu. Podaj datę w formacie RRRR-MM-DD (bez godziny)",
                 );
               }
-              if (parsedEnd <= parsedStart) {
-                return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
-              }
 
               const start = startOfDay(new TZDate(parsedStart, TZ));
               const end = endOfDay(new TZDate(parsedEnd, TZ));
+              if (end <= start) {
+                return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
+              }
 
               const leave = await prisma.moderatorLeave.create({
                 data: {
@@ -90,13 +90,13 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
 
               await messageQueue.push(
                 "moderatorLeaveStart",
-                { userId: user.id, guildId: itx.guildId },
+                { leaveId: leave.id, userId: user.id, guildId: itx.guildId },
                 start,
                 leave.id.toString(),
               );
               await messageQueue.push(
                 "moderatorLeaveEnd",
-                { userId: user.id, guildId: itx.guildId },
+                { leaveId: leave.id, userId: user.id, guildId: itx.guildId },
                 end,
                 leave.id.toString(),
               );

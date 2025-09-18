@@ -2,7 +2,14 @@ import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue } from "@hashira/db/tasks";
 import { type Duration, formatDuration } from "date-fns";
-import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
+import {
+  type Client,
+  RESTJSONErrorCodes,
+  TimestampStyles,
+  inlineCode,
+  time,
+  userMention,
+} from "discord.js";
 import { database } from "./db";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
@@ -14,6 +21,7 @@ import {
 } from "./moderation/util";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
+import { fetchGuildMember } from "./util/fetchGuildMember";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 // TODO: how to enable migrations of this data?
@@ -55,11 +63,13 @@ type ChannelRestrictionEndData = {
 };
 
 type ModeratorLeaveStartData = {
+  leaveId: number;
   userId: string;
   guildId: string;
 };
 
 type ModeratorLeaveEndData = {
+  leaveId: number;
   userId: string;
   guildId: string;
 };
@@ -153,9 +163,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               },
               [RESTJSONErrorCodes.MissingPermissions],
               async () => {
-                console.warn(
-                  `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
-                );
+                console.warn();
               },
             );
 
@@ -385,19 +393,84 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         })
         .addHandler(
           "moderatorLeaveStart",
-          async ({ client }, { userId, guildId }: ModeratorLeaveStartData) => {
-            console.log("ModeratorLeaveStartHandler");
-            // TODO)) Add the leave role to the moderator
-            // TODO)) Notify the moderator about their leave start
-            // TODO)) Notify the leave manager about the leave start
+          async ({ client }, { leaveId, userId, guildId }: ModeratorLeaveStartData) => {
+            const leave = await prisma.moderatorLeave.findFirst({
+              where: { id: leaveId },
+            });
+            if (!leave) return;
+
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
+            if (!settings || !settings.moderatorLeaveRoleId) return;
+            const moderatorLeaveRoleId = settings.moderatorLeaveRoleId;
+
+            const member = await fetchGuildMember(client, guildId, userId);
+            if (!member) return;
+
+            await discordTry(
+              async () => {
+                await member.roles.add(
+                  moderatorLeaveRoleId,
+                  `Rozpoczęcie urlopu [${leaveId}]`,
+                );
+                return true;
+              },
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => {
+                console.warn(
+                  `Missing permissions to add moderator leave role ${moderatorLeaveRoleId} to member ${userId} in guild ${guildId}`,
+                );
+                return false;
+              },
+            );
+
+            await sendDirectMessage(
+              member.user,
+              `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.ShortDateTime)}).`,
+            );
+
+            // TODO)) Notify the leave manager about the start
           },
         )
         .addHandler(
           "moderatorLeaveEnd",
-          async ({ client }, { userId, guildId }: ModeratorLeaveEndData) => {
-            console.log("ModeratorLeaveEndHandler");
-            // TODO)) Remove the leave role from the moderator
-            // TODO)) Notify the moderator about their leave end
+          async ({ client }, { leaveId, userId, guildId }: ModeratorLeaveEndData) => {
+            const leave = await prisma.moderatorLeave.findFirst({
+              where: { id: leaveId },
+            });
+            if (!leave) return;
+
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
+            if (!settings || !settings.moderatorLeaveRoleId) return;
+            const moderatorLeaveRoleId = settings.moderatorLeaveRoleId;
+
+            const member = await fetchGuildMember(client, guildId, userId);
+            if (!member) return;
+
+            await discordTry(
+              async () => {
+                await member.roles.remove(
+                  moderatorLeaveRoleId,
+                  `Koniec urlopu [${leaveId}]`,
+                );
+                return true;
+              },
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => {
+                console.warn(
+                  `Missing permissions to remove moderator leave role ${moderatorLeaveRoleId} from member ${userId} in guild ${guildId}`,
+                );
+                return false;
+              },
+            );
+
+            await sendDirectMessage(
+              member.user,
+              "Hej, właśnie skończył się Twój urlop!",
+            );
           },
         ),
     };
