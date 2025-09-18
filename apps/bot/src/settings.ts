@@ -5,8 +5,12 @@ import {
   PermissionFlagsBits,
   channelMention,
   roleMention,
+  userMention,
 } from "discord.js";
 import { base } from "./base";
+
+const formatUserSetting = (name: string, userId: string | null) =>
+  `${name}: ${userId ? `${userMention(userId)}` : "Nie ustawiono"}`;
 
 const formatRoleSetting = (name: string, roleId: string | null) =>
   `${name}: ${roleId ? roleMention(roleId) : "Nie ustawiono"}`;
@@ -91,6 +95,26 @@ export const settings = new Hashira({ name: "settings" })
 
             await itx.reply({
               content: `Rola Urlop została ustawiona na ${roleMention(role.id)}`,
+              flags: "Ephemeral",
+            });
+          }),
+      )
+      .addCommand("urlop-manager", (command) =>
+        command
+          .setDescription("Ustaw managera urlopów")
+          .addUser("user", (user) =>
+            user.setDescription("Użytkownik, który ma być managerem urlopów"),
+          )
+          .handle(async ({ prisma }, { user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { moderatorLeaveManagerId: user.id },
+            });
+
+            await itx.reply({
+              content: `Manager urlopów został ustawiony na ${userMention(user.id)}`,
               flags: "Ephemeral",
             });
           }),
@@ -325,6 +349,7 @@ export const settings = new Hashira({ name: "settings" })
               formatRoleSetting("Rola do wyciszeń", settings.muteRoleId),
               formatRoleSetting("Rola 18+", settings.plus18RoleId),
               formatRoleSetting("Rola urlop", settings.moderatorLeaveRoleId),
+              formatUserSetting("Manager urlopów", settings.moderatorLeaveManagerId),
               formatLogSettings(settings.logSettings),
             ];
 

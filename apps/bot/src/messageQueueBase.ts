@@ -432,7 +432,19 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.ShortDateTime)}).`,
             );
 
-            // TODO)) Notify the leave manager about the start
+            if (settings.moderatorLeaveManagerId) {
+              const leaveManager = await fetchGuildMember(
+                client,
+                guildId,
+                settings.moderatorLeaveManagerId,
+              );
+              if (leaveManager) {
+                await sendDirectMessage(
+                  leaveManager,
+                  `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.ShortDateTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
+                );
+              }
+            }
           },
         )
         .addHandler(
