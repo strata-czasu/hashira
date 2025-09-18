@@ -1,6 +1,8 @@
 import type { ItemType } from "@hashira/db";
 import { durationToSeconds } from "./util/duration";
 
+export const TZ = "Europe/Warsaw";
+
 export const GUILD_IDS = {
   Piwnica: "342022299957854220",
   StrataCzasu: "211261411119202305",

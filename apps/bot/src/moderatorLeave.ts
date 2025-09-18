@@ -13,10 +13,9 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "./base";
+import { TZ } from "./specializedConstants";
 import { parseDate } from "./util/dateParsing";
 import { errorFollowUp } from "./util/errorFollowUp";
-
-const TZ = "Europe/Warsaw";
 
 export const moderatorLeave = new Hashira({ name: "moderator-leave" })
   .use(base)
