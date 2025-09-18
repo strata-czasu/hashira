@@ -49,21 +49,6 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
-              const activeOrScheduledLeave = await prisma.moderatorLeave.findFirst({
-                where: {
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  endsAt: { gt: itx.createdAt },
-                  deletedAt: null,
-                },
-              });
-              if (activeOrScheduledLeave) {
-                return errorFollowUp(
-                  itx,
-                  "Ten moderator ma już aktywny lub zaplanowany urlop",
-                );
-              }
-
               const parsedStart = parseDate(rawStart, "start", null);
               if (!parsedStart) {
                 return errorFollowUp(
@@ -83,6 +68,30 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
               const endsAt = endOfDay(new TZDate(parsedEnd, TZ));
               if (endsAt <= startsAt) {
                 return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
+              }
+
+              const overlappingLeave = await prisma.moderatorLeave.findFirst({
+                where: {
+                  guildId: itx.guildId,
+                  userId: user.id,
+                  deletedAt: null,
+                  OR: [
+                    {
+                      startsAt: { lte: parsedEnd },
+                      endsAt: { gte: parsedStart },
+                    },
+                    {
+                      startsAt: { lte: parsedStart },
+                      endsAt: { gte: parsedEnd },
+                    },
+                  ],
+                },
+              });
+              if (overlappingLeave) {
+                return errorFollowUp(
+                  itx,
+                  "Ten moderator ma aktywny lub zaplanowany urlop w tym zakresie czasowym",
+                );
               }
 
               await ensureUserExists(prisma, user.id);
