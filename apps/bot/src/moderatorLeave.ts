@@ -141,7 +141,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             (leave) => {
               const lines = [
                 heading(userMention(leave.userId), HeadingLevel.Two),
-                `${bold("Start")}: ${time(leave.createdAt, TimestampStyles.ShortDateTime)}`,
+                `${bold("Start")}: ${time(leave.startsAt, TimestampStyles.ShortDateTime)}`,
                 `${bold("Koniec")}: ${time(leave.endsAt, TimestampStyles.ShortDateTime)}`,
               ];
               return lines.join("\n");
