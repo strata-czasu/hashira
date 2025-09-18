@@ -11,7 +11,7 @@ CREATE TABLE "ModeratorLeave" (
     "endsAt" TIMESTAMP(6) NOT NULL,
     "guildId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "addRole" BOOLEAN NOT NULL DEFAULT true,
+    "addRole" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "ModeratorLeave_pkey" PRIMARY KEY ("id")
 );
