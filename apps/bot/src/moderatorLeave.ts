@@ -15,6 +15,7 @@ import {
 import { base } from "./base";
 import { TZ } from "./specializedConstants";
 import { parseDate } from "./util/dateParsing";
+import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 
 export const moderatorLeave = new Hashira({ name: "moderator-leave" })
@@ -84,6 +85,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
               }
 
+              await ensureUserExists(prisma, user.id);
               const leave = await prisma.moderatorLeave.create({
                 data: {
                   guildId: itx.guildId,
