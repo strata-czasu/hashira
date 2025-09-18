@@ -96,18 +96,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               data: { endedAt: new Date() },
             });
 
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await member.roles.remove(STRATA_CZASU.ULTIMATUM_ROLE, "Koniec ultimatum");
@@ -117,7 +106,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               "Hej, to znowu ja! Twoje ultimatum dobiegło końca!",
             );
 
-            ctx.strataCzasuLog.push("ultimatumEnd", guild, {
+            ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
               user: member.user,
               createdAt: updatedUltimatum.createdAt,
               // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
@@ -143,18 +132,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (!settings || !settings.muteRoleId) return;
             const muteRoleId = settings.muteRoleId;
 
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await discordTry(
@@ -276,20 +254,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         .addHandler(
           "reminder",
           async ({ client }, { userId, guildId, text }: ReminderData) => {
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
-
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await sendDirectMessage(member.user, text);
