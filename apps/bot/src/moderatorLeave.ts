@@ -1,9 +1,10 @@
 import { TZDate } from "@date-fns/tz";
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfDay, startOfDay } from "date-fns";
 import {
+  HeadingLevel,
   PermissionFlagsBits,
   TimestampStyles,
   bold,
@@ -47,7 +48,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 where: {
                   guildId: itx.guildId,
                   userId: user.id,
-                  endsAt: { gt: new Date() },
+                  endsAt: { gt: itx.createdAt },
                   deletedAt: null,
                 },
               });
@@ -111,7 +112,11 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
         command.setDescription("Lista urlopów").handle(async ({ prisma }, _, itx) => {
           if (!itx.inCachedGuild()) return;
 
-          const where = { guildId: itx.guildId };
+          const where: Prisma.ModeratorLeaveWhereInput = {
+            guildId: itx.guildId,
+            endsAt: { gt: itx.createdAt },
+            deletedAt: null,
+          };
           const paginate = new DatabasePaginator(
             (props, createdAt) =>
               prisma.moderatorLeave.findMany({
@@ -128,9 +133,9 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             "Urlopy moderatorów",
             (leave) => {
               const lines = [
-                heading(`${userMention(leave.userId)}`),
+                heading(userMention(leave.userId), HeadingLevel.Two),
                 `${bold("Start")}: ${time(leave.createdAt, TimestampStyles.ShortDateTime)}`,
-                `${bold("Start")}: ${time(leave.endsAt, TimestampStyles.ShortDateTime)}`,
+                `${bold("Koniec")}: ${time(leave.endsAt, TimestampStyles.ShortDateTime)}`,
               ];
               return lines.join("\n");
             },
