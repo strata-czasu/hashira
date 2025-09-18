@@ -75,6 +75,26 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("urlop-role", (command) =>
+        command
+          .setDescription("Ustaw rolę Urlop")
+          .addRole("role", (role) =>
+            role.setDescription("Rola, która ma być nadawana moderatorom na urlopie"),
+          )
+          .handle(async ({ prisma }, { role }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { moderatorLeaveRoleId: role.id },
+            });
+
+            await itx.reply({
+              content: `Rola Urlop została ustawiona na ${roleMention(role.id)}`,
+              flags: "Ephemeral",
+            });
+          }),
+      )
       .addCommand("message-log-channel", (command) =>
         command
           .setDescription("Ustaw kanał do wysyłania logów związanych z wiadomościami")
@@ -304,6 +324,7 @@ export const settings = new Hashira({ name: "settings" })
             const entries = [
               formatRoleSetting("Rola do wyciszeń", settings.muteRoleId),
               formatRoleSetting("Rola 18+", settings.plus18RoleId),
+              formatRoleSetting("Rola urlop", settings.moderatorLeaveRoleId),
               formatLogSettings(settings.logSettings),
             ];
 
