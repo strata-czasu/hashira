@@ -77,12 +77,12 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                   deletedAt: null,
                   OR: [
                     {
-                      startsAt: { lte: parsedEnd },
-                      endsAt: { gte: parsedStart },
+                      startsAt: { lte: endsAt },
+                      endsAt: { gte: startsAt },
                     },
                     {
-                      startsAt: { lte: parsedStart },
-                      endsAt: { gte: parsedEnd },
+                      startsAt: { lte: startsAt },
+                      endsAt: { gte: endsAt },
                     },
                   ],
                 },
@@ -118,7 +118,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 leave.id.toString(),
               );
 
-              itx.editReply(
+              await itx.editReply(
                 `Dodano urlop dla ${userMention(user.id)} od ${time(startsAt, TimestampStyles.LongDate)} do ${time(endsAt, TimestampStyles.LongDate)}`,
               );
             },
