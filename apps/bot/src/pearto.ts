@@ -2,7 +2,7 @@ import { TZDate } from "@date-fns/tz";
 import { Hashira } from "@hashira/core";
 import { startOfDay } from "date-fns";
 import { base } from "./base";
-import { STRATA_CZASU } from "./specializedConstants";
+import { STRATA_CZASU, TZ } from "./specializedConstants";
 import { Cooldown } from "./util/cooldown";
 
 const channelId = "683025889658929231";
@@ -22,7 +22,7 @@ export const pearto = new Hashira({ name: "pearto" })
     )
       return;
 
-    const localDate = new TZDate(message.createdAt, "Europe/Warsaw");
+    const localDate = new TZDate(message.createdAt, TZ);
     const startOfDayLocal = startOfDay(localDate);
     const startOfDayUTC = new Date(startOfDayLocal.getTime());
 

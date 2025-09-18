@@ -2,7 +2,14 @@ import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue } from "@hashira/db/tasks";
 import { type Duration, formatDuration } from "date-fns";
-import { type Client, RESTJSONErrorCodes, inlineCode, userMention } from "discord.js";
+import {
+  type Client,
+  RESTJSONErrorCodes,
+  TimestampStyles,
+  inlineCode,
+  time,
+  userMention,
+} from "discord.js";
 import { database } from "./db";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
@@ -14,6 +21,7 @@ import {
 } from "./moderation/util";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
+import { fetchGuildMember } from "./util/fetchGuildMember";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 // TODO: how to enable migrations of this data?
@@ -54,6 +62,18 @@ type ChannelRestrictionEndData = {
   restrictionId: number;
 };
 
+type ModeratorLeaveStartData = {
+  leaveId: number;
+  userId: string;
+  guildId: string;
+};
+
+type ModeratorLeaveEndData = {
+  leaveId: number;
+  userId: string;
+  guildId: string;
+};
+
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(database)
   .use(loggingBase)
@@ -76,18 +96,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               data: { endedAt: new Date() },
             });
 
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await member.roles.remove(STRATA_CZASU.ULTIMATUM_ROLE, "Koniec ultimatum");
@@ -97,7 +106,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               "Hej, to znowu ja! Twoje ultimatum dobiegło końca!",
             );
 
-            ctx.strataCzasuLog.push("ultimatumEnd", guild, {
+            ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
               user: member.user,
               createdAt: updatedUltimatum.createdAt,
               // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
@@ -123,18 +132,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (!settings || !settings.muteRoleId) return;
             const muteRoleId = settings.muteRoleId;
 
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await discordTry(
@@ -256,20 +254,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         .addHandler(
           "reminder",
           async ({ client }, { userId, guildId, text }: ReminderData) => {
-            const guild = await discordTry(
-              async () => client.guilds.fetch(guildId),
-              [RESTJSONErrorCodes.UnknownGuild],
-              async () => null,
-            );
-
-            if (!guild) return;
-
-            const member = await discordTry(
-              async () => guild.members.fetch(userId),
-              [RESTJSONErrorCodes.UnknownMember],
-              async () => null,
-            );
-
+            const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
             await sendDirectMessage(member.user, text);
@@ -372,6 +357,103 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           if (!message) return;
 
           endGiveaway(message, prisma);
-        }),
+        })
+        .addHandler(
+          "moderatorLeaveStart",
+          async ({ client }, { leaveId, userId, guildId }: ModeratorLeaveStartData) => {
+            const leave = await prisma.moderatorLeave.findFirst({
+              where: { id: leaveId, deletedAt: null },
+            });
+            if (!leave) return;
+
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
+
+            const member = await fetchGuildMember(client, guildId, userId);
+            if (!member) return;
+
+            const moderatorLeaveRoleId = settings?.moderatorLeaveRoleId;
+            if (leave.addRole && moderatorLeaveRoleId) {
+              await discordTry(
+                async () => {
+                  await member.roles.add(
+                    moderatorLeaveRoleId,
+                    `Rozpoczęcie urlopu [${leaveId}]`,
+                  );
+                  return true;
+                },
+                [RESTJSONErrorCodes.MissingPermissions],
+                async () => {
+                  console.warn(
+                    `Missing permissions to add moderator leave role ${moderatorLeaveRoleId} to member ${userId} in guild ${guildId}`,
+                  );
+                  return false;
+                },
+              );
+            }
+
+            await sendDirectMessage(
+              member.user,
+              `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.ShortDateTime)}).`,
+            );
+
+            const moderatorLeaveManagerId = settings?.moderatorLeaveManagerId;
+            if (moderatorLeaveManagerId) {
+              const leaveManager = await fetchGuildMember(
+                client,
+                guildId,
+                moderatorLeaveManagerId,
+              );
+              if (leaveManager) {
+                await sendDirectMessage(
+                  leaveManager,
+                  `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.ShortDateTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
+                );
+              }
+            }
+          },
+        )
+        .addHandler(
+          "moderatorLeaveEnd",
+          async ({ client }, { leaveId, userId, guildId }: ModeratorLeaveEndData) => {
+            const leave = await prisma.moderatorLeave.findFirst({
+              where: { id: leaveId, deletedAt: null },
+            });
+            if (!leave) return;
+
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
+
+            const member = await fetchGuildMember(client, guildId, userId);
+            if (!member) return;
+
+            const moderatorLeaveRoleId = settings?.moderatorLeaveRoleId;
+            if (leave.addRole && moderatorLeaveRoleId) {
+              await discordTry(
+                async () => {
+                  await member.roles.remove(
+                    moderatorLeaveRoleId,
+                    `Koniec urlopu [${leaveId}]`,
+                  );
+                  return true;
+                },
+                [RESTJSONErrorCodes.MissingPermissions],
+                async () => {
+                  console.warn(
+                    `Missing permissions to remove moderator leave role ${moderatorLeaveRoleId} from member ${userId} in guild ${guildId}`,
+                  );
+                  return false;
+                },
+              );
+            }
+
+            await sendDirectMessage(
+              member.user,
+              "Hej, właśnie skończył się Twój urlop!",
+            );
+          },
+        ),
     };
   });

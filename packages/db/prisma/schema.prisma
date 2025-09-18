@@ -85,6 +85,7 @@ model Guild {
   lastFishings        LastFishing[]
   giveaways           Giveaway[]
   items               Item[]
+  moderatorLeaves     ModeratorLeave[]
 
   @@map("guild")
 }
@@ -102,13 +103,15 @@ model LogSettings {
 }
 
 model GuildSettings {
-  id           Int          @id(map: "core_guild_settings_pkey") @default(autoincrement())
-  guildId      String       @unique(map: "guildSettings_guildId_unique")
-  muteRoleId   String?
-  plus18RoleId String?
-  meta         Json         @default("{ \"version\": 1 }")
-  guild        Guild        @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "guildSettings_guildId_guild_id_fk")
-  logSettings  LogSettings?
+  id                      Int          @id(map: "core_guild_settings_pkey") @default(autoincrement())
+  guildId                 String       @unique(map: "guildSettings_guildId_unique")
+  muteRoleId              String?
+  plus18RoleId            String?
+  moderatorLeaveRoleId    String?
+  moderatorLeaveManagerId String?
+  meta                    Json         @default("{ \"version\": 1 }")
+  guild                   Guild        @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "guildSettings_guildId_guild_id_fk")
+  logSettings             LogSettings?
 
   @@map("guildSettings")
 }
@@ -158,8 +161,23 @@ model User {
   giveawayParticipations            GiveawayParticipant[]
   giveawayWinnings                  GiveawayWinner[]
   createdGiveaways                  Giveaway[]
+  moderatorLeaves                   ModeratorLeave[]
 
   @@map("users")
+}
+
+model ModeratorLeave {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+  startsAt  DateTime  @db.Timestamp(6)
+  endsAt    DateTime  @db.Timestamp(6)
+  guildId   String
+  userId    String
+  addRole   Boolean   @default(false)
+
+  guild Guild @relation(fields: [guildId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
 }
 
 model StickyMessage {
