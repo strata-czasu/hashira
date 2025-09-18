@@ -74,9 +74,9 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 );
               }
 
-              const start = startOfDay(new TZDate(parsedStart, TZ));
-              const end = endOfDay(new TZDate(parsedEnd, TZ));
-              if (end <= start) {
+              const startsAt = startOfDay(new TZDate(parsedStart, TZ));
+              const endsAt = endOfDay(new TZDate(parsedEnd, TZ));
+              if (endsAt <= startsAt) {
                 return errorFollowUp(itx, "Koniec urlopu musi być po jego początku");
               }
 
@@ -84,26 +84,26 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 data: {
                   guildId: itx.guildId,
                   userId: user.id,
-                  createdAt: start,
-                  endsAt: end,
+                  startsAt,
+                  endsAt,
                 },
               });
 
               await messageQueue.push(
                 "moderatorLeaveStart",
                 { leaveId: leave.id, userId: user.id, guildId: itx.guildId },
-                start,
+                startsAt,
                 leave.id.toString(),
               );
               await messageQueue.push(
                 "moderatorLeaveEnd",
                 { leaveId: leave.id, userId: user.id, guildId: itx.guildId },
-                end,
+                endsAt,
                 leave.id.toString(),
               );
 
               itx.editReply(
-                `Dodano urlop dla ${userMention(user.id)} od ${time(start, TimestampStyles.LongDate)} do ${time(end, TimestampStyles.LongDate)}`,
+                `Dodano urlop dla ${userMention(user.id)} od ${time(startsAt, TimestampStyles.LongDate)} do ${time(endsAt, TimestampStyles.LongDate)}`,
               );
             },
           ),

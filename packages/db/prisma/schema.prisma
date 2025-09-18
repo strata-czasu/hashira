@@ -169,6 +169,7 @@ model ModeratorLeave {
   id        Int       @id @default(autoincrement())
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
+  startsAt  DateTime  @db.Timestamp(6)
   endsAt    DateTime  @db.Timestamp(6)
   guildId   String
   userId    String
