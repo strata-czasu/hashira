@@ -36,7 +36,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
           )
           .addBoolean("dodaj-role", (addRole) =>
             addRole
-              .setDescription("Czy dodać rolę urlopową moderatorowi (domyślnie tak)")
+              .setDescription("Czy dodać rolę urlopową moderatorowi (domyślnie nie)")
               .setRequired(false),
           )
           .handle(
@@ -90,7 +90,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                   userId: user.id,
                   startsAt,
                   endsAt,
-                  addRole: addRole ?? true,
+                  addRole: addRole ?? false,
                 },
               });
 
