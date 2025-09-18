@@ -35,10 +35,15 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
           .addString("koniec", (end) =>
             end.setDescription("Koniec urlopu, np. 2025-05-20"),
           )
+          .addBoolean("dodaj-role", (addRole) =>
+            addRole
+              .setDescription("Czy dodać rolę urlopową moderatorowi (domyślnie tak)")
+              .setRequired(false),
+          )
           .handle(
             async (
               { prisma, messageQueue },
-              { user, start: rawStart, koniec: rawEnd },
+              { user, start: rawStart, koniec: rawEnd, "dodaj-role": addRole },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
@@ -86,6 +91,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                   userId: user.id,
                   startsAt,
                   endsAt,
+                  addRole: addRole ?? true,
                 },
               });
 

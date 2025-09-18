@@ -408,22 +408,24 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
-            await discordTry(
-              async () => {
-                await member.roles.add(
-                  moderatorLeaveRoleId,
-                  `Rozpoczęcie urlopu [${leaveId}]`,
-                );
-                return true;
-              },
-              [RESTJSONErrorCodes.MissingPermissions],
-              async () => {
-                console.warn(
-                  `Missing permissions to add moderator leave role ${moderatorLeaveRoleId} to member ${userId} in guild ${guildId}`,
-                );
-                return false;
-              },
-            );
+            if (leave.addRole) {
+              await discordTry(
+                async () => {
+                  await member.roles.add(
+                    moderatorLeaveRoleId,
+                    `Rozpoczęcie urlopu [${leaveId}]`,
+                  );
+                  return true;
+                },
+                [RESTJSONErrorCodes.MissingPermissions],
+                async () => {
+                  console.warn(
+                    `Missing permissions to add moderator leave role ${moderatorLeaveRoleId} to member ${userId} in guild ${guildId}`,
+                  );
+                  return false;
+                },
+              );
+            }
 
             await sendDirectMessage(
               member.user,
@@ -450,22 +452,24 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
 
-            await discordTry(
-              async () => {
-                await member.roles.remove(
-                  moderatorLeaveRoleId,
-                  `Koniec urlopu [${leaveId}]`,
-                );
-                return true;
-              },
-              [RESTJSONErrorCodes.MissingPermissions],
-              async () => {
-                console.warn(
-                  `Missing permissions to remove moderator leave role ${moderatorLeaveRoleId} from member ${userId} in guild ${guildId}`,
-                );
-                return false;
-              },
-            );
+            if (leave.addRole) {
+              await discordTry(
+                async () => {
+                  await member.roles.remove(
+                    moderatorLeaveRoleId,
+                    `Koniec urlopu [${leaveId}]`,
+                  );
+                  return true;
+                },
+                [RESTJSONErrorCodes.MissingPermissions],
+                async () => {
+                  console.warn(
+                    `Missing permissions to remove moderator leave role ${moderatorLeaveRoleId} from member ${userId} in guild ${guildId}`,
+                  );
+                  return false;
+                },
+              );
+            }
 
             await sendDirectMessage(
               member.user,
