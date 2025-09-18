@@ -163,7 +163,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               },
               [RESTJSONErrorCodes.MissingPermissions],
               async () => {
-                console.warn();
+                console.warn(
+                  `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
+                );
               },
             );
 
