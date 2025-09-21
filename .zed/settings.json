@@ -1,0 +1,85 @@
+{
+  "tab_size": 2,
+  "auto_install_extensions": {
+    "biome": true,
+    "prisma": true
+  },
+
+  // NOTE: Language servers and formatters aren't enabled globally for more fine control
+  // https://zed.dev/docs/languages/typescript
+  // https://biomejs.dev/reference/zed/
+  "languages": {
+    "TypeScript": {
+      "language_servers": [
+        "!typescript-language-server",
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "vtsls",
+        "biome",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "biome" } },
+      "code_actions_on_format": {
+        "source.organizeImports.biome": true,
+        "source.fixAll.biome": true
+      }
+    },
+
+    "JavaScript": {
+      "language_servers": [
+        "!typescript-language-server",
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "vtsls",
+        "biome",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "biome" } },
+      "code_actions_on_format": {
+        "source.organizeImports.biome": true,
+        "source.fixAll.biome": true
+      }
+    },
+
+    "JSON": {
+      "language_servers": [
+        "!typescript-language-server",
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "!vtsls",
+        "biome",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "biome" } }
+    },
+
+    "JSONC": {
+      "language_servers": [
+        "!typescript-language-server",
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "!vtsls",
+        "biome",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "biome" } }
+    },
+
+    "Prisma": {
+      "language_servers": [
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "!vtsls",
+        "!biome",
+        "prisma-language-server",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "prisma-language-server" } }
+    }
+  }
+}
