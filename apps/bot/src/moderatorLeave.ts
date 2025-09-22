@@ -169,7 +169,21 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 "moderatorLeaveStart",
                 leaveId.toString(),
               );
-              await messageQueue.cancelTx(tx, "moderatorLeaveEnd", leaveId.toString());
+              if (leave.startsAt < itx.createdAt && itx.createdAt < leave.endsAt) {
+                // End the leave now if it was already in progress
+                await messageQueue.updateDelayTx(
+                  tx,
+                  "moderatorLeaveEnd",
+                  leaveId.toString(),
+                  itx.createdAt,
+                );
+              } else {
+                await messageQueue.cancelTx(
+                  tx,
+                  "moderatorLeaveEnd",
+                  leaveId.toString(),
+                );
+              }
             });
 
             await itx.editReply(
