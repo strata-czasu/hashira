@@ -418,7 +418,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           "moderatorLeaveEnd",
           async ({ client }, { leaveId, userId, guildId }: ModeratorLeaveEndData) => {
             const leave = await prisma.moderatorLeave.findFirst({
-              where: { id: leaveId, deletedAt: null },
+              where: { id: leaveId },
             });
             if (!leave) return;
 

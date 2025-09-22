@@ -1,8 +1,8 @@
 import { TZDate } from "@date-fns/tz";
-import { Hashira, PaginatedView } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { endOfDay, startOfDay } from "date-fns";
+import { endOfDay, formatDate, startOfDay } from "date-fns";
 import {
   HeadingLevel,
   PermissionFlagsBits,
@@ -17,6 +17,7 @@ import { TZ } from "./specializedConstants";
 import { parseDate } from "./util/dateParsing";
 import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { fetchMembers } from "./util/fetchMembers";
 
 export const moderatorLeave = new Hashira({ name: "moderator-leave" })
   .use(base)
@@ -30,10 +31,10 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
           .setDescription("Dodaj urlop")
           .addUser("user", (user) => user.setDescription("Moderator"))
           .addString("start", (start) =>
-            start.setDescription("Początek urlopu, np. 2025-05-15"),
+            start.setDescription("Początek urlopu, np. 05-15, 2025-05-15, today"),
           )
           .addString("koniec", (end) =>
-            end.setDescription("Koniec urlopu, np. 2025-05-20"),
+            end.setDescription("Koniec urlopu, np. 05-20, 2025-05-20, tomorrow"),
           )
           .addBoolean("dodaj-role", (addRole) =>
             addRole.setDescription("Czy dodać rolę urlopową moderatorowi"),
@@ -121,6 +122,92 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
               );
             },
           ),
+      )
+      .addCommand("usuń", (command) =>
+        command
+          .setDescription("Usuń lub zakończ urlop")
+          .addNumber("urlop", (id) =>
+            id.setDescription("Urlop do usunięcia").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            const results = await prisma.moderatorLeave.findMany({
+              where: {
+                guildId: itx.guild.id,
+                deletedAt: null,
+                endsAt: { gt: itx.createdAt },
+              },
+            });
+            const userIds = results.map((r) => r.userId);
+            const members = await fetchMembers(itx.guild, userIds);
+            const dateFormat = "yyyy-MM-dd";
+            await itx.respond(
+              results.map((r) => ({
+                value: r.id,
+                name: `${members.get(r.userId)?.user.tag ?? r.userId} ${formatDate(r.startsAt, dateFormat)} - ${formatDate(r.endsAt, dateFormat)}`,
+              })),
+            );
+          })
+          .handle(async ({ prisma, messageQueue }, { urlop: leaveId }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const leave = await prisma.moderatorLeave.findFirst({
+              where: { id: leaveId, guildId: itx.guildId },
+            });
+            if (!leave) {
+              return await errorFollowUp(itx, "Nie znaleziono urlopu o podanym ID");
+            }
+
+            const confirmation = await waitForConfirmation(
+              { send: itx.editReply.bind(itx) },
+              `Czy na pewno chcesz usunąć urlop ${userMention(leave.userId)}?`,
+              "Tak",
+              "Nie",
+              (action) => action.user.id === itx.user.id,
+            );
+
+            if (!confirmation) {
+              errorFollowUp;
+              await itx.editReply({
+                content: "Anulowano usunięcie urlopu",
+                components: [],
+              });
+              return;
+            }
+
+            await prisma.$transaction(async (tx) => {
+              await tx.moderatorLeave.update({
+                where: { id: leaveId },
+                data: { deletedAt: itx.createdAt },
+              });
+              await messageQueue.cancelTx(
+                tx,
+                "moderatorLeaveStart",
+                leaveId.toString(),
+              );
+              if (leave.startsAt < itx.createdAt && itx.createdAt < leave.endsAt) {
+                // End the leave now if it was already in progress
+                await messageQueue.updateDelayTx(
+                  tx,
+                  "moderatorLeaveEnd",
+                  leaveId.toString(),
+                  itx.createdAt,
+                );
+              } else {
+                await messageQueue.cancelTx(
+                  tx,
+                  "moderatorLeaveEnd",
+                  leaveId.toString(),
+                );
+              }
+            });
+
+            await itx.editReply({
+              content: `Usunięto urlop ${userMention(leave.userId)} ${time(leave.startsAt, TimestampStyles.ShortDateTime)} - ${time(leave.endsAt, TimestampStyles.ShortDateTime)} [${leave.id}]`,
+              components: [],
+            });
+          }),
       )
       .addCommand("lista", (command) =>
         command.setDescription("Lista urlopów").handle(async ({ prisma }, _, itx) => {
