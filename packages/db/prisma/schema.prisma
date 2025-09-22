@@ -174,7 +174,7 @@ model ModeratorLeave {
   endsAt    DateTime  @db.Timestamp(6)
   guildId   String
   userId    String
-  addRole   Boolean   @default(false)
+  addRole   Boolean
 
   guild Guild @relation(fields: [guildId], references: [id])
   user  User  @relation(fields: [userId], references: [id])

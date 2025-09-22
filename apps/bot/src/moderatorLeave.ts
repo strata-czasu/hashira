@@ -36,9 +36,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             end.setDescription("Koniec urlopu, np. 2025-05-20"),
           )
           .addBoolean("dodaj-role", (addRole) =>
-            addRole
-              .setDescription("Czy dodać rolę urlopową moderatorowi (domyślnie nie)")
-              .setRequired(false),
+            addRole.setDescription("Czy dodać rolę urlopową moderatorowi"),
           )
           .handle(
             async (
@@ -101,7 +99,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                   userId: user.id,
                   startsAt,
                   endsAt,
-                  addRole: addRole ?? false,
+                  addRole,
                 },
               });
 
