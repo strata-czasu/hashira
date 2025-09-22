@@ -3,6 +3,7 @@
 // - prisma
 {
   "tab_size": 2,
+  "use_on_type_format": false,
 
   // NOTE: Language servers and formatters aren't enabled globally for more fine control
   // https://zed.dev/docs/languages/typescript
