@@ -1,5 +1,5 @@
 import { TZDate } from "@date-fns/tz";
-import { Hashira, PaginatedView } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfDay, formatDate, startOfDay } from "date-fns";
@@ -159,6 +159,23 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
               return await errorFollowUp(itx, "Nie znaleziono urlopu o podanym ID");
             }
 
+            const confirmation = await waitForConfirmation(
+              { send: itx.editReply.bind(itx) },
+              `Czy na pewno chcesz usunąć urlop ${userMention(leave.userId)}?`,
+              "Tak",
+              "Nie",
+              (action) => action.user.id === itx.user.id,
+            );
+
+            if (!confirmation) {
+              errorFollowUp;
+              await itx.editReply({
+                content: "Anulowano usunięcie urlopu",
+                components: [],
+              });
+              return;
+            }
+
             await prisma.$transaction(async (tx) => {
               await tx.moderatorLeave.update({
                 where: { id: leaveId },
@@ -186,9 +203,10 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
               }
             });
 
-            await itx.editReply(
-              `Usunięto urlop ${userMention(leave.userId)} ${time(leave.startsAt, TimestampStyles.ShortDateTime)} - ${time(leave.endsAt, TimestampStyles.ShortDateTime)} [${leave.id}]`,
-            );
+            await itx.editReply({
+              content: `Usunięto urlop ${userMention(leave.userId)} ${time(leave.startsAt, TimestampStyles.ShortDateTime)} - ${time(leave.endsAt, TimestampStyles.ShortDateTime)} [${leave.id}]`,
+              components: [],
+            });
           }),
       )
       .addCommand("lista", (command) =>

@@ -120,7 +120,7 @@ export function waitForConfirmation(
   acceptMessage: string,
   declineMessage: string,
   filter: DialogFilter,
-) {
+): Promise<boolean> {
   return new Promise((resolve) => {
     const acceptCallback = async () => {
       resolve(true);
