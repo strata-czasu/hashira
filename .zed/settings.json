@@ -1,9 +1,8 @@
+// NOTE: The following extensions are required for full LSP and formatter support:
+// - biome
+// - prisma
 {
   "tab_size": 2,
-  "auto_install_extensions": {
-    "biome": true,
-    "prisma": true
-  },
 
   // NOTE: Language servers and formatters aren't enabled globally for more fine control
   // https://zed.dev/docs/languages/typescript
