@@ -31,10 +31,10 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
           .setDescription("Dodaj urlop")
           .addUser("user", (user) => user.setDescription("Moderator"))
           .addString("start", (start) =>
-            start.setDescription("Początek urlopu, np. 2025-05-15"),
+            start.setDescription("Początek urlopu, np. 05-15, 2025-05-15, today"),
           )
           .addString("koniec", (end) =>
-            end.setDescription("Koniec urlopu, np. 2025-05-20"),
+            end.setDescription("Koniec urlopu, np. 05-20, 2025-05-20, tomorrow"),
           )
           .addBoolean("dodaj-role", (addRole) =>
             addRole.setDescription("Czy dodać rolę urlopową moderatorowi"),
