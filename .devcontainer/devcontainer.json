@@ -18,6 +18,7 @@
     "vscode": {
       "extensions": [
         "ms-vscode.vscode-typescript-next",
+        "TypeScriptTeam.native-preview",
         "oven.bun-vscode",
         "biomejs.biome",
         "Prisma.prisma"

@@ -98,10 +98,6 @@ jobs:
       - name: Generate Prisma Client
         run: bun prisma-generate
       - name: Run tests
-        # FIXME: This is a workaround for the issue of running all tests with `bun test`
-        #        There's some issue with using and/or migrating the DB
         run: |
-          bun test:core
-          bun test:bot
-          bun test:paginate
-          # FIXME: Run `bun test:db` when eventually set up
+          # NOTE: remember to one day fix tests for db, we're wasting resources not running them
+          bun test 

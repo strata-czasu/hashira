@@ -5,5 +5,8 @@
   "exports": {
     "./types": "./types.ts",
     "./range": "./range.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo"
   }
 }

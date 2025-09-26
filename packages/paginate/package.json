@@ -5,7 +5,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "bun test test/"
+    "typecheck": "tsgo"
   },
   "type": "module",
   "devDependencies": {}
