@@ -79,7 +79,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(pearto)
   .use(ranking)
   .use(moderatorLeave)
-  .handle("ready", async () => {
+  .handle("clientReady", async () => {
     console.log("Bot is ready!");
   });
 

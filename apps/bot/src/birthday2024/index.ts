@@ -378,7 +378,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       },
     );
   })
-  .handle("ready", async ({ prisma }, client) => {
+  .handle("clientReady", async ({ prisma }, client) => {
     client.on("interactionCreate", async (interaction) => {
       if (!interaction.isButton()) return;
 

@@ -81,7 +81,7 @@ export const guildPresencesEvents = ["presenceUpdate"] as const;
 export const guildVoiceStatesEvents = ["voiceStateUpdate"] as const;
 export const guildWebhooksEvents = ["webhooksUpdate"] as const;
 export const guildInvitesEvents = ["inviteCreate", "inviteDelete"] as const;
-export const readyEvents = ["ready", "shardReady"] as const;
+export const readyEvents = ["clientReady", "shardReady"] as const;
 export const interactionCreate = ["interactionCreate"] as const;
 
 export const directMessageCreate = ["directMessageCreate"] as const;

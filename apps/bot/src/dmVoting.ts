@@ -999,7 +999,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           ),
       ),
   )
-  .handle("ready", async ({ prisma }, client) => {
+  .handle("clientReady", async ({ prisma }, client) => {
     client.on("interactionCreate", async (itx) => {
       if (!itx.isButton()) return;
       // vote-option:optionId

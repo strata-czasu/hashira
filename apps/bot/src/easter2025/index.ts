@@ -555,7 +555,7 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           }),
       ),
   )
-  .handle("ready", async ({ prisma }, client) => {
+  .handle("clientReady", async ({ prisma }, client) => {
     console.log("Easter 2025 module ready!");
 
     setInterval(async () => {
