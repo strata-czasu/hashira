@@ -1,5 +1,6 @@
 {
   "editor.tabSize": 2,
+  "typescript.experimental.useTsgo": true,
   "typescript.tsdk": "node_modules/typescript/lib",
   "[typescript][javascript][json][jsonc]": {
     "editor.defaultFormatter": "biomejs.biome",

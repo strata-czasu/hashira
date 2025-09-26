@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "bun test test/"
+    "typecheck": "tsgo"
   },
   "dependencies": {
     "@hashira/paginate": "workspace:*"

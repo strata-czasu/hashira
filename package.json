@@ -4,13 +4,13 @@
     "@biomejs/biome": "^1.9.4",
     "@hashira/tsconfig": "workspace:*",
     "@types/bun": "^1.2.22",
+    "@typescript/native-preview": "^7.0.0-dev.20250926.1",
     "expect-type": "^1.2.2",
     "knip": "^5.62.0",
     "lefthook": "^1.12.2",
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "typecheck": "tsc --build",
     "fix": "biome check --write",
     "debug": "bun run --cwd apps/bot debug",
     "start": "bun run --cwd apps/bot start",
@@ -22,12 +22,9 @@
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",
     "prisma-migrate-reset": "bun run --cwd packages/db prisma migrate reset",
     "prisma-push": "bun run --cwd packages/db prisma-push",
-    "test:core": "bun run --cwd packages/core test",
-    "test:bot": "bun run --cwd apps/bot test",
-    "test:db": "bun run --cwd packages/db test",
-    "test:paginate": "bun run --cwd packages/paginate test",
     "reload-commands": "bun run --cwd apps/bot reload-commands",
-    "seed": "bun run --cwd apps/bot seed"
+    "seed": "bun run --cwd apps/bot seed",
+    "typecheck": "bun --workspaces typecheck"
   },
   "trustedDependencies": [
     "@biomejs/biome",

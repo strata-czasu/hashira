@@ -118,9 +118,9 @@ await view.render(itx);
 ### Testing
 Test files located in `*/test/` directories within each package. Run tests with:
 ```bash
-bun test:core  # Core framework tests
-bun test:bot   # Bot-specific tests  
-bun test:db    # Database tests
+bun test                # Run all tests
+bun test apps/bot       # Bot-specific tests
+bun test packages/utils # Utility tests
 ```
 
 ### Deployment Notes
