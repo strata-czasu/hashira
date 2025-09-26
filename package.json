@@ -3,7 +3,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@hashira/tsconfig": "workspace:*",
-    "@types/bun": "^1.2.19",
+    "@types/bun": "^1.2.22",
     "expect-type": "^1.2.2",
     "knip": "^5.62.0",
     "lefthook": "^1.12.2",

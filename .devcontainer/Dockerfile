@@ -2,7 +2,7 @@ ARG NODE_VERSION=22
 
 FROM mcr.microsoft.com/devcontainers/javascript-node:${NODE_VERSION}
 
-ARG BUN_VERSION=bun-v1.2.19
+ARG BUN_VERSION=bun-v1.2.22
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update \
