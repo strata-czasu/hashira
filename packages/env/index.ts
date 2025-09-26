@@ -14,6 +14,9 @@ const SpaceSeparatedArray = <
   );
 
 const Env = v.object({
+  NODE_ENV: v.exactOptional(
+    v.union([v.literal("development"), v.literal("production"), v.literal("test")]),
+  ),
   BOT_CLIENT_ID: ID,
   BOT_DEVELOPER_GUILD_IDS: SpaceSeparatedArray(ID),
   BOT_TOKEN: v.string(),
