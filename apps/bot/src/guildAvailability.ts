@@ -141,7 +141,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     await processAllowedGuild(ctx, guild);
     console.log(`New guild: ${guild.name}, owner: ${guild.ownerId}`);
   })
-  .handle("ready", async (ctx, client) => {
+  .handle("clientReady", async (ctx, client) => {
     ctx.messageLog.start(client);
     ctx.memberLog.start(client);
     ctx.roleLog.start(client);

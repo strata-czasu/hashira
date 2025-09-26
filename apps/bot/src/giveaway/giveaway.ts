@@ -524,7 +524,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           }),
       ),
   )
-  .handle("ready", async ({ prisma }, client) => {
+  .handle("clientReady", async ({ prisma }, client) => {
     client.on("interactionCreate", async (itx) => {
       if (!itx.isButton()) return;
       // giveaway-option:optionId
