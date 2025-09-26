@@ -214,6 +214,78 @@ export const ranking = new Hashira({ name: "ranking" })
             await paginator.render(itx);
           }),
       )
+      .addCommand("serwer-użytkownicy", (command) =>
+        command
+          .setDescription("Ranking użytkowników na serwerze")
+          .addString("okres", (period) =>
+            period.setDescription("Okres czasu, np. 2025-01"),
+          )
+          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const periodStart = parseDate(rawPeriod, "start", null);
+            if (!periodStart) {
+              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
+            }
+            const periodEnd = endOfMonth(periodStart);
+
+            const where = {
+              guildId: itx.guild.id,
+              timestamp: {
+                gte: periodStart,
+                lte: periodEnd,
+              },
+            };
+            const paginate = new DatabasePaginator(
+              (props, ordering) => {
+                const sqlOrdering = Prisma.sql([ordering]);
+                return prisma.$queryRaw<
+                  { userId: string; total: number; uniqueChannels: number }[]
+                >`
+                  select
+                    "userId",
+                    count(*) as "total",
+                    count(distinct "channelId") as "uniqueChannels"
+                  from "userTextActivity"
+                  where
+                    "guildId" = ${itx.guild.id}
+                    and "timestamp" between ${periodStart} and ${periodEnd}
+                  group by "userId"
+                  order by "total" ${sqlOrdering}
+                  offset ${props.skip}
+                  limit ${props.take};
+                `;
+              },
+              async () => {
+                const count = await prisma.userTextActivity.groupBy({
+                  by: "userId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const formatEntry = (
+              item: { userId: string; total: number; uniqueChannels: number },
+              idx: number,
+            ) => {
+              return (
+                `${idx}\\.` +
+                ` <@${item.userId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
+                ` [${item.uniqueChannels} #]`
+              );
+            };
+
+            const paginator = new PaginatedView(
+              paginate,
+              `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
+              formatEntry,
+              true,
+            );
+            await paginator.render(itx);
+          }),
+      )
 
       .addCommand("wedka", (command) =>
         command
