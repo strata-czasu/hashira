@@ -80,13 +80,24 @@ export const bot = new Hashira({ name: "bot" })
   .use(ranking)
   .use(moderatorLeave)
   .handle("clientReady", async () => {
-    console.log("Bot is ready!");
+    if (env.NODE_ENV) {
+      console.log(`Bot is ready in ${Bun.env.NODE_ENV} mode`);
+    } else {
+      console.log("Bot is ready");
+    }
   });
 
 if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
   // get any signals, so we need to figure out how to handle this!
   try {
+    if (env.NODE_ENV === "development") {
+      await bot.registerCommands(
+        env.BOT_TOKEN,
+        env.BOT_DEVELOPER_GUILD_IDS,
+        env.BOT_CLIENT_ID,
+      );
+    }
     await bot.start(env.BOT_TOKEN);
   } catch (e) {
     if (env.SENTRY_DSN) Sentry.captureException(e);

@@ -6,13 +6,14 @@
   "configurations": [
     {
       "type": "bun",
-      "internalConsoleOptions": "neverOpen",
+      "internalConsoleOptions": "openOnSessionStart",
       "request": "launch",
       "name": "Debug App",
       "program": "${workspaceFolder}/apps/bot/src/index.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
-      "watchMode": false
+      "watchMode": false,
+      "env": { "NODE_ENV": "development" }
     },
     {
       "type": "bun",
