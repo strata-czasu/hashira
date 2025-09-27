@@ -1,4 +1,9 @@
-import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
+import {
+  type ExtractContext,
+  Hashira,
+  PaginatedView,
+  waitForConfirmation,
+} from "@hashira/core";
 import {
   DatabasePaginator,
   type ExtendedPrismaClient,
@@ -486,6 +491,19 @@ export const verification = new Hashira({ name: "verification" })
               user.id,
             );
 
+            const confirmed = await waitForConfirmation(
+              { send: itx.editReply.bind(itx) },
+              `Czy na pewno chcesz odrzucić weryfikację dla ${formatUserWithId(user)}? Ta akcja spowoduje automatyczny ban tego użytkownika.`,
+              "Tak, zbanuj",
+              "Anuluj",
+              (action) => action.user.id === itx.user.id,
+            );
+
+            if (!confirmed) {
+              await itx.editReply("Odrzucenie weryfikacji zostało anulowane.");
+              return;
+            }
+
             const verificationUpdated = await prisma.$transaction(async (tx) => {
               if (verificationInProgress) {
                 await tx.verification.update({
@@ -552,7 +570,6 @@ export const verification = new Hashira({ name: "verification" })
                 `Nie udało się zbanować ${formatUserWithId(user)}`,
               );
             }
-            return;
           }),
       )
       .addCommand("wycofaj", (command) =>
