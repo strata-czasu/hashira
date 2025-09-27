@@ -1,4 +1,9 @@
-import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
+import {
+  ConfirmationDialog,
+  type ExtractContext,
+  Hashira,
+  PaginatedView,
+} from "@hashira/core";
 import {
   DatabasePaginator,
   type ExtendedPrismaClient,
@@ -486,73 +491,100 @@ export const verification = new Hashira({ name: "verification" })
               user.id,
             );
 
-            const verificationUpdated = await prisma.$transaction(async (tx) => {
-              if (verificationInProgress) {
-                await tx.verification.update({
-                  where: { id: verificationInProgress.id },
-                  data: { status: "rejected", rejectedAt: itx.createdAt },
+            // Show confirmation dialog before proceeding with ban
+            let confirmationResolved = false;
+
+            const confirmationDialog = new ConfirmationDialog(
+              `Czy na pewno chcesz odrzucić weryfikację dla ${formatUserWithId(user)}? Ta akcja spowoduje automatyczny ban tego użytkownika.`,
+              "Tak, zbanuj",
+              "Anuluj",
+              async () => {
+                confirmationResolved = true;
+
+                const verificationUpdated = await prisma.$transaction(async (tx) => {
+                  if (verificationInProgress) {
+                    await tx.verification.update({
+                      where: { id: verificationInProgress.id },
+                      data: { status: "rejected", rejectedAt: itx.createdAt },
+                    });
+
+                    await messageQueue.cancelTx(
+                      tx,
+                      "verificationEnd",
+                      verificationInProgress.id.toString(),
+                    );
+                    await cancelVerificationReminders(
+                      tx,
+                      messageQueue,
+                      verificationInProgress.id,
+                    );
+
+                    return verificationInProgress.id;
+                  }
+
+                  const newVerification = await tx.verification.create({
+                    data: {
+                      createdAt: itx.createdAt,
+                      rejectedAt: itx.createdAt,
+                      guildId: itx.guildId,
+                      userId: user.id,
+                      moderatorId: itx.user.id,
+                      type: "plus16",
+                      status: "rejected",
+                    },
+                  });
+
+                  return newVerification.id;
                 });
 
-                await messageQueue.cancelTx(
-                  tx,
-                  "verificationEnd",
-                  verificationInProgress.id.toString(),
+                const sentMessage = await sendVerificationFailedMessage(user);
+                const banned = await discordTry(
+                  async () => {
+                    const reason = formatBanReason(
+                      `Nieudana weryfikacja 16+ [${verificationUpdated}]`,
+                      itx.user,
+                      itx.createdAt,
+                    );
+                    await itx.guild.bans.create(user, { reason });
+                    return true;
+                  },
+                  [RESTJSONErrorCodes.MissingPermissions],
+                  () => false,
                 );
-                await cancelVerificationReminders(
-                  tx,
-                  messageQueue,
-                  verificationInProgress.id,
+
+                await itx.editReply(
+                  `Odrzucono weryfikację 16+ dla ${userMention(user.id)}`,
                 );
-
-                return verificationInProgress.id;
-              }
-
-              const newVerification = await tx.verification.create({
-                data: {
-                  createdAt: itx.createdAt,
-                  rejectedAt: itx.createdAt,
-                  guildId: itx.guildId,
-                  userId: user.id,
-                  moderatorId: itx.user.id,
-                  type: "plus16",
-                  status: "rejected",
-                },
-              });
-
-              return newVerification.id;
-            });
-
-            const sentMessage = await sendVerificationFailedMessage(user);
-            const banned = await discordTry(
-              async () => {
-                const reason = formatBanReason(
-                  `Nieudana weryfikacja 16+ [${verificationUpdated}]`,
-                  itx.user,
-                  itx.createdAt,
-                );
-                await itx.guild.bans.create(user, { reason });
-                return true;
+                if (!sentMessage) {
+                  await errorFollowUp(
+                    itx,
+                    `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
+                  );
+                }
+                if (!banned) {
+                  await errorFollowUp(
+                    itx,
+                    `Nie udało się zbanować ${formatUserWithId(user)}`,
+                  );
+                }
               },
-              [RESTJSONErrorCodes.MissingPermissions],
-              () => false,
+              async () => {
+                confirmationResolved = true;
+                await itx.editReply("Odrzucenie weryfikacji zostało anulowane.");
+              },
+              (action) => action.user.id === itx.user.id,
+              async () => {
+                if (!confirmationResolved) {
+                  await itx.editReply(
+                    "Czas na potwierdzenie minął. Odrzucenie weryfikacji zostało anulowane.",
+                  );
+                }
+              },
             );
 
-            await itx.editReply(
-              `Odrzucono weryfikację 16+ dla ${userMention(user.id)}`,
-            );
-            if (!sentMessage) {
-              await errorFollowUp(
-                itx,
-                `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-              );
-            }
-            if (!banned) {
-              await errorFollowUp(
-                itx,
-                `Nie udało się zbanować ${formatUserWithId(user)}`,
-              );
-            }
-            return;
+            await confirmationDialog.render({
+              send: itx.editReply.bind(itx),
+            });
           }),
       )
       .addCommand("wycofaj", (command) =>
