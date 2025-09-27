@@ -491,7 +491,6 @@ export const verification = new Hashira({ name: "verification" })
               user.id,
             );
 
-            // Show confirmation dialog before proceeding with ban
             const confirmed = await waitForConfirmation(
               { send: itx.editReply.bind(itx) },
               `Czy na pewno chcesz odrzucić weryfikację dla ${formatUserWithId(user)}? Ta akcja spowoduje automatyczny ban tego użytkownika.`,
