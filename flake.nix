@@ -35,15 +35,15 @@
           postgres-dev-db = inputs.postgres-dev-db.outputs.packages.${system};
           redis-dev-db = inputs.redis-dev-db.outputs.packages.${system};
 
-          bunVersion = "1.2.19";
+          bunVersion = "1.2.22";
           bunSources = {
             "aarch64-darwin" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
-              hash = "sha256-Z0pIN4NC76rcPCkVlrVzAQ88I4iVj3xEZ42H9vt1mZE=";
+              hash = "sha256-64x+CcvqVyQUoKNnhI4ay/BSlKlGpZRAWgFLH7Oz/HY=";
             };
             "x86_64-linux" = pkgs.fetchurl {
               url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-linux-x64.zip";
-              hash = "sha256-w9PBTppeyD/2fQrP525DFa0G2p809Z/HsTgTeCyvH2Y=";
+              hash = "sha256-TERq8aAde0Dh4RuuvDUvmyv9Eoh+Ubl907WYec7idDo=";
             };
           };
           bun = pkgs.bun.overrideAttrs {
