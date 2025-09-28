@@ -68,6 +68,7 @@ export class Keiken<
     this.#activities[type as string] = builder(
       new Activity<K, false, GlobalContext>(),
     ) as BaseActivity;
+
     return this as unknown as ReturnType<typeof this.addActivity<K>>;
   }
 
