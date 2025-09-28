@@ -11,6 +11,7 @@ This is a **TypeScript monorepo** using **Bun** as the runtime and package manag
 - **`packages/db`**: Prisma-based database layer with Redis integration and custom pagination utilities  
 - **`packages/env`**: Centralized environment variable validation and typing
 - **`packages/jsx`**: JSX wrapper for building Discord message components using a React-like syntax
+- **`packages/keiken`**: Experience and leveling system for Hashira, used as library in the bot
 - **`packages/paginate`**: Reusable pagination abstractions for database queries and static data
 - **`packages/utils`**: Shared TypeScript utilities and type helpers
 - **`packages/yotei`**: Task queue system built on Postgres for scheduling background jobs

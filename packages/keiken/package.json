@@ -1,0 +1,13 @@
+{
+  "name": "@hashira/keiken",
+  "description": "Keiken is a lightweight experience and leveling system for Hashira.",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsgo"
+  },
+  "dependencies": {
+    "mathjs": "^14.8.1"
+  }
+}
