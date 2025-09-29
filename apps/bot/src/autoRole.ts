@@ -1,7 +1,8 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { PermissionFlagsBits } from "discord.js";
+import { PermissionFlagsBits, RESTJSONErrorCodes } from "discord.js";
 import { base } from "./base";
+import { discordTry } from "./util/discordTry";
 
 export const autoRole = new Hashira({ name: "auto-role" })
   .use(base)
@@ -11,7 +12,15 @@ export const autoRole = new Hashira({ name: "auto-role" })
     });
 
     const rolePromises = autoRoles.map(({ roleId }) =>
-      member.roles.add(roleId, "Auto role on join"),
+      discordTry(
+        () => member.roles.add(roleId, "Auto role on join"),
+        [RESTJSONErrorCodes.UnknownMember],
+        () => {
+          console.warn(
+            `Failed to add auto-role ${roleId} to member ${member.user.tag} (${member.id})`,
+          );
+        },
+      ),
     );
 
     await Promise.all(rolePromises);
