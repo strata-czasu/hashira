@@ -24,12 +24,32 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
       .handle(async (_ctx, _, itx) => {
         if (!itx.inCachedGuild()) return;
 
+        // Fetch the latest message from the channel
+        const lastMessage = await discordTry(
+          async () => {
+            const messages = await itx.channel?.messages.fetch({ limit: 1 });
+            return messages?.first() ?? null;
+          },
+          [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.UnknownChannel],
+          () => null,
+        );
+
         const actionRows = [
           new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
             new TextInputBuilder()
+              .setCustomId("target")
+              .setLabel("Nick osoby, której dotyczy zgłoszenie")
+              .setPlaceholder("np. nazwa użytkownika")
+              .setRequired(true)
+              .setMinLength(2)
+              .setMaxLength(200)
+              .setStyle(TextInputStyle.Short),
+          ),
+          new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
+            new TextInputBuilder()
               .setCustomId("content")
-              .setLabel("Treść")
-              .setPlaceholder("Opisz swój problem")
+              .setLabel("W jaki sposób łamane są nasze zasady?")
+              .setPlaceholder("Opisz jak złamane zostały zasady")
               .setRequired(true)
               .setMinLength(10)
               .setMaxLength(2000)
@@ -37,11 +57,11 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
           ),
           new ActionRowBuilder<ModalActionRowComponentBuilder>().setComponents(
             new TextInputBuilder()
-              .setCustomId("target")
-              .setLabel("Kogo lub czego dotyczy zgłoszenie?")
-              .setPlaceholder("np. użytkownik, wiadomość lub inny istotny kontekst")
+              .setCustomId("messageInfo")
+              .setLabel("Kanał i godzina zgłaszanej wiadomości")
+              .setPlaceholder("Przykład: #rozmowy-1 17:45")
               .setRequired(true)
-              .setMinLength(3)
+              .setMinLength(5)
               .setMaxLength(200)
               .setStyle(TextInputStyle.Short),
           ),
@@ -68,13 +88,16 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
         await submitAction.deferReply({ flags: "Ephemeral" });
 
         // TODO)) Abstract this into a helper/common util
-        const content = submitAction.components
-          .at(0)
-          ?.components.find((c) => c.customId === "content")?.value;
         const target = submitAction.components
-          .at(1)
+          .at(0)
           ?.components.find((c) => c.customId === "target")?.value;
-        if (!content || !target) {
+        const content = submitAction.components
+          .at(1)
+          ?.components.find((c) => c.customId === "content")?.value;
+        const messageInfo = submitAction.components
+          .at(2)
+          ?.components.find((c) => c.customId === "messageInfo")?.value;
+        if (!content || !target || !messageInfo) {
           return await errorFollowUp(
             submitAction,
             "Nie podano wszystkich wymaganych danych!",
@@ -98,8 +121,12 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
           .setDescription(content)
           .addFields(
             {
-              name: "Kogo lub czego dotyczy zgłoszenie?",
+              name: "Nick osoby, której dotyczy zgłoszenie",
               value: target,
+            },
+            {
+              name: "Kanał i godzina zgłaszanej wiadomości",
+              value: messageInfo,
             },
             {
               name: "Kanał zgłoszenia",
@@ -111,6 +138,16 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
             iconURL: itx.user.displayAvatarURL(),
           })
           .setTimestamp(submitAction.createdAt);
+
+        // Add last message info if available
+        if (lastMessage) {
+          const lastMessageContent = lastMessage.content || "[Brak treści]";
+          const lastMessageLink = `[Link](${lastMessage.url})`;
+          embed.addFields({
+            name: "Ostatnia wiadomość nad komendą /donos (to może NIE BYĆ zgłaszana wiadomość!)",
+            value: `${lastMessageLink}\n>>> ${lastMessageContent.slice(0, 500)}${lastMessageContent.length > 500 ? "..." : ""}`,
+          });
+        }
         const success = await discordTry(
           async () => {
             channel.send({
