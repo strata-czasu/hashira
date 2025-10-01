@@ -141,11 +141,9 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
 
         // Add last message info if available
         if (lastMessage) {
-          const lastMessageContent = lastMessage.content || "[Brak treści]";
-          const lastMessageLink = `[Link](${lastMessage.url})`;
           embed.addFields({
             name: "Ostatnia wiadomość nad komendą /donos (to może NIE BYĆ zgłaszana wiadomość!)",
-            value: `${lastMessageLink}\n>>> ${lastMessageContent.slice(0, 500)}${lastMessageContent.length > 500 ? "..." : ""}`,
+            value: `[Link](${lastMessage.url})`,
           });
         }
         const success = await discordTry(
