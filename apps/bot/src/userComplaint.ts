@@ -19,7 +19,9 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
   .use(base)
   .command("donos", (command) =>
     command
-      .setDescription("Ciche zgłoszenie do moderacji")
+      .setDescription(
+        "Ciche zgłoszenie do moderacji (użyj na kanale, gdzie wystąpił problem)",
+      )
       .setDMPermission(false)
       .handle(async (_ctx, _, itx) => {
         if (!itx.inCachedGuild()) return;
