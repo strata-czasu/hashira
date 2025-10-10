@@ -1,0 +1,10 @@
+model Birthday {
+  id     Int     @id @default(autoincrement())
+  userId String  @unique
+  month  Int // 1-12
+  day    Int // 1-31
+  year   Int? // Optional year for age verification
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("birthday")
+}
