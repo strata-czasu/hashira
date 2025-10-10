@@ -491,9 +491,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const { BIRTHDAY_MESSAGES } = await import("./specializedConstants");
             const messages = Array.from(BIRTHDAY_MESSAGES);
             const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-            
+
             if (!randomMessage) return;
-            
+
             const message = randomMessage.replace("{{user}}", userMention(userId));
 
             await discordTry(

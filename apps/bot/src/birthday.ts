@@ -1,6 +1,5 @@
 import { TZDate } from "@date-fns/tz";
-import { Hashira, PaginatedView, type ExtractContext } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { type ExtractContext, Hashira } from "@hashira/core";
 import { isValid, parse } from "date-fns";
 import { PermissionFlagsBits, channelMention, userMention } from "discord.js";
 import { base } from "./base";
