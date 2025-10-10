@@ -68,7 +68,7 @@ export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
           }
 
           await member.setNickname(
-            null,
+            user.username,
             `Reset nicku (moderator: ${itx.user.tag} (${itx.user.id}))`,
           );
 
