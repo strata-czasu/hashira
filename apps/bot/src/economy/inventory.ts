@@ -8,10 +8,13 @@ import { DatabasePaginator, type Prisma } from "@hashira/db";
 import {
   type AutocompleteInteraction,
   PermissionFlagsBits,
+  TimestampStyles,
   bold,
   inlineCode,
+  time,
 } from "discord.js";
 import { base } from "../base";
+import { parseDate } from "../util/dateParsing";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { getInventoryItem, getItem, getTypeNameForList } from "./util";
@@ -69,6 +72,7 @@ export const inventory = new Hashira({ name: "inventory" })
               item: { guildId: itx.guildId },
               userId: user.id,
               deletedAt: null,
+              expiresAt: { gte: itx.createdAt },
             };
             const paginator = new DatabasePaginator(
               (props, ordering) =>
@@ -95,6 +99,8 @@ export const inventory = new Hashira({ name: "inventory" })
                 const idString = `[${inlineCode(itemId.toString())}]`;
                 const itemName = itemNames.get(itemId) ?? "Nieznany przedmiot";
                 if (_count === 1) return `- ${itemName} ${idString}`;
+                // TODO)) Display item expiration date
+                // TODO)) Separate items with and without expiry
                 return `- ${itemName} (x${bold(_count.toString())}) ${idString}`;
               },
               true,
@@ -147,6 +153,9 @@ export const inventory = new Hashira({ name: "inventory" })
                 "Nie",
                 async () => {
                   const inventoryItem = await prisma.$transaction(async (tx) => {
+                    // TODO)) Don't let users transfer expired items
+                    // TODO)) Let the user select which inventory item to transfer
+                    //        e.g. user has 2 of the same item, but one has an expiry date
                     const inventoryItem = await getInventoryItem(
                       tx,
                       itemId,
@@ -210,41 +219,72 @@ export const inventory = new Hashira({ name: "inventory" })
             id.setDescription("Przedmiot").setAutocomplete(true),
           )
           .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("data-waznosci", (expiry) =>
+            expiry
+              .setDescription("Data ważności przedmiotu (np. 2025-07-01)")
+              .setRequired(false),
+          )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
-          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, economyLog },
+              { przedmiot: itemId, user, "data-waznosci": rawExpiresAt },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            await ensureUserExists(prisma, user);
-            const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, itemId, itx.guildId);
-              if (!item) {
-                await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-                return null;
+              let expiresAt: Date | null = null;
+              if (rawExpiresAt) {
+                // TODO)) Parse date in our TZ
+                // TODO)) Should the item expire at the start or end of the selected day?
+                expiresAt = parseDate(rawExpiresAt, "start", null);
+                if (!expiresAt) {
+                  return await errorFollowUp(
+                    itx,
+                    "Nieprawidłowa data ważności przedmiotu. Podaj datę w formacie RRRR-MM-DD",
+                  );
+                }
               }
 
-              await tx.inventoryItem.create({
-                data: {
-                  itemId,
-                  userId: user.id,
-                },
-              });
-              return item;
-            });
-            if (!item) return;
+              await ensureUserExists(prisma, user);
+              const item = await prisma.$transaction(async (tx) => {
+                const item = await getItem(tx, itemId, itx.guildId);
+                if (!item) {
+                  await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                  return null;
+                }
 
-            economyLog.push("itemAddToInventory", itx.guild, {
-              moderator: itx.user,
-              user,
-              item,
-            });
-            await itx.editReply(
-              `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${bold(user.tag)}`,
-            );
-          }),
+                await tx.inventoryItem.create({
+                  data: {
+                    itemId,
+                    userId: user.id,
+                    expiresAt,
+                  },
+                });
+                return item;
+              });
+              if (!item) return;
+
+              economyLog.push("itemAddToInventory", itx.guild, {
+                moderator: itx.user,
+                user,
+                item,
+              });
+              const responseParts = [
+                `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${bold(user.tag)}`,
+              ];
+              if (expiresAt) {
+                responseParts.push(
+                  `(wygasa ${time(expiresAt, TimestampStyles.ShortDateTime)})`,
+                );
+              }
+              await itx.editReply(responseParts.join(" "));
+            },
+          ),
       )
       .addCommand("zabierz", (command) =>
         command

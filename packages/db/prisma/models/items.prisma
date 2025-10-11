@@ -71,6 +71,7 @@ model InventoryItem {
   userId    String
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
+  expiresAt DateTime? @db.Timestamp(6)
 
   item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_itemId_item_id_fk")
   user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
