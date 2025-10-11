@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "bun": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1759701970,
+        "narHash": "sha256-TOmL3ywj+p+iqkHNnYL12LrRs123GuOQ9aC1NLPjAl0=",
+        "owner": "Daste745",
+        "repo": "nix-bun",
+        "rev": "43ea8d4a7a1d8c21fea118eea4984c650c70c9c8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Daste745",
+        "repo": "nix-bun",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1758690382,
@@ -60,6 +80,7 @@
     },
     "root": {
       "inputs": {
+        "bun": "bun",
         "nixpkgs": "nixpkgs",
         "postgres-dev-db": "postgres-dev-db",
         "redis-dev-db": "redis-dev-db"
