@@ -1,6 +1,10 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    bun = {
+      url = "github:Daste745/nix-bun";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     postgres-dev-db = {
       url = "github:hermann-p/nix-postgres-dev-db";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -34,27 +38,12 @@
         let
           postgres-dev-db = inputs.postgres-dev-db.outputs.packages.${system};
           redis-dev-db = inputs.redis-dev-db.outputs.packages.${system};
-
-          bunVersion = "1.2.22";
-          bunSources = {
-            "aarch64-darwin" = pkgs.fetchurl {
-              url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
-              hash = "sha256-64x+CcvqVyQUoKNnhI4ay/BSlKlGpZRAWgFLH7Oz/HY=";
-            };
-            "x86_64-linux" = pkgs.fetchurl {
-              url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-linux-x64.zip";
-              hash = "sha256-TERq8aAde0Dh4RuuvDUvmyv9Eoh+Ubl907WYec7idDo=";
-            };
-          };
-          bun = pkgs.bun.overrideAttrs {
-            version = bunVersion;
-            src = bunSources.${system} or (throw "Unsupported system for bun: ${system}");
-          };
+          bun = inputs.bun.packages.${system};
         in
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              bun
+              bun."1.2.22"
               prisma
               prisma-engines
               postgresql_17
