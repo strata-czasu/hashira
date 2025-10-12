@@ -43,7 +43,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              bun."1.2.22"
+              bun."1.3.0"
               prisma
               prisma-engines
               postgresql_17
