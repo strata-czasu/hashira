@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, bold, roleMention } from "discord.js";
+import { bold, PermissionFlagsBits, roleMention } from "discord.js";
 import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
 import { modifyMembers } from "./util/modifyMembers";

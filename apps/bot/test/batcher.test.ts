@@ -1,4 +1,4 @@
-import { type Mock, beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, type Mock, mock, test } from "bun:test";
 import { sleep } from "bun";
 import { Batcher, InMemoryBackend } from "../src/util/batcher";
 

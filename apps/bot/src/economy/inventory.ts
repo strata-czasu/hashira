@@ -7,9 +7,9 @@ import {
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 import {
   type AutocompleteInteraction,
-  PermissionFlagsBits,
   bold,
   inlineCode,
+  PermissionFlagsBits,
 } from "discord.js";
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";

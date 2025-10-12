@@ -6,9 +6,9 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  channelLink,
   PermissionFlagsBits,
   TimestampStyles,
-  channelLink,
   time,
 } from "discord.js";
 import { randomInt } from "es-toolkit";

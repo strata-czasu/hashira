@@ -2,7 +2,7 @@ import { type ExtractContext, Hashira } from "@hashira/core";
 import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
 import { DiscordAPIError, type Guild } from "discord.js";
 import { base } from "./base";
-import type { LogMessageType, Logger } from "./logging/base/logger";
+import type { Logger, LogMessageType } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
 
 type BaseContext = ExtractContext<typeof base>;

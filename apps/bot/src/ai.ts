@@ -32,7 +32,11 @@ const createMute = (
     userId,
     duration,
     reason,
-  }: { userId: string; duration: string; reason: string }) {
+  }: {
+    userId: string;
+    duration: string;
+    reason: string;
+  }) {
     await universalAddMute({
       prisma,
       messageQueue,
@@ -205,7 +209,7 @@ export const ai = new Hashira({ name: "ai" })
         `Current time: ${format(new Date(), "EEEE yyyy-MM-dd HH:mm:ss XXX")}`,
       ];
 
-      const runner = ai.beta.chat.completions
+      const runner = ai.chat.completions
         .runTools({
           model: "gpt-5",
           messages: [

@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item, type Prisma } from "@hashira/db";
-import { PermissionFlagsBits, bold, inlineCode, italic } from "discord.js";
+import { bold, inlineCode, italic, PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";

@@ -1,7 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Transaction } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { PermissionFlagsBits, TimestampStyles, italic, time } from "discord.js";
+import { italic, PermissionFlagsBits, TimestampStyles, time } from "discord.js";
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
