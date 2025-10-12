@@ -14,7 +14,7 @@
     "prisma-migrate": "prisma migrate dev",
     "prisma-push": "prisma db push",
     "prisma-reset": "prisma migrate reset",
-    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --exit-code --from-schema-datamodel ./prisma/ --to-schema-datasource ./prisma/",
+    "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --script --exit-code --from-schema-datamodel ./prisma/ --to-schema-datasource ./prisma/",
     "typecheck": "tsgo"
   },
   "devDependencies": {
@@ -23,11 +23,11 @@
   "dependencies": {
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@prisma/client": "^6.17.1",
+    "@prisma/client": "^6.16.2",
     "@redis/client": "^5.8.3",
     "date-fns": "^4.1.0",
     "pg": "^8.15.6",
     "postgres": "^3.4.5",
-    "prisma": "^6.17.1"
+    "prisma": "^6.16.2"
   }
 }

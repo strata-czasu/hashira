@@ -20,7 +20,7 @@
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@prisma/instrumentation": "^6.17.1",
+    "@prisma/instrumentation": "^6.16.2",
     "@sentry/bun": "^9.46.0",
     "cheerio": "^1.1.2",
     "date-fns": "4.1.0",
