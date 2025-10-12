@@ -6,30 +6,30 @@ import {
   type PrismaTransaction,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { type Duration, add, intervalToDuration } from "date-fns";
+import { add, type Duration, intervalToDuration } from "date-fns";
 import { differenceInDays } from "date-fns/fp";
 import {
   ActionRowBuilder,
+  bold,
   type ContextMenuCommandInteraction,
   DiscordjsErrorCodes,
   type Guild,
   type GuildMember,
   HeadingLevel,
+  heading,
+  inlineCode,
+  italic,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type RepliableInteraction,
+  strikethrough,
   TextInputBuilder,
   TextInputStyle,
   TimestampStyles,
-  type User,
-  bold,
-  heading,
-  inlineCode,
-  italic,
-  strikethrough,
   time,
+  type User,
   userMention,
 } from "discord.js";
 import { noop } from "es-toolkit";
@@ -398,13 +398,9 @@ const handleContextMenu = async ({
   await submitAction.deferReply({ flags: "Ephemeral" });
   const moderatorDmChannel = await itx.user.createDM();
 
-  // TODO)) Abstract this into a helper/common util
-  const duration = submitAction.components
-    .at(0)
-    ?.components.find((c) => c.customId === "duration")?.value;
-  const reason = submitAction.components
-    .at(1)
-    ?.components.find((c) => c.customId === "reason")?.value;
+  const duration = submitAction.fields.getTextInputValue("duration");
+  const reason = submitAction.fields.getTextInputValue("reason");
+
   if (!duration || !reason) {
     await moderatorDmChannel.send(
       "Nie podano wszystkich wymaganych danych do nałożenia wyciszenia!",

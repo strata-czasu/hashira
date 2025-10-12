@@ -12,19 +12,19 @@ import {
   DiscordjsErrorCodes,
   type Guild,
   HeadingLevel,
+  heading,
+  inlineCode,
+  italic,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
+  strikethrough,
   TextInputBuilder,
   TextInputStyle,
   TimestampStyles,
-  type User,
-  heading,
-  inlineCode,
-  italic,
-  strikethrough,
   time,
+  type User,
   userMention,
 } from "discord.js";
 import { base } from "../base";
@@ -196,9 +196,8 @@ const handleContextMenu = async ({
   await submitAction.deferReply({ flags: "Ephemeral" });
   const moderatorDmChannel = await itx.user.createDM();
 
-  const reason = submitAction.components
-    .at(0)
-    ?.components.find((c) => c.customId === "reason")?.value;
+  const reason = submitAction.fields.getTextInputValue("reason");
+
   if (!reason) {
     await moderatorDmChannel.send(
       "Nie podano wszystkich wymaganych danych do nałożenia ostrzeżenia!",

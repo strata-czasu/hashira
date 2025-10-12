@@ -11,18 +11,18 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  bold,
   DiscordjsErrorCodes,
   EmbedBuilder,
+  italic,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
+  messageLink,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TextInputBuilder,
   TextInputStyle,
   TimestampStyles,
-  bold,
-  italic,
-  messageLink,
   time,
   userMention,
 } from "discord.js";
@@ -139,16 +139,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await submitAction.deferReply();
 
-            // TODO)) Abstract this into a helper/common util
-            const title = submitAction.components
-              .at(0)
-              ?.components.find((c) => c.customId === "title")?.value;
-            const content = submitAction.components
-              .at(1)
-              ?.components.find((c) => c.customId === "content")?.value;
-            const rawOptions = submitAction.components
-              .at(2)
-              ?.components.find((c) => c.customId === "row1")?.value;
+            const title = submitAction.fields.getTextInputValue("title");
+            const content = submitAction.fields.getTextInputValue("content");
+            const rawOptions = submitAction.fields.getTextInputValue("row1");
 
             if (!title || !content || !rawOptions) {
               return await errorFollowUp(
@@ -255,15 +248,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             await submitAction.deferReply();
 
             // TODO)) Abstract this into a helper/common util
-            const title = submitAction.components
-              .at(0)
-              ?.components.find((c) => c.customId === "title")?.value;
-            const content = submitAction.components
-              .at(1)
-              ?.components.find((c) => c.customId === "content")?.value;
-            const rawFirstRowOptions = submitAction.components
-              .at(2)
-              ?.components.find((c) => c.customId === "row1")?.value;
+            const title = submitAction.fields.getTextInputValue("title");
+            const content = submitAction.fields.getTextInputValue("content");
+            const rawFirstRowOptions = submitAction.fields.getTextInputValue("row1");
 
             if (!title || !content || !rawFirstRowOptions) {
               return await errorFollowUp(
