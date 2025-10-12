@@ -1,8 +1,8 @@
 import {
-  EmbedBuilder,
-  type RGBTuple,
   channelMention,
+  EmbedBuilder,
   escapeMarkdown,
+  type RGBTuple,
 } from "@discordjs/builders";
 import { Hashira } from "@hashira/core";
 import {

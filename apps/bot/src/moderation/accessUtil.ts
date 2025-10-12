@@ -1,4 +1,4 @@
-import { TimestampStyles, type User, channelMention, italic, time } from "discord.js";
+import { channelMention, italic, TimestampStyles, time, type User } from "discord.js";
 
 const CHANNEL_RESTRICTION_TEMPLATE = `
 ## Hejka {{user}}!

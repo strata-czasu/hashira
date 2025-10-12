@@ -3,16 +3,16 @@ import { type ChannelRestriction, DatabasePaginator } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { add } from "date-fns";
 import {
-  ChannelType,
-  HeadingLevel,
-  PermissionFlagsBits,
-  RESTJSONErrorCodes,
-  TimestampStyles,
   bold,
+  ChannelType,
   channelMention,
+  HeadingLevel,
   heading,
   italic,
+  PermissionFlagsBits,
+  RESTJSONErrorCodes,
   strikethrough,
+  TimestampStyles,
   time,
   userMention,
 } from "discord.js";
@@ -31,7 +31,10 @@ const createRestrictionFormatter =
   ({
     includeUser,
     includeChannel,
-  }: { includeUser: boolean; includeChannel: boolean }) =>
+  }: {
+    includeUser: boolean;
+    includeChannel: boolean;
+  }) =>
   (restriction: ChannelRestriction) => {
     const headerParts: string[] = [];
     if (includeUser) headerParts.push(userMention(restriction.userId));

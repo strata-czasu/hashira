@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Ultimatum } from "@hashira/db";
 import { addSeconds } from "date-fns";
-import { type Guild, PermissionFlagsBits, type User, italic } from "discord.js";
+import { type Guild, italic, PermissionFlagsBits, type User } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";

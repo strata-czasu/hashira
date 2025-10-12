@@ -4,9 +4,9 @@ import { MessageQueue } from "@hashira/db/tasks";
 import { type Duration, formatDuration } from "date-fns";
 import {
   type Client,
+  inlineCode,
   RESTJSONErrorCodes,
   TimestampStyles,
-  inlineCode,
   time,
   userMention,
 } from "discord.js";

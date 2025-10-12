@@ -3,8 +3,8 @@ import {
   type AutocompleteInteraction,
   type CacheType,
   type ChatInputCommandInteraction,
-  SlashCommandStringOption,
   escapeMarkdown,
+  SlashCommandStringOption,
 } from "discord.js";
 import type { If, OptionBuilder } from "../types";
 

@@ -1,3 +1,4 @@
+import type { Duration } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -7,8 +8,6 @@ import {
   ComponentType,
   type Message,
 } from "discord.js";
-
-import type { Duration } from "date-fns";
 import { durationToMilliseconds } from "./duration";
 
 type ButtonFilter = CollectorFilter<[ButtonInteraction]>;

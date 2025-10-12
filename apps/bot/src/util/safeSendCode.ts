@@ -1,4 +1,4 @@
-import { type BaseMessageOptions, type Message, codeBlock } from "discord.js";
+import { type BaseMessageOptions, codeBlock, type Message } from "discord.js";
 
 export default async function safeSendCode(
   send: (options: BaseMessageOptions) => Promise<Message<boolean>>,

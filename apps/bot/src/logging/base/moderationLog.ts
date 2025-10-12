@@ -2,14 +2,14 @@ import { Hashira } from "@hashira/core";
 import type { ChannelRestriction, Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
-  type PartialUser,
-  TimestampStyles,
-  type User,
   bold,
   channelMention,
   inlineCode,
   italic,
+  type PartialUser,
+  TimestampStyles,
   time,
+  type User,
   userMention,
 } from "discord.js";
 import { formatMuteLength } from "../../moderation/util";

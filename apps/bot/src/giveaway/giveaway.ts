@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
-import { type Duration, addSeconds } from "date-fns";
+import { addSeconds, type Duration } from "date-fns";
 import {
   type APIContainerComponent,
   AttachmentBuilder,
@@ -20,9 +20,9 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
-  GiveawayBannerRatio,
   autocompleteGiveawayId,
   formatBanner,
+  GiveawayBannerRatio,
   getStaticBanner,
   giveawayButtonRow,
   giveawayFooter,

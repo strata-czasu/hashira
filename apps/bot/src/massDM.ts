@@ -1,5 +1,5 @@
 import { Hashira, waitForConfirmation } from "@hashira/core";
-import { RESTJSONErrorCodes, bold, italic } from "discord.js";
+import { bold, italic, RESTJSONErrorCodes } from "discord.js";
 import { partition } from "es-toolkit";
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";

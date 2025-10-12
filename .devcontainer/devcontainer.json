@@ -21,7 +21,8 @@
         "TypeScriptTeam.native-preview",
         "oven.bun-vscode",
         "biomejs.biome",
-        "Prisma.prisma"
+        "Prisma.prisma",
+        "tamasfe.even-better-toml"
       ]
     }
   }

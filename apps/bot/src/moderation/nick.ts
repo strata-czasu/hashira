@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, type User, inlineCode } from "discord.js";
+import { inlineCode, PermissionFlagsBits, type User } from "discord.js";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 

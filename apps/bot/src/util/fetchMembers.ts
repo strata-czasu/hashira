@@ -18,9 +18,9 @@ import { chunk, uniq } from "es-toolkit";
 export async function fetchMembers(
   guild: {
     members: {
-      fetch: (options: { user: UserResolvable[] }) => Promise<
-        Collection<string, GuildMember>
-      >;
+      fetch: (options: {
+        user: UserResolvable[];
+      }) => Promise<Collection<string, GuildMember>>;
     };
   },
   users: Snowflake[],

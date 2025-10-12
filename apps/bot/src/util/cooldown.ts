@@ -1,4 +1,4 @@
-import { type Duration, add as addDuration } from "date-fns";
+import { add as addDuration, type Duration } from "date-fns";
 
 export class Cooldown {
   readonly duration: Duration;

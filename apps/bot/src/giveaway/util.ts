@@ -7,8 +7,8 @@ import type {
   GiveawayWinner,
 } from "@hashira/db";
 import {
-  type APIContainerComponent,
   ActionRowBuilder,
+  type APIContainerComponent,
   type Attachment,
   type AutocompleteInteraction,
   ButtonBuilder,
@@ -17,9 +17,9 @@ import {
   ContainerBuilder,
   type Message,
   MessageFlags,
+  messageLink,
   SeparatorSpacingSize,
   TextDisplayBuilder,
-  messageLink,
 } from "discord.js";
 import { shuffle } from "es-toolkit";
 import sharp from "sharp";
@@ -244,7 +244,7 @@ export async function endGiveaway(
   let idx = 0;
   const winningUsers: Omit<GiveawayWinner, "id">[] = [];
   const results = rewards.map(({ reward, amount, id: rewardId }) => {
-    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
+    // biome-ignore lint/suspicious/noAssignInExpressions: this is intended as a compact way to slice
     const slice = shuffledIds.slice(idx, (idx += amount));
     if (slice.length > 0) {
       winningUsers.push(

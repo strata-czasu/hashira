@@ -16,15 +16,15 @@ import { PaginatorOrder } from "@hashira/paginate";
 import { addSeconds } from "date-fns";
 import {
   type ChatInputCommandInteraction,
+  channelMention,
   type Guild,
   type GuildMember,
+  inlineCode,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
-  type User,
-  channelMention,
-  inlineCode,
   time,
+  type User,
   userMention,
 } from "discord.js";
 import { base } from "../base";

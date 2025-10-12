@@ -2,8 +2,8 @@ import { Hashira } from "@hashira/core";
 import type { LogSettings } from "@hashira/db";
 import {
   ChannelType,
-  PermissionFlagsBits,
   channelMention,
+  PermissionFlagsBits,
   roleMention,
   userMention,
 } from "discord.js";

@@ -15,14 +15,16 @@
   },
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
+    "@discordjs/builders": "^1.12.2",
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
-    "@sentry/bun": "^9.15.0",
-    "cheerio": "^1.0.0",
+    "@prisma/instrumentation": "^6.16.2",
+    "@sentry/bun": "^9.46.0",
+    "cheerio": "^1.1.2",
     "date-fns": "4.1.0",
-    "openai": "4.67.3",
-    "sharp": "^0.34.1"
+    "openai": "6.3.0",
+    "sharp": "^0.34.4"
   }
 }

@@ -78,7 +78,7 @@ export class ConfirmationDialog {
       });
 
       await this.runCallback(buttonAction.customId);
-    } catch (error) {
+    } catch (_) {
       // Handle timeout
       if (this.#timeoutCallback) {
         await this.#timeoutCallback();

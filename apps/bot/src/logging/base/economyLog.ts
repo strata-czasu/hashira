@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { Item } from "@hashira/db";
-import { type User, bold, inlineCode, italic, userMention } from "discord.js";
+import { bold, inlineCode, italic, type User, userMention } from "discord.js";
 import { formatBalance } from "../../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { pluralizers } from "../../util/pluralize";
