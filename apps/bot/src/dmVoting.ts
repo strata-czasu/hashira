@@ -247,7 +247,6 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
 
             await submitAction.deferReply();
 
-            // TODO)) Abstract this into a helper/common util
             const title = submitAction.fields.getTextInputValue("title");
             const content = submitAction.fields.getTextInputValue("content");
             const rawFirstRowOptions = submitAction.fields.getTextInputValue("row1");

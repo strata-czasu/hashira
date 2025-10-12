@@ -134,7 +134,6 @@ const handleContextMenu = async ({
 
   await submitAction.deferReply();
 
-  // TODO)) Abstract this into a helper/common util
   const reason = submitAction.fields.getTextInputValue("reason");
   const rawDeleteInterval = submitAction.fields.getTextInputValue("delete-interval");
 
