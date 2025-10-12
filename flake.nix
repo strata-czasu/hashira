@@ -28,7 +28,10 @@
           system:
           f {
             inherit system;
-            pkgs = import inputs.nixpkgs { inherit system; };
+            pkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = import ./overlays.nix;
+            };
           }
         );
     in
