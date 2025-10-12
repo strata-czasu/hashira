@@ -24,7 +24,6 @@
     "@hashira/env": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@prisma/client": "^6.17.1",
-    "@prisma/instrumentation": "^6.17.1",
     "@redis/client": "^5.8.3",
     "date-fns": "^4.1.0",
     "pg": "^8.15.6",
