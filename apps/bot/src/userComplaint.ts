@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
+  channelMention,
   DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
@@ -8,7 +9,6 @@ import {
   RESTJSONErrorCodes,
   TextInputBuilder,
   TextInputStyle,
-  channelMention,
 } from "discord.js";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
