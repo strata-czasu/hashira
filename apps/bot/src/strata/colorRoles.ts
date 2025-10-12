@@ -2,10 +2,10 @@ import { ConfirmationDialog, Hashira } from "@hashira/core";
 import { addDays, addMonths, addWeeks, addYears } from "date-fns";
 import {
   type ColorResolvable,
+  inlineCode,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type RoleColorsResolvable,
-  inlineCode,
   resolveColor,
   time,
 } from "discord.js";
@@ -25,7 +25,7 @@ const getColor = (rawColor: ColorResolvable | string) => {
   const color = typeof rawColor === "string" ? preprocessColor(rawColor) : rawColor;
   try {
     return resolveColor(color);
-  } catch (err) {
+  } catch (_) {
     return null;
   }
 };

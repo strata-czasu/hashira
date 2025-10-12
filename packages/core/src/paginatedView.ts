@@ -120,7 +120,7 @@ export class PaginatedView<T> {
       buttonAction.deferUpdate();
 
       await this.render(interaction);
-    } catch (error) {
+    } catch (_) {
       // Handle timeout
       // TODO)) More specific error handling
       await this.finalize();

@@ -43,7 +43,7 @@ export const currency = new Hashira({ name: "currency" })
                   createdBy: itx.user.id,
                 },
               });
-            } catch (err) {
+            } catch (_) {
               await itx.reply("Currency with the same name or symbol already exists!");
               return;
             }
