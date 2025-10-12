@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
+  channelMention,
   DiscordjsErrorCodes,
   EmbedBuilder,
   type ModalActionRowComponentBuilder,
@@ -8,7 +9,6 @@ import {
   RESTJSONErrorCodes,
   TextInputBuilder,
   TextInputStyle,
-  channelMention,
 } from "discord.js";
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
@@ -89,16 +89,10 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
 
         await submitAction.deferReply({ flags: "Ephemeral" });
 
-        // TODO)) Abstract this into a helper/common util
-        const target = submitAction.components
-          .at(0)
-          ?.components.find((c) => c.customId === "target")?.value;
-        const content = submitAction.components
-          .at(1)
-          ?.components.find((c) => c.customId === "content")?.value;
-        const messageInfo = submitAction.components
-          .at(2)
-          ?.components.find((c) => c.customId === "messageInfo")?.value;
+        const target = submitAction.fields.getTextInputValue("target");
+        const content = submitAction.fields.getTextInputValue("content");
+        const messageInfo = submitAction.fields.getTextInputValue("messageInfo");
+
         if (!content || !target || !messageInfo) {
           return await errorFollowUp(
             submitAction,

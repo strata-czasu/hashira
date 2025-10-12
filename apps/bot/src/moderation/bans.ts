@@ -5,6 +5,8 @@ import {
   type ChatInputCommandInteraction,
   type ContextMenuCommandInteraction,
   DiscordjsErrorCodes,
+  hideLinkEmbed,
+  italic,
   type ModalActionRowComponentBuilder,
   ModalBuilder,
   type ModalSubmitInteraction,
@@ -13,8 +15,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type User,
-  hideLinkEmbed,
-  italic,
 } from "discord.js";
 import { base } from "../base";
 import { GUILD_IDS, STRATA_CZASU } from "../specializedConstants";
@@ -134,14 +134,9 @@ const handleContextMenu = async ({
 
   await submitAction.deferReply();
 
-  // TODO)) Abstract this into a helper/common util
-  const reason = submitAction.components
-    .at(0)
-    ?.components.find((c) => c.customId === "reason")?.value;
-  const rawDeleteInterval =
-    submitAction.components
-      .at(1)
-      ?.components.find((c) => c.customId === "delete-interval")?.value || null;
+  const reason = submitAction.fields.getTextInputValue("reason");
+  const rawDeleteInterval = submitAction.fields.getTextInputValue("delete-interval");
+
   if (!reason) {
     return await errorFollowUp(
       submitAction,

@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { type GuildBasedChannel, type Message, channelMention } from "discord.js";
+import { channelMention, type GuildBasedChannel, type Message } from "discord.js";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
 

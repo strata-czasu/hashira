@@ -1,11 +1,11 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { TextChannelPaginator } from "@hashira/core/paginate";
 import {
+  bold,
   type Message,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
-  bold,
   time,
   userMention,
 } from "discord.js";

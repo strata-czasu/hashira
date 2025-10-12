@@ -19,7 +19,7 @@ import {
 } from "discord.js";
 import { capitalize } from "es-toolkit";
 import { handleCustomEvent } from "./customEvents";
-import { type EventMethodName, allEventsToIntent, isCustomEvent } from "./intents";
+import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
 import { Group, TopLevelSlashCommand } from "./slashCommands";
 import type {
   BaseDecorator,

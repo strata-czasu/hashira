@@ -2,13 +2,13 @@ import type { ExtractContext } from "@hashira/core";
 import type { ExtendedPrismaClient, Mute, PrismaTransaction } from "@hashira/db";
 import { formatDate, intervalToDuration } from "date-fns";
 import {
+  bold,
   GuildMember,
+  hideLinkEmbed,
+  inlineCode,
   type PartialUser,
   RESTJSONErrorCodes,
   type User,
-  bold,
-  hideLinkEmbed,
-  inlineCode,
   userMention,
 } from "discord.js";
 import type { base } from "../base";

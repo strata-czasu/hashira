@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { intervalToDuration } from "date-fns";
-import { type Role, TimestampStyles, type User, bold, italic, time } from "discord.js";
+import { bold, italic, type Role, TimestampStyles, time, type User } from "discord.js";
 import { formatDuration } from "../../util/duration";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";

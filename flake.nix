@@ -28,7 +28,10 @@
           system:
           f {
             inherit system;
-            pkgs = import inputs.nixpkgs { inherit system; };
+            pkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = import ./overlays.nix;
+            };
           }
         );
     in
@@ -43,8 +46,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              bun."1.2.22"
-              prisma
+              bun."1.3.0"
               prisma-engines
               postgresql_17
               openssl

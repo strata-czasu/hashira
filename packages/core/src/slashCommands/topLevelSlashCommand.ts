@@ -6,12 +6,6 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import type {
-  CommandSettings,
-  UnknownCommandHandler,
-  commandSettingsInitBase,
-  optionsInitBase,
-} from ".";
-import type {
   BaseDecorator,
   HashiraContext,
   HashiraDecorators,
@@ -20,6 +14,12 @@ import type {
   OptionDataType,
   UnknownAutocompleteHandler,
 } from "../types";
+import type {
+  CommandSettings,
+  commandSettingsInitBase,
+  optionsInitBase,
+  UnknownCommandHandler,
+} from ".";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
 import { IntegerOptionBuilder } from "./integerOptionBuilder";
