@@ -50,7 +50,7 @@ const FISH_TABLE = [
   { id: 8, name: "rekina", minAmount: 150, maxAmount: 180, weight: 3 },
   {
     id: 11,
-    name: "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>",
+    name: "halibuta",
     minAmount: 200,
     maxAmount: 254,
     weight: 1,
