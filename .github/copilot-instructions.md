@@ -6,12 +6,13 @@ This is a **TypeScript monorepo** using **Bun** as the runtime and package manag
 
 ### Core Components
 
+- **`apps/bot`**: Main Discord bot application consuming all packages
 - **`packages/core`**: Custom Discord bot framework with type-safe command builders, event handlers, and dependency injection
 - **`packages/db`**: Prisma-based database layer with Redis integration and custom pagination utilities  
 - **`packages/env`**: Centralized environment variable validation and typing
 - **`packages/paginate`**: Reusable pagination abstractions for database queries and static data
 - **`packages/utils`**: Shared TypeScript utilities and type helpers
-- **`apps/bot`**: Main Discord bot application consuming all packages
+- **`packages/yotei`**: Task queue system built on Postgres for scheduling background jobs
 
 ### Key Patterns
 

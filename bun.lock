@@ -29,6 +29,7 @@
         "@hashira/db": "workspace:*",
         "@hashira/env": "workspace:*",
         "@hashira/paginate": "workspace:*",
+        "@hashira/yotei": "workspace:*",
         "@prisma/instrumentation": "^6.16.2",
         "@sentry/bun": "^9.46.0",
         "cheerio": "^1.1.2",
@@ -67,6 +68,12 @@
     },
     "packages/utils": {
       "name": "@hashira/utils",
+    },
+    "packages/yotei": {
+      "name": "@hashira/yotei",
+      "dependencies": {
+        "@hashira/db": "workspace:*",
+      },
     },
     "tooling/tsconfig": {
       "name": "@hashira/tsconfig",
@@ -137,6 +144,8 @@
     "@hashira/tsconfig": ["@hashira/tsconfig@workspace:tooling/tsconfig"],
 
     "@hashira/utils": ["@hashira/utils@workspace:packages/utils"],
+
+    "@hashira/yotei": ["@hashira/yotei@workspace:packages/yotei"],
 
     "@img/colour": ["@img/colour@1.0.0", "", {}, "sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw=="],
 
