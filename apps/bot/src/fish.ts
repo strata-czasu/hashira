@@ -41,21 +41,22 @@ type FishRoll = { id: number; name: string; amount: number };
 
 const FISH_TABLE = [
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
-  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 28 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 40 },
   { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 19 },
   { id: 4, name: "dorsza", minAmount: 60, maxAmount: 90, weight: 15 },
   { id: 5, name: "pstrąga", minAmount: 80, maxAmount: 110, weight: 10 },
   { id: 6, name: "szczupaka :crown:", minAmount: 90, maxAmount: 110, weight: 10 },
   { id: 7, name: "suma", minAmount: 110, maxAmount: 130, weight: 10 },
   { id: 8, name: "rekina", minAmount: 150, maxAmount: 180, weight: 3 },
+  { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
+  { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   {
     id: 11,
-    name: "halibuta",
+    name: "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>",
     minAmount: 200,
     maxAmount: 254,
     weight: 1,
   },
-  { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
   {
     id: 12,
     name: "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>",
@@ -63,7 +64,7 @@ const FISH_TABLE = [
     maxAmount: -10,
     weight: 1,
   },
-  { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
+  { id: 13, name: "halibuta", minAmount: 270, maxAmount: 330, weight: 4 },
 ] as const;
 
 const getFishById = (id: number): FishRoll | null => {
