@@ -33,7 +33,9 @@ const createDefaultItems = async (guildId: string) => {
     where: { type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
   });
   const existingItemTypes = existingItems.map((item) => item.type);
-  console.log(`Default item types already exist: ${existingItemTypes.join(", ")}`);
+  console.log(
+    `Default item types already exist in guild ${guildId}: ${existingItemTypes.join(", ")}`,
+  );
   const itemTypesToCreate = DEFAULT_ITEMS.filter(
     ({ type }) => !existingItemTypes.includes(type),
   );
@@ -51,7 +53,8 @@ const createDefaultItems = async (guildId: string) => {
 
 const setDefaultLogChannels = async (guildId: string) => {
   const defaultLogChannels = getGuildSetting(DEFAULT_LOG_CHANNELS, guildId);
-  if (!defaultLogChannels) return;
+  if (!defaultLogChannels)
+    throw new Error(`No default log channels defined for guild ${guildId}`);
 
   await createGuild(guildId);
   const settings = await prisma.guildSettings.upsert({
