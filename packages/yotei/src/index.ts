@@ -1,25 +1,16 @@
 import type { Prettify } from "@hashira/utils/types";
 import { addSeconds } from "date-fns";
+import * as v from "valibot";
 import type {
   MessageQueuePersistence,
   MessageQueueTask,
   TaskFindOptions,
 } from "./persistence";
 
-interface TaskData {
-  type: string;
-  data: unknown;
-}
-
-function isTaskData(data: unknown): data is TaskData {
-  if (!data) return false;
-  if (typeof data !== "object") return false;
-  if (!("type" in data)) return false;
-  if (typeof data.type !== "string") return false;
-  if (!("data" in data)) return false;
-  if (typeof data.data !== "object") return false;
-  return true;
-}
+const TaskData = v.object({
+  type: v.string(),
+  data: v.nonNullish(v.unknown()),
+});
 
 type Handler<T, U extends Record<string, unknown>> = (
   props: U,
@@ -133,12 +124,14 @@ export class MessageQueue<
   }
 
   private async handleTask(props: Record<string, unknown>, task: MessageQueueTask) {
-    if (!isTaskData(task.data)) return false;
-    const handler = this.#handlers.get(task.data.type);
+    const result = v.safeParse(TaskData, task.data);
+    if (!result.success) return false;
+
+    const handler = this.#handlers.get(result.output.type);
     if (!handler) return false;
 
     try {
-      await handler(props, task.data.data);
+      await handler(props, result.output.data);
     } catch (e) {
       // TODO: proper logging
       console.error(e);
@@ -152,12 +145,10 @@ export class MessageQueue<
     try {
       await this.#persistence.withPendingTask(async (task, controls) => {
         const handled = await this.handleTask(props, task);
-        if (!handled) {
-          await controls.fail();
-          return;
-        }
 
-        await controls.complete();
+        if (!handled) return controls.fail();
+
+        return controls.complete();
       });
     } catch (e) {
       console.error(e);
