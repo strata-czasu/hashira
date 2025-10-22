@@ -39,7 +39,8 @@ const checkIfCanFish = async (
 
 type FishRoll = { id: number; name: string; amount: number };
 
-const lizardFish = "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
+const lizardFish =
+  "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
 const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>";
 
 // Sorted by the average value
