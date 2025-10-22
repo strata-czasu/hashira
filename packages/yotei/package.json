@@ -8,7 +8,8 @@
   },
   "type": "module",
   "dependencies": {
-    "@hashira/db": "workspace:*"
+    "@hashira/db": "workspace:*",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {}
 }
