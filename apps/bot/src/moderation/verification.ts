@@ -151,10 +151,10 @@ const acceptVerification = async ({
         data: { status: "accepted", acceptedAt },
       });
 
-      await messageQueue.cancelTx(
-        tx,
+      await messageQueue.cancel(
         "verificationEnd",
         active16PlusVerification.id.toString(),
+        { tx },
       );
       await cancelVerificationReminders(tx, messageQueue, active16PlusVerification.id);
     } else {
@@ -511,10 +511,10 @@ export const verification = new Hashira({ name: "verification" })
                   data: { status: "rejected", rejectedAt: itx.createdAt },
                 });
 
-                await messageQueue.cancelTx(
-                  tx,
+                await messageQueue.cancel(
                   "verificationEnd",
                   verificationInProgress.id.toString(),
+                  { tx },
                 );
                 await cancelVerificationReminders(
                   tx,
@@ -601,10 +601,10 @@ export const verification = new Hashira({ name: "verification" })
                 data: { status: "cancelled", cancelledAt: itx.createdAt },
               });
 
-              await messageQueue.cancelTx(
-                tx,
+              await messageQueue.cancel(
                 "verificationEnd",
                 verificationInProgress.id.toString(),
+                { tx },
               );
 
               const guildRoles = await getGuildRolesIds(prisma, itx.guildId);

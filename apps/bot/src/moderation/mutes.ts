@@ -492,7 +492,9 @@ export const mutes = new Hashira({ name: "mutes" })
                   where: { id },
                   data: { deletedAt: itx.createdAt, deleteReason: reason },
                 });
-                await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0);
+                await messageQueue.updateDelay("muteEnd", mute.id.toString(), 0, {
+                  tx,
+                });
                 log.push("muteRemove", itx.guild, {
                   mute,
                   moderator: itx.user,
