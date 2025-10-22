@@ -293,57 +293,63 @@ export const warns = new Hashira({ name: "warns" })
         command
           .setDescription("Edytuj ostrzeżenie")
           .addInteger("id", (id) => id.setDescription("ID ostrzeżenia").setMinValue(0))
-          .addString("reason", (reason) =>
+          .addString("nowy-powód", (reason) =>
             reason.setDescription("Nowy powód ostrzeżenia"),
           )
-          .handle(async ({ prisma, moderationLog: log }, { id, reason }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, moderationLog: log },
+              { id, "nowy-powód": reason },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const warn = await prisma.$transaction(async (tx) => {
-              const warn = await getWarn(tx, id, itx.guildId);
-              if (!warn) {
-                await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
-                return null;
-              }
-              const originalReason = warn.reason;
-              await tx.warn.update({
-                where: { id },
-                data: { reason },
-              });
-              log.push("warnEdit", itx.guild, {
-                warn,
-                moderator: itx.user,
-                oldReason: originalReason,
-                newReason: reason,
-              });
+              const warn = await prisma.$transaction(async (tx) => {
+                const warn = await getWarn(tx, id, itx.guildId);
+                if (!warn) {
+                  await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
+                  return null;
+                }
+                const originalReason = warn.reason;
+                await tx.warn.update({
+                  where: { id },
+                  data: { reason },
+                });
+                log.push("warnEdit", itx.guild, {
+                  warn,
+                  moderator: itx.user,
+                  oldReason: originalReason,
+                  newReason: reason,
+                });
 
-              await discordTry(
-                async () => {
-                  const member = await itx.guild.members.fetch(warn.userId);
-                  await sendDirectMessage(
-                    member.user,
-                    `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
-                      itx.user.id,
-                    )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
-                      originalReason,
-                    )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
-                  );
-                },
-                [RESTJSONErrorCodes.UnknownMember],
-                async () => {},
+                await discordTry(
+                  async () => {
+                    const member = await itx.guild.members.fetch(warn.userId);
+                    await sendDirectMessage(
+                      member.user,
+                      `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
+                        itx.user.id,
+                      )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
+                        originalReason,
+                      )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
+                    );
+                  },
+                  [RESTJSONErrorCodes.UnknownMember],
+                  async () => {},
+                );
+
+                return warn;
+              });
+              if (!warn) return;
+
+              await itx.editReply(
+                `Zaktualizowano ostrzeżenie ${inlineCode(
+                  id.toString(),
+                )}. Nowy powód: ${italic(reason)}`,
               );
-
-              return warn;
-            });
-            if (!warn) return;
-
-            await itx.editReply(
-              `Zaktualizowano ostrzeżenie ${inlineCode(
-                id.toString(),
-              )}. Nowy powód: ${italic(reason)}`,
-            );
-          }),
+            },
+          ),
       ),
   )
   .group("warns", (group) =>

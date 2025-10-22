@@ -521,7 +521,7 @@ export const mutes = new Hashira({ name: "mutes" })
         command
           .setDescription("Edytuj wyciszenie")
           .addInteger("id", (id) => id.setDescription("ID wyciszenia").setMinValue(0))
-          .addString("reason", (reason) =>
+          .addString("nowy-powód", (reason) =>
             reason.setDescription("Nowy powód wyciszenia").setRequired(false),
           )
           .addString("duration", (duration) =>
@@ -530,7 +530,7 @@ export const mutes = new Hashira({ name: "mutes" })
           .handle(
             async (
               { prisma, messageQueue, moderationLog: log },
-              { id, reason, duration: rawDuration },
+              { id, "nowy-powód": reason, duration: rawDuration },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
