@@ -101,16 +101,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
+
+              await itx.deferReply({ flags: MessageFlags.Ephemeral });
+
               await ensureUserExists(prisma, itx.user);
 
-              await itx.deferReply({
-                flags: MessageFlags.Ephemeral,
-              });
-
-              const ratio: GiveawayBannerRatio =
-                format !== null
-                  ? (format as GiveawayBannerRatio)
-                  : GiveawayBannerRatio.Auto;
+              const ratio = (format as GiveawayBannerRatio) ?? GiveawayBannerRatio.Auto;
 
               const files: AttachmentBuilder[] = [];
               let imageURL: string;

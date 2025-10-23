@@ -286,7 +286,7 @@ export async function endGiveaway(
     prisma,
   );
 
-  const results = rewards.map(({ reward, amount, id: rewardId }) => {
+  const results = rewards.map(({ reward, id: rewardId }) => {
     const rewardWinners = winningUsers.filter((w) => w.rewardId === rewardId);
     const mention =
       rewardWinners.length === 0
