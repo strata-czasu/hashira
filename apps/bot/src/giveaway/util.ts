@@ -216,6 +216,48 @@ export async function updateGiveaway(
   }
 }
 
+/**
+ * Selects winners for all rewards in a giveaway and saves them to the database.
+ * @returns Array of winning user data with their assigned rewards
+ */
+export async function selectAndSaveWinners(
+  giveawayId: number,
+  rewards: GiveawayReward[],
+  participants: GiveawayParticipant[],
+  prisma: ExtendedPrismaClient,
+): Promise<Omit<GiveawayWinner, "id">[]> {
+  // Shuffle participants
+  const shuffledIds = shuffle(participants.map((p) => p.userId));
+
+  // Assign rewards
+  let idx = 0;
+  const winningUsers: Omit<GiveawayWinner, "id">[] = [];
+
+  for (const { amount, id: rewardId } of rewards) {
+    // biome-ignore lint/suspicious/noAssignInExpressions: this is intended as a compact way to slice
+    const slice = shuffledIds.slice(idx, (idx += amount));
+    if (slice.length > 0) {
+      winningUsers.push(
+        ...slice.map((userId) => ({
+          giveawayId: giveawayId,
+          userId: userId,
+          rewardId: rewardId,
+        })),
+      );
+    }
+  }
+
+  // Saving winners in db
+  if (winningUsers.length > 0) {
+    await prisma.giveawayWinner.createMany({
+      data: winningUsers,
+      skipDuplicates: true,
+    });
+  }
+
+  return winningUsers;
+}
+
 export async function endGiveaway(
   message: Message<boolean>,
   prisma: ExtendedPrismaClient,
@@ -237,36 +279,21 @@ export async function endGiveaway(
     }),
   ]);
 
-  // Shuffle participants
-  const shuffledIds = shuffle(participants.map((p) => p.userId));
+  const winningUsers = await selectAndSaveWinners(
+    giveaway.id,
+    rewards,
+    participants,
+    prisma,
+  );
 
-  // Assign rewards
-  let idx = 0;
-  const winningUsers: Omit<GiveawayWinner, "id">[] = [];
   const results = rewards.map(({ reward, amount, id: rewardId }) => {
-    // biome-ignore lint/suspicious/noAssignInExpressions: this is intended as a compact way to slice
-    const slice = shuffledIds.slice(idx, (idx += amount));
-    if (slice.length > 0) {
-      winningUsers.push(
-        ...slice.map((userId) => ({
-          giveawayId: giveaway.id,
-          userId: userId,
-          rewardId: rewardId,
-        })),
-      );
-    }
+    const rewardWinners = winningUsers.filter((w) => w.rewardId === rewardId);
     const mention =
-      slice.length === 0 ? "nikt" : slice.map((id) => `<@${id}>`).join(" ");
+      rewardWinners.length === 0
+        ? "nikt"
+        : rewardWinners.map((w) => `<@${w.userId}>`).join(" ");
     return `> ${reward} ${mention}`;
   });
-
-  // Saving winners in db
-  if (winningUsers.length > 0) {
-    await prisma.giveawayWinner.createMany({
-      data: winningUsers,
-      skipDuplicates: true,
-    });
-  }
 
   const resultContainer = new ContainerBuilder()
     .setAccentColor(0x00ff99)
