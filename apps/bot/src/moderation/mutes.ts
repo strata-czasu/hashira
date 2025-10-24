@@ -685,10 +685,16 @@ export const mutes = new Hashira({ name: "mutes" })
       .setDMPermission(false)
       .addCommand("list", (command) =>
         command
-          .setDescription("Wyświetl wszystkie aktywne wyciszenia")
+          .setDescription("[MOD] Wyświetl wszystkie aktywne wyciszenia")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) return;
+            if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
+              await errorFollowUp(
+                itx,
+                "Nie masz uprawnień do wyświetlania aktywnych wyciszeń.",
+              );
+              return;
+            }
 
             const where = {
               guildId: itx.guildId,
