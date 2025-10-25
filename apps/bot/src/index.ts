@@ -6,6 +6,7 @@ import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
+import { birthday } from "./birthday";
 import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
@@ -52,6 +53,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(discordEventLogging)
   .use(autoRole)
   .use(avatar)
+  .use(birthday)
   .use(strataCzasu)
   .use(dmForwarding)
   .use(economy)
