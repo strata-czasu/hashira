@@ -28,6 +28,7 @@ import {
   giveawayFooter,
   leaveButtonRow,
   parseRewards,
+  selectAndSaveWinners,
   updateGiveaway,
 } from "./util";
 
@@ -100,16 +101,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
+
+              await itx.deferReply({ flags: MessageFlags.Ephemeral });
+
               await ensureUserExists(prisma, itx.user);
 
-              await itx.deferReply({
-                flags: MessageFlags.Ephemeral,
-              });
-
-              const ratio: GiveawayBannerRatio =
-                format !== null
-                  ? (format as GiveawayBannerRatio)
-                  : GiveawayBannerRatio.Auto;
+              const ratio = (format as GiveawayBannerRatio) ?? GiveawayBannerRatio.Auto;
 
               const files: AttachmentBuilder[] = [];
               let imageURL: string;
@@ -421,6 +418,75 @@ export const giveaway = new Hashira({ name: "giveaway" })
             await itx.reply({
               content: `Nowy wygrany: <@${newWinner.userId}>${giveawayFooter(giveaway)}`,
               allowedMentions: { users: [newWinner.userId] },
+            });
+          }),
+      )
+      .addCommand("reroll-all", (command) =>
+        command
+          .setDescription("Losuje na nowo wszystkich zwycięzców giveawaya.")
+          .addInteger("id", (id) =>
+            id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteGiveawayId({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { id }, itx) => {
+            const giveaway = await prisma.giveaway.findFirst({
+              where: {
+                id: id,
+              },
+              include: {
+                rewards: true,
+              },
+            });
+
+            if (!giveaway)
+              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+
+            if (itx.user.id !== giveaway.authorId)
+              return await errorFollowUp(
+                itx,
+                "Nie masz uprawnień do rerollowania tego giveawaya!",
+              );
+
+            const participants = await prisma.giveawayParticipant.findMany({
+              where: { giveawayId: giveaway.id, isRemoved: false },
+            });
+
+            if (participants.length === 0) {
+              return await errorFollowUp(
+                itx,
+                `Brak uczestników w giveawayu!${giveawayFooter(giveaway)}`,
+              );
+            }
+
+            await prisma.giveawayWinner.deleteMany({
+              where: { giveawayId: giveaway.id },
+            });
+
+            const newWinners = await selectAndSaveWinners(
+              giveaway.id,
+              giveaway.rewards,
+              participants,
+              prisma,
+            );
+
+            const winnersByUser = new Map<string, number>();
+            for (const winner of newWinners) {
+              winnersByUser.set(
+                winner.userId,
+                (winnersByUser.get(winner.userId) || 0) + 1,
+              );
+            }
+
+            const winnersList = Array.from(winnersByUser.entries())
+              .map(([userId, count]) => `<@${userId}> (${count}x)`)
+              .join(", ");
+
+            await itx.reply({
+              content: `Nowi zwycięzcy: ${winnersList}${giveawayFooter(giveaway)}`,
+              allowedMentions: { users: Array.from(winnersByUser.keys()) },
             });
           }),
       )
