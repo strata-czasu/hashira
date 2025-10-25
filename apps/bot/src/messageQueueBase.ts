@@ -1,6 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
-import { MessageQueue } from "@hashira/db/tasks";
+import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
 import { type Duration, formatDuration } from "date-fns";
 import {
   type Client,
@@ -81,7 +81,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
     const prisma = ctx.prisma;
     return {
       ...ctx,
-      messageQueue: new MessageQueue(ctx.prisma)
+      messageQueue: new MessageQueue(new PrismaMessageQueuePersistence(ctx.prisma))
         .addArg<"client", Client>()
         .addHandler(
           "ultimatumEnd",

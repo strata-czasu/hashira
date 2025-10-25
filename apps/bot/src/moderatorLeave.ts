@@ -181,25 +181,21 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 where: { id: leaveId },
                 data: { deletedAt: itx.createdAt },
               });
-              await messageQueue.cancelTx(
+              await messageQueue.cancel("moderatorLeaveStart", leaveId.toString(), {
                 tx,
-                "moderatorLeaveStart",
-                leaveId.toString(),
-              );
+              });
               if (leave.startsAt < itx.createdAt && itx.createdAt < leave.endsAt) {
                 // End the leave now if it was already in progress
-                await messageQueue.updateDelayTx(
-                  tx,
+                await messageQueue.updateDelay(
                   "moderatorLeaveEnd",
                   leaveId.toString(),
                   itx.createdAt,
+                  { tx },
                 );
               } else {
-                await messageQueue.cancelTx(
+                await messageQueue.cancel("moderatorLeaveEnd", leaveId.toString(), {
                   tx,
-                  "moderatorLeaveEnd",
-                  leaveId.toString(),
-                );
+                });
               }
             });
 

@@ -4,7 +4,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./tasks": "./src/tasks.ts",
     "./transaction": "./src/transaction.ts"
   },
   "type": "module",

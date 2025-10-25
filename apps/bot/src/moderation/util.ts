@@ -141,8 +141,12 @@ export const cancelVerificationReminders = async (
   verificationId: number,
 ) =>
   await Promise.all([
-    messageQueue.cancelTx(tx, "verificationReminder", `${verificationId}-reminder-24h`),
-    messageQueue.cancelTx(tx, "verificationReminder", `${verificationId}-reminder-48h`),
+    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-24h`, {
+      tx,
+    }),
+    messageQueue.cancel("verificationReminder", `${verificationId}-reminder-48h`, {
+      tx,
+    }),
   ]);
 
 export const sendVerificationFailedMessage = async (user: User) =>

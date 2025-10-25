@@ -6,6 +6,7 @@
     { "path": "packages/db/tsconfig.json" },
     { "path": "packages/env/tsconfig.json" },
     { "path": "packages/paginate/tsconfig.json" },
-    { "path": "packages/utils/tsconfig.json" }
+    { "path": "packages/utils/tsconfig.json" },
+    { "path": "packages/yotei/tsconfig.json" }
   ]
 }
