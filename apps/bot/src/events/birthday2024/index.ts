@@ -17,8 +17,8 @@ import {
   userMention,
 } from "discord.js";
 import { intersection, randomInt } from "es-toolkit";
-import { base } from "../base";
-import { sendDirectMessage } from "../util/sendDirectMessage";
+import { base } from "../../base";
+import { sendDirectMessage } from "../../util/sendDirectMessage";
 
 const INSTRUCTION_CHANNEL_ID = "1268218097605541898";
 

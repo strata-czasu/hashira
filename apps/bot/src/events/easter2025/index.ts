@@ -20,11 +20,11 @@ import {
   userMention,
 } from "discord.js";
 import { isNil, sample, take } from "es-toolkit";
-import { base } from "../base";
-import { discordTry } from "../util/discordTry";
-import { ensureUserExists } from "../util/ensureUsersExist";
-import { errorFollowUp } from "../util/errorFollowUp";
-import safeSendCode from "../util/safeSendCode";
+import { base } from "../../base";
+import { discordTry } from "../../util/discordTry";
+import { ensureUserExists } from "../../util/ensureUsersExist";
+import { errorFollowUp } from "../../util/errorFollowUp";
+import safeSendCode from "../../util/safeSendCode";
 
 const getTeamActivity = async (
   prisma: PrismaTransaction,
