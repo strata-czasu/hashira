@@ -42,13 +42,15 @@ type FishRoll = { id: number; name: string; amount: number };
 const lizardFish =
   "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
 const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>";
+const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840518>";
 
 // Sorted by the average value
 const FISH_TABLE = [
   { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   { id: 12, name: lizardFish, minAmount: -30, maxAmount: -10, weight: 1 },
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
-  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 28 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 7 },
+  { id: 14, name: halloweenCarp, minAmount: 10, maxAmount: 90, weight: 21 },
   { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 19 },
   { id: 4, name: "dorsza", minAmount: 60, maxAmount: 90, weight: 15 },
   { id: 5, name: "pstrąga", minAmount: 80, maxAmount: 110, weight: 10 },
