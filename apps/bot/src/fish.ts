@@ -19,6 +19,7 @@ import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { waitForButtonClick } from "./util/singleUseButton";
+import { weightedRandom } from "./util/weightedRandom";
 
 const checkIfCanFish = async (
   prisma: ExtendedPrismaClient,
@@ -73,20 +74,8 @@ const getFishById = (id: number): FishRoll | null => {
   };
 };
 
-const getRandomFish = (): FishRoll => {
-  const totalWeight = FISH_TABLE.reduce((sum, fish) => sum + fish.weight, 0);
-  let roll = randomInt(1, totalWeight + 1);
-
-  for (const fish of FISH_TABLE) {
-    roll -= fish.weight;
-    if (roll <= 0) {
-      // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
-      return getFishById(fish.id)!;
-    }
-  }
-
-  throw new Error("Failed to select random fish");
-};
+type Fish = (typeof FISH_TABLE)[number];
+const getRandomFish = () => weightedRandom<Fish>(FISH_TABLE, (fish) => fish.weight);
 
 export const fish = new Hashira({ name: "fish" })
   .use(base)
@@ -112,7 +101,9 @@ export const fish = new Hashira({ name: "fish" })
           return;
         }
 
-        const { id, name, amount } = getRandomFish();
+        const { id } = getRandomFish();
+        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
+        const { name, amount } = getFishById(id)!;
 
         await addBalance({
           prisma,
