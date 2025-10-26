@@ -1,7 +1,15 @@
 export function weightedRandom<T>(
   items: readonly [T, ...T[]],
   by: (item: T) => number,
-): T {
+): T;
+export function weightedRandom<T>(
+  items: readonly T[],
+  by: (item: T) => number,
+): T | null;
+export function weightedRandom<T>(
+  items: readonly T[],
+  by: (item: T) => number,
+): T | null {
   const totalWeight = items.reduce((sum, item) => sum + by(item), 0);
   let random = Math.random() * totalWeight;
 
@@ -13,6 +21,5 @@ export function weightedRandom<T>(
     random -= weight;
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: type guarantees at least one item
-  return items.at(-1)!;
+  return items.at(-1) ?? null;
 }

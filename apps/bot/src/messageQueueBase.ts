@@ -3,6 +3,10 @@ import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
 import { type Duration, formatDuration } from "date-fns";
 import {
+  type ActionRow,
+  ActionRowBuilder,
+  type ButtonBuilder,
+  type ButtonComponent,
   type Client,
   inlineCode,
   RESTJSONErrorCodes,
@@ -72,6 +76,10 @@ type ModeratorLeaveEndData = {
   leaveId: number;
   userId: string;
   guildId: string;
+};
+
+type Halloween2025EndSpawnData = {
+  spawnId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -453,6 +461,89 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               member.user,
               "Hej, właśnie skończył się Twój urlop!",
             );
+          },
+        )
+        .addHandler(
+          "halloween2025endSpawn",
+          async ({ client }, { spawnId }: Halloween2025EndSpawnData) => {
+            const spawn = await prisma.halloween2025MonsterSpawn.findUnique({
+              where: { id: spawnId },
+              select: {
+                Halloween2025MonsterCatchAttempt: {
+                  select: {
+                    user: {
+                      select: {
+                        Halloween2025Spawn: {
+                          select: { guildId: true, monsterId: true },
+                        },
+                      },
+                    },
+                  },
+                },
+                guildId: true,
+                channelId: true,
+                messageId: true,
+              },
+            });
+
+            if (!spawn) {
+              console.warn(`Spawn not found for id ${spawnId}`);
+              return;
+            }
+
+            const guild = await discordTry(
+              () => client.guilds.fetch(spawn.guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              () => null,
+            );
+
+            if (!guild) {
+              console.warn(`Guild not found for id ${spawn.guildId}`);
+              return;
+            }
+
+            const channel = await discordTry(
+              () => guild.channels.fetch(spawn.channelId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              () => null,
+            );
+
+            if (!channel?.isTextBased()) {
+              console.warn(
+                `Channel not found or not text-based for id ${spawn.channelId}`,
+              );
+              return;
+            }
+
+            const message = await discordTry(
+              () => channel.messages.fetch(spawn.messageId),
+              [RESTJSONErrorCodes.UnknownMessage],
+              () => null,
+            );
+
+            if (!message) {
+              console.warn(`Message not found for id ${spawn.messageId}`);
+              return;
+            }
+
+            const actionRow = message.components[1] as ActionRow<ButtonComponent>;
+
+            if (!actionRow) {
+              console.warn(`Action row not found in message ${message.id}`);
+              return;
+            }
+
+            const newContainer = new ActionRowBuilder<ButtonBuilder>(
+              actionRow.toJSON(),
+            );
+            newContainer.components.at(0)?.setDisabled(true);
+
+            // biome-ignore lint/style/noNonNullAssertion: this is safe because we check for actionRow above
+            await message.edit({ components: [message.components[0]!, newContainer] });
+
+            await message.startThread({ name: "Combat Log" });
+
+            console.log(spawn);
           },
         ),
     };
