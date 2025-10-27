@@ -32,38 +32,22 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-/**
- * Creates a fresh ActionRow with giveaway buttons (Join and List participants).
- *
- * This is a factory function that returns new instances each time to prevent
- * mutation of shared state. Discord.js builders are mutable, so using global
- * constants can lead to state being modified across different usages.
- *
- * @returns A new ActionRowBuilder with join and list buttons
- */
-function createGiveawayButtonRow() {
+function createGiveawayButtonRow(disabled = false) {
   const joinButton = new ButtonBuilder()
     .setCustomId("giveaway-option:join")
     .setLabel("Dołącz")
-    .setStyle(ButtonStyle.Primary);
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(disabled);
 
   const listButton = new ButtonBuilder()
     .setCustomId("giveaway-option:list")
     .setLabel("Lista uczestników")
-    .setStyle(ButtonStyle.Secondary);
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(disabled);
 
   return new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton, listButton);
 }
 
-/**
- * Creates a fresh ActionRow with leave button.
- *
- * This is a factory function that returns new instances each time to prevent
- * mutation of shared state. Discord.js builders are mutable, so using global
- * constants can lead to state being modified across different usages.
- *
- * @returns A new ActionRowBuilder with leave button
- */
 function createLeaveButtonRow() {
   const leaveButton = new ButtonBuilder()
     .setCustomId("leave_giveaway")
@@ -337,17 +321,9 @@ export async function endGiveaway(
 
   if (actionRowIndex === -1) return;
 
-  const giveawayButtonRow = createGiveawayButtonRow();
   const newRow = new ActionRowBuilder<ButtonBuilder>({
     ...container.components[actionRowIndex]?.data,
-    components: [
-      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
-        true,
-      ),
-      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
-        true,
-      ),
-    ],
+    components: createGiveawayButtonRow(true).components,
   });
 
   container.components[actionRowIndex] = newRow;
