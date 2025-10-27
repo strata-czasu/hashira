@@ -233,7 +233,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               itx.deleteReply();
 
               messageContainer.addActionRowComponents(
-                createGiveawayButtonRow().setId(2),
+                createGiveawayButtonRow(false).setId(2),
               );
 
               const response = await itx.followUp({

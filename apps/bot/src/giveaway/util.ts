@@ -32,7 +32,7 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-function createGiveawayButtonRow(disabled = false) {
+function createGiveawayButtonRow(disabled: boolean) {
   const joinButton = new ButtonBuilder()
     .setCustomId("giveaway-option:join")
     .setLabel("Dołącz")
