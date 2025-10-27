@@ -164,8 +164,8 @@ model User {
   giveawayWinnings                  GiveawayWinner[]
   createdGiveaways                  Giveaway[]
   moderatorLeaves                   ModeratorLeave[]
-  Halloween2025Spawn                Halloween2025MonsterSpawn[]
-  Halloween2025MonsterCatchAttempt  Halloween2025MonsterCatchAttempt[]
+  halloween2025CaughtMonsters       Halloween2025MonsterSpawn[]
+  halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]
 
   @@map("users")
 }
