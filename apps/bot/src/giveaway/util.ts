@@ -321,12 +321,12 @@ export async function endGiveaway(
   const newRow = new ActionRowBuilder<ButtonBuilder>({
     ...container.components[actionRowIndex]?.data,
     components: [
-      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
-        true,
-      ),
-      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
-        true,
-      ),
+      ButtonBuilder.from(
+        (giveawayButtonRow.components[0] as ButtonBuilder).toJSON(),
+      ).setDisabled(true),
+      ButtonBuilder.from(
+        (giveawayButtonRow.components[1] as ButtonBuilder).toJSON(),
+      ).setDisabled(true),
     ],
   });
 
