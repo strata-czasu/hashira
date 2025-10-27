@@ -32,29 +32,48 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-const joinButton = new ButtonBuilder()
-  .setCustomId("giveaway-option:join")
-  .setLabel("Dołącz")
-  .setStyle(ButtonStyle.Primary);
+/**
+ * Creates a fresh ActionRow with giveaway buttons (Join and List participants).
+ *
+ * This is a factory function that returns new instances each time to prevent
+ * mutation of shared state. Discord.js builders are mutable, so using global
+ * constants can lead to state being modified across different usages.
+ *
+ * @returns A new ActionRowBuilder with join and list buttons
+ */
+function createGiveawayButtonRow() {
+  const joinButton = new ButtonBuilder()
+    .setCustomId("giveaway-option:join")
+    .setLabel("Dołącz")
+    .setStyle(ButtonStyle.Primary);
 
-const listButton = new ButtonBuilder()
-  .setCustomId("giveaway-option:list")
-  .setLabel("Lista uczestników")
-  .setStyle(ButtonStyle.Secondary);
+  const listButton = new ButtonBuilder()
+    .setCustomId("giveaway-option:list")
+    .setLabel("Lista uczestników")
+    .setStyle(ButtonStyle.Secondary);
 
-const giveawayButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-  joinButton,
-  listButton,
-);
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton, listButton);
+}
 
-const leaveButton = new ButtonBuilder()
-  .setCustomId("leave_giveaway")
-  .setLabel("Wyjdź")
-  .setStyle(ButtonStyle.Danger);
+/**
+ * Creates a fresh ActionRow with leave button.
+ *
+ * This is a factory function that returns new instances each time to prevent
+ * mutation of shared state. Discord.js builders are mutable, so using global
+ * constants can lead to state being modified across different usages.
+ *
+ * @returns A new ActionRowBuilder with leave button
+ */
+function createLeaveButtonRow() {
+  const leaveButton = new ButtonBuilder()
+    .setCustomId("leave_giveaway")
+    .setLabel("Wyjdź")
+    .setStyle(ButtonStyle.Danger);
 
-const leaveButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+}
 
-export { GiveawayBannerRatio, giveawayButtonRow, leaveButtonRow };
+export { GiveawayBannerRatio, createGiveawayButtonRow, createLeaveButtonRow };
 
 export function parseRewards(input: string): GiveawayReward[] {
   return input
@@ -318,15 +337,16 @@ export async function endGiveaway(
 
   if (actionRowIndex === -1) return;
 
+  const giveawayButtonRow = createGiveawayButtonRow();
   const newRow = new ActionRowBuilder<ButtonBuilder>({
     ...container.components[actionRowIndex]?.data,
     components: [
-      ButtonBuilder.from(
-        (giveawayButtonRow.components[0] as ButtonBuilder).toJSON(),
-      ).setDisabled(true),
-      ButtonBuilder.from(
-        (giveawayButtonRow.components[1] as ButtonBuilder).toJSON(),
-      ).setDisabled(true),
+      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
+        true,
+      ),
+      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
+        true,
+      ),
     ],
   });
 
