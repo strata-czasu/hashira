@@ -21,12 +21,12 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   autocompleteGiveawayId,
+  createGiveawayButtonRow,
+  createLeaveButtonRow,
   formatBanner,
   GiveawayBannerRatio,
   getStaticBanner,
-  giveawayButtonRow,
   giveawayFooter,
-  leaveButtonRow,
   parseRewards,
   selectAndSaveWinners,
   updateGiveaway,
@@ -232,7 +232,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               itx.deleteReply();
 
-              messageContainer.addActionRowComponents(giveawayButtonRow.setId(2));
+              messageContainer.addActionRowComponents(
+                createGiveawayButtonRow(false).setId(2),
+              );
 
               const response = await itx.followUp({
                 components: [messageContainer],
@@ -726,7 +728,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
       const joinResponse = await itx.followUp({
         content: returnMsg,
-        components: [leaveButtonRow],
+        components: [createLeaveButtonRow()],
       });
 
       if (!joinResponse) {
