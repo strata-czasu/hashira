@@ -87,3 +87,10 @@ export const TICKET_REMINDER_SETTINGS = {
     TICKET_PING: "1231334409228255384",
   },
 } as const;
+
+export const BIRTHDAY_MESSAGES = [
+  "🎉 Wszystkiego najlepszego z okazji urodzin, {{user}}! 🎂",
+  "🎊 Sto lat, {{user}}! Niech Ci się wiedzie! 🎈",
+  "🎁 Wesołych urodzin, {{user}}! Mamy nadzieję, że spędzisz ten dzień wspaniale! 🎉",
+  "🎂 Dzisiaj jest wyjątkowy dzień - urodziny {{user}}! Wszystkiego najlepszego! 🎊",
+] as const;

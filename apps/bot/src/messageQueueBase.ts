@@ -74,6 +74,11 @@ type ModeratorLeaveEndData = {
   guildId: string;
 };
 
+type BirthdayData = {
+  userId: string;
+  guildId: string;
+};
+
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(database)
   .use(loggingBase)
@@ -452,6 +457,55 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             await sendDirectMessage(
               member.user,
               "Hej, właśnie skończył się Twój urlop!",
+            );
+          },
+        )
+        .addHandler(
+          "birthday",
+          async ({ client }, { userId, guildId }: BirthdayData) => {
+            const settings = await prisma.guildSettings.findFirst({
+              where: { guildId },
+            });
+
+            if (!settings?.birthdayChannelId) return;
+
+            const birthdayChannelId = settings.birthdayChannelId;
+
+            const guild = await discordTry(
+              async () => client.guilds.fetch(guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              async () => null,
+            );
+
+            if (!guild) return;
+
+            const channel = await discordTry(
+              async () => guild.channels.fetch(birthdayChannelId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              async () => null,
+            );
+
+            if (!channel?.isTextBased()) return;
+
+            // Import BIRTHDAY_MESSAGES to avoid circular dependency
+            const { BIRTHDAY_MESSAGES } = await import("./specializedConstants");
+            const messages = Array.from(BIRTHDAY_MESSAGES);
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+            if (!randomMessage) return;
+
+            const message = randomMessage.replace("{{user}}", userMention(userId));
+
+            await discordTry(
+              async () => {
+                await channel.send(message);
+              },
+              [RESTJSONErrorCodes.MissingPermissions],
+              async () => {
+                console.warn(
+                  `Missing permissions to send birthday message in channel ${birthdayChannelId} in guild ${guildId}`,
+                );
+              },
             );
           },
         ),
