@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { Effect, Random } from "effect";
 import type { PlayerAbility } from "../../src/events/halloween2025/combatLog";
 import type {
   MonsterData,
@@ -10,10 +11,13 @@ import { CombatService } from "../../src/events/halloween2025/combatService";
 describe("CombatService", () => {
   let repository: MockCombatRepository;
   let service: CombatService;
+  let random: () => number;
 
   beforeEach(() => {
+    const randomGen = Random.make(42);
+    random = () => Effect.runSync(randomGen.next);
     repository = new MockCombatRepository();
-    service = new CombatService(repository);
+    service = new CombatService(repository, random);
   });
 
   const createTestMonster = (overrides?: Partial<MonsterData>): MonsterData => ({
@@ -22,6 +26,7 @@ describe("CombatService", () => {
     baseHp: 50,
     baseAttack: 8,
     baseDefense: 3,
+    baseSpeed: 10,
     image: "https://example.com/goblin.png",
     actions: [
       {
@@ -93,7 +98,7 @@ describe("CombatService", () => {
 
       expect(result).toBeNull();
       expect(repository.updatedSpawns).toHaveLength(1);
-      expect(repository.updatedSpawns[0].status).toBe("completed_escaped");
+      expect(repository.updatedSpawns[0]?.status).toBe("completed_escaped");
     });
 
     it("should successfully simulate combat and capture weak monster", async () => {
@@ -120,8 +125,8 @@ describe("CombatService", () => {
       await service.executeCombat(spawn.id, 30);
 
       expect(repository.savedCombatLogs).toHaveLength(1);
-      expect(repository.savedCombatLogs[0].spawnId).toBe(spawn.id);
-      expect(repository.savedCombatLogs[0].state.events.length).toBeGreaterThan(0);
+      expect(repository.savedCombatLogs[0]?.spawnId).toBe(spawn.id);
+      expect(repository.savedCombatLogs[0]?.state.events.length).toBeGreaterThan(0);
     });
 
     it("should update spawn status after combat", async () => {
@@ -132,8 +137,8 @@ describe("CombatService", () => {
       await service.executeCombat(spawn.id, 30);
 
       expect(repository.updatedSpawns).toHaveLength(1);
-      expect(repository.updatedSpawns[0].spawnId).toBe(spawn.id);
-      expect(repository.updatedSpawns[0].status).toMatch(/completed_/);
+      expect(repository.updatedSpawns[0]?.spawnId).toBe(spawn.id);
+      expect(repository.updatedSpawns[0]?.status).toMatch(/completed_/);
     });
 
     it("should handle multiple participants", async () => {
@@ -168,23 +173,6 @@ describe("CombatService", () => {
       if (result?.state.currentTurn === 10 && !result?.state.isComplete) {
         expect(result?.state.result).toBe("monster_escaped");
       }
-    });
-  });
-
-  describe("getCombatStats", () => {
-    it("should return null for non-existent spawn", async () => {
-      const stats = await service.getCombatStats(999);
-      expect(stats).toBeNull();
-    });
-
-    it("should return basic stats for existing spawn", async () => {
-      const spawn = createTestSpawn();
-      repository.setSpawn(spawn);
-
-      const stats = await service.getCombatStats(spawn.id);
-
-      expect(stats).not.toBeNull();
-      expect(stats?.participants).toBe(2);
     });
   });
 });

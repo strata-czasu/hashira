@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
+import { sleep } from "bun";
 import { type Duration, formatDuration } from "date-fns";
 import {
   type ActionRow,
@@ -15,6 +16,8 @@ import {
   userMention,
 } from "discord.js";
 import { database } from "./db";
+import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
+import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
 import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
@@ -469,7 +472,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const spawn = await prisma.halloween2025MonsterSpawn.findUnique({
               where: { id: spawnId },
               select: {
-                Halloween2025MonsterCatchAttempt: {
+                catchAttempts: {
                   select: {
                     user: {
                       select: {
@@ -541,9 +544,21 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             // biome-ignore lint/style/noNonNullAssertion: this is safe because we check for actionRow above
             await message.edit({ components: [message.components[0]!, newContainer] });
 
-            await message.startThread({ name: "Combat Log" });
+            const thread = await message.startThread({ name: "Combat Log" });
 
-            console.log(spawn);
+            const repository = new PrismaCombatRepository(prisma);
+            const combatService = new CombatService(repository, Math.random);
+
+            const fight = await combatService.executeCombat(spawnId, 100);
+            if (!fight) {
+              await thread.send("Nie było uczestników, więc potwór uciekł.");
+              return;
+            }
+
+            for (const logEntry of fight.state.events) {
+              await thread.send(logEntry.message);
+              await sleep(500);
+            }
           },
         ),
     };

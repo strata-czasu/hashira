@@ -134,7 +134,7 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
 
   const monster = yield* getMonster(prisma, guildId);
   const now = yield* DateTime.now;
-  const expiresAt = now.pipe(DateTime.addDuration("15 seconds"), DateTime.toDate);
+  const expiresAt = now.pipe(DateTime.addDuration("5 seconds"), DateTime.toDate);
 
   const initialMessage = yield* Effect.tryPromise(async () => {
     return await channel.send({
@@ -167,6 +167,7 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
           channelId: channel.id,
           messageId: initialMessage.id,
           expiresAt: expiresAt,
+          rarity: "common",
         },
       });
 
@@ -315,7 +316,7 @@ const program = Effect.repeat(
     );
   }),
   // schedule,
-  schedule.pipe(Schedule.intersect(Schedule.recurs(5))),
+  schedule.pipe(Schedule.intersect(Schedule.recurs(1))),
 ).pipe(Effect.delay(DateTime.distanceDuration(DateTime.unsafeNow(), START_DATE)));
 
 export const halloween2025 = new Hashira({ name: "halloween2025" })

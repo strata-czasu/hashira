@@ -9,6 +9,7 @@ model Halloween2025Monster {
   baseHp      Int     @default(100)
   baseAttack  Int     @default(10)
   baseDefense Int     @default(5)
+  baseSpeed   Int     @default(10)
 
   guild   Guild                        @relation(fields: [guildId], references: [id])
   spawns  Halloween2025MonsterSpawn[]
@@ -25,16 +26,16 @@ enum Halloween2025ActionType {
 }
 
 model Halloween2025MonsterAction {
-  id            Int                            @id @default(autoincrement())
+  id            Int                     @id @default(autoincrement())
   monsterId     Int
   name          String
   description   String
   actionType    Halloween2025ActionType
   power         Int
-  weight        Int                            @default(1)
-  cooldown      Int                            @default(0)
-  isAoe         Boolean                        @default(false)
-  canTargetSelf Boolean                        @default(false)
+  weight        Int                     @default(1)
+  cooldown      Int                     @default(0)
+  isAoe         Boolean                 @default(false)
+  canTargetSelf Boolean                 @default(false)
   /// JSON data for special effects: { "burn": 5, "stun": true, "lifesteal": 0.3 }
   effects       Json?
 
@@ -59,17 +60,16 @@ enum Halloween2025MonsterRarity {
 }
 
 model Halloween2025MonsterSpawn {
-  id        Int                        @id @default(autoincrement())
-  channelId String
-  messageId String
-  monsterId Int
-  spawnedAt DateTime                   @default(now())
-  expiresAt DateTime
-  guildId   String
-  userId    String?
-  rarity    Halloween2025MonsterRarity
-
-  combatState Halloween2025CombatState @default(pending)
+  id          Int                        @id @default(autoincrement())
+  channelId   String
+  messageId   String
+  monsterId   Int
+  spawnedAt   DateTime                   @default(now())
+  expiresAt   DateTime
+  guildId     String
+  userId      String?
+  rarity      Halloween2025MonsterRarity
+  combatState Halloween2025CombatState   @default(pending)
 
   guild         Guild                              @relation(fields: [guildId], references: [id])
   claimedBy     User?                              @relation(fields: [userId], references: [id])
@@ -94,7 +94,6 @@ enum Halloween2025CombatResult {
   all_players_defeated
 }
 
-/// Stores the complete state of combat for a spawn
 model Halloween2025CombatLog {
   id           Int                        @id @default(autoincrement())
   spawnId      Int                        @unique

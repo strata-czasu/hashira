@@ -1,4 +1,4 @@
-import type { PrismaTransaction } from "@hashira/db";
+import type { $Enums, PrismaTransaction } from "@hashira/db";
 import type {
   ActionEffect,
   CombatState,
@@ -13,6 +13,7 @@ export type MonsterData = {
   baseHp: number;
   baseAttack: number;
   baseDefense: number;
+  baseSpeed: number;
   image: string;
   actions: MonsterAction[];
 };
@@ -55,7 +56,7 @@ export interface ICombatRepository {
    */
   updateSpawnStatus(
     spawnId: number,
-    status: "completed_captured" | "completed_escaped",
+    status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
     winnerUserId: string | null,
   ): Promise<void>;
 
@@ -99,6 +100,7 @@ export class PrismaCombatRepository implements ICombatRepository {
         baseHp: spawn.monster.baseHp,
         baseAttack: spawn.monster.baseAttack,
         baseDefense: spawn.monster.baseDefense,
+        baseSpeed: spawn.monster.baseSpeed,
         image: spawn.monster.image,
         actions: spawn.monster.actions.map((a) => ({
           id: a.id,
@@ -177,7 +179,7 @@ export class PrismaCombatRepository implements ICombatRepository {
 
   async updateSpawnStatus(
     spawnId: number,
-    status: "completed_captured" | "completed_escaped",
+    status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
     winnerUserId: string | null,
   ): Promise<void> {
     await this.prisma.halloween2025MonsterSpawn.update({
@@ -203,6 +205,7 @@ export class PrismaCombatRepository implements ICombatRepository {
       baseHp: monster.baseHp,
       baseAttack: monster.baseAttack,
       baseDefense: monster.baseDefense,
+      baseSpeed: monster.baseSpeed,
       image: monster.image,
       actions: monster.actions.map((a) => ({
         id: a.id,
@@ -260,7 +263,7 @@ export class MockCombatRepository implements ICombatRepository {
 
   async updateSpawnStatus(
     spawnId: number,
-    status: "completed_captured" | "completed_escaped",
+    status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
     winnerUserId: string | null,
   ): Promise<void> {
     this.updatedSpawns.push({ spawnId, status, winnerUserId });

@@ -1,5 +1,4 @@
 import type { $Enums } from "@hashira/db";
-import { sampleSize } from "es-toolkit";
 import { weightedRandom } from "../../util/weightedRandom";
 import type { MonsterData, PlayerData } from "./combatRepository";
 
@@ -124,7 +123,6 @@ export type CombatEvent = {
   action?: string;
   value?: number;
   message: string;
-  timestamp: Date;
 };
 
 export type InProgresCombatState = {
@@ -143,7 +141,7 @@ export type CompletedCombatState = {
   currentTurn: number;
   turnOrder: CombatantId[];
   isComplete: true;
-  result: "monster_captured" | "monster_escaped" | "all_players_defeated";
+  result: $Enums.Halloween2025CombatResult;
   winnerUserId: string | null;
 };
 
@@ -207,7 +205,8 @@ const processStatusEffects = (
   const effectsToRemove: number[] = [];
 
   for (let i = 0; i < combatant.statusEffects.length; i++) {
-    const effect = combatant.statusEffects[i];
+    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    const effect = combatant.statusEffects[i]!;
 
     switch (effect.type) {
       case "burn":
@@ -220,7 +219,6 @@ const processStatusEffects = (
           actor: combatant.id,
           value: damage,
           message: `${combatant.name} receives ${damage} damage from ${effect.type}`,
-          timestamp: new Date(),
         });
         break;
       }
@@ -233,7 +231,6 @@ const processStatusEffects = (
             actor: combatant.id,
             value: healing,
             message: `${combatant.name} regenerates ${healing} HP`,
-            timestamp: new Date(),
           });
         }
         break;
@@ -250,17 +247,18 @@ const processStatusEffects = (
   }
 
   for (let i = effectsToRemove.length - 1; i >= 0; i--) {
-    combatant.statusEffects.splice(effectsToRemove[i], 1);
+    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    combatant.statusEffects.splice(effectsToRemove[i]!, 1);
   }
 };
 
-const rollCritical = (): boolean => {
-  return Math.random() < 0.15;
+const rollCritical = (random: () => number): boolean => {
+  return random() < 0.15;
 };
 
-const rollDodge = (combatant: Combatant): boolean => {
+const rollDodge = (combatant: Combatant, random: () => number): boolean => {
   const dodgeChance = Math.min(0.25, combatant.stats.speed / 200);
-  return Math.random() < dodgeChance;
+  return random() < dodgeChance;
 };
 
 const getAliveCombatants = (
@@ -276,21 +274,26 @@ const getAliveCombatants = (
   return alive;
 };
 
-const selectRandomTarget = (candidates: Combatant[]): Combatant | null => {
+const selectRandomTarget = (
+  candidates: Combatant[],
+  random: () => number,
+): Combatant | null => {
   if (candidates.length === 0) return null;
-  const [selected] = sampleSize(candidates, 1);
-
+  const randomIndex = Math.floor(random() * candidates.length);
   // biome-ignore lint/style/noNonNullAssertion: candidates is non-empty
-  return selected!;
+  return candidates[randomIndex]!;
 };
 
-const selectMonsterAction = (monster: CombatMonster): MonsterAction | null => {
+const selectMonsterAction = (
+  monster: CombatMonster,
+  random: () => number,
+): MonsterAction | null => {
   const available = monster.availableActions.filter((action) => {
     const cooldown = monster.actionCooldowns.get(action.name) || 0;
     return cooldown === 0;
   });
 
-  return weightedRandom(available, (a) => a.weight);
+  return weightedRandom(available, (a) => a.weight, random);
 };
 
 const selectPlayerAction = (
@@ -321,7 +324,8 @@ const selectPlayerAction = (
     return { ability: attackAbility, targetType: "monster" };
   }
 
-  return { ability: usableAbilities[0], targetType: "monster" };
+  // biome-ignore lint/style/noNonNullAssertion: usableAbilities is non-empty
+  return { ability: usableAbilities[0]!, targetType: "monster" };
 };
 
 // ============================================================================
@@ -332,6 +336,7 @@ const executeMonsterAction = (
   state: CombatState,
   monster: CombatMonster,
   action: MonsterAction,
+  random: () => number,
 ): void => {
   const { combatants, events, currentTurn } = state;
   const players = getAliveCombatants(combatants, (c) => c.type === "user");
@@ -342,7 +347,6 @@ const executeMonsterAction = (
     actor: monster.id,
     action: action.name,
     message: `${monster.name} uses ${action.name}!`,
-    timestamp: new Date(),
   });
 
   // Set cooldown
@@ -354,6 +358,7 @@ const executeMonsterAction = (
   } else {
     const target = selectRandomTarget(
       action.canTargetSelf ? [monster, ...players] : players,
+      random,
     );
     if (target) targets = [target];
   }
@@ -371,7 +376,6 @@ const executeMonsterAction = (
           target: target.id,
           value: healing,
           message: `${target.name} is healed for ${healing} HP`,
-          timestamp: new Date(),
         });
         break;
       }
@@ -392,6 +396,7 @@ const executePlayerAction = (
   player: CombatUser,
   ability: PlayerAbility,
   targetType: "monster" | "self" | "ally",
+  random: () => number,
 ): void => {
   const { combatants, events, currentTurn } = state;
 
@@ -401,7 +406,6 @@ const executePlayerAction = (
     actor: player.id,
     action: ability.name,
     message: `${player.name} uses ${ability.name}!`,
-    timestamp: new Date(),
   });
 
   // Set cooldown
@@ -429,7 +433,10 @@ const executePlayerAction = (
         targets = [player];
         break;
       case "ally": {
-        const ally = selectRandomTarget(alivePlayers.filter((p) => p.id !== player.id));
+        const ally = selectRandomTarget(
+          alivePlayers.filter((p) => p.id !== player.id),
+          random,
+        );
         if (ally) targets = [ally];
         break;
       }
@@ -439,19 +446,18 @@ const executePlayerAction = (
   for (const target of targets) {
     switch (ability.abilityType) {
       case "attack": {
-        if (rollDodge(target)) {
+        if (rollDodge(target, random)) {
           events.push({
             turn: currentTurn,
             type: "dodge",
             actor: player.id,
             target: target.id,
             message: `${target.name} dodges the attack!`,
-            timestamp: new Date(),
           });
           continue;
         }
 
-        const isCritical = rollCritical();
+        const isCritical = rollCritical(random);
         const damage = calculateDamage(player, target, ability.power, isCritical);
         applyDamage(target, damage);
 
@@ -465,7 +471,6 @@ const executePlayerAction = (
             target: player.id,
             value: lifesteal,
             message: `${player.name} lifesteals ${lifesteal} HP`,
-            timestamp: new Date(),
           });
         }
 
@@ -476,7 +481,6 @@ const executePlayerAction = (
           target: target.id,
           value: damage,
           message: `${target.name} takes ${damage} damage${isCritical ? " (CRITICAL!)" : ""}`,
-          timestamp: new Date(),
         });
 
         if (ability.effects) {
@@ -490,7 +494,6 @@ const executePlayerAction = (
             actor: player.id,
             target: target.id,
             message: `${target.name} has been defeated!`,
-            timestamp: new Date(),
           });
         }
         break;
@@ -504,7 +507,6 @@ const executePlayerAction = (
           target: target.id,
           value: healing,
           message: `${target.name} is healed for ${healing} HP`,
-          timestamp: new Date(),
         });
         break;
       }
@@ -540,7 +542,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} is burning!`,
-      timestamp: new Date(),
     });
   }
 
@@ -557,7 +558,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} is poisoned!`,
-      timestamp: new Date(),
     });
   }
 
@@ -574,7 +574,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} gains a shield!`,
-      timestamp: new Date(),
     });
   }
 
@@ -591,7 +590,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} begins regenerating!`,
-      timestamp: new Date(),
     });
   }
 
@@ -608,7 +606,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} gains thorns!`,
-      timestamp: new Date(),
     });
   }
 
@@ -625,7 +622,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} is weakened!`,
-      timestamp: new Date(),
     });
   }
 
@@ -642,7 +638,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} grows stronger!`,
-      timestamp: new Date(),
     });
   }
 
@@ -659,7 +654,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} is stunned!`,
-      timestamp: new Date(),
     });
   }
 
@@ -676,7 +670,6 @@ const applyActionEffects = (
       actor: actor.id,
       target: target.id,
       message: `${target.name} goes berserk! (can attack allies)`,
-      timestamp: new Date(),
     });
   }
 };
@@ -711,10 +704,10 @@ const checkCombatEnd = (state: CombatState): CompletedCombatState | null => {
       result: "monster_captured",
       winnerUserId: null,
     };
+
     // Find player who dealt killing blow (last attack event targeting monster)
-    for (let i = state.events.length - 1; i >= 0; i--) {
-      const event = state.events[i];
-      if (event.type === "attack" && event.target === "monster") {
+    for (const event of state.events) {
+      if (event.type === "defeat" && event.target === "monster") {
         completedState.winnerUserId = event.actor;
         break;
       }
@@ -744,7 +737,8 @@ const checkCombatEnd = (state: CombatState): CompletedCombatState | null => {
 export const processCombatTurn = (
   state: CombatState,
   playerAbilities: PlayerAbility[],
-  maxTurns = 50,
+  maxTurns: number,
+  random: () => number,
 ): CombatState => {
   if (state.isComplete) return state;
 
@@ -760,7 +754,6 @@ export const processCombatTurn = (
       type: "combat_end",
       actor: "system" as CombatantId,
       message: "The monster has escaped!",
-      timestamp: new Date(),
     });
     return endState;
   }
@@ -774,7 +767,6 @@ export const processCombatTurn = (
     type: "turn_start",
     actor: "system" as CombatantId,
     message: `--- Turn ${state.currentTurn} ---`,
-    timestamp: new Date(),
   });
 
   // Process each combatant's action in turn order
@@ -790,21 +782,33 @@ export const processCombatTurn = (
         type: "status_effect",
         actor: combatant.id,
         message: `${combatant.name} is stunned and cannot act!`,
-        timestamp: new Date(),
       });
       continue;
     }
 
     // Execute action based on combatant type
     if (combatant.type === "monster") {
-      const action = selectMonsterAction(combatant);
+      const action = selectMonsterAction(combatant, random);
       if (action) {
-        executeMonsterAction(state, combatant, action);
+        executeMonsterAction(state, combatant, action, random);
       }
     } else {
       const decision = selectPlayerAction(combatant, playerAbilities);
       if (decision) {
-        executePlayerAction(state, combatant, decision.ability, decision.targetType);
+        executePlayerAction(
+          state,
+          combatant,
+          decision.ability,
+          decision.targetType,
+          random,
+        );
+      } else {
+        state.events.push({
+          turn: state.currentTurn,
+          type: "turn_end",
+          actor: combatant.id,
+          message: `${combatant.name} has no available actions and skips their turn.`,
+        });
       }
     }
 
@@ -819,20 +823,10 @@ export const processCombatTurn = (
           endState.result === "monster_captured"
             ? "The monster has been captured!"
             : "All players have been defeated!",
-        timestamp: new Date(),
       });
       return endState;
     }
   }
-
-  // Process status effects at end of turn
-  state.events.push({
-    turn: state.currentTurn,
-    type: "turn_end",
-    actor: "system" as CombatantId,
-    message: "Processing status effects...",
-    timestamp: new Date(),
-  });
 
   for (const combatant of state.combatants.values()) {
     if (!combatant.isDefeated) {
@@ -852,7 +846,6 @@ export const processCombatTurn = (
         endState.result === "monster_captured"
           ? "The monster has been captured!"
           : "All players have been defeated!",
-      timestamp: new Date(),
     });
     return endState;
   }
@@ -876,7 +869,7 @@ export const initializeCombatState = (
       maxHp: monster.baseHp,
       attack: monster.baseAttack,
       defense: monster.baseDefense,
-      speed: 50,
+      speed: monster.baseSpeed,
     },
     statusEffects: [],
     actionCooldowns: new Map(),
@@ -928,11 +921,12 @@ export const simulateCombat = async (
   state: CombatState,
   playerAbilities: PlayerAbility[],
   maxTurns = 50,
+  random: () => number,
 ): Promise<CompletedCombatState> => {
   let currentState = state;
 
   while (!currentState.isComplete) {
-    currentState = processCombatTurn(currentState, playerAbilities, maxTurns);
+    currentState = processCombatTurn(currentState, playerAbilities, maxTurns, random);
   }
 
   return currentState;

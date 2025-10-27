@@ -1,16 +1,11 @@
-import type { ExtendedPrismaClient } from "@hashira/db";
-
-/**
- * Seed data for Halloween 2025 combat system
- * Run this to populate default monsters, actions, and player abilities
- */
+import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
+import type { ActionEffect } from "./combatLog";
 
 export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) => {
   const abilities = [
-    // Basic Attacks
     {
-      name: "Strike",
-      description: "A basic melee attack",
+      name: "Cios",
+      description: "Zwykły atak",
       abilityType: "attack",
       power: 10,
       cooldown: 0,
@@ -18,11 +13,11 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       canTargetSelf: false,
       isAoe: false,
       isDefault: true,
-      effects: null,
+      effects: Prisma.JsonNull,
     },
     {
       name: "Heavy Blow",
-      description: "A powerful strike that deals extra damage",
+      description: "Silny cios, który zadaje dodatkowe obrażenia",
       abilityType: "attack",
       power: 18,
       cooldown: 3,
@@ -30,13 +25,11 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       canTargetSelf: false,
       isAoe: false,
       isDefault: true,
-      effects: null,
+      effects: Prisma.JsonNull,
     },
-
-    // Healing
     {
-      name: "Bandage",
-      description: "Heal yourself or an ally",
+      name: "Bandaż",
+      description: "Ulecz się lub sojusznika",
       abilityType: "heal",
       power: 20,
       cooldown: 3,
@@ -44,25 +37,23 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       canTargetSelf: true,
       isAoe: false,
       isDefault: true,
-      effects: null,
+      effects: Prisma.JsonNull,
     },
     {
-      name: "Prayer",
-      description: "Heal all allies in the area",
-      abilityType: "heal_aoe",
+      name: "Modlitwa",
+      description: "Ulecz wszystkich sojuszników w okolicy",
+      abilityType: "heal",
       power: 12,
       cooldown: 5,
       canTargetPlayers: false,
       canTargetSelf: true,
       isAoe: true,
       isDefault: true,
-      effects: null,
+      effects: Prisma.JsonNull,
     },
-
-    // Defense
     {
-      name: "Shield Wall",
-      description: "Gain a protective shield and reflect damage",
+      name: "Tarcza Szmato",
+      description: "Zyskaj ochronę i odbij obrażenia",
       abilityType: "defend",
       power: 0,
       cooldown: 4,
@@ -73,8 +64,8 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       effects: { shield: 15, thorns: 5 },
     },
     {
-      name: "Fortify",
-      description: "Grant shields to all allies",
+      name: "Wzmocnienie",
+      description: "Zwiększ swoją i sojuszników obronę",
       abilityType: "buff",
       power: 0,
       cooldown: 6,
@@ -84,11 +75,9 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       isDefault: true,
       effects: { shield: 10 },
     },
-
-    // Special Attacks
     {
-      name: "Venom Strike",
-      description: "Attack that poisons the target",
+      name: "Zatruta Strzała",
+      description: "Atak, który zatruwa cel",
       abilityType: "attack",
       power: 8,
       cooldown: 2,
@@ -99,8 +88,8 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       effects: { poison: 3 },
     },
     {
-      name: "Flame Slash",
-      description: "Attack that burns the target",
+      name: "Płonąca Pięść",
+      description: "Atak, który podpala cel",
       abilityType: "attack",
       power: 12,
       cooldown: 3,
@@ -111,8 +100,8 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       effects: { burn: 4 },
     },
     {
-      name: "Vampiric Blade",
-      description: "Lifesteal attack that heals you for 30% of damage dealt",
+      name: "Wampirzy Sztylet",
+      description: "Atak, który kradnie życie i leczy cię za 30% zadanych obrażeń",
       abilityType: "attack",
       power: 14,
       cooldown: 4,
@@ -122,11 +111,9 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       isDefault: true,
       effects: { lifesteal: 0.3 },
     },
-
-    // Buffs/Debuffs
     {
-      name: "Weaken",
-      description: "Reduce the target's attack power",
+      name: "Osłabienie",
+      description: "Obniża atak celu",
       abilityType: "debuff",
       power: 0,
       cooldown: 3,
@@ -137,8 +124,8 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       effects: { weakness: 5 },
     },
     {
-      name: "Battle Cry",
-      description: "Increase all allies' attack power",
+      name: "Odwaga",
+      description: "Zwiększa atak wszystkich sojuszników",
       abilityType: "buff",
       power: 0,
       cooldown: 5,
@@ -148,16 +135,14 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       isDefault: true,
       effects: { strength: 6 },
     },
-
-    // Risky Abilities
     {
-      name: "Berserk Rage",
-      description: "Powerful attack but you might hit allies! Increases strength.",
-      abilityType: "attack",
-      power: 22,
-      cooldown: 4,
-      canTargetPlayers: true, // Can hit allies!
-      canTargetSelf: false,
+      name: "Berserk",
+      description: "Zwiększa twój atak, ale pozwala ci atakować sojuszników!",
+      abilityType: "buff",
+      power: 0,
+      cooldown: 12,
+      canTargetPlayers: false,
+      canTargetSelf: true,
       isAoe: false,
       isDefault: true,
       effects: { berserk: true, strength: 5 },
@@ -170,24 +155,23 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
       create: ability,
       update: ability,
     });
-  }
 
-  console.log(`Seeded ${abilities.length} player abilities`);
+    console.log(`Seeded player ability: ${ability.name}`);
+  }
 };
 
 export const seedExampleMonsters = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
 ) => {
-  // Example Monster 1: Goblin Scout (Easy)
-  const goblin = await prisma.halloween2025Monster.upsert({
-    where: { name: "Goblin Scout" },
+  const wereraccoon = await prisma.halloween2025Monster.upsert({
+    where: { name: "Szopołak" },
     create: {
-      name: "Goblin Scout",
+      name: "Szopołak",
       weight: 100,
       enabled: true,
       guildId,
-      image: "https://example.com/goblin.png",
+      image: "https://i.imgur.com/ihzBYx8.png",
       baseHp: 60,
       baseAttack: 7,
       baseDefense: 3,
@@ -200,202 +184,417 @@ export const seedExampleMonsters = async (
     },
   });
 
-  const goblinActions = [
+  console.log(`Created monster: ${wereraccoon.name} for guild ${guildId}`);
+
+  const wereraccoonActions = [
     {
-      monsterId: goblin.id,
-      name: "Rusty Dagger",
-      description: "A quick stab with a rusty blade",
+      monsterId: wereraccoon.id,
+      name: "Drapnięcie",
+      description: "Szybki atak pazurami",
       actionType: "attack",
       power: 8,
       weight: 100,
       cooldown: 0,
       isAoe: false,
       canTargetSelf: false,
-      effects: null,
+      effects: Prisma.JsonNull,
     },
     {
-      monsterId: goblin.id,
-      name: "Dirty Trick",
-      description: "Throws sand to weaken enemies",
+      monsterId: wereraccoon.id,
+      name: "Ugryzienie",
+      description: "Silne ugryzienie, które leczy Szopołaka za 30% zadanych obrażeń",
+      actionType: "attack",
+      power: 13,
+      weight: 100,
+      cooldown: 0,
+      isAoe: false,
+      canTargetSelf: false,
+      effects: { lifesteal: 0.3 },
+    },
+    {
+      monsterId: wereraccoon.id,
+      name: "Rzut śmieciami",
+      description: "Rzuca śmieciami, aby osłabić wrogów",
       actionType: "debuff",
       power: 0,
       weight: 50,
       cooldown: 3,
-      isAoe: false,
+      isAoe: true,
       canTargetSelf: false,
-      effects: { weakness: 3 },
+      effects: { weakness: 3, poison: 6 },
     },
-  ];
+  ] as const;
 
-  for (const action of goblinActions) {
+  for (const action of wereraccoonActions) {
     await prisma.halloween2025MonsterAction.upsert({
       where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
       create: action,
       update: action,
     });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${wereraccoon.name} in guild ${guildId}`,
+    );
   }
 
-  // Example Monster 2: Fire Demon (Medium)
-  const demon = await prisma.halloween2025Monster.upsert({
-    where: { name: "Fire Demon" },
+  const fishermanGhost = await prisma.halloween2025Monster.upsert({
+    where: { name: "Duch Wędkarza" },
     create: {
-      name: "Fire Demon",
-      weight: 50,
-      enabled: true,
-      guildId,
-      image: "https://example.com/demon.png",
-      baseHp: 120,
-      baseAttack: 12,
-      baseDefense: 6,
-    },
-    update: {
-      guildId,
-      baseHp: 120,
-      baseAttack: 12,
-      baseDefense: 6,
-    },
-  });
-
-  const demonActions = [
-    {
-      monsterId: demon.id,
-      name: "Claw Strike",
-      description: "A powerful claw attack",
-      actionType: "attack",
-      power: 15,
+      name: "Duch Wędkarza",
       weight: 80,
-      cooldown: 0,
-      isAoe: false,
-      canTargetSelf: false,
-      effects: null,
+      enabled: true,
+      guildId,
+      image: "https://i.imgur.com/YbMVA5e.png",
+      baseHp: 70,
+      baseAttack: 6,
+      baseDefense: 4,
     },
+    update: {
+      guildId,
+      baseHp: 70,
+      baseAttack: 6,
+      baseDefense: 4,
+    },
+  });
+
+  console.log(`Created monster: ${fishermanGhost.name} for guild ${guildId}`);
+
+  const fishermanGhostActions = [
     {
-      monsterId: demon.id,
-      name: "Fire Breath",
-      description: "Breathes fire at all enemies, causing burn",
-      actionType: "aoe_attack",
-      power: 12,
-      weight: 60,
-      cooldown: 3,
+      monsterId: fishermanGhost.id,
+      name: "Zarzutka",
+      description:
+        "Wszyscy atakujący zostają trafieni haczykiem i łapią się na zarzutkę.",
+      actionType: "attack",
+      power: 9,
+      weight: 100,
+      cooldown: 6,
       isAoe: true,
       canTargetSelf: false,
-      effects: { burn: 5 },
+      effects: { stun: true, weakness: 4, strength: 4 } satisfies ActionEffect,
     },
     {
-      monsterId: demon.id,
-      name: "Infernal Regeneration",
-      description: "Heals over time",
-      actionType: "heal",
-      power: 15,
-      weight: 40,
+      monsterId: fishermanGhost.id,
+      name: "Połów",
+      description: "Przywołuje ryby, które atakują wszystkich przeciwników.",
+      actionType: "attack",
+      power: 11,
+      weight: 80,
       cooldown: 4,
+      isAoe: true,
+      canTargetSelf: false,
+      effects: Prisma.JsonNull,
+    },
+    {
+      monsterId: fishermanGhost.id,
+      name: "Ektoplazma",
+      description: "Leczy ducha i zwiększa jego obronę.",
+      actionType: "heal",
+      power: 18,
+      weight: 100,
+      cooldown: 10,
       isAoe: false,
       canTargetSelf: true,
-      effects: { regen: 5 },
+      effects: { regen: 5 } satisfies ActionEffect,
     },
-  ];
+  ] as const;
 
-  for (const action of demonActions) {
+  for (const action of fishermanGhostActions) {
     await prisma.halloween2025MonsterAction.upsert({
       where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
       create: action,
       update: action,
     });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${fishermanGhost.name} in guild ${guildId}`,
+    );
   }
 
-  // Example Monster 3: Ancient Lich (Hard)
-  const lich = await prisma.halloween2025Monster.upsert({
-    where: { name: "Ancient Lich" },
+  const zombieCat = await prisma.halloween2025Monster.upsert({
+    where: { name: "Zombie Bruno" },
     create: {
-      name: "Ancient Lich",
-      weight: 20,
+      name: "Zombie Bruno",
+      weight: 90,
       enabled: true,
       guildId,
-      image: "https://example.com/lich.png",
-      baseHp: 200,
-      baseAttack: 18,
-      baseDefense: 10,
+      image: "https://i.imgur.com/KUvDKvi.png",
+      baseHp: 55,
+      baseAttack: 9,
+      baseDefense: 2,
+      baseSpeed: 20,
     },
     update: {
       guildId,
-      baseHp: 200,
-      baseAttack: 18,
-      baseDefense: 10,
+      baseHp: 55,
+      baseAttack: 9,
+      baseDefense: 2,
+      baseSpeed: 20,
     },
   });
 
-  const lichActions = [
+  console.log(`Created monster: ${zombieCat.name} for guild ${guildId}`);
+
+  const zombieCatActions = [
     {
-      monsterId: lich.id,
-      name: "Soul Drain",
-      description: "Drains life force from a target",
+      monsterId: zombieCat.id,
+      name: "Pazur Zombie",
+      description: "Atak pazurami, który może zatruć cel.",
       actionType: "attack",
-      power: 20,
-      weight: 70,
+      power: 10,
+      weight: 100,
       cooldown: 0,
       isAoe: false,
       canTargetSelf: false,
-      effects: { lifesteal: 0.5 },
+      effects: { poison: 4 } satisfies ActionEffect,
     },
     {
-      monsterId: lich.id,
-      name: "Death Coil",
-      description: "Poison all enemies",
-      actionType: "aoe_attack",
-      power: 10,
-      weight: 60,
-      cooldown: 2,
-      isAoe: true,
-      canTargetSelf: false,
-      effects: { poison: 6 },
-    },
-    {
-      monsterId: lich.id,
-      name: "Bone Shield",
-      description: "Creates a protective barrier and thorns",
-      actionType: "defend",
-      power: 0,
-      weight: 50,
+      monsterId: zombieCat.id,
+      name: "Kradzież Czasu",
+      description: "Uderza wroga, nadaje stun i zabiera trochę życia.",
+      actionType: "debuff",
+      power: 7,
+      weight: 80,
       cooldown: 4,
       isAoe: false,
-      canTargetSelf: true,
-      effects: { shield: 20, thorns: 8 },
+      canTargetSelf: false,
+      effects: { stun: true, lifesteal: 0.4 } satisfies ActionEffect,
     },
     {
-      monsterId: lich.id,
-      name: "Paralyzing Touch",
-      description: "Stuns a target",
-      actionType: "debuff",
-      power: 8,
-      weight: 40,
+      monsterId: zombieCat.id,
+      name: "Furia Kota",
+      description: "Zwiększa atak Zombie Bruno kosztem jego obrony.",
+      actionType: "buff",
+      power: 0,
+      weight: 100,
       cooldown: 5,
       isAoe: false,
-      canTargetSelf: false,
-      effects: { stun: true },
+      canTargetSelf: true,
+      effects: { strength: 6, shield: -4 } satisfies ActionEffect,
     },
     {
-      monsterId: lich.id,
-      name: "Cursed Flame",
-      description: "Powerful attack with multiple debuffs",
+      monsterId: zombieCat.id,
+      name: "Zaraźliwy Pazur",
+      description: "Atak pazurami, który zatruwa wszystkich wrogów.",
       actionType: "attack",
-      power: 15,
-      weight: 30,
-      cooldown: 4,
+      power: 8,
+      weight: 80,
+      cooldown: 6,
+      isAoe: true,
+      canTargetSelf: false,
+      effects: { poison: 3 } satisfies ActionEffect,
+    },
+  ] as const;
+
+  for (const action of zombieCatActions) {
+    await prisma.halloween2025MonsterAction.upsert({
+      where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
+      create: action,
+      update: action,
+    });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${zombieCat.name} in guild ${guildId}`,
+    );
+  }
+
+  const harpy = await prisma.halloween2025Monster.upsert({
+    where: { name: "Harpia" },
+    create: {
+      name: "Harpia",
+      weight: 70,
+      enabled: true,
+      guildId,
+      image: "https://i.imgur.com/kQvkEzI.png",
+      baseHp: 65,
+      baseAttack: 8,
+      baseDefense: 3,
+      baseSpeed: 50,
+    },
+    update: {
+      guildId,
+      baseHp: 65,
+      baseAttack: 8,
+      baseDefense: 3,
+      baseSpeed: 50,
+    },
+  });
+
+  console.log(`Created monster: ${harpy.name} for guild ${guildId}`);
+
+  const harpyActions = [
+    {
+      monsterId: harpy.id,
+      name: "Niepoprawne korzystanie z mikrofonu",
+      description: "Atak dźwiękowy, który ogłusza cel.",
+      actionType: "attack",
+      power: 9,
+      weight: 100,
+      cooldown: 0,
       isAoe: false,
       canTargetSelf: false,
-      effects: { burn: 4, weakness: 4, poison: 3 },
+      effects: { stun: true } satisfies ActionEffect,
     },
-  ];
+    {
+      monsterId: harpy.id,
+      name: "Podmuch",
+      description:
+        "Silny podmuch wiatru, który zadaje obrażenia wszystkim przeciwnikom.",
+      actionType: "attack",
+      power: 11,
+      weight: 80,
+      cooldown: 4,
+      isAoe: true,
+      canTargetSelf: false,
+      effects: Prisma.JsonNull,
+    },
+  ] as const;
 
-  for (const action of lichActions) {
+  for (const action of harpyActions) {
+    await prisma.halloween2025MonsterAction.upsert({
+      where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
+      create: action,
+      update: action,
+    });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${harpy.name} in guild ${guildId}`,
+    );
+  }
+
+  const possesedDoll = await prisma.halloween2025Monster.upsert({
+    where: { name: "Opętana Lalka" },
+    create: {
+      name: "Opętana Lalka",
+      weight: 60,
+      enabled: false,
+      guildId,
+      image: "https://i.imgur.com/qQObiqd.png",
+      baseHp: 45,
+      baseAttack: 5,
+      baseDefense: 3,
+      baseSpeed: 40,
+    },
+    update: {
+      enabled: false,
+      guildId,
+      baseHp: 45,
+      baseAttack: 5,
+      baseDefense: 3,
+      baseSpeed: 40,
+    },
+  });
+
+  console.log(`Created monster: ${possesedDoll.name} for guild ${guildId}`);
+
+  const possesedDollActions = [
+    {
+      monsterId: possesedDoll.id,
+      name: "Dźgnięcie",
+      description: "Szybki atak nożem.",
+      actionType: "attack",
+      power: 9,
+      weight: 100,
+      cooldown: 0,
+      isAoe: false,
+      canTargetSelf: false,
+      effects: Prisma.JsonNull,
+    },
+    {
+      monsterId: possesedDoll.id,
+      name: "Złość",
+      description: "Zwiększa swój atak.",
+      actionType: "buff",
+      power: 0,
+      weight: 100,
+      cooldown: 2,
+      isAoe: false,
+      canTargetSelf: true,
+      effects: { strength: 3 } satisfies ActionEffect,
+    },
+  ] as const;
+
+  for (const action of possesedDollActions) {
+    await prisma.halloween2025MonsterAction.upsert({
+      where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
+      create: action,
+      update: action,
+    });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${possesedDoll.name} in guild ${guildId}`,
+    );
+  }
+
+  const succubus = await prisma.halloween2025Monster.upsert({
+    where: { name: "Sukkub" },
+    create: {
+      name: "Sukkub",
+      weight: 40,
+      enabled: false,
+      guildId,
+      image: "https://i.imgur.com/clOhBpu.png",
+      baseHp: 100,
+      baseAttack: 14,
+      baseDefense: 5,
+    },
+    update: {
+      enabled: false,
+      guildId,
+      baseHp: 100,
+      baseAttack: 14,
+      baseDefense: 5,
+    },
+  });
+
+  console.log(`Created monster: ${succubus.name} for guild ${guildId}`);
+
+  const succubusActions = [
+    {
+      monsterId: succubus.id,
+      name: "Uwodzenie",
+      description: "Zmniejsza atak i obronę celu.",
+      actionType: "buff",
+      power: 0,
+      weight: 100,
+      cooldown: 3,
+      isAoe: false,
+      canTargetSelf: false,
+      effects: { weakness: 2, shield: -2 } satisfies ActionEffect,
+    },
+    {
+      monsterId: succubus.id,
+      name: "Pocałunek Sukkuba",
+      description: "Atak, który leczy Sukkuba za 40% zadanych obrażeń.",
+      actionType: "attack",
+      power: 16,
+      weight: 100,
+      cooldown: 0,
+      isAoe: false,
+      canTargetSelf: false,
+      effects: { lifesteal: 0.4 } satisfies ActionEffect,
+    },
+    {
+      monsterId: succubus.id,
+      name: "Piekielne Selfie",
+      description: "Zadaje obrażenia wszystkim przeciwnikom i nakłada efekt burn.",
+      actionType: "attack",
+      power: 14,
+      weight: 80,
+      cooldown: 8,
+      isAoe: true,
+      canTargetSelf: false,
+      effects: { burn: 5 } satisfies ActionEffect,
+    },
+  ] as const;
+
+  for (const action of succubusActions) {
     await prisma.halloween2025MonsterAction.upsert({
       where: { monsterId_name: { monsterId: action.monsterId, name: action.name } },
       create: action,
       update: action,
     });
   }
-
-  console.log("Seeded 3 example monsters with their actions");
 };
 
 export const seedHalloweenCombatSystem = async (

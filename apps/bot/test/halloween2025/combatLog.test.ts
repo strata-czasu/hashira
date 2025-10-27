@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { Effect, Random } from "effect";
 import {
   initializeCombatState,
   type PlayerAbility,
@@ -9,6 +10,14 @@ import type {
   MonsterData,
   PlayerData,
 } from "../../src/events/halloween2025/combatRepository";
+
+// biome-ignore lint/style/noNonNullAssertion: this is test code
+let random: () => number = null!;
+
+beforeEach(() => {
+  const randomGen = Random.make(42);
+  random = () => Effect.runSync(randomGen.next);
+});
 
 describe("Combat System", () => {
   const createBasicMonster = () =>
@@ -116,7 +125,7 @@ describe("Combat System", () => {
         { userId: "user2", username: "Player2", attemptedAt: new Date() },
       ]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30);
+      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
 
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_captured");
@@ -128,7 +137,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 20);
+      const result = await simulateCombat(state, createBasicAbilities(), 20, random);
 
       expect(result.events.some((e) => e.type === "attack")).toBe(true);
       expect(result.events.some((e) => e.type === "turn_start")).toBe(true);
@@ -143,7 +152,7 @@ describe("Combat System", () => {
       };
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 5);
+      const result = await simulateCombat(state, createBasicAbilities(), 5, random);
 
       expect(result.currentTurn).toBeLessThanOrEqual(5);
       if (result.isComplete && !result.combatants.get("monster")?.isDefeated) {
@@ -174,7 +183,7 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 20);
+      const result = await simulateCombat(state, createBasicAbilities(), 20, random);
 
       // Check that AOE events targeted multiple players
       const aoeEvents = result.events.filter((e) => e.action === "Fireball");
@@ -200,7 +209,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, abilities, 20);
+      const result = await simulateCombat(state, abilities, 20, random);
 
       // Check for debuff/status effect events
       const statusEvents = result.events.filter(
@@ -238,7 +247,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, abilities, 30);
+      const result = await simulateCombat(state, abilities, 30, random);
 
       // Check for heal events (player may use heal when low HP)
       const healEvents = result.events.filter((e) => e.type === "heal");
@@ -268,7 +277,7 @@ describe("Combat System", () => {
 
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30);
+      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
 
       // With a very strong monster, players might lose
       if (result.result === "all_players_defeated") {
@@ -282,7 +291,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30);
+      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
 
       // With enough turns, there should be at least some critical hits (15% chance)
       // This is probabilistic, so we just check the event type exists
@@ -305,7 +314,12 @@ describe("Combat System", () => {
         winnerUserId: "user1",
       } as const;
 
-      const result = processCombatTurn(completedState, createBasicAbilities());
+      const result = processCombatTurn(
+        completedState,
+        createBasicAbilities(),
+        50,
+        random,
+      );
 
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_captured");
@@ -316,7 +330,7 @@ describe("Combat System", () => {
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
       const initialTurn = state.currentTurn;
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       expect(result.currentTurn).toBe(initialTurn + 1);
     });
@@ -326,7 +340,7 @@ describe("Combat System", () => {
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
       const initialEventCount = state.events.length;
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       expect(result.events.length).toBeGreaterThan(initialEventCount);
       expect(result.events.some((e) => e.type === "turn_start")).toBe(true);
@@ -339,7 +353,7 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       // Should have actions from all combatants
       const actors = new Set(result.events.map((e) => e.actor));
@@ -356,7 +370,7 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       if (result.isComplete) {
         expect(result.result).toBe("monster_captured");
@@ -369,7 +383,7 @@ describe("Combat System", () => {
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
       state.currentTurn = 50; // Already at max
 
-      const result = processCombatTurn(state, createBasicAbilities(), 50);
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_escaped");
@@ -395,11 +409,11 @@ describe("Combat System", () => {
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
       // Process one turn to apply poison
-      const turn1 = processCombatTurn(state, abilities);
+      const turn1 = processCombatTurn(state, abilities, 50, random);
 
       // Process another turn to see poison damage
       if (!turn1.isComplete) {
-        const turn2 = processCombatTurn(turn1, abilities);
+        const turn2 = processCombatTurn(turn1, abilities, 50, random);
 
         // Should have status effect processing
         const statusEvents = turn2.events.filter((e) => e.type === "status_effect");
@@ -418,7 +432,7 @@ describe("Combat System", () => {
       const maxIterations = 30;
 
       while (!state.isComplete && turnCount < maxIterations) {
-        state = processCombatTurn(state, createBasicAbilities());
+        state = processCombatTurn(state, createBasicAbilities(), 50, random);
         turnCount++;
       }
 
@@ -441,7 +455,7 @@ describe("Combat System", () => {
         player1.stats.hp = 0;
       }
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       // Should not have actions from defeated player
       const player1Actions = result.events.filter(
@@ -464,7 +478,7 @@ describe("Combat System", () => {
         });
       }
 
-      const result = processCombatTurn(state, createBasicAbilities());
+      const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
       // Should have stun message
       const stunEvents = result.events.filter(
