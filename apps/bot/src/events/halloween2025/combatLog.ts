@@ -218,7 +218,7 @@ const processStatusEffects = (
           type: "status_effect",
           actor: combatant.id,
           value: damage,
-          message: `${combatant.name} receives ${damage} damage from ${effect.type}`,
+          message: `${combatant.name} otrzymuje ${damage} punktów obrażeń od efektu ${effect.type}`,
         });
         break;
       }
@@ -230,7 +230,7 @@ const processStatusEffects = (
             type: "status_effect",
             actor: combatant.id,
             value: healing,
-            message: `${combatant.name} regenerates ${healing} HP`,
+            message: `${combatant.name} regeneruje ${healing} HP`,
           });
         }
         break;
@@ -346,7 +346,7 @@ const executeMonsterAction = (
     type: "turn_start",
     actor: monster.id,
     action: action.name,
-    message: `${monster.name} uses ${action.name}!`,
+    message: `${monster.name} korzysta z akcji ${action.name}!`,
   });
 
   // Set cooldown
@@ -363,10 +363,61 @@ const executeMonsterAction = (
     if (target) targets = [target];
   }
 
-  // Execute action
   for (const target of targets) {
     switch (action.actionType) {
-      case "attack":
+      case "attack": {
+        if (rollDodge(target, random)) {
+          events.push({
+            turn: currentTurn,
+            type: "dodge",
+            actor: monster.id,
+            target: target.id,
+            message: `${target.name} unika ataku!`,
+          });
+          continue;
+        }
+
+        const isCritical = rollCritical(random);
+        const damage = calculateDamage(monster, target, action.power, isCritical);
+        applyDamage(target, damage);
+
+        if (action.effects?.lifesteal) {
+          const lifesteal = Math.floor(damage * action.effects.lifesteal);
+          applyHealing(monster, lifesteal);
+          events.push({
+            turn: currentTurn,
+            type: "heal",
+            actor: monster.id,
+            target: monster.id,
+            value: lifesteal,
+            message: `${monster.name} kradnie ${lifesteal} HP`,
+          });
+        }
+
+        events.push({
+          turn: currentTurn,
+          type: isCritical ? "critical" : "attack",
+          actor: monster.id,
+          target: target.id,
+          value: damage,
+          message: `${target.name} otrzymuje ${damage} obrażeń${isCritical ? " (KRYTYK!)" : ""}`,
+        });
+
+        if (action.effects) {
+          applyActionEffects(monster, target, action.effects, events, currentTurn);
+        }
+
+        if (target.isDefeated) {
+          events.push({
+            turn: currentTurn,
+            type: "defeat",
+            actor: monster.id,
+            target: target.id,
+            message: `${target.name} nie może walczyć!`,
+          });
+        }
+        break;
+      }
       case "heal": {
         const healing = applyHealing(target, action.power);
         events.push({
@@ -375,7 +426,7 @@ const executeMonsterAction = (
           actor: monster.id,
           target: target.id,
           value: healing,
-          message: `${target.name} is healed for ${healing} HP`,
+          message: `${target.name} otrzymuje leczenie za ${healing} HP`,
         });
         break;
       }
@@ -405,7 +456,7 @@ const executePlayerAction = (
     type: "turn_start",
     actor: player.id,
     action: ability.name,
-    message: `${player.name} uses ${ability.name}!`,
+    message: `${player.name} korzysta z umiejętności ${ability.name}!`,
   });
 
   // Set cooldown
@@ -452,7 +503,7 @@ const executePlayerAction = (
             type: "dodge",
             actor: player.id,
             target: target.id,
-            message: `${target.name} dodges the attack!`,
+            message: `${target.name} unika ataku!`,
           });
           continue;
         }
@@ -470,7 +521,7 @@ const executePlayerAction = (
             actor: player.id,
             target: player.id,
             value: lifesteal,
-            message: `${player.name} lifesteals ${lifesteal} HP`,
+            message: `${player.name} kradnie ${lifesteal} HP`,
           });
         }
 
@@ -480,7 +531,7 @@ const executePlayerAction = (
           actor: player.id,
           target: target.id,
           value: damage,
-          message: `${target.name} takes ${damage} damage${isCritical ? " (CRITICAL!)" : ""}`,
+          message: `${target.name} otrzymuje ${damage} obrażeń${isCritical ? " (KRYTYK!)" : ""}`,
         });
 
         if (ability.effects) {
@@ -493,7 +544,7 @@ const executePlayerAction = (
             type: "defeat",
             actor: player.id,
             target: target.id,
-            message: `${target.name} has been defeated!`,
+            message: `${target.name} traci przytomność!`,
           });
         }
         break;
@@ -506,7 +557,7 @@ const executePlayerAction = (
           actor: player.id,
           target: target.id,
           value: healing,
-          message: `${target.name} is healed for ${healing} HP`,
+          message: `${target.name} otrzymuje leczenie za ${healing} HP`,
         });
         break;
       }
@@ -541,7 +592,7 @@ const applyActionEffects = (
       type: "debuff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} is burning!`,
+      message: `${target.name} pali się!`,
     });
   }
 
@@ -557,7 +608,7 @@ const applyActionEffects = (
       type: "debuff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} is poisoned!`,
+      message: `${target.name} dostaje truciznę!`,
     });
   }
 
@@ -573,7 +624,7 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} gains a shield!`,
+      message: `${target.name} zyskuje tarczę!`,
     });
   }
 
@@ -589,7 +640,7 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} begins regenerating!`,
+      message: `${target.name} regeneruje się!`,
     });
   }
 
@@ -605,7 +656,7 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} gains thorns!`,
+      message: `${target.name} zyskuje kolce!`,
     });
   }
 
@@ -621,7 +672,7 @@ const applyActionEffects = (
       type: "debuff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} is weakened!`,
+      message: `${target.name} otrzymuje osłabienie!`,
     });
   }
 
@@ -637,7 +688,7 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} grows stronger!`,
+      message: `${target.name} rośnie w siłę!`,
     });
   }
 
@@ -653,7 +704,7 @@ const applyActionEffects = (
       type: "debuff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} is stunned!`,
+      message: `${target.name} dostaje ogłuszenie!`,
     });
   }
 
@@ -669,14 +720,10 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} goes berserk! (can attack allies)`,
+      message: `${target.name} wpada w szał! (może atakować sojuszników)`,
     });
   }
 };
-
-// ============================================================================
-// Main Combat Loop
-// ============================================================================
 
 const decrementCooldowns = (combatant: Combatant): void => {
   if (combatant.type === "monster") {
@@ -753,7 +800,7 @@ export const processCombatTurn = (
       turn: endState.currentTurn,
       type: "combat_end",
       actor: "system" as CombatantId,
-      message: "The monster has escaped!",
+      message: "Potwór uciekł!",
     });
     return endState;
   }
@@ -766,7 +813,7 @@ export const processCombatTurn = (
     turn: state.currentTurn,
     type: "turn_start",
     actor: "system" as CombatantId,
-    message: `--- Turn ${state.currentTurn} ---`,
+    message: `--- Tura ${state.currentTurn} ---`,
   });
 
   // Process each combatant's action in turn order
@@ -781,7 +828,7 @@ export const processCombatTurn = (
         turn: state.currentTurn,
         type: "status_effect",
         actor: combatant.id,
-        message: `${combatant.name} is stunned and cannot act!`,
+        message: `${combatant.name} ma efekt ogłuszenia i nie może nic zrobić!`,
       });
       continue;
     }
@@ -807,7 +854,7 @@ export const processCombatTurn = (
           turn: state.currentTurn,
           type: "turn_end",
           actor: combatant.id,
-          message: `${combatant.name} has no available actions and skips their turn.`,
+          message: `${combatant.name} nie ma dostępnych akcji i pomija swoją turę.`,
         });
       }
     }
@@ -821,8 +868,8 @@ export const processCombatTurn = (
         actor: "system" as CombatantId,
         message:
           endState.result === "monster_captured"
-            ? "The monster has been captured!"
-            : "All players have been defeated!",
+            ? "Potwór został schwytany!"
+            : "Wszyscy gracze zostali pokonani!",
       });
       return endState;
     }
@@ -844,8 +891,8 @@ export const processCombatTurn = (
       actor: "system" as CombatantId,
       message:
         endState.result === "monster_captured"
-          ? "The monster has been captured!"
-          : "All players have been defeated!",
+          ? "Potwór został schwytany!"
+          : "Wszyscy gracze zostali pokonani!",
     });
     return endState;
   }
@@ -865,10 +912,10 @@ export const initializeCombatState = (
     id: "monster",
     name: monster.name,
     stats: {
-      hp: monster.baseHp,
-      maxHp: monster.baseHp,
-      attack: monster.baseAttack,
-      defense: monster.baseDefense,
+      hp: monster.baseHp + players.length * 50,
+      maxHp: monster.baseHp + players.length * 50,
+      attack: monster.baseAttack + Math.floor(players.length / 2),
+      defense: monster.baseDefense + Math.floor(players.length / 3),
       speed: monster.baseSpeed,
     },
     statusEffects: [],

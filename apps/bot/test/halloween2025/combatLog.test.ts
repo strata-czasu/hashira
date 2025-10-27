@@ -6,10 +6,7 @@ import {
   processCombatTurn,
   simulateCombat,
 } from "../../src/events/halloween2025/combatLog";
-import type {
-  MonsterData,
-  PlayerData,
-} from "../../src/events/halloween2025/combatRepository";
+import { createBasicMonster, createBasicPlayer } from "./testEntities";
 
 // biome-ignore lint/style/noNonNullAssertion: this is test code
 let random: () => number = null!;
@@ -20,29 +17,6 @@ beforeEach(() => {
 });
 
 describe("Combat System", () => {
-  const createBasicMonster = () =>
-    ({
-      id: 1,
-      name: "Test Goblin",
-      baseHp: 40,
-      baseAttack: 6,
-      baseDefense: 2,
-      actions: [
-        {
-          id: 1,
-          name: "Slash",
-          description: "Basic attack",
-          actionType: "attack" as const,
-          power: 8,
-          weight: 100,
-          cooldown: 0,
-          isAoe: false,
-          canTargetSelf: false,
-        },
-      ],
-      image: "",
-    }) satisfies MonsterData;
-
   const createBasicAbilities = (): PlayerAbility[] => [
     {
       id: 1,
@@ -56,12 +30,6 @@ describe("Combat System", () => {
       isAoe: false,
     },
   ];
-
-  const createBasicPlayer = (id: string): PlayerData => ({
-    userId: id,
-    username: `Player_${id}`,
-    attemptedAt: new Date(),
-  });
 
   describe("initializeCombatState", () => {
     it("should initialize combat with monster and players", () => {

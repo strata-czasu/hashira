@@ -16,6 +16,7 @@ import {
   userMention,
 } from "discord.js";
 import { database } from "./db";
+import { formatTurnMessage } from "./events/halloween2025/combatLogFormatter";
 import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
@@ -555,8 +556,26 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               return;
             }
 
-            for (const logEntry of fight.state.events) {
-              await thread.send(logEntry.message);
+            const turnNumbers = new Set(fight.state.events.map((e) => e.turn));
+            const sortedTurns = Array.from(turnNumbers).sort((a, b) => a - b);
+
+            for (const turnNumber of sortedTurns) {
+              const turnMessage = formatTurnMessage(
+                fight.state.events,
+                fight.state.combatants,
+                turnNumber,
+              );
+
+              // Split message if it's too long for Discord (2000 char limit)
+              if (turnMessage.length > 1900) {
+                const chunks = turnMessage.match(/[\s\S]{1,1900}/g) || [];
+                for (const chunk of chunks) {
+                  await thread.send(chunk);
+                  await sleep(300);
+                }
+              } else {
+                await thread.send(turnMessage);
+              }
               await sleep(500);
             }
           },

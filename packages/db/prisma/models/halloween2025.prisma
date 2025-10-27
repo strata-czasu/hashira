@@ -1,11 +1,10 @@
 model Halloween2025Monster {
   id          Int     @id @default(autoincrement())
-  name        String  @unique
+  name        String
   weight      Int
   enabled     Boolean @default(true)
   guildId     String
   image       String
-  /// Base stats
   baseHp      Int     @default(100)
   baseAttack  Int     @default(10)
   baseDefense Int     @default(5)
@@ -14,6 +13,8 @@ model Halloween2025Monster {
   guild   Guild                        @relation(fields: [guildId], references: [id])
   spawns  Halloween2025MonsterSpawn[]
   actions Halloween2025MonsterAction[]
+
+  @@unique([name, guildId])
 }
 
 enum Halloween2025ActionType {

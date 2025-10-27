@@ -1,5 +1,9 @@
 import { Prisma, prisma, redis } from "@hashira/db";
 import {
+  seedDefaultPlayerAbilities,
+  seedMonstersForGuild,
+} from "./src/events/halloween2025/seedData";
+import {
   DEFAULT_ITEMS,
   DEFAULT_LOG_CHANNELS,
   GUILD_IDS,
@@ -15,7 +19,6 @@ const createGuild = (guildId: string) =>
   prisma.guild.createMany({ data: { id: guildId }, skipDuplicates: true });
 
 const createDefaultStrataCzasuCurrency = async (guildId: string) => {
-  await createGuild(guildId);
   await ensureUserExists(prisma, USER_IDS.Defous);
   await prisma.currency.createMany({
     data: {
@@ -88,13 +91,22 @@ const setDefaultLogChannels = async (guildId: string) => {
 };
 
 if (isProduction) {
+  await createGuild(GUILD_IDS.StrataCzasu);
   await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
+  await createDefaultItems(GUILD_IDS.StrataCzasu);
+  await setDefaultLogChannels(GUILD_IDS.StrataCzasu);
+  await seedDefaultPlayerAbilities(prisma);
+  await seedMonstersForGuild(prisma, GUILD_IDS.StrataCzasu);
+  console.log("Seeding completed for production environment");
 } else {
   const testingServers = [GUILD_IDS.Homik, GUILD_IDS.Piwnica];
   for (const guildId of testingServers) {
+    await createGuild(guildId);
     await createDefaultStrataCzasuCurrency(guildId);
     await createDefaultItems(guildId);
     await setDefaultLogChannels(guildId);
+    await seedDefaultPlayerAbilities(prisma);
+    await seedMonstersForGuild(prisma, guildId);
     console.log(`Seeding completed for test guild ${guildId}`);
   }
 }

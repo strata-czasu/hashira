@@ -17,6 +17,17 @@
     },
     {
       "type": "bun",
+      "internalConsoleOptions": "openOnSessionStart",
+      "request": "launch",
+      "name": "Debug Seed",
+      "program": "${workspaceFolder}/apps/bot/seed.ts",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": false,
+      "env": { "NODE_ENV": "development" }
+    },
+    {
+      "type": "bun",
       "internalConsoleOptions": "neverOpen",
       "request": "attach",
       "name": "Attach Bun",
