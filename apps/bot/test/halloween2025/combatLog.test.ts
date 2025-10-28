@@ -1,3 +1,5 @@
+// biome-ignore-all lint/style/noNonNullAssertion: test code
+
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Effect, Random } from "effect";
 import {
@@ -8,7 +10,6 @@ import {
 } from "../../src/events/halloween2025/combatLog";
 import { createBasicMonster, createBasicPlayer } from "./testEntities";
 
-// biome-ignore lint/style/noNonNullAssertion: this is test code
 let random: () => number = null!;
 
 beforeEach(() => {
@@ -46,9 +47,9 @@ describe("Combat System", () => {
       expect(state.isComplete).toBe(false);
     });
 
-    it("should set correct monster stats", () => {
-      const monster = createBasicMonster();
-      const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
+    it("should set correct monster stats if there are no players", () => {
+      const monster = createBasicMonster({ baseHp: 40, baseAttack: 6, baseDefense: 2 });
+      const state = initializeCombatState(monster, []);
 
       const monsterCombatant = state.combatants.get("monster");
       expect(monsterCombatant?.type).toBe("monster");
@@ -56,6 +57,27 @@ describe("Combat System", () => {
       expect(monsterCombatant?.stats.maxHp).toBe(40);
       expect(monsterCombatant?.stats.attack).toBe(6);
       expect(monsterCombatant?.stats.defense).toBe(2);
+    });
+
+    it("should set correct monster stats with multiple players", () => {
+      const monster = createBasicMonster({ baseHp: 50, baseAttack: 8, baseDefense: 3 });
+      const players = [
+        createBasicPlayer("user1"),
+        createBasicPlayer("user2"),
+        createBasicPlayer("user3"),
+      ];
+      const state = initializeCombatState(monster, players);
+
+      const monsterCombatant = state.combatants.get("monster");
+      expect(monsterCombatant?.stats).toMatchInlineSnapshot(`
+        {
+          "attack": 9,
+          "defense": 4,
+          "hp": 200,
+          "maxHp": 200,
+          "speed": 50,
+        }
+      `);
     });
 
     it("should initialize players with default stats", () => {
@@ -77,11 +99,13 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      expect(state.turnOrder).toHaveLength(3);
-      // Players have speed 60, monster has speed 50
-      // So players should go first
-      expect(state.turnOrder[0]).toMatch(/user/);
-      expect(state.turnOrder[2]).toBe("monster");
+      expect(state.turnOrder).toMatchInlineSnapshot(`
+        [
+          "monster",
+          "user1",
+          "user2",
+        ]
+      `);
     });
   });
 
@@ -378,15 +402,24 @@ describe("Combat System", () => {
 
       // Process one turn to apply poison
       const turn1 = processCombatTurn(state, abilities, 50, random);
+      const turn2 = processCombatTurn(turn1, abilities, 50, random);
 
-      // Process another turn to see poison damage
-      if (!turn1.isComplete) {
-        const turn2 = processCombatTurn(turn1, abilities, 50, random);
-
-        // Should have status effect processing
-        const statusEvents = turn2.events.filter((e) => e.type === "status_effect");
-        expect(statusEvents.length).toBeGreaterThan(0);
-      }
+      expect(turn2.events.map((e) => e.message)).toMatchInlineSnapshot(`
+        [
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user1 otrzymuje 11 obrażeń",
+          "Player_user1 korzysta z umiejętności Poison Strike!",
+          "Test Goblin otrzymuje 14 obrażeń",
+          "Test Goblin dostaje truciznę!",
+          "Test Goblin otrzymuje 3 obrażeń od efektu trucizna",
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user1 otrzymuje 11 obrażeń",
+          "Player_user1 korzysta z umiejętności Poison Strike!",
+          "Test Goblin otrzymuje 14 obrażeń",
+          "Test Goblin dostaje truciznę!",
+          "Test Goblin otrzymuje 6 obrażeń od efektu trucizna",
+        ]
+      `);
     });
 
     it("should allow stepping through combat turn by turn", () => {
@@ -416,20 +449,20 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      // Manually defeat a player
       const player1 = state.combatants.get("user1");
-      if (player1) {
-        player1.isDefeated = true;
-        player1.stats.hp = 0;
-      }
+      player1!.isDefeated = true;
+      player1!.stats.hp = 0;
 
       const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
-      // Should not have actions from defeated player
-      const player1Actions = result.events.filter(
-        (e) => e.actor === "user1" && e.type === "attack",
-      );
-      expect(player1Actions.length).toBe(0);
+      expect(result.events.map((e) => e.message)).toMatchInlineSnapshot(`
+        [
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user2 otrzymuje 12 obrażeń",
+          "Player_user2 korzysta z umiejętności Strike!",
+          "Test Goblin otrzymuje 16 obrażeń",
+        ]
+      `);
     });
 
     it("should skip stunned combatants", () => {
@@ -437,22 +470,67 @@ describe("Combat System", () => {
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
       const player = state.combatants.get("user1");
-      if (player) {
-        player.statusEffects.push({
-          type: "stun",
-          power: 0,
-          duration: 1,
-          source: "monster",
-        });
-      }
+      player?.statusEffects.push({
+        type: "stun",
+        power: 0,
+        duration: 1,
+        source: "monster",
+      });
 
       const result = processCombatTurn(state, createBasicAbilities(), 50, random);
 
-      // Should have stun message
-      const stunEvents = result.events.filter(
-        (e) => e.actor === "user1" && e.message.includes("stunned"),
+      expect(result.events.map((e) => e.message)).toMatchInlineSnapshot(`
+        [
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user1 otrzymuje 11 obrażeń",
+          "Player_user1 ma efekt ogłuszenia i nie może nic zrobić!",
+        ]
+      `);
+    });
+
+    it("should heal each player once with AOE heal ability", () => {
+      const abilities: PlayerAbility[] = [
+        {
+          id: 2,
+          name: "Group Heal",
+          description: "Heal all players",
+          abilityType: "heal",
+          power: 15,
+          cooldown: 5,
+          canTargetPlayers: true,
+          canTargetSelf: true,
+          isAoe: true,
+        },
+      ];
+
+      const monster = createBasicMonster();
+      const state = initializeCombatState(monster, [
+        createBasicPlayer("user1"),
+        createBasicPlayer("user2"),
+        createBasicPlayer("user3"),
+      ]);
+
+      const player1 = state.combatants.get("user1")!;
+      const player2 = state.combatants.get("user2")!;
+      const player3 = state.combatants.get("user3")!;
+
+      player1.stats.hp = 30;
+      player2.stats.hp = 25;
+      player3.stats.hp = 20;
+
+      const result = processCombatTurn(state, abilities, 50, random);
+      const healEvents = result.events.filter(
+        (e) => e.type === "heal" && e.actor === "user1",
       );
-      expect(stunEvents.length).toBeGreaterThan(0);
+
+      const healMessages = healEvents.map((e) => e.message);
+      expect(healMessages).toMatchInlineSnapshot(`
+        [
+          "Player_user1 otrzymuje leczenie za 15 HP",
+          "Player_user2 otrzymuje leczenie za 15 HP",
+          "Player_user3 otrzymuje leczenie za 15 HP",
+        ]
+      `);
     });
   });
 });

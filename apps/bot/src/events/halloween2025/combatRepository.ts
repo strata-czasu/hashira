@@ -117,7 +117,7 @@ export class PrismaCombatRepository implements ICombatRepository {
       },
       participants: spawn.catchAttempts.map((attempt) => ({
         userId: attempt.userId,
-        username: attempt.user.id, // Use ID as fallback since User model doesn't have username
+        username: attempt.user.id,
         attemptedAt: attempt.attemptedAt,
       })),
     };

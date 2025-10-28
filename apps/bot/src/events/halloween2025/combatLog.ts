@@ -1,7 +1,7 @@
 import type { $Enums } from "@hashira/db";
+import { sumBy } from "es-toolkit";
 import { weightedRandom } from "../../util/weightedRandom";
 import type { MonsterData, PlayerData } from "./combatRepository";
-
 export type CombatantId = string; // userId for players, "monster" for monster
 
 type StatusEffectType =
@@ -72,7 +72,6 @@ export type ActionEffect = {
   lifesteal?: number; // percentage
   weakness?: number; // reduces attack
   strength?: number; // increases attack
-  vampiric?: boolean; // heals based on damage dealt
 };
 
 export type MonsterAction = {
@@ -125,11 +124,27 @@ export type CombatEvent = {
   message: string;
 };
 
+export type CombatantSnapshot = {
+  id: CombatantId;
+  name: string;
+  hp: number;
+  maxHp: number;
+  isDefeated: boolean;
+  statusEffects: StatusEffect[];
+};
+
+export type TurnSnapshot = {
+  turnNumber: number;
+  combatants: CombatantSnapshot[];
+  events: CombatEvent[]; // Events that occurred during this turn
+};
+
 export type InProgresCombatState = {
   combatants: Map<CombatantId, Combatant>;
   events: CombatEvent[];
   currentTurn: number;
   turnOrder: CombatantId[];
+  turnSnapshots: TurnSnapshot[];
   isComplete: false;
   result?: undefined;
   winnerUserId?: undefined;
@@ -140,6 +155,7 @@ export type CompletedCombatState = {
   events: CombatEvent[];
   currentTurn: number;
   turnOrder: CombatantId[];
+  turnSnapshots: TurnSnapshot[];
   isComplete: true;
   result: $Enums.Halloween2025CombatResult;
   winnerUserId: string | null;
@@ -151,24 +167,33 @@ const calculateDamage = (
   attacker: Combatant,
   target: Combatant,
   basePower: number,
-  isCritical = false,
+  isCritical: boolean,
 ): number => {
   let damage = basePower + attacker.stats.attack - target.stats.defense;
 
-  const strengthBuff = attacker.statusEffects.find((e) => e.type === "strength");
-  if (strengthBuff) damage += strengthBuff.power;
+  const strengthBuff = sumBy(
+    attacker.statusEffects.filter((e) => e.type === "strength"),
+    (e) => e.power,
+  );
+  if (strengthBuff) damage += strengthBuff;
 
-  const weaknessDebuff = attacker.statusEffects.find((e) => e.type === "weakness");
-  if (weaknessDebuff) damage -= weaknessDebuff.power;
+  const weaknessDebuff = sumBy(
+    attacker.statusEffects.filter((e) => e.type === "weakness"),
+    (e) => e.power,
+  );
+  if (weaknessDebuff) damage -= weaknessDebuff;
 
-  const shield = target.statusEffects.find((e) => e.type === "shield");
+  const shield = sumBy(
+    target.statusEffects.filter((e) => e.type === "shield"),
+    (e) => e.power,
+  );
   if (shield) {
-    damage = Math.max(0, damage - shield.power);
+    damage = Math.max(0, damage - shield);
   }
 
   if (isCritical) damage = Math.floor(damage * 1.5);
 
-  return Math.max(1, Math.floor(damage));
+  return Math.max(0, Math.floor(damage));
 };
 
 const applyDamage = (target: Combatant, damage: number): void => {
@@ -185,15 +210,38 @@ const applyHealing = (target: Combatant, amount: number): number => {
 };
 
 const applyStatusEffect = (target: Combatant, effect: StatusEffect): void => {
-  const existingIndex = target.statusEffects.findIndex(
+  const existingEffect = target.statusEffects.find(
     (e) => e.type === effect.type && e.source === effect.source,
   );
 
-  if (existingIndex >= 0) {
-    // Refresh duration and update power
-    target.statusEffects[existingIndex] = effect;
+  if (existingEffect) {
+    existingEffect.power += effect.power;
+    existingEffect.duration = Math.max(existingEffect.duration, effect.duration);
   } else {
     target.statusEffects.push(effect);
+  }
+};
+
+const translatedStatusEffect = (effect: StatusEffect) => {
+  switch (effect.type) {
+    case "burn":
+      return "podpalenie";
+    case "poison":
+      return "trucizna";
+    case "stun":
+      return "ogłuszenie";
+    case "shield":
+      return "tarcza";
+    case "regen":
+      return "regeneracja";
+    case "berserk":
+      return "szał";
+    case "thorns":
+      return "kolce";
+    case "weakness":
+      return "osłabienie";
+    case "strength":
+      return "siła";
   }
 };
 
@@ -218,7 +266,7 @@ const processStatusEffects = (
           type: "status_effect",
           actor: combatant.id,
           value: damage,
-          message: `${combatant.name} otrzymuje ${damage} punktów obrażeń od efektu ${effect.type}`,
+          message: `${combatant.name} otrzymuje ${damage} obrażeń od efektu ${translatedStatusEffect(effect)}`,
         });
         break;
       }
@@ -241,6 +289,7 @@ const processStatusEffects = (
     }
 
     effect.duration--;
+    // effect.power--;
     if (effect.duration <= 0) {
       effectsToRemove.push(i);
     }
@@ -467,12 +516,10 @@ const executePlayerAction = (
   const monster = combatants.get("monster")!;
   const alivePlayers = getAliveCombatants(combatants, (c) => c.type === "user");
 
-  if (ability.isAoe) {
+  if (ability.isAoe || player.statusEffects.find((e) => e.type === "berserk")) {
     targets = [...alivePlayers];
 
-    if (ability.abilityType === "heal" || ability.abilityType === "buff") {
-      targets.push(player);
-    } else {
+    if (ability.abilityType !== "heal" && ability.abilityType !== "buff") {
       targets.push(monster);
     }
   } else {
@@ -592,7 +639,7 @@ const applyActionEffects = (
       type: "debuff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} pali się!`,
+      message: `${target.name} zaczyna płonąć!`,
     });
   }
 
@@ -741,6 +788,30 @@ const decrementCooldowns = (combatant: Combatant): void => {
   }
 };
 
+const createTurnSnapshot = (
+  state: CombatState,
+  turnEvents: CombatEvent[],
+): TurnSnapshot => {
+  const combatantSnapshots: CombatantSnapshot[] = [];
+
+  for (const combatant of state.combatants.values()) {
+    combatantSnapshots.push({
+      id: combatant.id,
+      name: combatant.name,
+      hp: combatant.stats.hp,
+      maxHp: combatant.stats.maxHp,
+      isDefeated: combatant.isDefeated,
+      statusEffects: [...combatant.statusEffects], // ensure not to share reference
+    });
+  }
+
+  return {
+    turnNumber: state.currentTurn,
+    combatants: combatantSnapshots,
+    events: turnEvents,
+  };
+};
+
 const checkCombatEnd = (state: CombatState): CompletedCombatState | null => {
   const monster = state.combatants.get("monster");
   const alivePlayers = getAliveCombatants(state.combatants, (c) => c.type === "user");
@@ -805,23 +876,13 @@ export const processCombatTurn = (
     return endState;
   }
 
-  // Increment turn counter
   state.currentTurn++;
+  const turnStartEventIndex = state.events.length;
 
-  // Add turn start event
-  state.events.push({
-    turn: state.currentTurn,
-    type: "turn_start",
-    actor: "system" as CombatantId,
-    message: `--- Tura ${state.currentTurn} ---`,
-  });
-
-  // Process each combatant's action in turn order
   for (const combatantId of state.turnOrder) {
     const combatant = state.combatants.get(combatantId);
     if (!combatant || combatant.isDefeated) continue;
 
-    // Check for stun
     const stunned = combatant.statusEffects.some((e) => e.type === "stun");
     if (stunned) {
       state.events.push({
@@ -833,7 +894,6 @@ export const processCombatTurn = (
       continue;
     }
 
-    // Execute action based on combatant type
     if (combatant.type === "monster") {
       const action = selectMonsterAction(combatant, random);
       if (action) {
@@ -859,7 +919,6 @@ export const processCombatTurn = (
       }
     }
 
-    // Check if combat ended after this action
     const endState = checkCombatEnd(state);
     if (endState) {
       endState.events.push({
@@ -871,6 +930,11 @@ export const processCombatTurn = (
             ? "Potwór został schwytany!"
             : "Wszyscy gracze zostali pokonani!",
       });
+
+      const turnEvents = endState.events.slice(turnStartEventIndex);
+      const snapshot = createTurnSnapshot(endState, turnEvents);
+      endState.turnSnapshots.push(snapshot);
+
       return endState;
     }
   }
@@ -894,16 +958,25 @@ export const processCombatTurn = (
           ? "Potwór został schwytany!"
           : "Wszyscy gracze zostali pokonani!",
     });
+
+    const turnEvents = endState.events.slice(turnStartEventIndex);
+    const snapshot = createTurnSnapshot(endState, turnEvents);
+    endState.turnSnapshots.push(snapshot);
+
     return endState;
   }
 
-  // Combat continues
+  const turnEvents = state.events.slice(turnStartEventIndex);
+  const snapshot = createTurnSnapshot(state, turnEvents);
+  state.turnSnapshots.push(snapshot);
+
   return state;
 };
 
 export const initializeCombatState = (
   monster: MonsterData,
   players: PlayerData[],
+  userNameMap?: Map<string, string>,
 ): CombatState => {
   const combatants = new Map<CombatantId, Combatant>();
 
@@ -924,18 +997,18 @@ export const initializeCombatState = (
     availableActions: monster.actions,
   });
 
-  // Initialize players with base stats
   for (const player of players) {
+    const displayName = userNameMap?.get(player.userId) ?? player.username;
     combatants.set(player.userId, {
       type: "user",
       id: player.userId,
-      name: player.username,
+      name: displayName,
       stats: {
         hp: 50,
         maxHp: 50,
         attack: 8,
         defense: 3,
-        speed: 60,
+        speed: 50,
       },
       statusEffects: [],
       abilityCooldowns: new Map(),
@@ -953,6 +1026,7 @@ export const initializeCombatState = (
     events: [],
     currentTurn: 0,
     turnOrder,
+    turnSnapshots: [],
     isComplete: false,
   };
 };
@@ -971,6 +1045,8 @@ export const simulateCombat = async (
   random: () => number,
 ): Promise<CompletedCombatState> => {
   let currentState = state;
+
+  state.turnSnapshots.push(createTurnSnapshot(state, []));
 
   while (!currentState.isComplete) {
     currentState = processCombatTurn(currentState, playerAbilities, maxTurns, random);

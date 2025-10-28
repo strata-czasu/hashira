@@ -9,14 +9,16 @@ import {
   type ButtonBuilder,
   type ButtonComponent,
   type Client,
+  ContainerBuilder,
   inlineCode,
+  MessageFlags,
   RESTJSONErrorCodes,
   TimestampStyles,
   time,
   userMention,
 } from "discord.js";
 import { database } from "./db";
-import { formatTurnMessage } from "./events/halloween2025/combatLogFormatter";
+import type { TurnSnapshot } from "./events/halloween2025/combatLog";
 import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
@@ -81,9 +83,26 @@ type ModeratorLeaveEndData = {
   userId: string;
   guildId: string;
 };
-
 type Halloween2025EndSpawnData = {
   spawnId: number;
+};
+
+const createTurnDisplayComponent = (turnSnapshot: TurnSnapshot) => {
+  const combatantHpLines = turnSnapshot.combatants.map(
+    (combatant) => `- **${combatant.name}**: ${combatant.hp}/${combatant.maxHp} HP`,
+  );
+
+  const turnHeader = `## Tura ${turnSnapshot.turnNumber}`;
+  const hpStatus = combatantHpLines.join("\n");
+  const events = turnSnapshot.events
+    .map((event) =>
+      event.type === "turn_start" ? `\n${event.message}` : event.message,
+    )
+    .join("\n");
+
+  return new ContainerBuilder().addTextDisplayComponents((td) =>
+    td.setContent(`${turnHeader}\n\n${hpStatus}\n\n${events}`),
+  );
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -477,6 +496,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                   select: {
                     user: {
                       select: {
+                        id: true,
                         Halloween2025Spawn: {
                           select: { guildId: true, monsterId: true },
                         },
@@ -549,34 +569,27 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             const repository = new PrismaCombatRepository(prisma);
             const combatService = new CombatService(repository, Math.random);
+            const userNameMap = new Map<string, string>([["monster", "Potwór"]]);
+            for (const { user } of spawn.catchAttempts) {
+              userNameMap.set(user.id, userMention(user.id));
+            }
 
-            const fight = await combatService.executeCombat(spawnId, 100);
+            const fight = await combatService.executeCombat(spawnId, 100, userNameMap);
+
             if (!fight) {
               await thread.send("Nie było uczestników, więc potwór uciekł.");
               return;
             }
 
-            const turnNumbers = new Set(fight.state.events.map((e) => e.turn));
-            const sortedTurns = Array.from(turnNumbers).sort((a, b) => a - b);
+            for (const turnSnapshot of fight.state.turnSnapshots) {
+              const turnComponent = createTurnDisplayComponent(turnSnapshot);
 
-            for (const turnNumber of sortedTurns) {
-              const turnMessage = formatTurnMessage(
-                fight.state.events,
-                fight.state.combatants,
-                turnNumber,
-              );
+              await thread.send({
+                components: [turnComponent],
+                flags: MessageFlags.IsComponentsV2,
+              });
 
-              // Split message if it's too long for Discord (2000 char limit)
-              if (turnMessage.length > 1900) {
-                const chunks = turnMessage.match(/[\s\S]{1,1900}/g) || [];
-                for (const chunk of chunks) {
-                  await thread.send(chunk);
-                  await sleep(300);
-                }
-              } else {
-                await thread.send(turnMessage);
-              }
-              await sleep(500);
+              await sleep(5000);
             }
           },
         ),

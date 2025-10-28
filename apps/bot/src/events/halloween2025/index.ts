@@ -1,5 +1,10 @@
 import { type ExtractContext, Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient, Halloween2025Monster } from "@hashira/db";
+import type {
+  ExtendedPrismaClient,
+  Halloween2025Monster,
+  Halloween2025MonsterSpawn,
+} from "@hashira/db";
+import { add, type Duration } from "date-fns";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -10,12 +15,15 @@ import {
   heading,
   type MessageCreateOptions,
   MessageFlags,
+  subtext,
+  time,
 } from "discord.js";
-import { Console, Context, Cron, Data, DateTime, Effect, Schedule } from "effect";
-import { minGraphemes } from "valibot";
+import { Context, Cron, Data, DateTime, Effect, Random, Schedule } from "effect";
 import { base } from "../../base";
 import { GUILD_IDS } from "../../specializedConstants";
+import { parseDuration, randomDuration } from "../../util/duration";
 import { ensureUserExists } from "../../util/ensureUsersExist";
+import { errorFollowUp } from "../../util/errorFollowUp";
 import { getGuildSetting } from "../../util/getGuildSetting";
 import { weightedRandom } from "../../util/weightedRandom";
 
@@ -72,7 +80,10 @@ const CRON = Cron.make({
 // const schedule = Schedule.cron(CRON);
 const schedule = Schedule.fixed("2 second");
 
-const createSpawnComponent = (monster: Halloween2025Monster) => {
+const createSpawnComponent = (
+  monster: Halloween2025Monster,
+  spawn: Halloween2025MonsterSpawn,
+) => {
   const lines = [
     heading(`:jack_o_lantern: Potwór się pojawił! :jack_o_lantern:`),
     ``,
@@ -83,6 +94,9 @@ const createSpawnComponent = (monster: Halloween2025Monster) => {
     .addTextDisplayComponents((td) => td.setContent(lines.join("\n")))
     .addMediaGalleryComponents((mg) =>
       mg.addItems((mgib) => mgib.setURL(monster.image)),
+    )
+    .addTextDisplayComponents((td) =>
+      td.setContent(subtext(`Zamyka się za ${time(spawn.expiresAt, "R")}`)),
     );
 };
 
@@ -95,7 +109,12 @@ class MonsterNotFoundError extends Data.TaggedError("MonsterNotFoundError")<{
 const getMonster = Effect.fn("getMonster")(function* (
   prisma: ExtendedPrismaClient,
   guildId: string,
+  forcedMonster?: Halloween2025Monster,
 ) {
+  if (forcedMonster) {
+    return forcedMonster;
+  }
+
   const monsters = yield* Effect.tryPromise(async () => {
     return await prisma.halloween2025Monster.findMany({
       where: { guildId },
@@ -109,11 +128,28 @@ const getMonster = Effect.fn("getMonster")(function* (
   return weightedRandom(monsters, (monster) => monster.weight);
 });
 
+const rarityToExpiration = {
+  common: { minMinutes: 5, maxMinutes: 15 },
+  uncommon: { minMinutes: 15, maxMinutes: 30 },
+  rare: { minMinutes: 30, maxMinutes: 45 },
+  epic: { minMinutes: 45, maxMinutes: 60 },
+  legendary: { minMinutes: 60, maxMinutes: 75 },
+};
+
+const getDuration = (rarity: keyof typeof rarityToExpiration, duration?: Duration) => {
+  if (duration) return duration;
+  const { minMinutes, maxMinutes } = rarityToExpiration[rarity];
+
+  return randomDuration({ minutes: minMinutes }, { minutes: maxMinutes }, Math.random);
+};
+
 const sendSpawn = Effect.fn("sendSpawn")(function* (
   prisma: ExtendedPrismaClient,
   client: Client<true>,
   messageQueue: MessageQueueType,
   guildId: string,
+  duration?: Duration,
+  forcedMonster?: Halloween2025Monster,
 ) {
   const guildSettings = getGuildSetting(
     HALLOWEEN_2025_CHANNELS.SPAWN_CHANNELS,
@@ -132,9 +168,18 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
       `Channel ${channel?.id} is not sendable in guild ${guildId}`,
     );
 
-  const monster = yield* getMonster(prisma, guildId);
-  const now = yield* DateTime.now;
-  const expiresAt = now.pipe(DateTime.addDuration("5 seconds"), DateTime.toDate);
+  const rarity = yield* Random.choice([
+    "common",
+    "uncommon",
+    "rare",
+    "epic",
+    "legendary",
+  ] as const);
+  const expirationDuration = getDuration(rarity, duration);
+  const now = new Date();
+  const expiresAt = add(now, expirationDuration);
+
+  const monster = yield* getMonster(prisma, guildId, forcedMonster);
 
   const initialMessage = yield* Effect.tryPromise(async () => {
     return await channel.send({
@@ -167,7 +212,7 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
           channelId: channel.id,
           messageId: initialMessage.id,
           expiresAt: expiresAt,
-          rarity: "common",
+          rarity,
         },
       });
 
@@ -183,14 +228,10 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
     }),
   );
 
-  yield* Console.log(
-    `[Halloween 2025] Sending spawn to guild ${guildId} in channel ${channel.id}`,
-  );
-
   const message = yield* Effect.tryPromise(async () => {
     return await initialMessage.edit({
       components: [
-        createSpawnComponent(monster),
+        createSpawnComponent(monster, spawn),
         new ActionRowBuilder<ButtonBuilder>({
           components: [
             new ButtonBuilder({
@@ -256,10 +297,6 @@ const handleGuild = Effect.fn("handleGuild")(
 
     if (!channel?.isTextBased()) return yield* Effect.fail("Channel is not text based");
 
-    yield* Console.log(
-      `[Halloween 2025] Processing guild ${guildId} in channel ${channel.id}`,
-    );
-
     const { message: spawnMessage } = yield* sendSpawn(
       prisma,
       client,
@@ -296,7 +333,6 @@ const handleGuild = Effect.fn("handleGuild")(
 
 const program = Effect.repeat(
   Effect.gen(function* () {
-    const today = yield* DateTime.now;
     const prismaReader = yield* PrismaReader;
     const prisma = yield* prismaReader.getPrisma;
     const clientReader = yield* ClientReader;
@@ -310,10 +346,6 @@ const program = Effect.repeat(
       ),
       { concurrency: "unbounded" },
     ).pipe(Effect.asVoid, Effect.parallelErrors);
-
-    yield* Console.log(
-      `[Halloween 2025] Finished processing at ${today.pipe(DateTime.format())}`,
-    );
   }),
   // schedule,
   schedule.pipe(Schedule.intersect(Schedule.recurs(1))),
@@ -351,7 +383,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               `Czasem potwory pojawiają się w parach lub większych grupach, więc warto być czujnym!`,
               `A czasem pojawiają się tylko w reakcji na specjalne wydarzenia na serwerze... Kto wie, co przyniesie Halloween w tym roku?`,
               ``,
-              `Bądź czujny i nie przegap swojej szansy na złapanie potwora! Powodzenia!`,
+              `Bądź czujny i nie przegap swojej szansy na złapanie potwora!`,
             ];
 
             const components = new ContainerBuilder()
@@ -397,6 +429,72 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               `Dodano potwora **${monster.name}** o wadze ${monster.weight}.`,
             );
           }),
+      )
+      .addCommand("force-spawn", (command) =>
+        command
+          .setDescription("Wymuś pojawienie się potwora Halloween 2025")
+          .addString("monster-id", (option) =>
+            option.setAutocomplete(true).setDescription("ID potwora"),
+          )
+          .addString("expiration", (option) =>
+            option.setDescription("Czas wygaśnięcia spawnu, np. '5m' lub '1h'"),
+          )
+          .autocomplete(async ({ prisma }, { "monster-id": partial }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const monsters = await prisma.halloween2025Monster.findMany({
+              where: {
+                guildId: itx.guildId,
+                name: { contains: partial, mode: "insensitive" },
+              },
+              take: 25,
+            });
+
+            return itx.respond(
+              monsters.map((monster) => ({
+                name: `${monster.name} (ID: ${monster.id})`,
+                value: String(monster.id),
+              })),
+            );
+          })
+          .handle(
+            async (
+              { prisma, messageQueue },
+              { "monster-id": monsterId, expiration },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+
+              const duration = parseDuration(expiration);
+
+              if (!duration) {
+                return errorFollowUp(
+                  itx,
+                  "Nieprawidłowy format czasu wygaśnięcia. Użyj czegoś takiego jak '5m' lub '1h'.",
+                );
+              }
+
+              const monster = await prisma.halloween2025Monster.findUnique({
+                where: { id: Number(monsterId) },
+              });
+
+              if (!monster) {
+                await itx.reply(`Nie znaleziono potwora o ID ${monsterId}.`);
+                return;
+              }
+
+              await Effect.runPromise(
+                sendSpawn(
+                  prisma,
+                  itx.client,
+                  messageQueue,
+                  itx.guildId,
+                  duration,
+                  monster,
+                ),
+              );
+            },
+          ),
       ),
   )
   .handle("clientReady", async ({ prisma, messageQueue }, client) => {

@@ -29,8 +29,15 @@ export class CombatService {
 
   /**
    * Execute combat for a spawn
+   * @param spawnId The spawn ID
+   * @param maxTurns Maximum number of turns before monster escapes
+   * @param userNameMap Optional map of userId to display name for nicer event messages
    */
-  async executeCombat(spawnId: number, maxTurns = 50): Promise<CombatResult | null> {
+  async executeCombat(
+    spawnId: number,
+    maxTurns = 50,
+    userNameMap: Map<string, string> = new Map(),
+  ): Promise<CombatResult | null> {
     const spawn = await this.repository.getSpawnById(spawnId);
     if (!spawn) return null;
 
@@ -40,8 +47,11 @@ export class CombatService {
     }
 
     const playerAbilities = await this.repository.getDefaultPlayerAbilities();
-    const combatState = initializeCombatState(spawn.monster, spawn.participants);
-
+    const combatState = initializeCombatState(
+      spawn.monster,
+      spawn.participants,
+      userNameMap,
+    );
     const finalState = await simulateCombat(
       combatState,
       playerAbilities,

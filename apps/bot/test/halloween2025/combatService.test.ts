@@ -188,89 +188,49 @@ describe("CombatService", () => {
       {
         name: "Szopołak",
         createMonster: createWereraccoon,
-        expectedCaptureRates: {
-          1: 0.0,
-          2: 0.2,
-          3: 0.5,
-          4: 0.6,
-          5: 0.9,
-          6: 0.8,
-          7: 0.7,
-        },
+        expectedCaptureRates: [0.0, 0.2, 0.5, 0.6, 0.9, 0.8, 0.8],
       },
       {
         name: "Duch Wędkarza",
         createMonster: createFishermanGhost,
-        expectedCaptureRates: {
-          1: 0.2,
-          2: 0.3,
-          3: 0.4,
-          4: 0.5,
-          5: 0.6,
-          6: 0.7,
-          7: 0.8,
-        },
+        expectedCaptureRates: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.7],
       },
       {
         name: "Zombie Bruno",
         createMonster: createZombieCat,
-        expectedCaptureRates: {
-          1: 0.1,
-          2: 0.2,
-          3: 0.3,
-          4: 0.4,
-          5: 0.5,
-          6: 0.6,
-          7: 0.7,
-        },
+        expectedCaptureRates: [0.1, 0.1, 0.1, 0.2, 0.5, 0.4, 0.4],
       },
       {
         name: "Harpia",
         createMonster: createHarpy,
-        expectedCaptureRates: {
-          1: 0.05,
-          2: 0.15,
-          3: 0.15,
-          4: 0.35,
-          5: 0.45,
-          6: 0.55,
-          7: 0.65,
-        },
+        expectedCaptureRates: [0.05, 0.05, 0.15, 0.35, 0.45, 0.55, 0.65],
       },
       {
         name: "Opętana Lalka",
         createMonster: createPossessedDoll,
-        expectedCaptureRates: {
-          1: 0.1,
-          2: 0.2,
-          3: 0.2,
-          4: 0.2,
-          5: 0.5,
-          6: 0.4,
-          7: 0.7,
-        },
+        expectedCaptureRates: [0.0, 0.0, 0.1, 0.2, 0.5, 0.4, 0.7],
       },
       {
         name: "Sukkub",
         createMonster: createSuccubus,
-        expectedCaptureRates: { 1: 0, 2: 0.1, 3: 0.2, 4: 0.3, 5: 0.4, 6: 0.5, 7: 0.6 },
+        expectedCaptureRates: [0, 0.1, 0.1, 0.2, 0.4, 0.5, 0.6],
       },
-    ])(
+    ] as const)(
       "capture rate statistics for",
       ({ name, createMonster, expectedCaptureRates }) => {
         it.each([
-          [name, 1, expectedCaptureRates[1]],
-          [name, 2, expectedCaptureRates[2]],
-          [name, 3, expectedCaptureRates[3]],
-          [name, 4, expectedCaptureRates[4]],
-          [name, 5, expectedCaptureRates[5]],
-          [name, 6, expectedCaptureRates[6]],
-          [name, 7, expectedCaptureRates[7]],
+          [name, 1, expectedCaptureRates[0]],
+          [name, 2, expectedCaptureRates[1]],
+          [name, 3, expectedCaptureRates[2]],
+          [name, 4, expectedCaptureRates[3]],
+          [name, 5, expectedCaptureRates[4]],
+          [name, 6, expectedCaptureRates[5]],
+          [name, 7, expectedCaptureRates[6]],
         ])(
           "%p with %i player(s) should have ~%p capture rate",
           async (_, playerCount, expectedRate) => {
             const NUM_FIGHTS = 100;
-            const TOLERANCE = 0.2; // ±20% tolerance for statistical variance
+            const TOLERANCE = 0.1; // ±10% tolerance for statistical variance
 
             let captureCount = 0;
             const testRepository = new MockCombatRepository();
