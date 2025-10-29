@@ -585,6 +585,18 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
           return { value: null, error: "Spawn has expired" } as const;
         }
 
+        // Check if user has already attempted to catch this spawn
+        const existingAttempt = await tx.halloween2025MonsterCatchAttempt.findFirst({
+          where: {
+            userId: itx.user.id,
+            spawnId: spawnId,
+          },
+        });
+
+        if (existingAttempt) {
+          return { value: null, error: "Already attempted" } as const;
+        }
+
         await tx.halloween2025MonsterCatchAttempt.create({
           data: {
             userId: itx.user.id,
@@ -596,9 +608,15 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
       });
 
       if (result.error) {
-        await itx.editReply({
-          content: `Niestety, potwór już zniknął... Spróbuj szybciej następnym razem!`,
-        });
+        if (result.error === "Already attempted") {
+          await itx.editReply({
+            content: `Już dołączyłeś do tej wyprawy! Czekaj na wynik.`,
+          });
+        } else {
+          await itx.editReply({
+            content: `Niestety, potwór już zniknął... Spróbuj szybciej następnym razem!`,
+          });
+        }
         return;
       }
 

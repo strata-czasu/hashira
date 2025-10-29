@@ -86,6 +86,8 @@ model Halloween2025MonsterCatchAttempt {
 
   spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id])
   user  User                      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, spawnId])
 }
 
 enum Halloween2025CombatResult {
