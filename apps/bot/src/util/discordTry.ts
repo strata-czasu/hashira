@@ -16,7 +16,7 @@ export async function discordTry<T, U>(
   codes: ErrorCodes,
   catchFn: (e: DiscordError) => U,
   { rethrowAfterCatch }: Options = {},
-): Promise<T | U> {
+): Promise<Awaited<T> | Awaited<U>> {
   try {
     return await fn();
   } catch (e) {
