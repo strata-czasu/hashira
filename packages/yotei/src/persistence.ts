@@ -163,42 +163,44 @@ export class PrismaMessageQueuePersistence
   async withPendingTask(
     fn: (task: MessageQueueTask, controls: MessageQueueTaskControls) => Promise<void>,
   ) {
-    const [task] = await this.#prisma.$queryRaw<
-      Task[]
-    >`SELECT * FROM "task" WHERE "status" = 'pending' AND "handleAfter" <= now() FOR UPDATE SKIP LOCKED LIMIT 1`;
+    return await this.#prisma.$transaction(async (tx) => {
+      const [task] = await tx.$queryRaw<
+        Task[]
+      >`SELECT * FROM "task" WHERE "status" = 'pending' AND "handleAfter" <= now() FOR UPDATE SKIP LOCKED LIMIT 1`;
 
-    if (!task) return false;
+      if (!task) return false;
 
-    const normalized: MessageQueueTask = {
-      id: task.id,
-      data: task.data as MessageQueueTaskData,
-      createdAt: task.createdAt,
-    };
+      const normalized: MessageQueueTask = {
+        id: task.id,
+        data: task.data as MessageQueueTaskData,
+        createdAt: task.createdAt,
+      };
 
-    let settled = false;
-    const mark = async (status: "completed" | "failed") => {
-      if (settled) return;
-      settled = true;
-      await this.#prisma.task.update({ where: { id: task.id }, data: { status } });
-    };
+      let settled = false;
+      const mark = async (status: "completed" | "failed") => {
+        if (settled) return;
+        settled = true;
+        await tx.task.update({ where: { id: task.id }, data: { status } });
+      };
 
-    const controls: MessageQueueTaskControls = {
-      complete: async () => {
-        await mark("completed");
-      },
-      fail: async () => {
-        await mark("failed");
-      },
-    };
+      const controls: MessageQueueTaskControls = {
+        complete: async () => {
+          await mark("completed");
+        },
+        fail: async () => {
+          await mark("failed");
+        },
+      };
 
-    try {
-      await fn(normalized, controls);
-    } finally {
-      if (!settled) {
-        await controls.fail();
+      try {
+        await fn(normalized, controls);
+      } finally {
+        if (!settled) {
+          await controls.fail();
+        }
       }
-    }
 
-    return true;
+      return true;
+    });
   }
 }
