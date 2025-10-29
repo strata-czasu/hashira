@@ -32,29 +32,32 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-const joinButton = new ButtonBuilder()
-  .setCustomId("giveaway-option:join")
-  .setLabel("Dołącz")
-  .setStyle(ButtonStyle.Primary);
+function createGiveawayButtonRow(disabled: boolean) {
+  const joinButton = new ButtonBuilder()
+    .setCustomId("giveaway-option:join")
+    .setLabel("Dołącz")
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(disabled);
 
-const listButton = new ButtonBuilder()
-  .setCustomId("giveaway-option:list")
-  .setLabel("Lista uczestników")
-  .setStyle(ButtonStyle.Secondary);
+  const listButton = new ButtonBuilder()
+    .setCustomId("giveaway-option:list")
+    .setLabel("Lista uczestników")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(disabled);
 
-const giveawayButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-  joinButton,
-  listButton,
-);
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton, listButton);
+}
 
-const leaveButton = new ButtonBuilder()
-  .setCustomId("leave_giveaway")
-  .setLabel("Wyjdź")
-  .setStyle(ButtonStyle.Danger);
+function createLeaveButtonRow() {
+  const leaveButton = new ButtonBuilder()
+    .setCustomId("leave_giveaway")
+    .setLabel("Wyjdź")
+    .setStyle(ButtonStyle.Danger);
 
-const leaveButtonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+}
 
-export { GiveawayBannerRatio, giveawayButtonRow, leaveButtonRow };
+export { GiveawayBannerRatio, createGiveawayButtonRow, createLeaveButtonRow };
 
 export function parseRewards(input: string): GiveawayReward[] {
   return input
@@ -320,14 +323,7 @@ export async function endGiveaway(
 
   const newRow = new ActionRowBuilder<ButtonBuilder>({
     ...container.components[actionRowIndex]?.data,
-    components: [
-      ButtonBuilder.from(giveawayButtonRow.components[0] as ButtonBuilder).setDisabled(
-        true,
-      ),
-      ButtonBuilder.from(giveawayButtonRow.components[1] as ButtonBuilder).setDisabled(
-        true,
-      ),
-    ],
+    components: createGiveawayButtonRow(true).components,
   });
 
   container.components[actionRowIndex] = newRow;

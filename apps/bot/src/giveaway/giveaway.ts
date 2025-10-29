@@ -21,12 +21,12 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   autocompleteGiveawayId,
+  createGiveawayButtonRow,
+  createLeaveButtonRow,
   formatBanner,
   GiveawayBannerRatio,
   getStaticBanner,
-  giveawayButtonRow,
   giveawayFooter,
-  leaveButtonRow,
   parseRewards,
   selectAndSaveWinners,
   updateGiveaway,
@@ -232,7 +232,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               itx.deleteReply();
 
-              messageContainer.addActionRowComponents(giveawayButtonRow.setId(2));
+              messageContainer.addActionRowComponents(
+                createGiveawayButtonRow(false).setId(2),
+              );
 
               const response = await itx.followUp({
                 components: [messageContainer],
@@ -450,9 +452,14 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 "Nie masz uprawnień do rerollowania tego giveawaya!",
               );
 
-            const participants = await prisma.giveawayParticipant.findMany({
-              where: { giveawayId: giveaway.id, isRemoved: false },
-            });
+            const [rewards, participants] = await prisma.$transaction([
+              prisma.giveawayReward.findMany({
+                where: { giveawayId: giveaway.id },
+              }),
+              prisma.giveawayParticipant.findMany({
+                where: { giveawayId: giveaway.id, isRemoved: false },
+              }),
+            ]);
 
             if (participants.length === 0) {
               return await errorFollowUp(
@@ -472,21 +479,27 @@ export const giveaway = new Hashira({ name: "giveaway" })
               prisma,
             );
 
-            const winnersByUser = new Map<string, number>();
-            for (const winner of newWinners) {
-              winnersByUser.set(
-                winner.userId,
-                (winnersByUser.get(winner.userId) || 0) + 1,
-              );
-            }
+            const results = rewards.map(({ reward, id: rewardId }) => {
+              const rewardWinners = newWinners.filter((w) => w.rewardId === rewardId);
+              const mention =
+                rewardWinners.length === 0
+                  ? "nikt"
+                  : rewardWinners.map((w) => `<@${w.userId}>`).join(" ");
+              return `> ${reward} ${mention}`;
+            });
 
-            const winnersList = Array.from(winnersByUser.entries())
-              .map(([userId, count]) => `<@${userId}> (${count}x)`)
-              .join(", ");
+            const resultContainer = new ContainerBuilder()
+              .setAccentColor(0x00ff99)
+              .addTextDisplayComponents((td) =>
+                td.setContent("# :tada: Nowi zwycięzcy:"),
+              )
+              .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
+              .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
 
             await itx.reply({
-              content: `Nowi zwycięzcy: ${winnersList}${giveawayFooter(giveaway)}`,
-              allowedMentions: { users: Array.from(winnersByUser.keys()) },
+              components: [resultContainer],
+              allowedMentions: { users: participants.map((p) => p.userId) },
+              flags: MessageFlags.IsComponentsV2,
             });
           }),
       )
@@ -715,7 +728,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
       const joinResponse = await itx.followUp({
         content: returnMsg,
-        components: [leaveButtonRow],
+        components: [createLeaveButtonRow()],
       });
 
       if (!joinResponse) {
