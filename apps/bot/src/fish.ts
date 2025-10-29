@@ -101,6 +101,8 @@ export const fish = new Hashira({ name: "fish" })
           return;
         }
 
+        await itx.deferReply();
+
         const { id } = getRandomFish();
         // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
         const { name, amount } = getFishById(id)!;
@@ -127,18 +129,13 @@ export const fish = new Hashira({ name: "fish" })
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(reminderButton);
 
-        const response = await itx.reply({
+        const response = await itx.editReply({
           content: `Wyławiasz ${name} wartego ${balance}`,
           components: [row],
-          withResponse: true,
         });
 
-        if (!response.resource?.message) {
-          throw new Error("Failed to receive response from interaction reply");
-        }
-
         const clickInfo = await waitForButtonClick(
-          response.resource.message,
+          response,
           "fish_reminder",
           { minutes: 1 },
           (interaction) => interaction.user.id === itx.user.id,
