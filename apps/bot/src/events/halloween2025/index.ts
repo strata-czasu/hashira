@@ -3,6 +3,7 @@ import {
   DatabasePaginator,
   type ExtendedPrismaClient,
   type Halloween2025Monster,
+  type Halloween2025MonsterCatchAttempt,
   type Halloween2025MonsterSpawn,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -585,20 +586,49 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
           return { value: null, error: "Spawn has expired" } as const;
         }
 
-        await tx.halloween2025MonsterCatchAttempt.create({
-          data: {
-            userId: itx.user.id,
-            spawnId: spawnId,
+        // Check if user has already attempted to catch this spawn
+        const existingAttempt = await tx.halloween2025MonsterCatchAttempt.findUnique({
+          where: {
+            userId_spawnId: {
+              userId: itx.user.id,
+              spawnId,
+            },
           },
         });
 
-        return { value: spawn, error: null } as const;
+        if (existingAttempt) {
+          return { value: null, error: "Already attempted" } as const;
+        }
+
+        await tx.halloween2025MonsterCatchAttempt.create({
+          data: {
+            userId: itx.user.id,
+            spawnId,
+          },
+        });
+
+        // Fetch all participants to rebuild the list from database
+        const allAttempts = await tx.halloween2025MonsterCatchAttempt.findMany({
+          where: { spawnId },
+          orderBy: { attemptedAt: "asc" },
+        });
+
+        return {
+          value: { ...spawn, participants: allAttempts },
+          error: null,
+        } as const;
       });
 
       if (result.error) {
-        await itx.editReply({
-          content: `Niestety, potwór już zniknął... Spróbuj szybciej następnym razem!`,
-        });
+        if (result.error === "Already attempted") {
+          await itx.editReply({
+            content: `Już dołączyłeś do tej wyprawy! Czekaj na wynik.`,
+          });
+        } else {
+          await itx.editReply({
+            content: `Niestety, potwór już zniknął... Spróbuj szybciej następnym razem!`,
+          });
+        }
         return;
       }
 
@@ -630,11 +660,22 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
         ...APIMessageTopLevelComponent[],
       ];
       const textComponent = displayContainer.components[1] as TextDisplayComponent;
-      const currentContent = textComponent.data.content;
-      const participantLine = `- ${userMention(itx.user.id)} (${itx.user.username})`;
-      const newContent = currentContent.includes("(brak)")
-        ? `${currentContent.replace("(brak)", "")}\n${participantLine}`
-        : `${currentContent}\n${participantLine}`;
+
+      // Rebuild participant list from database
+      const participantLines = await Promise.all(
+        result.value.participants.map(
+          async (attempt: Halloween2025MonsterCatchAttempt) => {
+            const user = await itx.client.users.fetch(attempt.userId).catch(() => null);
+            const username = user?.username ?? attempt.userId;
+            return `- ${userMention(attempt.userId)} (${username})`;
+          },
+        ),
+      );
+
+      const newContent =
+        participantLines.length > 0
+          ? `Lista uczestników:\n${participantLines.join("\n")}`
+          : `Lista uczestników: (brak)`;
 
       const textComponentBuilder = new TextDisplayBuilder(
         textComponent.toJSON(),
