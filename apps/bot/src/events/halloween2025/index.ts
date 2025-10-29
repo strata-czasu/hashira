@@ -606,7 +606,13 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
           },
         });
 
-        return { value: spawn, error: null } as const;
+        // Fetch all participants to rebuild the list from database
+        const allAttempts = await tx.halloween2025MonsterCatchAttempt.findMany({
+          where: { spawnId },
+          orderBy: { attemptedAt: "asc" },
+        });
+
+        return { value: spawn, error: null, participants: allAttempts } as const;
       });
 
       if (result.error) {
@@ -650,11 +656,20 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
         ...APIMessageTopLevelComponent[],
       ];
       const textComponent = displayContainer.components[1] as TextDisplayComponent;
-      const currentContent = textComponent.data.content;
-      const participantLine = `- ${userMention(itx.user.id)} (${itx.user.username})`;
-      const newContent = currentContent.includes("(brak)")
-        ? `${currentContent.replace("(brak)", "")}\n${participantLine}`
-        : `${currentContent}\n${participantLine}`;
+
+      // Rebuild participant list from database
+      const participantLines = await Promise.all(
+        result.value.participants.map(async (attempt) => {
+          const user = await itx.client.users.fetch(attempt.userId).catch(() => null);
+          const username = user?.username ?? attempt.userId;
+          return `- ${userMention(attempt.userId)} (${username})`;
+        }),
+      );
+
+      const newContent =
+        participantLines.length > 0
+          ? `Lista uczestników:\n${participantLines.join("\n")}`
+          : `Lista uczestników: (brak)`;
 
       const textComponentBuilder = new TextDisplayBuilder(
         textComponent.toJSON(),
