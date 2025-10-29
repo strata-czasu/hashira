@@ -2,11 +2,6 @@ import type { CompletedCombatState } from "./combatLog";
 import { initializeCombatState, simulateCombat } from "./combatLog";
 import type { ICombatRepository } from "./combatRepository";
 
-/**
- * Combat service layer - orchestrates combat simulation and persistence
- * Separated from database access for easy testing
- */
-
 export type CombatResult = {
   state: CompletedCombatState;
   spawn: {
@@ -27,12 +22,6 @@ export class CombatService {
     private random: () => number,
   ) {}
 
-  /**
-   * Execute combat for a spawn
-   * @param spawnId The spawn ID
-   * @param maxTurns Maximum number of turns before monster escapes
-   * @param userNameMap Optional map of userId to display name for nicer event messages
-   */
   async executeCombat(
     spawnId: number,
     maxTurns = 50,

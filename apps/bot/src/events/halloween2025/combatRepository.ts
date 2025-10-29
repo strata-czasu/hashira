@@ -37,24 +37,9 @@ export type SpawnData = {
 };
 
 export interface ICombatRepository {
-  /**
-   * Get spawn with monster and participants
-   */
   getSpawnById(spawnId: number): Promise<SpawnData | null>;
-
-  /**
-   * Get all default player abilities
-   */
   getDefaultPlayerAbilities(): Promise<PlayerAbility[]>;
-
-  /**
-   * Save combat state to database
-   */
   saveCombatLog(spawnId: number, state: CombatState): Promise<void>;
-
-  /**
-   * Update spawn status after combat
-   */
   updateSpawnStatus(
     spawnId: number,
     status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
@@ -62,9 +47,6 @@ export interface ICombatRepository {
   ): Promise<void>;
 }
 
-/**
- * Prisma implementation of combat repository
- */
 export class PrismaCombatRepository implements ICombatRepository {
   constructor(private prisma: PrismaTransaction) {}
 
@@ -189,9 +171,6 @@ export class PrismaCombatRepository implements ICombatRepository {
   }
 }
 
-/**
- * Mock implementation for testing
- */
 export class MockCombatRepository implements ICombatRepository {
   private spawns = new Map<number, SpawnData>();
   private abilities: PlayerAbility[] = [];
