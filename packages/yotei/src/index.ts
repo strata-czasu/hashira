@@ -153,15 +153,13 @@ export class MessageQueue<
     } catch (e) {
       console.error(e);
     }
-
-    setTimeout(() => this.innerConsumeLoop(props), this.#interval);
   }
 
   async consumeLoop(props: Args) {
     if (this.#running) throw new Error("MessageQueue is already running");
     this.#running = true;
 
-    await this.innerConsumeLoop(props);
+    setInterval(() => this.innerConsumeLoop(props), this.#interval);
   }
 }
 
