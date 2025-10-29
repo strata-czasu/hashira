@@ -85,6 +85,9 @@ export const fish = new Hashira({ name: "fish" })
       .setDescription("Nielegalny połów ryb")
       .handle(async ({ prisma, messageQueue }, _, itx) => {
         if (!itx.inCachedGuild()) return;
+
+        await itx.deferReply();
+
         await ensureUserExists(prisma, itx.user);
 
         const [canFish, nextFishing] = await checkIfCanFish(
@@ -100,8 +103,6 @@ export const fish = new Hashira({ name: "fish" })
           });
           return;
         }
-
-        await itx.deferReply();
 
         const { id } = getRandomFish();
         // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
