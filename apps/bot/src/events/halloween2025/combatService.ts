@@ -65,6 +65,7 @@ export class CombatService {
       finalState.result === "monster_captured"
         ? "completed_captured"
         : "completed_escaped";
+
     await this.repository.updateSpawnStatus(spawnId, status, finalState.winnerUserId);
 
     return {

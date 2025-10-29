@@ -496,18 +496,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const spawn = await prisma.halloween2025MonsterSpawn.findUnique({
               where: { id: spawnId },
               select: {
-                catchAttempts: {
-                  select: {
-                    user: {
-                      select: {
-                        id: true,
-                        Halloween2025Spawn: {
-                          select: { guildId: true, monsterId: true },
-                        },
-                      },
-                    },
-                  },
-                },
+                catchAttempts: { select: { user: { select: { id: true } } } },
                 guildId: true,
                 channelId: true,
                 messageId: true,
@@ -614,7 +603,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 flags: MessageFlags.IsComponentsV2,
               });
 
-              await sleep(5000);
+              await sleep(3000);
             }
           },
         ),
