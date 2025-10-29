@@ -1,5 +1,19 @@
-import { describe, expect, test } from "bun:test";
-import { durationToSeconds, formatDuration, parseDuration } from "../src/util/duration";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { Effect, Random } from "effect";
+import {
+  durationToSeconds,
+  formatDuration,
+  parseDuration,
+  randomDuration,
+} from "../src/util/duration";
+
+// biome-ignore lint/style/noNonNullAssertion: test code
+let random: () => number = null!;
+
+beforeEach(() => {
+  const randomGen = Random.make(42);
+  random = () => Effect.runSync(randomGen.next);
+});
 
 describe("parseDuration", () => {
   test("returns seconds duration", () => {
@@ -87,5 +101,114 @@ describe("formatDuration", () => {
 
   test("formats empty duration", () => {
     expect(formatDuration({})).toBe("");
+  });
+});
+
+describe("randomDuration", () => {
+  test("generates duration within range (seconds)", () => {
+    const min = { seconds: 10 };
+    const max = { seconds: 20 };
+    const result = randomDuration(min, max, random);
+
+    const resultSeconds = durationToSeconds(result);
+    expect(resultSeconds).toBeGreaterThanOrEqual(10);
+    expect(resultSeconds).toBeLessThanOrEqual(20);
+  });
+
+  test("generates duration within range (minutes)", () => {
+    const min = { minutes: 5 };
+    const max = { minutes: 10 };
+    const result = randomDuration(min, max, random);
+
+    const resultSeconds = durationToSeconds(result);
+    expect(resultSeconds).toBeGreaterThanOrEqual(5 * 60);
+    expect(resultSeconds).toBeLessThanOrEqual(10 * 60);
+  });
+
+  test("generates duration within range (mixed durations)", () => {
+    const min = { hours: 1, minutes: 30 };
+    const max = { hours: 3, minutes: 45 };
+    const result = randomDuration(min, max, random);
+
+    const resultSeconds = durationToSeconds(result);
+    const minSeconds = durationToSeconds(min);
+    const maxSeconds = durationToSeconds(max);
+
+    expect(resultSeconds).toBeGreaterThanOrEqual(minSeconds);
+    expect(resultSeconds).toBeLessThanOrEqual(maxSeconds);
+  });
+
+  test("generates same duration when min equals max", () => {
+    const duration = { hours: 2, minutes: 30 };
+    const result = randomDuration(duration, duration, random);
+
+    expect(durationToSeconds(result)).toBe(durationToSeconds(duration));
+  });
+
+  test("generates consistent results with seeded random", () => {
+    const min = { seconds: 0 };
+    const max = { seconds: 100 };
+
+    const randomGen1 = Random.make(123);
+    const random1 = () => Effect.runSync(randomGen1.next);
+    const result1 = randomDuration(min, max, random1);
+
+    const randomGen2 = Random.make(123);
+    const random2 = () => Effect.runSync(randomGen2.next);
+    const result2 = randomDuration(min, max, random2);
+
+    expect(durationToSeconds(result1)).toBe(durationToSeconds(result2));
+  });
+
+  test("generates different results with different seeds", () => {
+    const min = { seconds: 0 };
+    const max = { seconds: 1000 };
+
+    const randomGen1 = Random.make(111);
+    const random1 = () => Effect.runSync(randomGen1.next);
+    const result1 = randomDuration(min, max, random1);
+
+    const randomGen2 = Random.make(222);
+    const random2 = () => Effect.runSync(randomGen2.next);
+    const result2 = randomDuration(min, max, random2);
+
+    // With high probability, different seeds should produce different results
+    expect(durationToSeconds(result1)).not.toBe(durationToSeconds(result2));
+  });
+
+  test("handles zero duration as minimum", () => {
+    const min = { seconds: 0 };
+    const max = { seconds: 10 };
+    const result = randomDuration(min, max, random);
+
+    const resultSeconds = durationToSeconds(result);
+    expect(resultSeconds).toBeGreaterThanOrEqual(0);
+    expect(resultSeconds).toBeLessThanOrEqual(10);
+  });
+
+  test("generates duration with days", () => {
+    const min = { days: 1 };
+    const max = { days: 7 };
+    const result = randomDuration(min, max, random);
+
+    const resultSeconds = durationToSeconds(result);
+    expect(resultSeconds).toBeGreaterThanOrEqual(1 * 24 * 60 * 60);
+    expect(resultSeconds).toBeLessThanOrEqual(7 * 24 * 60 * 60);
+  });
+
+  test("converts result to proper duration format", () => {
+    const min = { seconds: 0 };
+    const max = { seconds: 3665 }; // 1 hour, 1 minute, 5 seconds
+    const result = randomDuration(min, max, random);
+
+    // Result should be a valid Duration object
+    expect(typeof result).toBe("object");
+    // Should have at least one duration property
+    const hasValidProperty =
+      result.seconds !== undefined ||
+      result.minutes !== undefined ||
+      result.hours !== undefined ||
+      result.days !== undefined;
+    expect(hasValidProperty).toBe(true);
   });
 });

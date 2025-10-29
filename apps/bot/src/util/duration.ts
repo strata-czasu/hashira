@@ -1,4 +1,4 @@
-import type { Duration } from "date-fns";
+import { type Duration, intervalToDuration } from "date-fns";
 
 /**
  * Parse a duration string into a duration object
@@ -57,4 +57,16 @@ export const formatDuration = (duration: Duration): string => {
   if (duration.seconds) parts.push(`${duration.seconds}s`);
 
   return parts.join(" ");
+};
+
+export const randomDuration = (
+  min: Duration,
+  max: Duration,
+  random: () => number,
+): Duration => {
+  const minMs = durationToMilliseconds(min);
+  const maxMs = durationToMilliseconds(max);
+  const randomMs = Math.floor(random() * (maxMs - minMs + 1)) + minMs;
+
+  return intervalToDuration({ start: 0, end: randomMs });
 };
