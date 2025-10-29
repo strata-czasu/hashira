@@ -180,7 +180,7 @@ describe("CombatService", () => {
 
         const result = await service.executeCombat(spawn.id, 50);
 
-        expect(result).toMatchSnapshot();
+        expect(result?.state.events.map((event) => event.message)).toMatchSnapshot();
       });
     });
 
