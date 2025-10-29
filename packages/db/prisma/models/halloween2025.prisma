@@ -1,0 +1,147 @@
+model Halloween2025Monster {
+  id          Int     @id @default(autoincrement())
+  name        String
+  weight      Int
+  enabled     Boolean @default(true)
+  guildId     String
+  image       String
+  baseHp      Int     @default(100)
+  baseAttack  Int     @default(10)
+  baseDefense Int     @default(5)
+  baseSpeed   Int     @default(10)
+
+  guild   Guild                        @relation(fields: [guildId], references: [id])
+  spawns  Halloween2025MonsterSpawn[]
+  actions Halloween2025MonsterAction[]
+
+  @@unique([name, guildId])
+}
+
+enum Halloween2025ActionType {
+  attack
+  defend
+  heal
+  buff
+  debuff
+  special
+}
+
+model Halloween2025MonsterAction {
+  id            Int                     @id @default(autoincrement())
+  monsterId     Int
+  name          String
+  description   String
+  actionType    Halloween2025ActionType
+  power         Int
+  weight        Int                     @default(1)
+  cooldown      Int                     @default(0)
+  isAoe         Boolean                 @default(false)
+  canTargetSelf Boolean                 @default(false)
+  /// JSON data for special effects: { "burn": 5, "stun": true, "lifesteal": 0.3 }
+  effects       Json?
+
+  monster Halloween2025Monster @relation(fields: [monsterId], references: [id], onDelete: Cascade)
+
+  @@unique([monsterId, name])
+}
+
+enum Halloween2025CombatState {
+  pending
+  in_progress
+  completed_captured
+  completed_escaped
+}
+
+enum Halloween2025MonsterRarity {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+}
+
+model Halloween2025MonsterSpawn {
+  id          Int                        @id @default(autoincrement())
+  channelId   String
+  messageId   String
+  monsterId   Int
+  spawnedAt   DateTime                   @default(now())
+  expiresAt   DateTime
+  guildId     String
+  rarity      Halloween2025MonsterRarity
+  combatState Halloween2025CombatState   @default(pending)
+
+  guild          Guild                              @relation(fields: [guildId], references: [id])
+  monster        Halloween2025Monster               @relation(fields: [monsterId], references: [id])
+  catchAttempts  Halloween2025MonsterCatchAttempt[]
+  combatLog      Halloween2025CombatLog?
+  lootRecipients Halloween2025MonsterLoot[]
+}
+
+model Halloween2025MonsterCatchAttempt {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  spawnId     Int
+  attemptedAt DateTime @default(now())
+
+  spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id])
+  user  User                      @relation(fields: [userId], references: [id])
+}
+
+enum Halloween2025CombatResult {
+  monster_captured
+  monster_escaped
+  all_players_defeated
+}
+
+model Halloween2025CombatLog {
+  id          Int                        @id @default(autoincrement())
+  spawnId     Int                        @unique
+  events      Json                       @default("[]")
+  currentTurn Int                        @default(0)
+  combatState Json
+  startedAt   DateTime                   @default(now())
+  endedAt     DateTime?
+  result      Halloween2025CombatResult?
+
+  spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id], onDelete: Cascade)
+}
+
+enum Halloween2025AbilityType {
+  attack
+  defend
+  heal
+  buff
+  debuff
+  counter
+}
+
+model Halloween2025PlayerAbility {
+  id               Int                      @id @default(autoincrement())
+  name             String                   @unique
+  description      String
+  abilityType      Halloween2025AbilityType
+  power            Int
+  cooldown         Int                      @default(0)
+  canTargetPlayers Boolean                  @default(false)
+  canTargetSelf    Boolean                  @default(true)
+  isAoe            Boolean                  @default(false)
+  /// JSON data for special effects: { "thorns": 5, "shield": 10, "berserk": true }
+  effects          Json?
+  isDefault        Boolean                  @default(true)
+}
+
+model Halloween2025MonsterLoot {
+  id          Int      @id @default(autoincrement())
+  spawnId     Int
+  userId      String
+  damageDealt Int
+  rank        Int
+  createdAt   DateTime @default(now())
+
+  spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id], onDelete: Cascade)
+  user  User                      @relation(fields: [userId], references: [id])
+
+  @@unique([spawnId, userId])
+  @@index([userId])
+}

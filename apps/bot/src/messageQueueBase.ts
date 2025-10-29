@@ -1,16 +1,31 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
+import { sleep } from "bun";
 import { type Duration, formatDuration } from "date-fns";
 import {
+  type ActionRow,
+  ActionRowBuilder,
+  type ButtonBuilder,
+  type ButtonComponent,
   type Client,
+  ContainerBuilder,
+  type ContainerComponent,
+  DiscordjsErrorCodes,
+  heading,
   inlineCode,
+  MessageFlags,
+  type PublicThreadChannel,
   RESTJSONErrorCodes,
+  TextDisplayBuilder,
   TimestampStyles,
   time,
   userMention,
 } from "discord.js";
 import { database } from "./db";
+import type { TurnSnapshot } from "./events/halloween2025/combatLog";
+import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
+import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
 import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
@@ -72,6 +87,27 @@ type ModeratorLeaveEndData = {
   leaveId: number;
   userId: string;
   guildId: string;
+};
+type Halloween2025EndSpawnData = {
+  spawnId: number;
+};
+
+const createTurnDisplayComponent = (turnSnapshot: TurnSnapshot) => {
+  const combatantHpLines = turnSnapshot.combatants.map(
+    (combatant) => `- **${combatant.name}**: ${combatant.hp}/${combatant.maxHp} HP`,
+  );
+
+  const turnHeader = `## Tura ${turnSnapshot.turnNumber}`;
+  const hpStatus = combatantHpLines.join("\n");
+  const events = turnSnapshot.events
+    .map((event) =>
+      event.type === "turn_start" ? `\n${event.message}` : event.message,
+    )
+    .join("\n");
+
+  return new ContainerBuilder().addTextDisplayComponents((td) =>
+    td.setContent(`${turnHeader}\n\n${hpStatus}\n\n${events}`),
+  );
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -453,6 +489,172 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               member.user,
               "Hej, właśnie skończył się Twój urlop!",
             );
+          },
+        )
+        .addHandler(
+          "halloween2025endSpawn",
+          async ({ client }, { spawnId }: Halloween2025EndSpawnData) => {
+            const spawn = await prisma.halloween2025MonsterSpawn.findUnique({
+              where: { id: spawnId },
+              select: {
+                catchAttempts: { select: { user: { select: { id: true } } } },
+                guildId: true,
+                channelId: true,
+                messageId: true,
+                expiresAt: true,
+              },
+            });
+
+            if (!spawn) {
+              console.warn(`Spawn not found for id ${spawnId}`);
+              return;
+            }
+
+            const guild = await discordTry(
+              () => client.guilds.fetch(spawn.guildId),
+              [RESTJSONErrorCodes.UnknownGuild],
+              () => null,
+            );
+
+            if (!guild) {
+              console.warn(`Guild not found for id ${spawn.guildId}`);
+              return;
+            }
+
+            const channel = await discordTry(
+              () => guild.channels.fetch(spawn.channelId),
+              [RESTJSONErrorCodes.UnknownChannel],
+              () => null,
+            );
+
+            if (!channel?.isTextBased()) {
+              console.warn(
+                `Channel not found or not text-based for id ${spawn.channelId}`,
+              );
+              return;
+            }
+
+            const message = await discordTry(
+              () => channel.messages.fetch(spawn.messageId),
+              [RESTJSONErrorCodes.UnknownMessage],
+              () => null,
+            );
+
+            if (!message) {
+              console.warn(`Message not found for id ${spawn.messageId}`);
+              return;
+            }
+
+            const container = message.components[0] as ContainerComponent;
+
+            if (!container) {
+              console.warn(`Container not found in message ${message.id}`);
+              return;
+            }
+
+            const newContainer = new ContainerBuilder(
+              container.toJSON(),
+            ).spliceComponents(
+              -1,
+              1,
+              new TextDisplayBuilder().setContent(
+                `Zapisy zakończone o ${time(spawn.expiresAt, TimestampStyles.ShortTime)}`,
+              ),
+            );
+
+            const actionRow = message.components[1] as ActionRow<ButtonComponent>;
+
+            if (!actionRow) {
+              console.warn(`Action row not found in message ${message.id}`);
+              return;
+            }
+
+            const newActionRow = new ActionRowBuilder<ButtonBuilder>(
+              actionRow.toJSON(),
+            );
+            newActionRow.components.at(0)?.setDisabled(true);
+
+            await message.edit({ components: [newContainer, newActionRow] });
+
+            const thread = await discordTry(
+              () => message.startThread({ name: "Combat Log" }),
+              [DiscordjsErrorCodes.MessageExistingThread],
+              () => message.thread as PublicThreadChannel<false>,
+            );
+
+            const repository = new PrismaCombatRepository(prisma);
+            const combatService = new CombatService(repository, Math.random);
+            const userNameMap = new Map<string, string>([["monster", "Potwór"]]);
+            for (const { user } of spawn.catchAttempts) {
+              userNameMap.set(user.id, userMention(user.id));
+            }
+
+            const fight = await combatService.executeCombat(spawnId, 50, userNameMap);
+
+            if (!fight) {
+              await thread.send("Nie było uczestników, więc potwór uciekł.");
+              return;
+            }
+
+            for (const turnSnapshot of fight.state.turnSnapshots) {
+              const turnComponent = createTurnDisplayComponent(turnSnapshot);
+
+              await thread.send({
+                components: [turnComponent],
+                flags: MessageFlags.IsComponentsV2,
+              });
+
+              await sleep(1000);
+            }
+
+            await thread.send({
+              components: [
+                new ContainerBuilder().addTextDisplayComponents((td) =>
+                  td.setContent(
+                    `## Wynik walki\n\n${
+                      fight.state.result === "monster_captured"
+                        ? "Potwór został pojmany!"
+                        : "Potwór uciekł!"
+                    }`,
+                  ),
+                ),
+              ],
+              flags: MessageFlags.IsComponentsV2,
+            });
+
+            const loot = await prisma.halloween2025MonsterLoot.findMany({
+              where: { spawnId },
+              select: { rank: true, damageDealt: true, userId: true },
+              orderBy: { rank: "desc" },
+            });
+
+            if (loot.length === 0) return;
+
+            const lines = [
+              heading(`Rozdanie lootu`),
+              "",
+              "Loot został przydzielony uczestnikom walki według zadanych obrażeń:",
+              "",
+              ...loot.map(
+                (l) => `${l.rank}. ${userMention(l.userId)} - ${l.damageDealt} obrażeń`,
+              ),
+            ];
+
+            await thread.send({
+              components: [
+                new ContainerBuilder().addTextDisplayComponents((td) =>
+                  td.setContent(lines.join("\n")),
+                ),
+              ],
+              flags: MessageFlags.IsComponentsV2,
+            });
+
+            const winnerIds = loot.map((l) => l.userId);
+
+            await thread.send({
+              content: winnerIds.map((id) => userMention(id)).join(", "),
+              allowedMentions: { users: winnerIds },
+            });
           },
         ),
     };

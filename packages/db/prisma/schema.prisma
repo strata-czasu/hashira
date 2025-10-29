@@ -65,27 +65,29 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                  String               @id(map: "core_guild_pkey")
-  autoRole            AutoRole[]
-  colorRole           ColorRole[]
-  currency            Currency[]
-  dailyPointsRedeems  DailyPointsRedeems[]
-  emojiUsage          EmojiUsage[]
-  guildSettings       GuildSettings?
-  mute                Mute[]
-  userTextActivity    UserTextActivity[]
-  verification        Verification[]
-  wallet              Wallet[]
-  warn                Warn[]
-  protectedInvites    ProtectedInvite[]
-  ultimatums          Ultimatum[]
-  stickyMessages      StickyMessage[]
-  channelRestrictions ChannelRestriction[]
-  voiceSessions       VoiceSession[]
-  lastFishings        LastFishing[]
-  giveaways           Giveaway[]
-  items               Item[]
-  moderatorLeaves     ModeratorLeave[]
+  id                     String                      @id(map: "core_guild_pkey")
+  autoRole               AutoRole[]
+  colorRole              ColorRole[]
+  currency               Currency[]
+  dailyPointsRedeems     DailyPointsRedeems[]
+  emojiUsage             EmojiUsage[]
+  guildSettings          GuildSettings?
+  mute                   Mute[]
+  userTextActivity       UserTextActivity[]
+  verification           Verification[]
+  wallet                 Wallet[]
+  warn                   Warn[]
+  protectedInvites       ProtectedInvite[]
+  ultimatums             Ultimatum[]
+  stickyMessages         StickyMessage[]
+  channelRestrictions    ChannelRestriction[]
+  voiceSessions          VoiceSession[]
+  lastFishings           LastFishing[]
+  giveaways              Giveaway[]
+  items                  Item[]
+  moderatorLeaves        ModeratorLeave[]
+  halloweenMonsters      Halloween2025Monster[]
+  halloweenMonsterSpawns Halloween2025MonsterSpawn[]
 
   @@map("guild")
 }
@@ -162,6 +164,8 @@ model User {
   giveawayWinnings                  GiveawayWinner[]
   createdGiveaways                  Giveaway[]
   moderatorLeaves                   ModeratorLeave[]
+  halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]
+  halloween2025MonsterLoot          Halloween2025MonsterLoot[]
 
   @@map("users")
 }
