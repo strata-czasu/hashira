@@ -3,6 +3,7 @@ import {
   DatabasePaginator,
   type ExtendedPrismaClient,
   type Halloween2025Monster,
+  type Halloween2025MonsterCatchAttempt,
   type Halloween2025MonsterSpawn,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -612,7 +613,10 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
           orderBy: { attemptedAt: "asc" },
         });
 
-        return { value: spawn, error: null, participants: allAttempts } as const;
+        return {
+          value: { ...spawn, participants: allAttempts },
+          error: null,
+        } as const;
       });
 
       if (result.error) {
@@ -659,11 +663,13 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
 
       // Rebuild participant list from database
       const participantLines = await Promise.all(
-        result.value.participants.map(async (attempt) => {
-          const user = await itx.client.users.fetch(attempt.userId).catch(() => null);
-          const username = user?.username ?? attempt.userId;
-          return `- ${userMention(attempt.userId)} (${username})`;
-        }),
+        result.value.participants.map(
+          async (attempt: Halloween2025MonsterCatchAttempt) => {
+            const user = await itx.client.users.fetch(attempt.userId).catch(() => null);
+            const username = user?.username ?? attempt.userId;
+            return `- ${userMention(attempt.userId)} (${username})`;
+          },
+        ),
       );
 
       const newContent =
