@@ -322,6 +322,59 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             await paginatedView.render(itx);
           }),
       )
+      .addCommand("count-guild-tags", (command) =>
+        command
+          .setDescription("Count most popular guild tags")
+          .handle(async (_, __, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            let after: string | undefined;
+            const tagCounts: Record<string, number> = {};
+            const limit = 1000;
+
+            while (true) {
+              const members = await itx.guild.members.list({
+                ...(after ? { after } : {}),
+                limit,
+              });
+              if (members.size === 0) break;
+
+              for (const member of members.values()) {
+                const primaryGuild = member.user.primaryGuild;
+                if (!primaryGuild) continue;
+                const tag = primaryGuild.tag;
+                if (!tag) continue;
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+              }
+
+              if (members.size < limit) break;
+
+              const last = members.last();
+              if (!last) break;
+              after = last.id;
+            }
+
+            const items = Object.entries(tagCounts).map(([tag, count]) => ({
+              tag,
+              count,
+            }));
+            const paginator = new StaticPaginator({
+              items,
+              pageSize: 10,
+              compare: (a, b) => a.count - b.count,
+            });
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Najpopularniejsze tagi",
+              ({ tag, count }) => `${tag} - ${count}`,
+              true,
+            );
+
+            await paginatedView.render(itx);
+          }),
+      )
       .addCommand("eval", (command) =>
         command
           .setDescription("Evaluate code")
