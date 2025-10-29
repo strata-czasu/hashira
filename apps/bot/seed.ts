@@ -94,7 +94,6 @@ if (isProduction) {
   await createGuild(GUILD_IDS.StrataCzasu);
   await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
   await createDefaultItems(GUILD_IDS.StrataCzasu);
-  await setDefaultLogChannels(GUILD_IDS.StrataCzasu);
   await seedDefaultPlayerAbilities(prisma);
   await seedMonstersForGuild(prisma, GUILD_IDS.StrataCzasu);
   console.log("Seeding completed for production environment");
