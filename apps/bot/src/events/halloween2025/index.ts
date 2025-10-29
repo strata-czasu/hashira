@@ -586,10 +586,12 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
         }
 
         // Check if user has already attempted to catch this spawn
-        const existingAttempt = await tx.halloween2025MonsterCatchAttempt.findFirst({
+        const existingAttempt = await tx.halloween2025MonsterCatchAttempt.findUnique({
           where: {
-            userId: itx.user.id,
-            spawnId: spawnId,
+            userId_spawnId: {
+              userId: itx.user.id,
+              spawnId,
+            },
           },
         });
 
@@ -600,7 +602,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
         await tx.halloween2025MonsterCatchAttempt.create({
           data: {
             userId: itx.user.id,
-            spawnId: spawnId,
+            spawnId,
           },
         });
 
