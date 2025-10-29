@@ -97,10 +97,11 @@ export const fish = new Hashira({ name: "fish" })
         );
 
         if (!canFish) {
-          await itx.reply({
+          await itx.editReply({
             content: `Dalej masz PZW na karku. Następną rybę możesz wyłowić ${time(nextFishing, TimestampStyles.RelativeTime)}`,
-            flags: "Ephemeral",
           });
+          await sleep(secondsToMilliseconds(5));
+          await itx.deleteReply();
           return;
         }
 
