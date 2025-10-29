@@ -10,6 +10,7 @@ import type {
 export type MonsterData = {
   id: number;
   name: string;
+  rarity: $Enums.Halloween2025MonsterRarity;
   baseHp: number;
   baseAttack: number;
   baseDefense: number;
@@ -59,11 +60,6 @@ export interface ICombatRepository {
     status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
     winnerUserId: string | null,
   ): Promise<void>;
-
-  /**
-   * Get monster by ID with actions
-   */
-  getMonsterById(monsterId: number): Promise<MonsterData | null>;
 }
 
 /**
@@ -102,6 +98,7 @@ export class PrismaCombatRepository implements ICombatRepository {
         baseDefense: spawn.monster.baseDefense,
         baseSpeed: spawn.monster.baseSpeed,
         image: spawn.monster.image,
+        rarity: spawn.rarity,
         actions: spawn.monster.actions.map((a) => ({
           id: a.id,
           name: a.name,
@@ -190,37 +187,6 @@ export class PrismaCombatRepository implements ICombatRepository {
       },
     });
   }
-
-  async getMonsterById(monsterId: number): Promise<MonsterData | null> {
-    const monster = await this.prisma.halloween2025Monster.findUnique({
-      where: { id: monsterId },
-      include: { actions: true },
-    });
-
-    if (!monster) return null;
-
-    return {
-      id: monster.id,
-      name: monster.name,
-      baseHp: monster.baseHp,
-      baseAttack: monster.baseAttack,
-      baseDefense: monster.baseDefense,
-      baseSpeed: monster.baseSpeed,
-      image: monster.image,
-      actions: monster.actions.map((a) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        actionType: a.actionType,
-        power: a.power,
-        weight: a.weight,
-        cooldown: a.cooldown,
-        isAoe: a.isAoe,
-        canTargetSelf: a.canTargetSelf,
-        effects: a.effects as ActionEffect,
-      })),
-    };
-  }
 }
 
 /**
@@ -267,10 +233,6 @@ export class MockCombatRepository implements ICombatRepository {
     winnerUserId: string | null,
   ): Promise<void> {
     this.updatedSpawns.push({ spawnId, status, winnerUserId });
-  }
-
-  async getMonsterById(monsterId: number): Promise<MonsterData | null> {
-    return this.monsters.get(monsterId) ?? null;
   }
 
   reset(): void {

@@ -973,6 +973,14 @@ export const processCombatTurn = (
   return state;
 };
 
+const rarityMultipliers = {
+  common: 1,
+  uncommon: 1.2,
+  rare: 1.5,
+  epic: 2,
+  legendary: 3,
+} satisfies Record<$Enums.Halloween2025MonsterRarity, number>;
+
 export const initializeCombatState = (
   monster: MonsterData,
   players: PlayerData[],
@@ -980,15 +988,26 @@ export const initializeCombatState = (
 ): CombatState => {
   const combatants = new Map<CombatantId, Combatant>();
 
+  const multiplier = rarityMultipliers[monster.rarity];
+  const monsterHp = Math.floor(monster.baseHp * multiplier + players.length * 50);
+
+  const monsterAttack = Math.floor(
+    monster.baseAttack * multiplier + players.length / 2,
+  );
+
+  const monsterDefense = Math.floor(
+    monster.baseDefense * multiplier + players.length / 3,
+  );
+
   combatants.set("monster", {
     type: "monster",
     id: "monster",
     name: monster.name,
     stats: {
-      hp: monster.baseHp + players.length * 50,
-      maxHp: monster.baseHp + players.length * 50,
-      attack: monster.baseAttack + Math.floor(players.length / 2),
-      defense: monster.baseDefense + Math.floor(players.length / 3),
+      hp: monsterHp,
+      maxHp: monsterHp,
+      attack: monsterAttack,
+      defense: monsterDefense,
       speed: monster.baseSpeed,
     },
     statusEffects: [],

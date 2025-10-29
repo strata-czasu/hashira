@@ -10,9 +10,13 @@ import {
   type ButtonComponent,
   type Client,
   ContainerBuilder,
+  type ContainerComponent,
+  DiscordjsErrorCodes,
   inlineCode,
   MessageFlags,
+  type PublicThreadChannel,
   RESTJSONErrorCodes,
+  TextDisplayBuilder,
   TimestampStyles,
   time,
   userMention,
@@ -507,6 +511,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 guildId: true,
                 channelId: true,
                 messageId: true,
+                expiresAt: true,
               },
             });
 
@@ -550,6 +555,23 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               return;
             }
 
+            const container = message.components[0] as ContainerComponent;
+
+            if (!container) {
+              console.warn(`Container not found in message ${message.id}`);
+              return;
+            }
+
+            const newContainer = new ContainerBuilder(
+              container.toJSON(),
+            ).spliceComponents(
+              -1,
+              1,
+              new TextDisplayBuilder().setContent(
+                `Polowanie zakończone o ${time(spawn.expiresAt, TimestampStyles.ShortTime)}`,
+              ),
+            );
+
             const actionRow = message.components[1] as ActionRow<ButtonComponent>;
 
             if (!actionRow) {
@@ -557,15 +579,18 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               return;
             }
 
-            const newContainer = new ActionRowBuilder<ButtonBuilder>(
+            const newActionRow = new ActionRowBuilder<ButtonBuilder>(
               actionRow.toJSON(),
             );
-            newContainer.components.at(0)?.setDisabled(true);
+            newActionRow.components.at(0)?.setDisabled(true);
 
-            // biome-ignore lint/style/noNonNullAssertion: this is safe because we check for actionRow above
-            await message.edit({ components: [message.components[0]!, newContainer] });
+            await message.edit({ components: [newContainer, newActionRow] });
 
-            const thread = await message.startThread({ name: "Combat Log" });
+            const thread = await discordTry(
+              () => message.startThread({ name: "Combat Log" }),
+              [DiscordjsErrorCodes.MessageExistingThread],
+              () => message.thread as PublicThreadChannel<false>,
+            );
 
             const repository = new PrismaCombatRepository(prisma);
             const combatService = new CombatService(repository, Math.random);
@@ -574,7 +599,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               userNameMap.set(user.id, userMention(user.id));
             }
 
-            const fight = await combatService.executeCombat(spawnId, 100, userNameMap);
+            const fight = await combatService.executeCombat(spawnId, 50, userNameMap);
 
             if (!fight) {
               await thread.send("Nie było uczestników, więc potwór uciekł.");

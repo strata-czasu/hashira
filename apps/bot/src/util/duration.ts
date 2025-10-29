@@ -64,10 +64,9 @@ export const randomDuration = (
   max: Duration,
   random: () => number,
 ): Duration => {
-  const minSeconds = durationToSeconds(min);
-  const maxSeconds = durationToSeconds(max);
-  const randomSeconds =
-    Math.floor(random() * (maxSeconds - minSeconds + 1)) + minSeconds;
+  const minMs = durationToMilliseconds(min);
+  const maxMs = durationToMilliseconds(max);
+  const randomMs = Math.floor(random() * (maxMs - minMs + 1)) + minMs;
 
-  return intervalToDuration({ start: 0, end: randomSeconds });
+  return intervalToDuration({ start: 0, end: randomMs });
 };
