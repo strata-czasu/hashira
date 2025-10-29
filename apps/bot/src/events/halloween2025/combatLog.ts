@@ -1,5 +1,5 @@
 import type { $Enums } from "@hashira/db";
-import { sumBy } from "es-toolkit";
+import { round, sumBy } from "es-toolkit";
 import { weightedRandom } from "../../util/weightedRandom";
 import type { MonsterData, PlayerData } from "./combatRepository";
 export type CombatantId = string; // userId for players, "monster" for monster
@@ -974,12 +974,16 @@ export const processCombatTurn = (
 };
 
 const rarityMultipliers = {
-  common: 1,
-  uncommon: 1.2,
-  rare: 1.5,
-  epic: 2,
-  legendary: 3,
+  common: 0,
+  uncommon: 0.2,
+  rare: 0.5,
+  epic: 1,
+  legendary: 2,
 } satisfies Record<$Enums.Halloween2025MonsterRarity, number>;
+
+const roundToHalf = (num: number): number => {
+  return Math.round(num * 2) / 2;
+};
 
 export const initializeCombatState = (
   monster: MonsterData,
@@ -989,14 +993,15 @@ export const initializeCombatState = (
   const combatants = new Map<CombatantId, Combatant>();
 
   const multiplier = rarityMultipliers[monster.rarity];
-  const monsterHp = Math.floor(monster.baseHp * multiplier + players.length * 50);
 
-  const monsterAttack = Math.floor(
-    monster.baseAttack * multiplier + players.length / 2,
+  const monsterHp = Math.round(monster.baseHp * (1 + multiplier) + players.length * 50);
+
+  const monsterAttack = Math.round(
+    monster.baseAttack * (1 + multiplier / 2) + players.length / 3,
   );
 
-  const monsterDefense = Math.floor(
-    monster.baseDefense * multiplier + players.length / 3,
+  const monsterDefense = Math.round(
+    monster.baseDefense * (1 + multiplier / 2) + players.length / 3,
   );
 
   combatants.set("monster", {

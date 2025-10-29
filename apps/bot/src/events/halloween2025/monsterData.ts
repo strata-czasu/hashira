@@ -207,10 +207,10 @@ export const MONSTER_TEMPLATES = {
     weight: 60,
     enabled: false,
     image: "https://i.imgur.com/qQObiqd.png",
-    baseHp: 70,
+    baseHp: 80,
     baseAttack: 17,
     baseDefense: 13.5,
-    baseSpeed: 42,
+    baseSpeed: 60,
     actions: [
       {
         name: "Dźgnięcie",

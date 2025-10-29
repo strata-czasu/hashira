@@ -1,3 +1,5 @@
+// biome-ignore-all lint/style/noNonNullAssertion: test code
+
 import { describe, expect, it } from "bun:test";
 import type {
   MessageQueuePersistence,
@@ -161,7 +163,6 @@ describe("MessageQueue", () => {
     const createdAt = new Date("2024-01-01T12:00:00.000Z");
     await queue.push("delay", null, undefined, "delay-id");
 
-    // biome-ignore lint/style/noNonNullAssertion: we run assertion
     const task = persistence.tasks[0]!;
 
     expect(task).toBeDefined();
@@ -171,7 +172,6 @@ describe("MessageQueue", () => {
 
     await queue.updateDelay("delay", "delay-id", 3600);
 
-    // biome-ignore lint/style/noNonNullAssertion: we run assertion
     const updatedTask = persistence.tasks[0]!;
 
     expect(updatedTask).toBeDefined();
@@ -191,25 +191,27 @@ describe("MessageQueue", () => {
 
     await queue.push("process", { action: "go" });
 
-    const originalSetTimeout = setTimeout;
-    const scheduled: Array<() => void> = [];
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
 
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      scheduled.push(() => cb());
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      // Manually trigger the interval callback
+      await intervalCallback!();
       await Promise.resolve();
 
       expect(handledPayload).toEqual({ action: "go" });
-      // biome-ignore lint/style/noNonNullAssertion: we run assertion
       const task = persistence.tasks[0]!;
       expect(task).toBeDefined();
       expect(task.status).toBe("completed");
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -222,7 +224,6 @@ describe("MessageQueue", () => {
     const after = new Date();
 
     expect(persistence.tasks).toHaveLength(1);
-    // biome-ignore lint/style/noNonNullAssertion: we run assertion
     const task = persistence.tasks[0]!;
     expect(task).toBeDefined();
 
@@ -243,7 +244,6 @@ describe("MessageQueue", () => {
     await queue.push("dated", { event: "new-year" }, targetDate);
 
     expect(persistence.tasks).toHaveLength(1);
-    // biome-ignore lint/style/noNonNullAssertion: we run assertion
     const task = persistence.tasks[0]!;
     expect(task).toBeDefined();
     expect(task.handleAfter).toEqual(targetDate);
@@ -271,22 +271,26 @@ describe("MessageQueue", () => {
 
     await queue.push("failing", { data: "test" });
 
-    const originalSetTimeout = setTimeout;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      // Manually trigger the interval callback
+      await intervalCallback!();
       await Promise.resolve();
 
-      // biome-ignore lint/style/noNonNullAssertion: we run assertion
       const task = persistence.tasks[0]!;
       expect(task).toBeDefined();
       expect(task.status).toBe("failed");
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -297,22 +301,25 @@ describe("MessageQueue", () => {
     // @ts-expect-error: testing runtime behavior
     await queue.push("unknown-type", { data: "test" });
 
-    const originalSetTimeout = setTimeout;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      await intervalCallback!();
       await Promise.resolve();
 
-      // biome-ignore lint/style/noNonNullAssertion: we run assertion
       const task = persistence.tasks[0]!;
       expect(task).toBeDefined();
       expect(task.status).toBe("failed");
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -328,19 +335,23 @@ describe("MessageQueue", () => {
 
     await queue.push("with-args", { action: "test" });
 
-    const originalSetTimeout = setTimeout;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({ userId: "user-123", guildId: "guild-456" });
+
+      await intervalCallback!();
       await Promise.resolve();
 
       expect(receivedProps).toEqual({ userId: "user-123", guildId: "guild-456" });
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -362,22 +373,27 @@ describe("MessageQueue", () => {
     await queue.push("type-c", {});
     await queue.push("type-b", {});
 
-    const originalSetTimeout = setTimeout;
-    let iterations = 0;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      if (iterations++ < 3) cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      for (let i = 0; i < 3; i++) {
+        await intervalCallback!();
+      }
 
       // Ensure all microtasks are processed
       await new Promise((r) => setImmediate(r));
 
       expect(handled).toContainValues(["a", "b", "c"]);
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -402,22 +418,27 @@ describe("MessageQueue", () => {
       task.handleAfter = new Date(now.getTime() - 1000);
     }
 
-    const originalSetTimeout = setTimeout;
-    let iterations = 0;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      if (iterations++ < 3) cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      for (let i = 0; i < 3; i++) {
+        await intervalCallback!();
+      }
 
       // Ensure all microtasks are processed
       await new Promise((r) => setImmediate(r));
 
       expect(processed).toEqual([3, 1, 2]);
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -431,23 +452,26 @@ describe("MessageQueue", () => {
     const futureDate = new Date(Date.now() + 100000);
     await queue.push("future", {}, futureDate);
 
-    const originalSetTimeout = setTimeout;
-    globalThis.setTimeout = ((cb: (...args: unknown[]) => void) => {
-      cb();
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    let intervalCallback: (() => Promise<void>) | null = null;
+
+    globalThis.setInterval = ((cb: () => Promise<void>) => {
+      intervalCallback = () => cb();
+      return 0 as unknown as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
+
+      await intervalCallback!();
       await Promise.resolve();
 
       expect(processed).toBe(false);
-      // biome-ignore lint/style/noNonNullAssertion: we run assertion
       const task = persistence.tasks[0]!;
       expect(task).toBeDefined();
       expect(task.status).toBe("pending");
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -455,14 +479,14 @@ describe("MessageQueue", () => {
     const persistence = new InMemoryPersistence();
     const queue = new MessageQueue(persistence);
 
-    const originalSetTimeout = setTimeout;
-    globalThis.setTimeout = (() => 0) as unknown as typeof setTimeout;
+    const originalSetInterval = setInterval;
+    globalThis.setInterval = (() => 0) as unknown as typeof setInterval;
 
     try {
       await queue.consumeLoop({});
       expect(queue.consumeLoop({})).rejects.toThrow("MessageQueue is already running");
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
+      globalThis.setInterval = originalSetInterval;
     }
   });
 
@@ -475,7 +499,6 @@ describe("MessageQueue", () => {
     const newDate = new Date("2025-06-15T10:30:00.000Z");
     await queue.updateDelay("update", "update-id", newDate);
 
-    // biome-ignore lint/style/noNonNullAssertion: we run assertion
     const task = persistence.tasks[0]!;
     expect(task).toBeDefined();
     expect(task.handleAfter).toEqual(newDate);

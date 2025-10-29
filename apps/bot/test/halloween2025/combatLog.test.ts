@@ -460,7 +460,7 @@ describe("Combat System", () => {
           "Test Goblin korzysta z akcji Slash!",
           "Player_user2 otrzymuje 12 obrażeń",
           "Player_user2 korzysta z umiejętności Strike!",
-          "Test Goblin otrzymuje 16 obrażeń",
+          "Test Goblin otrzymuje 15 obrażeń",
         ]
       `);
     });

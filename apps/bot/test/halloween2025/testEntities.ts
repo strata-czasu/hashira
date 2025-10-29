@@ -25,6 +25,7 @@ export const createBasicMonster = (overrides?: Partial<MonsterData>): MonsterDat
       canTargetSelf: false,
     },
   ],
+  rarity: "common",
   ...overrides,
 });
 
@@ -36,6 +37,7 @@ export const createWereraccoon = (overrides?: Partial<MonsterData>): MonsterData
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
@@ -49,6 +51,7 @@ export const createFishermanGhost = (
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
@@ -59,6 +62,7 @@ export const createZombieCat = (overrides?: Partial<MonsterData>): MonsterData =
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
@@ -70,6 +74,7 @@ export const createHarpy = (overrides?: Partial<MonsterData>): MonsterData => ({
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
@@ -80,6 +85,7 @@ export const createPossessedDoll = (overrides?: Partial<MonsterData>): MonsterDa
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
@@ -91,6 +97,7 @@ export const createSuccubus = (overrides?: Partial<MonsterData>): MonsterData =>
     id: index + 1,
     ...action,
   })),
+  rarity: "common",
   ...overrides,
 });
 
