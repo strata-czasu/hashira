@@ -1,7 +1,6 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
-import { sleep } from "bun";
 import { type Duration, formatDuration } from "date-fns";
 import {
   type ActionRow,
@@ -11,19 +10,16 @@ import {
   type Client,
   ContainerBuilder,
   type ContainerComponent,
-  DiscordjsErrorCodes,
-  heading,
   inlineCode,
-  MessageFlags,
-  type PublicThreadChannel,
   RESTJSONErrorCodes,
   TextDisplayBuilder,
   TimestampStyles,
   time,
   userMention,
 } from "discord.js";
+import { Effect } from "effect";
 import { database } from "./db";
-import type { TurnSnapshot } from "./events/halloween2025/combatLog";
+import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
 import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
@@ -90,24 +86,6 @@ type ModeratorLeaveEndData = {
 };
 type Halloween2025EndSpawnData = {
   spawnId: number;
-};
-
-const createTurnDisplayComponent = (turnSnapshot: TurnSnapshot) => {
-  const combatantHpLines = turnSnapshot.combatants.map(
-    (combatant) => `- **${combatant.name}**: ${combatant.hp}/${combatant.maxHp} HP`,
-  );
-
-  const turnHeader = `## Tura ${turnSnapshot.turnNumber}`;
-  const hpStatus = combatantHpLines.join("\n");
-  const events = turnSnapshot.events
-    .map((event) =>
-      event.type === "turn_start" ? `\n${event.message}` : event.message,
-    )
-    .join("\n");
-
-  return new ContainerBuilder().addTextDisplayComponents((td) =>
-    td.setContent(`${turnHeader}\n\n${hpStatus}\n\n${events}`),
-  );
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -576,12 +554,6 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             await message.edit({ components: [newContainer, newActionRow] });
 
-            const thread = await discordTry(
-              () => message.startThread({ name: "Combat Log" }),
-              [DiscordjsErrorCodes.MessageExistingThread],
-              () => message.thread as PublicThreadChannel<false>,
-            );
-
             const repository = new PrismaCombatRepository(prisma);
             const combatService = new CombatService(repository, Math.random);
             const userNameMap = new Map<string, string>([["monster", "Potwór"]]);
@@ -591,70 +563,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             const fight = await combatService.executeCombat(spawnId, 50, userNameMap);
 
-            if (!fight) {
-              await thread.send("Nie było uczestników, więc potwór uciekł.");
-              return;
-            }
-
-            for (const turnSnapshot of fight.state.turnSnapshots) {
-              const turnComponent = createTurnDisplayComponent(turnSnapshot);
-
-              await thread.send({
-                components: [turnComponent],
-                flags: MessageFlags.IsComponentsV2,
-              });
-
-              await sleep(1000);
-            }
-
-            await thread.send({
-              components: [
-                new ContainerBuilder().addTextDisplayComponents((td) =>
-                  td.setContent(
-                    `## Wynik walki\n\n${
-                      fight.state.result === "monster_captured"
-                        ? "Potwór został pojmany!"
-                        : "Potwór uciekł!"
-                    }`,
-                  ),
-                ),
-              ],
-              flags: MessageFlags.IsComponentsV2,
-            });
-
-            const loot = await prisma.halloween2025MonsterLoot.findMany({
-              where: { spawnId },
-              select: { rank: true, damageDealt: true, userId: true },
-              orderBy: { rank: "desc" },
-            });
-
-            if (loot.length === 0) return;
-
-            const lines = [
-              heading(`Rozdanie lootu`),
-              "",
-              "Loot został przydzielony uczestnikom walki według zadanych obrażeń:",
-              "",
-              ...loot.map(
-                (l) => `${l.rank}. ${userMention(l.userId)} - ${l.damageDealt} obrażeń`,
-              ),
-            ];
-
-            await thread.send({
-              components: [
-                new ContainerBuilder().addTextDisplayComponents((td) =>
-                  td.setContent(lines.join("\n")),
-                ),
-              ],
-              flags: MessageFlags.IsComponentsV2,
-            });
-
-            const winnerIds = loot.map((l) => l.userId);
-
-            await thread.send({
-              content: winnerIds.map((id) => userMention(id)).join(", "),
-              allowedMentions: { users: winnerIds },
-            });
+            Effect.runFork(sendCombatlog(prisma, message, fight));
           },
         ),
     };
