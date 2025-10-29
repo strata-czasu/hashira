@@ -6,6 +6,7 @@ import type {
   MonsterAction,
   PlayerAbility,
 } from "./combatLog";
+import type { LootRecipient } from "./lootDistribution";
 
 export type MonsterData = {
   id: number;
@@ -43,8 +44,8 @@ export interface ICombatRepository {
   updateSpawnStatus(
     spawnId: number,
     status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
-    winnerUserId: string | null,
   ): Promise<void>;
+  saveLootRecipients(spawnId: number, recipients: LootRecipient[]): Promise<void>;
 }
 
 export class PrismaCombatRepository implements ICombatRepository {
@@ -143,7 +144,6 @@ export class PrismaCombatRepository implements ICombatRepository {
         combatState: combatStateJson,
         endedAt: state.isComplete ? new Date() : null,
         result: state.result ?? null,
-        winnerUserId: state.winnerUserId ?? null,
       },
       update: {
         events: state.events,
@@ -151,7 +151,6 @@ export class PrismaCombatRepository implements ICombatRepository {
         combatState: combatStateJson,
         endedAt: state.isComplete ? new Date() : null,
         result: state.result ?? null,
-        winnerUserId: state.winnerUserId ?? null,
       },
     });
   }
@@ -159,14 +158,26 @@ export class PrismaCombatRepository implements ICombatRepository {
   async updateSpawnStatus(
     spawnId: number,
     status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
-    winnerUserId: string | null,
   ): Promise<void> {
     await this.prisma.halloween2025MonsterSpawn.update({
       where: { id: spawnId },
       data: {
         combatState: status,
-        userId: winnerUserId,
       },
+    });
+  }
+
+  async saveLootRecipients(
+    spawnId: number,
+    recipients: LootRecipient[],
+  ): Promise<void> {
+    await this.prisma.halloween2025MonsterLoot.createMany({
+      data: recipients.map((recipient) => ({
+        spawnId,
+        userId: recipient.userId,
+        damageDealt: recipient.damageDealt,
+        rank: recipient.rank,
+      })),
     });
   }
 }
@@ -176,11 +187,9 @@ export class MockCombatRepository implements ICombatRepository {
   private abilities: PlayerAbility[] = [];
   private monsters = new Map<number, MonsterData>();
   public savedCombatLogs: Array<{ spawnId: number; state: CombatState }> = [];
-  public updatedSpawns: Array<{
-    spawnId: number;
-    status: string;
-    winnerUserId: string | null;
-  }> = [];
+  public updatedSpawns: Array<{ spawnId: number; status: string }> = [];
+  public savedLootRecipients: Array<{ spawnId: number; recipients: LootRecipient[] }> =
+    [];
 
   setSpawn(spawn: SpawnData): void {
     this.spawns.set(spawn.id, spawn);
@@ -209,9 +218,15 @@ export class MockCombatRepository implements ICombatRepository {
   async updateSpawnStatus(
     spawnId: number,
     status: Exclude<$Enums.Halloween2025CombatState, "pending" | "in_progress">,
-    winnerUserId: string | null,
   ): Promise<void> {
-    this.updatedSpawns.push({ spawnId, status, winnerUserId });
+    this.updatedSpawns.push({ spawnId, status });
+  }
+
+  async saveLootRecipients(
+    spawnId: number,
+    recipients: LootRecipient[],
+  ): Promise<void> {
+    this.savedLootRecipients.push({ spawnId, recipients });
   }
 
   reset(): void {
@@ -220,5 +235,6 @@ export class MockCombatRepository implements ICombatRepository {
     this.monsters.clear();
     this.savedCombatLogs = [];
     this.updatedSpawns = [];
+    this.savedLootRecipients = [];
   }
 }

@@ -1,9 +1,11 @@
-import { type ExtractContext, Hashira } from "@hashira/core";
-import type {
-  ExtendedPrismaClient,
-  Halloween2025Monster,
-  Halloween2025MonsterSpawn,
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type Halloween2025Monster,
+  type Halloween2025MonsterSpawn,
 } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
 import { add, type Duration } from "date-fns";
 import {
   ActionRowBuilder,
@@ -28,7 +30,6 @@ import { base } from "../../base";
 import { GUILD_IDS } from "../../specializedConstants";
 import { parseDuration, randomDuration } from "../../util/duration";
 import { ensureUserExists } from "../../util/ensureUsersExist";
-import { errorFollowUp } from "../../util/errorFollowUp";
 import { getGuildSetting } from "../../util/getGuildSetting";
 import { weightedRandom } from "../../util/weightedRandom";
 
@@ -37,9 +38,11 @@ type MessageQueueType = ExtractContext<typeof base>["messageQueue"];
 export const HALLOWEEN_2025_CHANNELS = {
   SPAWN_CHANNELS: {
     [GUILD_IDS.Homik]: "1431437264612753408",
+    [GUILD_IDS.StrataCzasu]: "1431436993103003688",
   },
   NOTIFICATION_CHANNELS: {
     [GUILD_IDS.Homik]: ["1318731068165193848"],
+    [GUILD_IDS.StrataCzasu]: ["683025889658929231"],
   },
 };
 
@@ -54,7 +57,7 @@ const HALLOWEEN_2025_START = {
     seconds: 0,
     zone,
   }),
-  [GUILD_IDS.Homik]: DateTime.unsafeNow().pipe(DateTime.addDuration("1 seconds")),
+  [GUILD_IDS.Homik]: DateTime.unsafeNow(),
 };
 
 const HALLOWEEN_2025_SCHEDULES: Record<
@@ -364,6 +367,89 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2],
             });
           }),
+      )
+      .addCommand("kolekcja", (command) =>
+        command
+          .setDescription("Zobacz swoje schwytane potwory")
+          .addUser("user", (option) =>
+            option.setDescription("Użytkownik do sprawdzenia").setRequired(false),
+          )
+          .handle(async ({ prisma }, { user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const targetUser = user ?? itx.user;
+            await ensureUserExists(prisma, targetUser);
+
+            const where = {
+              userId: targetUser.id,
+              spawn: {
+                guildId: itx.guildId,
+                combatState: "completed_captured" as const,
+              },
+            };
+
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.halloween2025MonsterLoot.findMany({
+                  ...props,
+                  where,
+                  include: {
+                    spawn: {
+                      include: {
+                        monster: true,
+                      },
+                    },
+                  },
+                  orderBy: [{ createdAt: ordering }, { id: ordering }],
+                }),
+              async () => {
+                return await prisma.halloween2025MonsterLoot.count({ where });
+              },
+              { pageSize: 10, defaultOrder: PaginatorOrder.DESC },
+            );
+
+            const total = await prisma.halloween2025MonsterLoot.count({ where });
+
+            const formatEntry = (
+              item: {
+                id: number;
+                rank: number;
+                damageDealt: number;
+                spawn: { rarity: string; monster: { name: string } };
+                createdAt: Date;
+              },
+              idx: number,
+            ) => {
+              const rarityEmojis = {
+                common: "⚪",
+                uncommon: "🟢",
+                rare: "🔵",
+                epic: "🟣",
+                legendary: "🟡",
+              };
+              const rarityEmoji =
+                rarityEmojis[item.spawn.rarity as keyof typeof rarityEmojis] ?? "⚪";
+              const rankEmojis = ["🥇", "🥈", "🥉"];
+              const rankEmoji = rankEmojis[item.rank - 1] ?? `#${item.rank}`;
+
+              return (
+                `${idx}\\.` +
+                ` ${rarityEmoji} **${item.spawn.monster.name}** ${rankEmoji}` +
+                ` - ${item.damageDealt.toLocaleString("pl-PL")} obrażeń` +
+                ` (${time(item.createdAt, "R")})`
+              );
+            };
+
+            const title = `🎃 Kolekcja potworów użytkownika ${targetUser.tag}`;
+            const paginator = new PaginatedView(
+              paginate,
+              title,
+              formatEntry,
+              true,
+              `Złapane potwory: ${total}`,
+            );
+            await paginator.render(itx);
+          }),
       ),
   )
   .group("halloween-admin", (group) =>
@@ -404,7 +490,9 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
             option.setAutocomplete(true).setDescription("ID potwora"),
           )
           .addString("expiration", (option) =>
-            option.setDescription("Czas wygaśnięcia spawnu, np. '5m' lub '1h'"),
+            option
+              .setDescription("Czas wygaśnięcia spawnu, np. '5m' lub '1h'")
+              .setRequired(false),
           )
           .autocomplete(async ({ prisma }, { "monster-id": partial }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -432,14 +520,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
             ) => {
               if (!itx.inCachedGuild()) return;
 
-              const duration = parseDuration(expiration);
-
-              if (!duration) {
-                return errorFollowUp(
-                  itx,
-                  "Nieprawidłowy format czasu wygaśnięcia. Użyj czegoś takiego jak '5m' lub '1h'.",
-                );
-              }
+              const duration = expiration ? parseDuration(expiration) : null;
 
               const monster = await prisma.halloween2025Monster.findUnique({
                 where: { id: Number(monsterId) },
@@ -456,7 +537,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
                   itx.client,
                   messageQueue,
                   itx.guildId,
-                  duration,
+                  duration ?? undefined,
                   monster,
                 ),
               );

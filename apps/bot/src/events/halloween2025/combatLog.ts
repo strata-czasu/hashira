@@ -1,5 +1,5 @@
 import type { $Enums } from "@hashira/db";
-import { round, sumBy } from "es-toolkit";
+import { sumBy } from "es-toolkit";
 import { weightedRandom } from "../../util/weightedRandom";
 import type { MonsterData, PlayerData } from "./combatRepository";
 export type CombatantId = string; // userId for players, "monster" for monster
@@ -147,7 +147,6 @@ export type InProgresCombatState = {
   turnSnapshots: TurnSnapshot[];
   isComplete: false;
   result?: undefined;
-  winnerUserId?: undefined;
 };
 
 export type CompletedCombatState = {
@@ -158,7 +157,6 @@ export type CompletedCombatState = {
   turnSnapshots: TurnSnapshot[];
   isComplete: true;
   result: $Enums.Halloween2025CombatResult;
-  winnerUserId: string | null;
 };
 
 export type CombatState = InProgresCombatState | CompletedCombatState;
@@ -816,21 +814,11 @@ const checkCombatEnd = (state: CombatState): CompletedCombatState | null => {
   const monster = state.combatants.get("monster");
   const alivePlayers = getAliveCombatants(state.combatants, (c) => c.type === "user");
   if (monster?.isDefeated) {
-    const completedState: CompletedCombatState = {
+    return {
       ...state,
       isComplete: true,
       result: "monster_captured",
-      winnerUserId: null,
     };
-
-    // Find player who dealt killing blow (last attack event targeting monster)
-    for (const event of state.events) {
-      if (event.type === "defeat" && event.target === "monster") {
-        completedState.winnerUserId = event.actor;
-        break;
-      }
-    }
-    return completedState;
   }
 
   if (alivePlayers.length === 0) {
@@ -838,7 +826,6 @@ const checkCombatEnd = (state: CombatState): CompletedCombatState | null => {
       ...state,
       isComplete: true,
       result: "all_players_defeated",
-      winnerUserId: null,
     };
   }
 
@@ -865,7 +852,6 @@ export const processCombatTurn = (
       ...state,
       isComplete: true,
       result: "monster_escaped",
-      winnerUserId: null,
     };
     endState.events.push({
       turn: endState.currentTurn,
@@ -980,10 +966,6 @@ const rarityMultipliers = {
   epic: 1,
   legendary: 2,
 } satisfies Record<$Enums.Halloween2025MonsterRarity, number>;
-
-const roundToHalf = (num: number): number => {
-  return Math.round(num * 2) / 2;
-};
 
 export const initializeCombatState = (
   monster: MonsterData,

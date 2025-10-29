@@ -121,7 +121,6 @@ describe("Combat System", () => {
 
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_captured");
-      expect(result.winnerUserId).toBeTruthy();
       expect(result.events.length).toBeGreaterThan(0);
     });
 
@@ -303,7 +302,6 @@ describe("Combat System", () => {
         ...state,
         isComplete: true,
         result: "monster_captured",
-        winnerUserId: "user1",
       } as const;
 
       const result = processCombatTurn(
@@ -366,7 +364,6 @@ describe("Combat System", () => {
 
       if (result.isComplete) {
         expect(result.result).toBe("monster_captured");
-        expect(result.winnerUserId).toBeTruthy();
       }
     });
 

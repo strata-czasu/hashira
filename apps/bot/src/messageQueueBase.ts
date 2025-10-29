@@ -12,6 +12,7 @@ import {
   ContainerBuilder,
   type ContainerComponent,
   DiscordjsErrorCodes,
+  heading,
   inlineCode,
   MessageFlags,
   type PublicThreadChannel,
@@ -557,7 +558,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               -1,
               1,
               new TextDisplayBuilder().setContent(
-                `Polowanie zakończone o ${time(spawn.expiresAt, TimestampStyles.ShortTime)}`,
+                `Zapisy zakończone o ${time(spawn.expiresAt, TimestampStyles.ShortTime)}`,
               ),
             );
 
@@ -603,8 +604,57 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 flags: MessageFlags.IsComponentsV2,
               });
 
-              await sleep(3000);
+              await sleep(1000);
             }
+
+            await thread.send({
+              components: [
+                new ContainerBuilder().addTextDisplayComponents((td) =>
+                  td.setContent(
+                    `## Wynik walki\n\n${
+                      fight.state.result === "monster_captured"
+                        ? "Potwór został pojmany!"
+                        : "Potwór uciekł!"
+                    }`,
+                  ),
+                ),
+              ],
+              flags: MessageFlags.IsComponentsV2,
+            });
+
+            const loot = await prisma.halloween2025MonsterLoot.findMany({
+              where: { spawnId },
+              select: { rank: true, damageDealt: true, userId: true },
+              orderBy: { rank: "desc" },
+            });
+
+            if (loot.length === 0) return;
+
+            const lines = [
+              heading(`Rozdanie lootu`),
+              "",
+              "Loot został przydzielony uczestnikom walki według zadanych obrażeń:",
+              "",
+              ...loot.map(
+                (l) => `${l.rank}. ${userMention(l.userId)} - ${l.damageDealt} obrażeń`,
+              ),
+            ];
+
+            await thread.send({
+              components: [
+                new ContainerBuilder().addTextDisplayComponents((td) =>
+                  td.setContent(lines.join("\n")),
+                ),
+              ],
+              flags: MessageFlags.IsComponentsV2,
+            });
+
+            const winnerIds = loot.map((l) => l.userId);
+
+            await thread.send({
+              content: winnerIds.map((id) => userMention(id)).join(", "),
+              allowedMentions: { users: winnerIds },
+            });
           },
         ),
     };

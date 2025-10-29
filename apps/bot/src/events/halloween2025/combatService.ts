@@ -1,6 +1,7 @@
 import type { CompletedCombatState } from "./combatLog";
 import { initializeCombatState, simulateCombat } from "./combatLog";
 import type { ICombatRepository } from "./combatRepository";
+import { selectLootRecipients } from "./lootDistribution";
 
 export type CombatResult = {
   state: CompletedCombatState;
@@ -31,7 +32,7 @@ export class CombatService {
     if (!spawn) return null;
 
     if (spawn.participants.length === 0) {
-      await this.repository.updateSpawnStatus(spawnId, "completed_escaped", null);
+      await this.repository.updateSpawnStatus(spawnId, "completed_escaped");
       return null;
     }
 
@@ -55,7 +56,16 @@ export class CombatService {
         ? "completed_captured"
         : "completed_escaped";
 
-    await this.repository.updateSpawnStatus(spawnId, status, finalState.winnerUserId);
+    if (finalState.result === "monster_captured") {
+      const recipients = selectLootRecipients(
+        finalState.events,
+        spawn.participants.length,
+      );
+
+      await this.repository.saveLootRecipients(spawnId, recipients);
+    }
+
+    await this.repository.updateSpawnStatus(spawnId, status);
 
     return {
       state: finalState,

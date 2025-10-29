@@ -68,15 +68,14 @@ model Halloween2025MonsterSpawn {
   spawnedAt   DateTime                   @default(now())
   expiresAt   DateTime
   guildId     String
-  userId      String?
   rarity      Halloween2025MonsterRarity
   combatState Halloween2025CombatState   @default(pending)
 
-  guild         Guild                              @relation(fields: [guildId], references: [id])
-  claimedBy     User?                              @relation(fields: [userId], references: [id])
-  monster       Halloween2025Monster               @relation(fields: [monsterId], references: [id])
-  catchAttempts Halloween2025MonsterCatchAttempt[]
-  combatLog     Halloween2025CombatLog?
+  guild          Guild                              @relation(fields: [guildId], references: [id])
+  monster        Halloween2025Monster               @relation(fields: [monsterId], references: [id])
+  catchAttempts  Halloween2025MonsterCatchAttempt[]
+  combatLog      Halloween2025CombatLog?
+  lootRecipients Halloween2025MonsterLoot[]
 }
 
 model Halloween2025MonsterCatchAttempt {
@@ -96,15 +95,14 @@ enum Halloween2025CombatResult {
 }
 
 model Halloween2025CombatLog {
-  id           Int                        @id @default(autoincrement())
-  spawnId      Int                        @unique
-  events       Json                       @default("[]")
-  currentTurn  Int                        @default(0)
-  combatState  Json
-  startedAt    DateTime                   @default(now())
-  endedAt      DateTime?
-  result       Halloween2025CombatResult?
-  winnerUserId String?
+  id          Int                        @id @default(autoincrement())
+  spawnId     Int                        @unique
+  events      Json                       @default("[]")
+  currentTurn Int                        @default(0)
+  combatState Json
+  startedAt   DateTime                   @default(now())
+  endedAt     DateTime?
+  result      Halloween2025CombatResult?
 
   spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id], onDelete: Cascade)
 }
@@ -131,4 +129,19 @@ model Halloween2025PlayerAbility {
   /// JSON data for special effects: { "thorns": 5, "shield": 10, "berserk": true }
   effects          Json?
   isDefault        Boolean                  @default(true)
+}
+
+model Halloween2025MonsterLoot {
+  id          Int      @id @default(autoincrement())
+  spawnId     Int
+  userId      String
+  damageDealt Int
+  rank        Int
+  createdAt   DateTime @default(now())
+
+  spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id], onDelete: Cascade)
+  user  User                      @relation(fields: [userId], references: [id])
+
+  @@unique([spawnId, userId])
+  @@index([userId])
 }

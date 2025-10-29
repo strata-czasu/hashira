@@ -1,3 +1,5 @@
+// biome-ignore-all lint/style/noNonNullAssertion: test code
+
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Effect, Random } from "effect";
 import type { PlayerAbility } from "../../src/events/halloween2025/combatLog";
@@ -95,7 +97,6 @@ describe("CombatService", () => {
       expect(result).not.toBeNull();
       expect(result?.state.isComplete).toBe(true);
       expect(result?.state.result).toBe("monster_captured");
-      expect(result?.state.winnerUserId).toBeTruthy();
       expect(result?.monster.name).toBe("Test Goblin");
     });
 
@@ -270,5 +271,94 @@ describe("CombatService", () => {
         );
       },
     );
+  });
+
+  describe("executeCombat > loot distribution", () => {
+    it("should save loot recipients when monster is captured", async () => {
+      const spawn = createTestSpawn({
+        participants: [
+          createBasicPlayer("user1"),
+          createBasicPlayer("user2"),
+          createBasicPlayer("user3"),
+        ],
+      });
+      repository.setSpawn(spawn);
+      repository.setAbilities(createTestAbilities());
+
+      const result = await service.executeCombat(spawn.id, 50);
+
+      if (result?.state.result === "monster_captured") {
+        expect(repository.savedLootRecipients).toHaveLength(1);
+        expect(repository.savedLootRecipients[0]?.spawnId).toBe(spawn.id);
+        expect(repository.savedLootRecipients[0]?.recipients).toBeDefined();
+        expect(repository.savedLootRecipients[0]?.recipients.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("should not save loot recipients when monster escapes", async () => {
+      const spawn = createTestSpawn({
+        monster: createTestMonster({ baseHp: 1000, baseDefense: 50 }),
+      });
+      repository.setSpawn(spawn);
+      repository.setAbilities(createTestAbilities());
+
+      const result = await service.executeCombat(spawn.id, 5);
+
+      if (result?.state.result === "monster_escaped") {
+        expect(repository.savedLootRecipients).toHaveLength(0);
+      }
+    });
+
+    it("should select correct number of loot recipients based on participant count", async () => {
+      // Test with 3 participants -> should get 2 drops
+      const spawn = createTestSpawn({
+        participants: [
+          createBasicPlayer("user1"),
+          createBasicPlayer("user2"),
+          createBasicPlayer("user3"),
+        ],
+      });
+      repository.setSpawn(spawn);
+      repository.setAbilities(createTestAbilities());
+
+      const result = await service.executeCombat(spawn.id, 50);
+
+      if (result?.state.result === "monster_captured") {
+        const lootEntry = repository.savedLootRecipients[0];
+        expect(lootEntry?.recipients).toHaveLength(2); // 3 participants = 2 drops
+      }
+    });
+
+    it("should assign ranks correctly based on damage dealt", async () => {
+      const spawn = createTestSpawn({
+        participants: [
+          createBasicPlayer("user1"),
+          createBasicPlayer("user2"),
+          createBasicPlayer("user3"),
+          createBasicPlayer("user4"),
+        ],
+      });
+      repository.setSpawn(spawn);
+      repository.setAbilities(createTestAbilities());
+
+      const result = await service.executeCombat(spawn.id, 50);
+
+      if (result?.state.result === "monster_captured") {
+        const lootEntry = repository.savedLootRecipients[0];
+        const recipients = lootEntry?.recipients ?? [];
+
+        // Check that ranks are sequential starting from 1
+        for (let i = 0; i < recipients.length; i++) {
+          expect(recipients[i]?.rank).toBe(i + 1);
+        }
+
+        // Check that damage is in descending order
+        for (let i = 1; i < recipients.length; i++) {
+          expect(recipients[i - 1]!.damageDealt).toBeGreaterThanOrEqual(
+            recipients[i]!.damageDealt,
+          );
+        }
+      }
+    });
   });
 });
