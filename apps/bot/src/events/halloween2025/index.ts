@@ -556,19 +556,17 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
       ),
   )
   .handle("guildAvailable", async ({ prisma, messageQueue }, guild) => {
-    const start = getGuildSetting(HALLOWEEN_2025_START, guild.id);
-    const runSchedule = getGuildSetting(HALLOWEEN_2025_SCHEDULES, guild.id);
-
-    if (!start || !runSchedule) return;
-
-    handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
-      Effect.catchAll(Effect.logError),
-      Effect.schedule(runSchedule),
-      Effect.delay(
-        pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
-      ),
-      Effect.runFork,
-    );
+    // const start = getGuildSetting(HALLOWEEN_2025_START, guild.id);
+    // const runSchedule = getGuildSetting(HALLOWEEN_2025_SCHEDULES, guild.id);
+    // if (!start || !runSchedule) return;
+    // handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
+    //   Effect.catchAll(Effect.logError),
+    //   Effect.schedule(runSchedule),
+    //   Effect.delay(
+    //     pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
+    //   ),
+    //   Effect.runFork,
+    // );
   })
   .handle("clientReady", async ({ prisma }, client) => {
     client.on("interactionCreate", async (itx) => {
