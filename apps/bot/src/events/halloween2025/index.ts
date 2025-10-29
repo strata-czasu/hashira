@@ -26,7 +26,16 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { Cron, Data, DateTime, Effect, Random, Schedule } from "effect";
+import {
+  Cron,
+  Data,
+  DateTime,
+  Effect,
+  Duration as EffectDuration,
+  pipe,
+  Random,
+  Schedule,
+} from "effect";
 import { base } from "../../base";
 import { GUILD_IDS } from "../../specializedConstants";
 import { parseDuration, randomDuration } from "../../util/duration";
@@ -66,7 +75,7 @@ const HALLOWEEN_2025_SCHEDULES: Record<
   Schedule.Schedule<unknown, unknown, never>
 > = {
   [GUILD_IDS.StrataCzasu]: Schedule.jittered(
-    Schedule.cron(Cron.unsafeParse("0 */15 * * *", zone)),
+    Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)),
   ),
   [GUILD_IDS.Homik]: Schedule.fixed("10 seconds"),
 };
@@ -555,7 +564,9 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
     handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
       Effect.catchAll(Effect.logError),
       Effect.schedule(runSchedule),
-      Effect.delay(DateTime.distanceDuration(DateTime.unsafeNow(), start)),
+      Effect.delay(
+        pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
+      ),
       Effect.runFork,
     );
   })
