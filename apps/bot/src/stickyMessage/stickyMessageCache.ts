@@ -12,7 +12,7 @@ export class StickyMessageCache {
 
     // Check if we have a cached result (either a sticky message or null)
     if (this.#cache.has(channelId)) {
-      return this.#cache.get(channelId) ?? null;
+      return this.#cache.get(channelId)!;
     }
 
     const stickyMessage = await this.#prisma.stickyMessage.findFirst({
