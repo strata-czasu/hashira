@@ -1,7 +1,7 @@
 import type { ExtendedPrismaClient, StickyMessage } from "@hashira/db";
 
 export class StickyMessageCache {
-  #cache = new Map<string, StickyMessage>();
+  #cache = new Map<string, StickyMessage | null>();
   #prisma: ExtendedPrismaClient | null = null;
 
   async get(channelId: string): Promise<StickyMessage | null> {
@@ -10,14 +10,17 @@ export class StickyMessageCache {
         "Prisma client not initialized. Please call start() with a valid ExtendedPrismaClient instance.",
       );
 
-    const cached = this.#cache.get(channelId);
-    if (cached) return cached;
+    // Check if we have a cached result (either a sticky message or null)
+    if (this.#cache.has(channelId)) {
+      return this.#cache.get(channelId)!;
+    }
 
     const stickyMessage = await this.#prisma.stickyMessage.findFirst({
       where: { channelId },
     });
 
-    if (stickyMessage) this.#cache.set(channelId, stickyMessage);
+    // Cache the result, even if it's null (channel has no sticky message)
+    this.#cache.set(channelId, stickyMessage);
 
     return stickyMessage;
   }
