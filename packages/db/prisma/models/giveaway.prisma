@@ -28,6 +28,8 @@ model GiveawayParticipant {
   userId            String
   isRemoved         Boolean @default(false)
   forcefullyRemoved Boolean @default(false)
+
+  @@unique([giveawayId, userId])
 }
 
 model GiveawayWinner {

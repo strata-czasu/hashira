@@ -623,11 +623,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
         },
       });
 
-      if (!giveaway)
-        return await itx.followUp({
+      if (!giveaway) {
+        await itx.followUp({
           content: "Ten giveaway nie istnieje!",
           flags: "Ephemeral",
         });
+        return;
+      }
 
       const channel = await client.channels.fetch(giveaway.channelId);
       if (!channel || !channel.isSendable()) {
@@ -640,10 +642,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
       }
 
       if (giveaway.endAt <= itx.createdAt) {
-        return await itx.followUp({
+        await itx.followUp({
           content: "Ten giveaway już się zakończył!",
           flags: "Ephemeral",
         });
+        return;
       }
 
       if (itx.customId.endsWith("list")) {
@@ -708,19 +711,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
           }
         }
 
-        if (!existing) {
-          await prisma.giveawayParticipant.create({
-            data: {
-              userId: itx.user.id,
-              giveawayId: giveaway.id,
-            },
-          });
-        } else {
-          await prisma.giveawayParticipant.update({
-            where: { id: existing.id },
-            data: { isRemoved: false },
-          });
-        }
+        await prisma.giveawayParticipant.upsert({
+          where: {
+            giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
+          },
+          create: { userId: itx.user.id, giveawayId: giveaway.id },
+          update: { isRemoved: false },
+        });
 
         returnMsg = `${itx.user} dołączyłxś do giveaway!`;
         await updateGiveaway(itx.message, giveaway, prisma);
@@ -756,16 +753,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
       await leaveButtonClick.interaction.deferReply({ flags: "Ephemeral" });
       await leaveButtonClick.interaction.deleteReply();
 
-      await prisma.giveawayParticipant.updateMany({
-        where: { userId: itx.user.id, giveawayId: giveaway.id, isRemoved: false },
+      await prisma.giveawayParticipant.update({
+        where: { giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id } },
         data: { isRemoved: true },
       });
+
       await updateGiveaway(itx.message, giveaway, prisma);
 
-      await itx.followUp({
-        content: "Opuściłxś giveaway.",
-        flags: "Ephemeral",
-      });
-      return;
+      await itx.followUp({ content: "Opuściłxś giveaway.", flags: "Ephemeral" });
     });
   });
