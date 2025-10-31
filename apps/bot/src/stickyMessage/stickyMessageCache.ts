@@ -10,16 +10,13 @@ export class StickyMessageCache {
         "Prisma client not initialized. Please call start() with a valid ExtendedPrismaClient instance.",
       );
 
-    // Check if we have a cached result (either a sticky message or null)
-    if (this.#cache.has(channelId)) {
-      return this.#cache.get(channelId)!;
-    }
+    const hit = this.#cache.get(channelId);
+    if (hit !== undefined) return hit;
 
     const stickyMessage = await this.#prisma.stickyMessage.findFirst({
       where: { channelId },
     });
 
-    // Cache the result, even if it's null (channel has no sticky message)
     this.#cache.set(channelId, stickyMessage);
 
     return stickyMessage;
