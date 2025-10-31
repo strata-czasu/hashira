@@ -1,4 +1,6 @@
 import type { $Enums, PrismaTransaction } from "@hashira/db";
+import { endOfDay, startOfDay } from "date-fns";
+import { getUsersTextActivity, getUsersVoiceActivity } from "../../userActivity/util";
 import type {
   ActionEffect,
   CombatState,
@@ -7,6 +9,17 @@ import type {
   PlayerAbility,
 } from "./combatLog";
 import type { LootRecipient } from "./lootDistribution";
+
+export type StatsModifiers = {
+  hpBonus?: number;
+  hpMultiplier?: number;
+  attackBonus?: number;
+  attackMultiplier?: number;
+  defenseBonus?: number;
+  defenseMultiplier?: number;
+  speedBonus?: number;
+  speedMultiplier?: number;
+};
 
 export type MonsterData = {
   id: number;
@@ -24,6 +37,7 @@ export type PlayerData = {
   userId: string;
   username: string;
   attemptedAt: Date;
+  modifiers: StatsModifiers;
 };
 
 export type SpawnData = {
@@ -37,9 +51,27 @@ export type SpawnData = {
   participants: PlayerData[];
 };
 
+const getModifiers = (
+  modifiers: Map<string, StatsModifiers>,
+  userId: string,
+): StatsModifiers => {
+  return (
+    modifiers.get(userId) ?? {
+      hpBonus: 0,
+      attackBonus: 0,
+      defenseBonus: 0,
+      speedBonus: 0,
+    }
+  );
+};
+
 export interface ICombatRepository {
   getSpawnById(spawnId: number): Promise<SpawnData | null>;
   getDefaultPlayerAbilities(): Promise<PlayerAbility[]>;
+  getUserModifiersBatch(
+    userIds: string[],
+    guildId: string,
+  ): Promise<Map<string, StatsModifiers>>;
   saveCombatLog(spawnId: number, state: CombatState): Promise<void>;
   updateSpawnStatus(
     spawnId: number,
@@ -59,12 +91,22 @@ export class PrismaCombatRepository implements ICombatRepository {
           include: { actions: true },
         },
         catchAttempts: {
-          include: { user: true },
+          include: { user: { select: { id: true } } },
         },
       },
     });
 
     if (!spawn) return null;
+
+    const userIds = spawn.catchAttempts.map((a) => a.userId);
+    const modifiersMap = await this.getUserModifiersBatch(userIds, spawn.guildId);
+
+    const participantsWithModifiers = spawn.catchAttempts.map((attempt) => ({
+      userId: attempt.userId,
+      username: attempt.user.id,
+      attemptedAt: attempt.attemptedAt,
+      modifiers: getModifiers(modifiersMap, attempt.userId),
+    }));
 
     return {
       id: spawn.id,
@@ -95,11 +137,7 @@ export class PrismaCombatRepository implements ICombatRepository {
           effects: a.effects as ActionEffect,
         })),
       },
-      participants: spawn.catchAttempts.map((attempt) => ({
-        userId: attempt.userId,
-        username: attempt.user.id,
-        attemptedAt: attempt.attemptedAt,
-      })),
+      participants: participantsWithModifiers,
     };
   }
 
@@ -120,6 +158,55 @@ export class PrismaCombatRepository implements ICombatRepository {
       isAoe: a.isAoe,
       effects: a.effects as ActionEffect,
     }));
+  }
+
+  async getUserModifiersBatch(
+    userIds: string[],
+    guildId: string,
+  ): Promise<Map<string, StatsModifiers>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+
+    const today = new Date();
+    const start = startOfDay(today);
+    const end = endOfDay(today);
+
+    const textActivityMap = await getUsersTextActivity({
+      prisma: this.prisma,
+      guildId,
+      userIds,
+      since: start,
+      to: end,
+    });
+
+    const voiceActivityMap = await getUsersVoiceActivity({
+      prisma: this.prisma,
+      guildId,
+      userIds,
+      since: start,
+      to: end,
+    });
+
+    const modifiersMap = new Map<string, StatsModifiers>();
+    for (const userId of userIds) {
+      const textActivity = textActivityMap.get(userId) ?? 0;
+      const voiceSeconds = voiceActivityMap.get(userId) ?? 0;
+      const voiceMinutes = voiceSeconds / 60;
+      const voiceHours = voiceMinutes / 60;
+
+      const hpBonus = Math.round(Math.min(textActivity / 100 + voiceMinutes / 3, 50));
+      const attackBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 3));
+      const defenseBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 4));
+
+      modifiersMap.set(userId, {
+        hpBonus,
+        attackBonus,
+        defenseBonus,
+      });
+    }
+
+    return modifiersMap;
   }
 
   async saveCombatLog(spawnId: number, state: CompletedCombatState): Promise<void> {
@@ -186,10 +273,9 @@ export class MockCombatRepository implements ICombatRepository {
   private spawns = new Map<number, SpawnData>();
   private abilities: PlayerAbility[] = [];
   private monsters = new Map<number, MonsterData>();
-  public savedCombatLogs: Array<{ spawnId: number; state: CombatState }> = [];
-  public updatedSpawns: Array<{ spawnId: number; status: string }> = [];
-  public savedLootRecipients: Array<{ spawnId: number; recipients: LootRecipient[] }> =
-    [];
+  public savedCombatLogs: { spawnId: number; state: CombatState }[] = [];
+  public updatedSpawns: { spawnId: number; status: string }[] = [];
+  public savedLootRecipients: { spawnId: number; recipients: LootRecipient[] }[] = [];
 
   setSpawn(spawn: SpawnData): void {
     this.spawns.set(spawn.id, spawn);
@@ -209,6 +295,19 @@ export class MockCombatRepository implements ICombatRepository {
 
   async getDefaultPlayerAbilities(): Promise<PlayerAbility[]> {
     return this.abilities;
+  }
+
+  async getUserModifiersBatch(
+    userIds: string[],
+    _guildId: string,
+    _startDate?: Date,
+    _endDate?: Date,
+  ): Promise<Map<string, StatsModifiers>> {
+    const modifiersMap = new Map<string, StatsModifiers>();
+    for (const userId of userIds) {
+      modifiersMap.set(userId, {});
+    }
+    return modifiersMap;
   }
 
   async saveCombatLog(spawnId: number, state: CombatState): Promise<void> {

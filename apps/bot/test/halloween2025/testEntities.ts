@@ -105,4 +105,5 @@ export const createBasicPlayer = (id: string): PlayerData => ({
   userId: id,
   username: `Player_${id}`,
   attemptedAt: new Date(),
+  modifiers: {},
 });

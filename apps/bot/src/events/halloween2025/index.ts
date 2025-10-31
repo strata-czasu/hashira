@@ -61,9 +61,9 @@ const HALLOWEEN_2025_START = {
   [GUILD_IDS.StrataCzasu]: DateTime.unsafeMakeZoned({
     year: 2025,
     month: 10,
-    day: 29,
-    hours: 16,
-    minutes: 0,
+    day: 31,
+    hours: 21,
+    minutes: 30,
     seconds: 0,
     zone,
   }),
@@ -556,17 +556,18 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
       ),
   )
   .handle("guildAvailable", async ({ prisma, messageQueue }, guild) => {
-    // const start = getGuildSetting(HALLOWEEN_2025_START, guild.id);
-    // const runSchedule = getGuildSetting(HALLOWEEN_2025_SCHEDULES, guild.id);
-    // if (!start || !runSchedule) return;
-    // handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
-    //   Effect.catchAll(Effect.logError),
-    //   Effect.schedule(runSchedule),
-    //   Effect.delay(
-    //     pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
-    //   ),
-    //   Effect.runFork,
-    // );
+    const start = getGuildSetting(HALLOWEEN_2025_START, guild.id);
+    const runSchedule = getGuildSetting(HALLOWEEN_2025_SCHEDULES, guild.id);
+    if (!start || !runSchedule) return;
+
+    handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
+      Effect.catchAll(Effect.logError),
+      Effect.schedule(runSchedule),
+      Effect.delay(
+        pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
+      ),
+      Effect.runFork,
+    );
   })
   .handle("clientReady", async ({ prisma }, client) => {
     client.on("interactionCreate", async (itx) => {
@@ -616,7 +617,6 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
           },
         });
 
-        // Fetch all participants to rebuild the list from database
         const allAttempts = await tx.halloween2025MonsterCatchAttempt.findMany({
           where: { spawnId },
           orderBy: { attemptedAt: "asc" },

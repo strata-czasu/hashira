@@ -1,4 +1,5 @@
-import type { ExtendedPrismaClient } from "@hashira/db";
+import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+import { typedSql } from "@hashira/db";
 
 /**
  * Get an user's guild text activity count in messages
@@ -8,11 +9,13 @@ export const getUserTextActivity = async ({
   guildId,
   userId,
   since,
+  to,
 }: {
   prisma: ExtendedPrismaClient;
   guildId: string;
   userId: string;
   since: Date;
+  to?: Date;
 }) => {
   return prisma.userTextActivity.count({
     where: {
@@ -20,9 +23,45 @@ export const getUserTextActivity = async ({
       guildId,
       timestamp: {
         gte: since,
+        ...(to ? { lte: to } : {}),
       },
     },
   });
+};
+
+export const getUsersTextActivity = async ({
+  prisma,
+  guildId,
+  userIds,
+  since,
+  to,
+}: {
+  prisma: ExtendedPrismaClient | PrismaTransaction;
+  guildId: string;
+  userIds: string[];
+  since: Date;
+  to?: Date;
+}): Promise<Map<string, number>> => {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
+  // Get text activity counts
+  const textActivityCounts = await prisma.userTextActivity.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: userIds },
+      guildId,
+      timestamp: { gte: since, ...(to ? { lte: to } : {}) },
+    },
+    _count: { id: true },
+  });
+
+  const textActivityMap = new Map(
+    textActivityCounts.map((item) => [item.userId, item._count.id]),
+  );
+
+  return textActivityMap;
 };
 
 /**
@@ -33,11 +72,13 @@ export const getUserVoiceActivity = async ({
   guildId,
   userId,
   since,
+  to,
 }: {
   prisma: ExtendedPrismaClient;
   guildId: string;
   userId: string;
   since: Date;
+  to?: Date;
 }) => {
   const {
     _sum: { secondsSpent },
@@ -54,9 +95,36 @@ export const getUserVoiceActivity = async ({
         userId,
         joinedAt: {
           gte: since,
+          ...(to ? { lte: to } : {}),
         },
       },
     },
   });
   return secondsSpent ?? 0;
+};
+
+/**
+ * Get multiple users' guild voice activity in seconds (batched)
+ * Returns a Map of userId -> seconds spent
+ */
+export const getUsersVoiceActivity = async ({
+  prisma,
+  guildId,
+  userIds,
+  since,
+  to,
+}: {
+  prisma: ExtendedPrismaClient | PrismaTransaction;
+  guildId: string;
+  userIds: string[];
+  since: Date;
+  to?: Date;
+}): Promise<Map<string, number>> => {
+  if (userIds.length === 0) return new Map();
+
+  const results = await prisma.$queryRawTyped(
+    typedSql.getUsersVoiceActivity(userIds, guildId, since, to ?? null),
+  );
+
+  return new Map(results.map((row) => [row.userId, Number(row.totalSeconds)]));
 };

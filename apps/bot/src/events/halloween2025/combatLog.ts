@@ -1,8 +1,8 @@
 import type { $Enums } from "@hashira/db";
 import { sumBy } from "es-toolkit";
 import { weightedRandom } from "../../util/weightedRandom";
-import type { MonsterData, PlayerData } from "./combatRepository";
-export type CombatantId = string; // userId for players, "monster" for monster
+import type { MonsterData, PlayerData, StatsModifiers } from "./combatRepository";
+export type CombatantId = "monster" | (string & {});
 
 type StatusEffectType =
   | "burn"
@@ -127,8 +127,7 @@ export type CombatEvent = {
 export type CombatantSnapshot = {
   id: CombatantId;
   name: string;
-  hp: number;
-  maxHp: number;
+  stats: CombatStats;
   isDefeated: boolean;
   statusEffects: StatusEffect[];
 };
@@ -136,7 +135,7 @@ export type CombatantSnapshot = {
 export type TurnSnapshot = {
   turnNumber: number;
   combatants: CombatantSnapshot[];
-  events: CombatEvent[]; // Events that occurred during this turn
+  events: CombatEvent[];
 };
 
 export type InProgresCombatState = {
@@ -160,6 +159,34 @@ export type CompletedCombatState = {
 };
 
 export type CombatState = InProgresCombatState | CompletedCombatState;
+
+const STAT_CAPS = {
+  maxHp: 1500,
+  attack: 20,
+  defense: 15,
+  speed: 200,
+} as const;
+
+const applyModifiers = (stats: CombatStats, modifiers: StatsModifiers): CombatStats => {
+  let hp = stats.hp + (modifiers.hpBonus ?? 0);
+  let maxHp = stats.maxHp + (modifiers.hpBonus ?? 0);
+  let attack = stats.attack + (modifiers.attackBonus ?? 0);
+  let defense = stats.defense + (modifiers.defenseBonus ?? 0);
+  let speed = stats.speed + (modifiers.speedBonus ?? 0);
+
+  maxHp = maxHp * (1 + (modifiers.hpMultiplier ?? 0));
+  attack = attack * (1 + (modifiers.attackMultiplier ?? 0));
+  defense = defense * (1 + (modifiers.defenseMultiplier ?? 0));
+  speed = speed * (1 + (modifiers.speedMultiplier ?? 0));
+
+  maxHp = Math.min(Math.round(maxHp), STAT_CAPS.maxHp);
+  hp = Math.min(Math.round(hp), maxHp);
+  attack = Math.min(Math.round(attack), STAT_CAPS.attack);
+  defense = Math.min(Math.round(defense), STAT_CAPS.defense);
+  speed = Math.min(Math.round(speed), STAT_CAPS.speed);
+
+  return { hp, maxHp, attack, defense, speed };
+};
 
 const calculateDamage = (
   attacker: Combatant,
@@ -796,8 +823,7 @@ const createTurnSnapshot = (
     combatantSnapshots.push({
       id: combatant.id,
       name: combatant.name,
-      hp: combatant.stats.hp,
-      maxHp: combatant.stats.maxHp,
+      stats: { ...combatant.stats },
       isDefeated: combatant.isDefeated,
       statusEffects: [...combatant.statusEffects], // ensure not to share reference
     });
@@ -973,30 +999,30 @@ export const initializeCombatState = (
   userNameMap?: Map<string, string>,
 ): CombatState => {
   const combatants = new Map<CombatantId, Combatant>();
-
   const multiplier = rarityMultipliers[monster.rarity];
 
-  const monsterHp = Math.round(monster.baseHp * (1 + multiplier) + players.length * 50);
+  const monsterBaseStats = {
+    hp: monster.baseHp,
+    maxHp: monster.baseHp,
+    attack: monster.baseAttack,
+    defense: monster.baseDefense,
+    speed: monster.baseSpeed,
+  };
 
-  const monsterAttack = Math.round(
-    monster.baseAttack * (1 + multiplier / 2) + players.length / 3,
-  );
-
-  const monsterDefense = Math.round(
-    monster.baseDefense * (1 + multiplier / 2) + players.length / 3,
-  );
+  const monsterModifiers: StatsModifiers = {
+    hpBonus: players.length * 50,
+    hpMultiplier: multiplier,
+    attackBonus: players.length / 4,
+    attackMultiplier: multiplier / 2,
+    defenseBonus: players.length / 4,
+    defenseMultiplier: multiplier / 2,
+  };
 
   combatants.set("monster", {
     type: "monster",
     id: "monster",
     name: monster.name,
-    stats: {
-      hp: monsterHp,
-      maxHp: monsterHp,
-      attack: monsterAttack,
-      defense: monsterDefense,
-      speed: monster.baseSpeed,
-    },
+    stats: applyModifiers(monsterBaseStats, monsterModifiers),
     statusEffects: [],
     actionCooldowns: new Map(),
     isDefeated: false,
@@ -1005,17 +1031,14 @@ export const initializeCombatState = (
 
   for (const player of players) {
     const displayName = userNameMap?.get(player.userId) ?? player.username;
+
+    const baseStats = { hp: 50, maxHp: 50, attack: 8, defense: 3, speed: 50 };
+
     combatants.set(player.userId, {
       type: "user",
       id: player.userId,
       name: displayName,
-      stats: {
-        hp: 50,
-        maxHp: 50,
-        attack: 8,
-        defense: 3,
-        speed: 50,
-      },
+      stats: applyModifiers(baseStats, player.modifiers),
       statusEffects: [],
       abilityCooldowns: new Map(),
       isDefeated: false,

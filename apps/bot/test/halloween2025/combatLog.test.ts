@@ -113,8 +113,18 @@ describe("Combat System", () => {
     it("should capture a weak monster", async () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [
-        { userId: "user1", username: "Player1", attemptedAt: new Date() },
-        { userId: "user2", username: "Player2", attemptedAt: new Date() },
+        {
+          userId: "user1",
+          username: "Player1",
+          attemptedAt: new Date(),
+          modifiers: {},
+        },
+        {
+          userId: "user2",
+          username: "Player2",
+          attemptedAt: new Date(),
+          modifiers: {},
+        },
       ]);
 
       const result = await simulateCombat(state, createBasicAbilities(), 30, random);
