@@ -168,7 +168,6 @@ const STAT_CAPS = {
 } as const;
 
 const applyModifiers = (stats: CombatStats, modifiers: StatsModifiers): CombatStats => {
-  let hp = stats.hp + (modifiers.hpBonus ?? 0);
   let maxHp = stats.maxHp + (modifiers.hpBonus ?? 0);
   let attack = stats.attack + (modifiers.attackBonus ?? 0);
   let defense = stats.defense + (modifiers.defenseBonus ?? 0);
@@ -180,12 +179,11 @@ const applyModifiers = (stats: CombatStats, modifiers: StatsModifiers): CombatSt
   speed = speed * (1 + (modifiers.speedMultiplier ?? 0));
 
   maxHp = Math.min(Math.round(maxHp), STAT_CAPS.maxHp);
-  hp = Math.min(Math.round(hp), maxHp);
   attack = Math.min(Math.round(attack), STAT_CAPS.attack);
   defense = Math.min(Math.round(defense), STAT_CAPS.defense);
   speed = Math.min(Math.round(speed), STAT_CAPS.speed);
 
-  return { hp, maxHp, attack, defense, speed };
+  return { hp: maxHp, maxHp, attack, defense, speed };
 };
 
 const calculateDamage = (
