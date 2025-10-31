@@ -74,9 +74,7 @@ const HALLOWEEN_2025_SCHEDULES: Record<
   string,
   Schedule.Schedule<unknown, unknown, never>
 > = {
-  [GUILD_IDS.StrataCzasu]: Schedule.jittered(
-    Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)),
-  ),
+  [GUILD_IDS.StrataCzasu]: Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)),
   [GUILD_IDS.Homik]: Schedule.cron(Cron.unsafeParse("*/2 * * * *", zone)),
 };
 
