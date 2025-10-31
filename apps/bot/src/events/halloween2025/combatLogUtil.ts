@@ -122,7 +122,7 @@ export const sendCombatlog = Effect.fn("sendCombatlog")(function* (
     prisma.halloween2025MonsterLoot.findMany({
       where: { spawnId: fight.spawn.id },
       select: { rank: true, damageDealt: true, userId: true },
-      orderBy: { rank: "desc" },
+      orderBy: { rank: "asc" },
     }),
   );
 
