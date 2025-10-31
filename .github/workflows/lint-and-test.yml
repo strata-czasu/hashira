@@ -47,8 +47,6 @@ jobs:
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
-      - name: Generate Prisma Client SQL
-        run: bun prisma-generate --sql
       - name: Check Types
         run: bun typecheck
 
@@ -74,8 +72,6 @@ jobs:
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
-      - name: Generate Prisma Client SQL
-        run: bun prisma-generate --sql
       - name: Check migrations
         run: bun prisma-check-migrations
 
@@ -101,8 +97,6 @@ jobs:
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
-      - name: Generate Prisma Client SQL
-        run: bun prisma-generate --sql
       - name: Run tests
         run: |
           # NOTE: remember to one day fix tests for db, we're wasting resources not running them

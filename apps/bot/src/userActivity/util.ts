@@ -1,5 +1,4 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
-import { typedSql } from "@hashira/db";
 
 /**
  * Get an user's guild text activity count in messages
@@ -122,9 +121,23 @@ export const getUsersVoiceActivity = async ({
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) return new Map();
 
-  const results = await prisma.$queryRawTyped(
-    typedSql.getUsersVoiceActivity(userIds, guildId, since, to ?? null),
-  );
+  const results = await prisma.$queryRaw<
+    Array<{ userId: string; totalSeconds: bigint }>
+  >`
+    SELECT 
+      vs."userId",
+      COALESCE(SUM(vst."secondsSpent"), 0)::bigint as "totalSeconds"
+    FROM "VoiceSession" vs
+    LEFT JOIN "VoiceSessionTotal" vst ON vst."voiceSessionId" = vs.id
+      AND vst."isMuted" = false
+      AND vst."isDeafened" = false
+      AND vst."isAlone" = false
+    WHERE vs."userId" = ANY(${userIds})
+      AND vs."guildId" = ${guildId}
+      AND vs."joinedAt" >= ${since}
+      AND (${to}::timestamp IS NULL OR vs."joinedAt" <= ${to})
+    GROUP BY vs."userId"
+  `;
 
   return new Map(results.map((row) => [row.userId, Number(row.totalSeconds)]));
 };
