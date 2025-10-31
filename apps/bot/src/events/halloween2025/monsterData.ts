@@ -205,7 +205,7 @@ export const MONSTER_TEMPLATES = {
   possessedDoll: {
     name: "Opętana Lalka",
     weight: 60,
-    enabled: false,
+    enabled: true,
     image: "https://i.imgur.com/qQObiqd.png",
     baseHp: 80,
     baseAttack: 17,
@@ -238,7 +238,7 @@ export const MONSTER_TEMPLATES = {
   succubus: {
     name: "Sukkub",
     weight: 40,
-    enabled: false,
+    enabled: true,
     image: "https://i.imgur.com/clOhBpu.png",
     baseHp: 148,
     baseAttack: 17,
