@@ -285,9 +285,24 @@ describe("selectLootRecipients", () => {
 
     const recipients = selectLootRecipients(events, 6);
 
-    expect(recipients).toHaveLength(3); // 6 participants = 3 drops
-    expect(recipients[0]?.rank).toBe(1);
-    expect(recipients[1]?.rank).toBe(2);
-    expect(recipients[2]?.rank).toBe(3);
+    expect(recipients).toMatchInlineSnapshot(`
+      [
+        {
+          "damageDealt": 100,
+          "rank": 1,
+          "userId": "player1",
+        },
+        {
+          "damageDealt": 80,
+          "rank": 2,
+          "userId": "player2",
+        },
+        {
+          "damageDealt": 60,
+          "rank": 3,
+          "userId": "player3",
+        },
+      ]
+    `);
   });
 });
