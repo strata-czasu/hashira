@@ -77,7 +77,7 @@ const HALLOWEEN_2025_SCHEDULES: Record<
   [GUILD_IDS.StrataCzasu]: Schedule.jittered(
     Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)),
   ),
-  [GUILD_IDS.Homik]: Schedule.fixed("10 seconds"),
+  [GUILD_IDS.Homik]: Schedule.cron(Cron.unsafeParse("*/2 * * * *", zone)),
 };
 
 const createSpawnComponent = (
