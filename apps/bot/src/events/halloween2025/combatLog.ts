@@ -161,7 +161,7 @@ export type CompletedCombatState = {
 export type CombatState = InProgresCombatState | CompletedCombatState;
 
 const STAT_CAPS = {
-  maxHp: 1500,
+  maxHp: 1750,
   attack: 20,
   defense: 15,
   speed: 200,
