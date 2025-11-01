@@ -13,6 +13,7 @@ import {
   type APIMessageTopLevelComponent,
   ButtonBuilder,
   ButtonStyle,
+  bold,
   type Client,
   ContainerBuilder,
   type ContainerComponent,
@@ -20,6 +21,7 @@ import {
   heading,
   type MessageCreateOptions,
   MessageFlags,
+  roleMention,
   subtext,
   TextDisplayBuilder,
   type TextDisplayComponent,
@@ -40,7 +42,9 @@ import { base } from "../../base";
 import { GUILD_IDS } from "../../specializedConstants";
 import { parseDuration, randomDuration } from "../../util/duration";
 import { ensureUserExists } from "../../util/ensureUsersExist";
+import { fetchMembers } from "../../util/fetchMembers";
 import { getGuildSetting } from "../../util/getGuildSetting";
+import { modifyMembers } from "../../util/modifyMembers";
 import { weightedRandom } from "../../util/weightedRandom";
 
 type MessageQueueType = ExtractContext<typeof base>["messageQueue"];
@@ -551,6 +555,52 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               );
             },
           ),
+      )
+      .addCommand("add-to-role", (command) =>
+        command
+          .setDescription("Dodaj wszystkich uczestników eventu do roli")
+          .addRole("role", (option) => option.setDescription("Rola do dodania"))
+          .handle(async ({ prisma }, { role }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: MessageFlags.Ephemeral });
+
+            const participants = await prisma.halloween2025MonsterCatchAttempt.findMany(
+              {
+                where: {
+                  spawn: {
+                    guildId: itx.guildId,
+                  },
+                },
+                distinct: ["userId"],
+              },
+            );
+
+            const guild = itx.guild;
+            const roleInGuild = guild.roles.cache.get(role.id);
+            if (!roleInGuild) {
+              await itx.reply(`Rola nie została znaleziona na tym serwerze.`);
+              return;
+            }
+
+            const members = await fetchMembers(
+              guild,
+              participants.map((p) => p.userId),
+            );
+
+            const results = await modifyMembers(members, (m) =>
+              m.roles.add(role.id, `Dodano rolę uczestnikom eventu Halloween 2025`),
+            );
+
+            const added = results.filter((r) => r).length;
+
+            await itx.followUp(
+              `Dodano rolę ${roleMention(role.id)} ${bold(
+                added.toString(),
+              )} użytkownikom. ${bold(
+                (members.size - added).toString(),
+              )} użytkowników ma za wysokie permisje lub nie jest już na serwerze.`,
+            );
+          }),
       ),
   )
   .handle("guildAvailable", async ({ prisma, messageQueue }, guild) => {
