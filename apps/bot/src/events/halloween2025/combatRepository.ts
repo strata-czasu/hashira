@@ -195,7 +195,7 @@ export class PrismaCombatRepository implements ICombatRepository {
       const voiceMinutes = voiceSeconds / 60;
       const voiceHours = voiceMinutes / 60;
 
-      const hpBonus = Math.round(Math.min(textActivity / 100 + voiceMinutes / 3, 50));
+      const hpBonus = Math.round(Math.min(textActivity / 25 + voiceMinutes / 3, 50));
       const attackBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 3));
       const defenseBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 4));
 
