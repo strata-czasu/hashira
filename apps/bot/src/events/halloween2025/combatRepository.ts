@@ -235,11 +235,14 @@ export class PrismaCombatRepository implements ICombatRepository {
       const textActivity = textActivityMap.get(userId) ?? 0;
       const voiceSeconds = voiceActivityMap.get(userId) ?? 0;
       const voiceMinutes = voiceSeconds / 60;
-      const voiceHours = voiceMinutes / 60;
 
       const hpBonus = Math.round(Math.min(textActivity / 25 + voiceMinutes / 3, 50));
-      const attackBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 3));
-      const defenseBonus = Math.round(Math.min(textActivity / 1000 + voiceHours, 4));
+      const attackBonus = Math.round(
+        Math.min(textActivity / 250 + voiceMinutes / 30, 3),
+      );
+      const defenseBonus = Math.round(
+        Math.min(textActivity / 250 + voiceMinutes / 30, 4),
+      );
 
       modifiersMap.set(userId, {
         hpBonus,
