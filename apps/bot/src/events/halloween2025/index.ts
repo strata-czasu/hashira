@@ -365,7 +365,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               `Czasem potwory pojawiają się w parach lub większych grupach, więc warto być czujnym!`,
               `A czasem pojawiają się tylko w reakcji na specjalne wydarzenia na serwerze... Kto wie, co przyniesie Halloween w tym roku?`,
               ``,
-              `Bądź czujny i nie przegap swojej szansy na złapanie potwora!`,
+              `Bądź czujnx i nie przegap swojej szansy na złapanie potwora!`,
             ];
 
             const components = new ContainerBuilder()
@@ -679,7 +679,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
       if (result.error) {
         if (result.error === "Already attempted") {
           await itx.editReply({
-            content: `Już dołączyłeś do tej wyprawy! Czekaj na wynik.`,
+            content: `Gildia już przyjęła Twoje zgłoszenie! Czekaj na rozpoczęcie walki.`,
           });
         } else {
           await itx.editReply({
