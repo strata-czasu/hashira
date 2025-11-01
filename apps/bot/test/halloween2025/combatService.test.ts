@@ -328,7 +328,11 @@ describe("CombatService", () => {
         [name, 5],
         [name, 6],
         [name, 7],
+        [name, 8],
+        [name, 9],
+        [name, 10],
         [name, 12],
+        [name, 15],
         [name, 20],
       ])(
         "%p with %i player(s) participants should have consistent capture rate",
