@@ -1,6 +1,6 @@
 import type { CompletedCombatState } from "./combatLog";
 import { initializeCombatState, simulateCombat } from "./combatLog";
-import type { ICombatRepository } from "./combatRepository";
+import type { ICombatRepository, StatsModifiers } from "./combatRepository";
 import { selectLootRecipients } from "./lootDistribution";
 
 export type CombatResult = {
@@ -27,8 +27,9 @@ export class CombatService {
     spawnId: number,
     maxTurns = 50,
     userNameMap: Map<string, string> = new Map(),
+    additionalModifiers?: Map<string, StatsModifiers>,
   ): Promise<CombatResult | null> {
-    const spawn = await this.repository.getSpawnById(spawnId);
+    const spawn = await this.repository.getSpawnById(spawnId, additionalModifiers);
     if (!spawn) return null;
 
     if (spawn.participants.length === 0) {
@@ -37,12 +38,14 @@ export class CombatService {
     }
 
     const playerAbilities = await this.repository.getDefaultPlayerAbilities();
+
     const combatState = initializeCombatState(
       spawn.monster,
       spawn.participants,
       userNameMap,
     );
-    const finalState = await simulateCombat(
+
+    const finalState = simulateCombat(
       combatState,
       playerAbilities,
       maxTurns,

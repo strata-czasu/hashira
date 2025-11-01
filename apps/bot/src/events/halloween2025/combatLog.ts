@@ -1065,12 +1065,12 @@ export const initializeCombatState = (
  * @param maxTurns Maximum number of turns before monster escapes
  * @returns Completed combat state
  */
-export const simulateCombat = async (
+export const simulateCombat = (
   state: CombatState,
   playerAbilities: PlayerAbility[],
   maxTurns = 50,
   random: () => number,
-): Promise<CompletedCombatState> => {
+): CompletedCombatState => {
   let currentState = state;
 
   state.turnSnapshots.push(createTurnSnapshot(state, []));

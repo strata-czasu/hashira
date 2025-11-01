@@ -65,8 +65,43 @@ const getModifiers = (
   );
 };
 
+const addModifiers = (
+  base: StatsModifiers,
+  additional: StatsModifiers,
+): StatsModifiers => {
+  const result: StatsModifiers = { ...base };
+
+  for (const key of Object.keys(additional) as (keyof StatsModifiers)[]) {
+    const baseValue = result[key] ?? 0;
+    const additionalValue = additional[key] ?? 0;
+    if (baseValue + additionalValue !== 0) {
+      result[key] = baseValue + additionalValue;
+    }
+  }
+
+  return result;
+};
+
+const joinModifiersMap = (
+  base: Map<string, StatsModifiers>,
+  additional: Map<string, StatsModifiers>,
+): Map<string, StatsModifiers> => {
+  const result = new Map<string, StatsModifiers>();
+
+  for (const [userId, baseMods] of base.entries()) {
+    const additionalMods = additional.get(userId) ?? {};
+
+    result.set(userId, addModifiers(baseMods, additionalMods));
+  }
+
+  return result;
+};
+
 export interface ICombatRepository {
-  getSpawnById(spawnId: number): Promise<SpawnData | null>;
+  getSpawnById(
+    spawnId: number,
+    additionalModifiers?: Map<string, StatsModifiers>,
+  ): Promise<SpawnData | null>;
   getDefaultPlayerAbilities(): Promise<PlayerAbility[]>;
   getUserModifiersBatch(
     userIds: string[],
@@ -83,7 +118,10 @@ export interface ICombatRepository {
 export class PrismaCombatRepository implements ICombatRepository {
   constructor(private prisma: PrismaTransaction) {}
 
-  async getSpawnById(spawnId: number): Promise<SpawnData | null> {
+  async getSpawnById(
+    spawnId: number,
+    additionalModifiers?: Map<string, StatsModifiers>,
+  ): Promise<SpawnData | null> {
     const spawn = await this.prisma.halloween2025MonsterSpawn.findUnique({
       where: { id: spawnId },
       include: {
@@ -99,7 +137,11 @@ export class PrismaCombatRepository implements ICombatRepository {
     if (!spawn) return null;
 
     const userIds = spawn.catchAttempts.map((a) => a.userId);
-    const modifiersMap = await this.getUserModifiersBatch(userIds, spawn.guildId);
+    const baseModifiersMaps = await this.getUserModifiersBatch(userIds, spawn.guildId);
+
+    const modifiersMap = additionalModifiers
+      ? joinModifiersMap(baseModifiersMaps, additionalModifiers)
+      : baseModifiersMaps;
 
     const participantsWithModifiers = spawn.catchAttempts.map((attempt) => ({
       userId: attempt.userId,

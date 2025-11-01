@@ -127,8 +127,7 @@ describe("Combat System", () => {
         },
       ]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
-
+      const result = simulateCombat(state, createBasicAbilities(), 30, random);
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_captured");
       expect(result.events.length).toBeGreaterThan(0);
@@ -138,7 +137,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 20, random);
+      const result = simulateCombat(state, createBasicAbilities(), 20, random);
 
       expect(result.events.some((e) => e.type === "attack")).toBe(true);
       expect(result.events.some((e) => e.type === "turn_start")).toBe(true);
@@ -153,7 +152,7 @@ describe("Combat System", () => {
       };
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 5, random);
+      const result = simulateCombat(state, createBasicAbilities(), 5, random);
 
       expect(result.currentTurn).toBeLessThanOrEqual(5);
       if (result.isComplete && !result.combatants.get("monster")?.isDefeated) {
@@ -184,7 +183,7 @@ describe("Combat System", () => {
         createBasicPlayer("user2"),
       ]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 20, random);
+      const result = simulateCombat(state, createBasicAbilities(), 20, random);
 
       // Check that AOE events targeted multiple players
       const aoeEvents = result.events.filter((e) => e.action === "Fireball");
@@ -210,7 +209,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, abilities, 20, random);
+      const result = simulateCombat(state, abilities, 20, random);
 
       // Check for debuff/status effect events
       const statusEvents = result.events.filter(
@@ -248,7 +247,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, abilities, 30, random);
+      const result = simulateCombat(state, abilities, 30, random);
 
       // Check for heal events (player may use heal when low HP)
       const healEvents = result.events.filter((e) => e.type === "heal");
@@ -278,7 +277,7 @@ describe("Combat System", () => {
 
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
+      const result = simulateCombat(state, createBasicAbilities(), 30, random);
 
       // With a very strong monster, players might lose
       if (result.result === "all_players_defeated") {
@@ -292,7 +291,7 @@ describe("Combat System", () => {
       const monster = createBasicMonster();
       const state = initializeCombatState(monster, [createBasicPlayer("user1")]);
 
-      const result = await simulateCombat(state, createBasicAbilities(), 30, random);
+      const result = simulateCombat(state, createBasicAbilities(), 30, random);
 
       // With enough turns, there should be at least some critical hits (15% chance)
       // This is probabilistic, so we just check the event type exists

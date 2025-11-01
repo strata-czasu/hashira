@@ -20,7 +20,10 @@ import {
 import { Effect } from "effect";
 import { database } from "./db";
 import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
-import { PrismaCombatRepository } from "./events/halloween2025/combatRepository";
+import {
+  PrismaCombatRepository,
+  type StatsModifiers,
+} from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
@@ -33,6 +36,7 @@ import {
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { fetchGuildMember } from "./util/fetchGuildMember";
+import { fetchMembers } from "./util/fetchMembers";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
 // TODO: how to enable migrations of this data?
@@ -561,7 +565,24 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               userNameMap.set(user.id, userMention(user.id));
             }
 
-            const fight = await combatService.executeCombat(spawnId, 50, userNameMap);
+            const additionalModifiers = new Map<string, StatsModifiers>();
+            const members = await fetchMembers(
+              guild,
+              spawn.catchAttempts.map(({ user }) => user.id),
+            );
+
+            for (const member of members.values()) {
+              if (member.user.primaryGuild?.identityGuildId === spawn.guildId) {
+                additionalModifiers.set(member.id, { attackBonus: 1 });
+              }
+            }
+
+            const fight = await combatService.executeCombat(
+              spawnId,
+              50,
+              userNameMap,
+              additionalModifiers,
+            );
 
             Effect.runFork(sendCombatlog(prisma, message, fight));
           },
