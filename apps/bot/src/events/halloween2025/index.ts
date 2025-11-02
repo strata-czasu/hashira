@@ -597,8 +597,11 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
               participants.map((p) => p.userId),
             );
 
-            const results = await modifyMembers(members, (m) =>
-              m.roles.add(role.id, `Dodano rolę uczestnikom eventu Halloween 2025`),
+            const results = await modifyMembers(
+              members,
+              (m) =>
+                m.roles.add(role.id, `Dodano rolę uczestnikom eventu Halloween 2025`),
+              (m) => m.roles.cache.has(role.id),
             );
 
             const added = results.filter((r) => r).length;

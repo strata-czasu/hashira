@@ -10,11 +10,13 @@ import { discordTry } from "./discordTry";
 export const modifyMembers = async (
   members: Collection<string, GuildMember>,
   fn: (m: GuildMember) => Promise<unknown>,
+  shouldSkip?: (m: GuildMember) => boolean,
 ) => {
   return Promise.all(
     members.map(async (m) =>
       discordTry(
         async () => {
+          if (shouldSkip?.(m)) return true;
           await fn(m);
           return true;
         },
