@@ -694,7 +694,7 @@ const applyActionEffects = (
       type: "buff",
       actor: actor.id,
       target: target.id,
-      message: `${target.name} zyskuje tarczę!`,
+      message: `${target.name} ${effects.shield > 0 ? `zyskuje` : `traci`} tarczę!`,
     });
   }
 
