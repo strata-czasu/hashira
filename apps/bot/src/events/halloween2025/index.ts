@@ -249,7 +249,7 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
     });
   });
 
-  return { monster, message };
+  return { monster, message, spawn };
 });
 
 const sendNotification = Effect.fn("sendNotification")(function* (
@@ -273,7 +273,7 @@ const sendNotification = Effect.fn("sendNotification")(function* (
     .filter((channel) => channel !== null)
     .filter((channel) => channel.isSendable() && !channel.isDMBased());
 
-  yield* Effect.all(
+  return yield* Effect.all(
     notificationChannels.map((channel) =>
       Effect.tryPromise(() => channel.send(message)),
     ),
@@ -299,7 +299,7 @@ const handleGuild = Effect.fn("handleGuild")(
 
     if (!channel?.isTextBased()) return yield* Effect.fail("Channel is not text based");
 
-    const { message: spawnMessage } = yield* sendSpawn(
+    const { message: spawnMessage, spawn } = yield* sendSpawn(
       prisma,
       client,
       messageQueue,
@@ -326,7 +326,17 @@ const handleGuild = Effect.fn("handleGuild")(
       flags: MessageFlags.IsComponentsV2,
     } satisfies MessageCreateOptions;
 
-    yield* sendNotification(client, guildId, message);
+    const messages = yield* sendNotification(client, guildId, message);
+
+    yield* Effect.tryPromise(async () => {
+      await prisma.halloween2025MonsterSpawnNotifications.createMany({
+        data: messages.map((msg) => ({
+          channelId: msg.channelId,
+          messageId: msg.id,
+          spawnId: spawn.id,
+        })),
+      });
+    });
   },
   Effect.catchTag("MonsterNotFoundError", (error) =>
     Effect.log(`[Halloween 2025] No monsters found for guild ${error.guildId}`),

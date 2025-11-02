@@ -480,6 +480,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               where: { id: spawnId },
               select: {
                 catchAttempts: { select: { user: { select: { id: true } } } },
+                notifications: true,
                 guildId: true,
                 channelId: true,
                 messageId: true,
@@ -582,6 +583,24 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               50,
               userNameMap,
               additionalModifiers,
+            );
+
+            await Promise.all(
+              spawn.notifications.map(async (notification) => {
+                const notifyChannel = await discordTry(
+                  () => guild.channels.fetch(notification.channelId),
+                  [RESTJSONErrorCodes.UnknownChannel],
+                  () => null,
+                );
+
+                if (!notifyChannel?.isTextBased()) return;
+
+                await discordTry(
+                  () => notifyChannel.messages.delete(notification.messageId),
+                  [RESTJSONErrorCodes.UnknownMessage],
+                  () => null,
+                );
+              }),
             );
 
             Effect.runFork(sendCombatlog(prisma, message, fight));

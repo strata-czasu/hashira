@@ -71,11 +71,23 @@ model Halloween2025MonsterSpawn {
   rarity      Halloween2025MonsterRarity
   combatState Halloween2025CombatState   @default(pending)
 
-  guild          Guild                              @relation(fields: [guildId], references: [id])
-  monster        Halloween2025Monster               @relation(fields: [monsterId], references: [id])
+  guild          Guild                                    @relation(fields: [guildId], references: [id])
+  monster        Halloween2025Monster                     @relation(fields: [monsterId], references: [id])
   catchAttempts  Halloween2025MonsterCatchAttempt[]
   combatLog      Halloween2025CombatLog?
   lootRecipients Halloween2025MonsterLoot[]
+  notifications  Halloween2025MonsterSpawnNotifications[]
+}
+
+model Halloween2025MonsterSpawnNotifications {
+  id        Int    @id @default(autoincrement())
+  channelId String
+  messageId String @unique
+  spawnId   Int
+
+  spawn Halloween2025MonsterSpawn @relation(fields: [spawnId], references: [id])
+
+  @@unique([channelId, spawnId])
 }
 
 model Halloween2025MonsterCatchAttempt {
