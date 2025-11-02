@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
-import { type Duration, formatDuration } from "date-fns";
+import { compareAsc, type Duration, formatDuration } from "date-fns";
 import {
   type ActionRow,
   ActionRowBuilder,
@@ -479,7 +479,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const spawn = await prisma.halloween2025MonsterSpawn.findUnique({
               where: { id: spawnId },
               select: {
-                catchAttempts: { select: { user: { select: { id: true } } } },
+                catchAttempts: {
+                  select: { user: { select: { id: true } }, attemptedAt: true },
+                },
                 notifications: true,
                 guildId: true,
                 channelId: true,
@@ -562,20 +564,38 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             const repository = new PrismaCombatRepository(prisma);
             const combatService = new CombatService(repository, Math.random);
             const userNameMap = new Map<string, string>([["monster", "Potwór"]]);
-            for (const { user } of spawn.catchAttempts) {
+            const catchAttempts = spawn.catchAttempts.toSorted(
+              ({ attemptedAt: a }, { attemptedAt: b }) => compareAsc(a, b),
+            );
+
+            for (const { user } of catchAttempts) {
               userNameMap.set(user.id, userMention(user.id));
             }
 
             const additionalModifiers = new Map<string, StatsModifiers>();
             const members = await fetchMembers(
               guild,
-              spawn.catchAttempts.map(({ user }) => user.id),
+              catchAttempts.map(({ user }) => user.id),
             );
 
             for (const member of members.values()) {
               if (member.user.primaryGuild?.identityGuildId === spawn.guildId) {
                 additionalModifiers.set(member.id, { attackBonus: 1 });
               }
+            }
+
+            const firstThreeAttempts = catchAttempts.slice(0, 3);
+
+            for (const { user } of firstThreeAttempts) {
+              const currentModifier = additionalModifiers.get(user.id) ?? {
+                attackBonus: 0,
+                defenseBonus: 0,
+              };
+              additionalModifiers.set(user.id, {
+                ...currentModifier,
+                attackBonus: currentModifier.attackBonus ?? 0 + 1,
+                defenseBonus: currentModifier.defenseBonus ?? 0 + 1,
+              });
             }
 
             const fight = await combatService.executeCombat(
