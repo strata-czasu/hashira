@@ -428,11 +428,20 @@ const executeMonsterAction = (
   if (action.isAoe) {
     targets = action.canTargetSelf ? [monster, ...players] : players;
   } else {
-    const target = selectRandomTarget(
-      action.canTargetSelf ? [monster, ...players] : players,
-      random,
-    );
-    if (target) targets = [target];
+    if (
+      action.canTargetSelf &&
+      (action.actionType === "heal" ||
+        action.actionType === "buff" ||
+        action.actionType === "defend")
+    ) {
+      targets = [monster];
+    } else {
+      const target = selectRandomTarget(
+        action.canTargetSelf ? [monster, ...players] : players,
+        random,
+      );
+      if (target) targets = [target];
+    }
   }
 
   for (const target of targets) {
