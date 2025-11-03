@@ -19,7 +19,7 @@ model Halloween2025Monster {
 
 enum Halloween2025ActionType {
   attack
-  defend
+  defend // deprecated, use buff/debuff instead
   heal
   buff
   debuff
@@ -123,7 +123,7 @@ model Halloween2025CombatLog {
 
 enum Halloween2025AbilityType {
   attack
-  defend
+  defend // deprecated, use buff/debuff instead
   heal
   buff
   debuff

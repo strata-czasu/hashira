@@ -104,7 +104,6 @@ export type CombatEventType =
   | "turn_start"
   | "attack"
   | "heal"
-  | "defend"
   | "buff"
   | "debuff"
   | "status_effect"
@@ -233,13 +232,11 @@ const applyHealing = (target: Combatant, amount: number): number => {
 };
 
 const applyStatusEffect = (target: Combatant, effect: StatusEffect): void => {
-  const existingEffect = target.statusEffects.find(
-    (e) => e.type === effect.type && e.source === effect.source,
-  );
+  const existingEffect = target.statusEffects.find((e) => e.type === effect.type);
 
   if (existingEffect) {
-    existingEffect.power += effect.power;
-    existingEffect.duration = Math.max(existingEffect.duration, effect.duration);
+    existingEffect.power += 1;
+    existingEffect.duration += 1;
   } else {
     target.statusEffects.push(effect);
   }
@@ -312,8 +309,8 @@ const processStatusEffects = (
     }
 
     effect.duration--;
-    // effect.power--;
-    if (effect.duration <= 0) {
+    effect.power--;
+    if (effect.duration <= 0 || effect.power <= 0) {
       effectsToRemove.push(i);
     }
   }
@@ -346,14 +343,14 @@ const getAliveCombatants = (
   return alive;
 };
 
-const selectRandomTarget = (
-  candidates: Combatant[],
-  random: () => number,
-): Combatant | null => {
-  if (candidates.length === 0) return null;
-  const randomIndex = Math.floor(random() * candidates.length);
-  // biome-ignore lint/style/noNonNullAssertion: candidates is non-empty
-  return candidates[randomIndex]!;
+const selectRandomTarget = (candidates: Combatant[], random: () => number) =>
+  selectRandom(candidates, random);
+
+const selectRandom = <T>(items: T[], random: () => number): T | null => {
+  if (items.length === 0) return null;
+  const randomIndex = Math.floor(random() * items.length);
+  // biome-ignore lint/style/noNonNullAssertion: items is non-empty
+  return items[randomIndex]!;
 };
 
 const selectMonsterAction = (
@@ -371,6 +368,7 @@ const selectMonsterAction = (
 const selectPlayerAction = (
   player: CombatUser,
   availableAbilities: PlayerAbility[],
+  random: () => number,
 ): {
   ability: PlayerAbility;
   targetType: "monster" | "self" | "ally";
@@ -380,7 +378,12 @@ const selectPlayerAction = (
     return cooldown === 0;
   });
 
-  if (usableAbilities.length === 0) return null;
+  if (player.statusEffects.find((e) => e.type === "berserk")) {
+    const attackAbilities = usableAbilities.filter((a) => a.abilityType === "attack");
+    const ability = selectRandom(attackAbilities, random);
+    if (!ability) return null;
+    return { ability, targetType: "monster" };
+  }
 
   if (player.stats.hp < player.stats.maxHp * 0.3) {
     const healAbility = usableAbilities.find(
@@ -391,13 +394,15 @@ const selectPlayerAction = (
     }
   }
 
-  const attackAbility = usableAbilities.find((a) => a.abilityType === "attack");
-  if (attackAbility) {
-    return { ability: attackAbility, targetType: "monster" };
+  const ability = selectRandom(usableAbilities, random);
+
+  if (!ability) return null;
+
+  if (ability.abilityType === "buff") {
+    return { ability, targetType: "self" };
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: usableAbilities is non-empty
-  return { ability: usableAbilities[0]!, targetType: "monster" };
+  return { ability, targetType: "monster" };
 };
 
 // ============================================================================
@@ -430,9 +435,7 @@ const executeMonsterAction = (
   } else {
     if (
       action.canTargetSelf &&
-      (action.actionType === "heal" ||
-        action.actionType === "buff" ||
-        action.actionType === "defend")
+      (action.actionType === "heal" || action.actionType === "buff")
     ) {
       targets = [monster];
     } else {
@@ -484,6 +487,20 @@ const executeMonsterAction = (
           message: `${target.name} otrzymuje ${damage} obrażeń${isCritical ? " (KRYTYK!)" : ""}`,
         });
 
+        const thorns = target.statusEffects.find((e) => e.type === "thorns");
+
+        if (thorns) {
+          applyDamage(monster, thorns.power);
+          events.push({
+            turn: currentTurn,
+            type: "buff",
+            actor: target.id,
+            target: monster.id,
+            value: thorns.power,
+            message: `${monster.name} otrzymuje ${thorns.power} obrażeń od kolców!`,
+          });
+        }
+
         if (action.effects) {
           applyActionEffects(monster, target, action.effects, events, currentTurn);
         }
@@ -512,8 +529,7 @@ const executeMonsterAction = (
         break;
       }
       case "buff":
-      case "debuff":
-      case "defend": {
+      case "debuff": {
         if (action.effects) {
           applyActionEffects(monster, target, action.effects, events, currentTurn);
         }
@@ -543,13 +559,22 @@ const executePlayerAction = (
   // Set cooldown
   player.abilityCooldowns.set(ability.name, ability.cooldown);
 
-  let targets: Combatant[] = [];
+  const targets: Combatant[] = [];
   // biome-ignore lint/style/noNonNullAssertion: monster must exist
   const monster = combatants.get("monster")!;
-  const alivePlayers = getAliveCombatants(combatants, (c) => c.type === "user");
+  const alivePlayers = getAliveCombatants(
+    combatants,
+    (c) => c.type === "user" && c.id !== player.id,
+  );
 
-  if (ability.isAoe || player.statusEffects.find((e) => e.type === "berserk")) {
-    targets = [...alivePlayers];
+  const berserk = player.statusEffects.find((e) => e.type === "berserk");
+
+  if (ability.isAoe) {
+    if (!berserk) {
+      targets.push(player);
+    }
+
+    targets.push(...alivePlayers);
 
     if (ability.abilityType !== "heal" && ability.abilityType !== "buff") {
       targets.push(monster);
@@ -557,17 +582,18 @@ const executePlayerAction = (
   } else {
     switch (targetType) {
       case "monster":
-        if (monster && !monster.isDefeated) targets = [monster];
+        if (monster && !monster.isDefeated) targets.push(monster);
+        if (berserk) targets.push(...alivePlayers);
         break;
       case "self":
-        targets = [player];
+        targets.push(player);
         break;
       case "ally": {
         const ally = selectRandomTarget(
           alivePlayers.filter((p) => p.id !== player.id),
           random,
         );
-        if (ally) targets = [ally];
+        if (ally) targets.push(ally);
         break;
       }
     }
@@ -604,13 +630,16 @@ const executePlayerAction = (
           });
         }
 
+        const criticalTag = isCritical ? " (KRYTYK!)" : "";
+        const berserkTag = berserk ? " (BERSERK!)" : "";
+
         events.push({
           turn: currentTurn,
           type: isCritical ? "critical" : "attack",
           actor: player.id,
           target: target.id,
           value: damage,
-          message: `${target.name} otrzymuje ${damage} obrażeń${isCritical ? " (KRYTYK!)" : ""}`,
+          message: `${target.name} otrzymuje ${damage} obrażeń${criticalTag}${berserkTag}`,
         });
 
         if (ability.effects) {
@@ -641,8 +670,7 @@ const executePlayerAction = (
         break;
       }
       case "buff":
-      case "debuff":
-      case "defend": {
+      case "debuff": {
         if (ability.effects) {
           applyActionEffects(player, target, ability.effects, events, currentTurn);
         }
@@ -727,7 +755,7 @@ const applyActionEffects = (
     applyStatusEffect(target, {
       type: "thorns",
       power: effects.thorns,
-      duration: 3,
+      duration: 2,
       source: actor.id,
     });
     events.push({
@@ -790,8 +818,8 @@ const applyActionEffects = (
   if (effects.berserk) {
     applyStatusEffect(target, {
       type: "berserk",
-      power: 10,
-      duration: 3,
+      power: Number.MAX_SAFE_INTEGER,
+      duration: 2,
       source: actor.id,
     });
     events.push({
@@ -919,7 +947,7 @@ export const processCombatTurn = (
         executeMonsterAction(state, combatant, action, random);
       }
     } else {
-      const decision = selectPlayerAction(combatant, playerAbilities);
+      const decision = selectPlayerAction(combatant, playerAbilities, random);
       if (decision) {
         executePlayerAction(
           state,

@@ -423,7 +423,7 @@ describe("Combat System", () => {
           "Player_user1 korzysta z umiejętności Poison Strike!",
           "Test Goblin otrzymuje 14 obrażeń",
           "Test Goblin dostaje truciznę!",
-          "Test Goblin otrzymuje 6 obrażeń od efektu trucizna",
+          "Test Goblin otrzymuje 3 obrażeń od efektu trucizna",
         ]
       `);
     });
@@ -446,6 +446,121 @@ describe("Combat System", () => {
       expect(state.isComplete).toBe(true);
       expect(state.result).toBeDefined();
       expect(turnCount).toBeLessThanOrEqual(maxIterations);
+    });
+
+    it("should force berserk player to attack and hit companions and monster", () => {
+      const monster = createBasicMonster();
+      const abilities: PlayerAbility[] = [
+        {
+          id: 1,
+          name: "Strike",
+          description: "Basic attack",
+          abilityType: "attack",
+          power: 10,
+          cooldown: 0,
+          canTargetPlayers: false,
+          canTargetSelf: false,
+          isAoe: false,
+        },
+        {
+          id: 2,
+          name: "Heal",
+          description: "Restore HP",
+          abilityType: "heal",
+          power: 20,
+          cooldown: 0,
+          canTargetPlayers: false,
+          canTargetSelf: true,
+          isAoe: false,
+        },
+      ];
+
+      const state = initializeCombatState(monster, [
+        createBasicPlayer("user1"),
+        createBasicPlayer("user2"),
+        createBasicPlayer("user3"),
+      ]);
+
+      const player1 = state.combatants.get("user1")!;
+      player1.statusEffects.push({
+        type: "berserk",
+        power: Number.MAX_SAFE_INTEGER,
+        duration: 2,
+        source: "monster",
+      });
+
+      player1.stats.hp = 10;
+
+      const result = processCombatTurn(state, abilities, 50, random);
+
+      expect(result.events.map((v) => v.message)).toMatchInlineSnapshot(`
+        [
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user3 otrzymuje 12 obrażeń",
+          "Player_user1 korzysta z umiejętności Strike!",
+          "Test Goblin otrzymuje 15 obrażeń (BERSERK!)",
+          "Player_user2 unika ataku!",
+          "Player_user3 otrzymuje 15 obrażeń (BERSERK!)",
+          "Player_user2 korzysta z umiejętności Heal!",
+          "Test Goblin otrzymuje leczenie za 15 HP",
+          "Player_user3 korzysta z umiejętności Heal!",
+          "Test Goblin otrzymuje leczenie za 0 HP",
+        ]
+      `);
+    });
+
+    it("should force berserk player with AOE attack to hit everyone", () => {
+      const monster = createBasicMonster();
+      const abilities: PlayerAbility[] = [
+        {
+          id: 1,
+          name: "Whirlwind",
+          description: "AOE attack",
+          abilityType: "attack",
+          power: 10,
+          cooldown: 0,
+          canTargetPlayers: false,
+          canTargetSelf: false,
+          isAoe: true,
+        },
+      ];
+
+      const state = initializeCombatState(monster, [
+        createBasicPlayer("user1"),
+        createBasicPlayer("user2"),
+        createBasicPlayer("user3"),
+      ]);
+
+      const player1 = state.combatants.get("user1")!;
+      player1.statusEffects.push({
+        type: "berserk",
+        power: Number.MAX_SAFE_INTEGER,
+        duration: 2,
+        source: "monster",
+      });
+
+      const result = processCombatTurn(state, abilities, 50, random);
+
+      expect(result.events.map((v) => v.message)).toMatchInlineSnapshot(`
+        [
+          "Test Goblin korzysta z akcji Slash!",
+          "Player_user3 otrzymuje 12 obrażeń",
+          "Player_user1 korzysta z umiejętności Whirlwind!",
+          "Player_user2 otrzymuje 15 obrażeń (BERSERK!)",
+          "Player_user3 unika ataku!",
+          "Test Goblin otrzymuje 15 obrażeń (BERSERK!)",
+          "Player_user2 korzysta z umiejętności Whirlwind!",
+          "Player_user2 otrzymuje 15 obrażeń",
+          "Player_user1 otrzymuje 15 obrażeń",
+          "Player_user3 unika ataku!",
+          "Test Goblin otrzymuje 15 obrażeń",
+          "Player_user3 korzysta z umiejętności Whirlwind!",
+          "Player_user3 otrzymuje 15 obrażeń",
+          "Player_user1 otrzymuje 15 obrażeń",
+          "Player_user2 unika ataku!",
+          "Test Goblin otrzymuje 15 obrażeń",
+        ]
+      `);
     });
 
     it("should skip defeated combatants", () => {

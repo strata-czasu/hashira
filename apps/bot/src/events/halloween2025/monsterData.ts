@@ -12,7 +12,7 @@ export interface MonsterTemplate {
   actions: {
     name: string;
     description: string;
-    actionType: "attack" | "heal" | "buff" | "debuff" | "defend";
+    actionType: "attack" | "heal" | "buff" | "debuff";
     power: number;
     weight: number;
     cooldown: number;
@@ -330,7 +330,7 @@ export const PLAYER_ABILITIES = [
   {
     name: "Tarcza Szmato",
     description: "Zyskaj ochronę i odbij obrażenia",
-    abilityType: "defend" as const,
+    abilityType: "buff" as const,
     power: 0,
     cooldown: 4,
     canTargetPlayers: false,

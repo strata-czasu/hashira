@@ -46,73 +46,6 @@ describe("CombatService", () => {
     service = new CombatService(repository, random);
   });
 
-  describe("getUserModifiersBatch", () => {
-    it("should return empty map for empty user list", async () => {
-      const modifiers = await repository.getUserModifiersBatch([], "guild123");
-      expect(modifiers.size).toBe(0);
-    });
-
-    it("should return modifiers for all users", async () => {
-      const userIds = ["user1", "user2", "user3"];
-      const modifiers = await repository.getUserModifiersBatch(userIds, "guild123");
-
-      expect(modifiers.size).toBe(3);
-      expect(modifiers.has("user1")).toBe(true);
-      expect(modifiers.has("user2")).toBe(true);
-      expect(modifiers.has("user3")).toBe(true);
-    });
-
-    it.each([
-      {
-        description: "Light activity: 100 messages, 30 min voice",
-        textMessages: 100,
-        voiceMinutes: 30,
-        expectedModifiers: {
-          hpBonus: 11, // 100/100 + 30/3 = 1 + 10 = 11
-          attackBonus: 1, // 100/1000 + 0.5 = 0.1 + 0.5 = 0.6 ≈ 1
-          defenseBonus: 1, // 100/1000 + 0.5 = 0.1 + 0.5 = 0.6 ≈ 1
-        },
-      },
-      {
-        description: "Moderate activity: 500 messages, 120 min voice",
-        textMessages: 500,
-        voiceMinutes: 120,
-        expectedModifiers: {
-          hpBonus: 45, // 500/100 + 120/3 = 5 + 40 = 45
-          attackBonus: 3, // 500/1000 + 2 = 0.5 + 2 = 2.5 ≈ 3
-          defenseBonus: 3, // 500/1000 + 2 = 0.5 + 2 = 2.5 ≈ 3
-        },
-      },
-      {
-        description: "High activity: 1000 messages, 300 min voice (capped)",
-        textMessages: 1000,
-        voiceMinutes: 300,
-        expectedModifiers: {
-          hpBonus: 50, // (1000/100 + 300/3) = 110, capped at 50
-          attackBonus: 3, // (1000/1000 + 5) = 6, capped at 3
-          defenseBonus: 4, // (1000/1000 + 5) = 6, capped at 4
-        },
-      },
-    ])("should calculate correct modifiers for: $description", async (scenario) => {
-      const voiceHours = scenario.voiceMinutes / 60;
-      const calculatedHp = Math.round(
-        Math.min(scenario.textMessages / 100 + scenario.voiceMinutes / 3, 50),
-      );
-      const calculatedAttack = Math.round(
-        Math.min(scenario.textMessages / 1000 + voiceHours, 3),
-      );
-      const calculatedDefense = Math.round(
-        Math.min(scenario.textMessages / 1000 + voiceHours, 4),
-      );
-
-      expect(calculatedHp).toBe(scenario.expectedModifiers.hpBonus);
-      expect(calculatedAttack).toBe(scenario.expectedModifiers.attackBonus);
-      expect(calculatedDefense).toBe(scenario.expectedModifiers.defenseBonus);
-    });
-  });
-
-  const createTestMonster = createBasicMonster;
-
   const createTestSpawn = (overrides?: Partial<SpawnData>): SpawnData => ({
     id: 1,
     channelId: "123456789",
@@ -120,35 +53,27 @@ describe("CombatService", () => {
     spawnedAt: new Date(),
     expiresAt: new Date(Date.now() + 15000),
     guildId: "guild123",
-    monster: createTestMonster(),
+    monster: createBasicMonster(),
     participants: [createBasicPlayer("user1"), createBasicPlayer("user2")],
     ...overrides,
   });
 
-  const createTestAbilities = (): PlayerAbility[] => [
-    {
-      id: 1,
-      name: "Strike",
-      description: "Basic attack",
-      abilityType: "attack",
-      power: 12,
-      cooldown: 0,
-      canTargetPlayers: false,
-      canTargetSelf: false,
-      isAoe: false,
-    },
-    {
-      id: 2,
-      name: "Heal",
-      description: "Restore HP",
-      abilityType: "heal",
-      power: 15,
-      cooldown: 3,
-      canTargetPlayers: false,
-      canTargetSelf: true,
-      isAoe: false,
-    },
-  ];
+  const createTestAbilities = (): PlayerAbility[] =>
+    PLAYER_ABILITIES.map(
+      (ability, idx) =>
+        ({
+          id: idx + 1,
+          name: ability.name,
+          description: ability.description,
+          abilityType: ability.abilityType,
+          power: ability.power,
+          cooldown: ability.cooldown,
+          canTargetPlayers: ability.canTargetPlayers,
+          canTargetSelf: ability.canTargetSelf,
+          isAoe: ability.isAoe,
+          ...("effects" in ability ? { effects: ability.effects } : {}),
+        }) satisfies PlayerAbility,
+    );
 
   describe("executeCombat", () => {
     it("should return null for non-existent spawn", async () => {
@@ -169,7 +94,7 @@ describe("CombatService", () => {
 
     it("should successfully simulate combat and capture weak monster", async () => {
       const spawn = createTestSpawn({
-        monster: createTestMonster({ baseHp: 30, baseAttack: 5 }),
+        monster: createBasicMonster({ baseHp: 30, baseAttack: 5 }),
       });
       repository.setSpawn(spawn);
       repository.setAbilities(createTestAbilities());
@@ -226,7 +151,7 @@ describe("CombatService", () => {
 
     it("should respect max turns limit", async () => {
       const spawn = createTestSpawn({
-        monster: createTestMonster({ baseHp: 1000, baseDefense: 50 }),
+        monster: createBasicMonster({ baseHp: 1000, baseDefense: 50 }),
       });
       repository.setSpawn(spawn);
       repository.setAbilities(createTestAbilities());
@@ -382,7 +307,7 @@ describe("CombatService", () => {
 
       it("should not save loot recipients when monster escapes", async () => {
         const spawn = createTestSpawn({
-          monster: createTestMonster({ baseHp: 1000, baseDefense: 50 }),
+          monster: createBasicMonster({ baseHp: 1000, baseDefense: 50 }),
         });
         repository.setSpawn(spawn);
         repository.setAbilities(createTestAbilities());
