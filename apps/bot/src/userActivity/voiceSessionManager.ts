@@ -165,6 +165,7 @@ export class VoiceSessionManager {
   private encodeState(state: VoiceState): RangeState {
     let value = 0;
     if (state.mute) value |= 1;
+    if (state.suppress) value |= 1;
     if (state.deaf) value |= 2;
     if (state.streaming) value |= 4;
     if (state.selfVideo) value |= 8;
