@@ -84,4 +84,7 @@ export const seedMonstersForGuild = async (
   await seedMonster(prisma, MONSTER_TEMPLATES.harpy, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.possessedDoll, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.succubus, guildId);
+  await seedMonster(prisma, MONSTER_TEMPLATES.cerber, guildId);
+  await seedMonster(prisma, MONSTER_TEMPLATES.vampire, guildId);
+  await seedMonster(prisma, MONSTER_TEMPLATES.headlessHorseman, guildId);
 };
