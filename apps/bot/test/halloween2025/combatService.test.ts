@@ -10,10 +10,13 @@ import { PLAYER_ABILITIES } from "../../src/events/halloween2025/monsterData";
 import {
   createBasicMonster,
   createBasicPlayer,
+  createCerber,
   createFishermanGhost,
   createHarpy,
+  createHeadlessHorseman,
   createPossessedDoll,
   createSuccubus,
+  createVampire,
   createWereraccoon,
   createZombieCat,
 } from "./testEntities";
@@ -172,6 +175,9 @@ describe("CombatService", () => {
       { name: "Harpia", createMonster: createHarpy },
       { name: "Opętana Lalka", createMonster: createPossessedDoll },
       { name: "Sukkub", createMonster: createSuccubus },
+      { name: "Cerber", createMonster: createCerber },
+      { name: "Wampirzyca", createMonster: createVampire },
+      { name: "Jeździec Bez Głowy", createMonster: createHeadlessHorseman },
     ])("handles combat for", ({ createMonster }) => {
       const monster = createMonster();
       it.each([
@@ -243,6 +249,18 @@ describe("CombatService", () => {
       {
         name: "Sukkub",
         createMonster: createSuccubus,
+      },
+      {
+        name: "Cerber",
+        createMonster: createCerber,
+      },
+      {
+        name: "Wampirzyca",
+        createMonster: createVampire,
+      },
+      {
+        name: "Jeździec Bez Głowy",
+        createMonster: createHeadlessHorseman,
       },
     ] as const)("capture rate statistics for", ({ name, createMonster }) => {
       it.each([

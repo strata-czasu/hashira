@@ -2339,3 +2339,627 @@ exports[`CombatService executeCombat capture rate statistics for "Sukkub" with 1
 exports[`CombatService executeCombat capture rate statistics for "Sukkub" with 15 player(s) participants should have consistent capture rate 1`] = `0.64`;
 
 exports[`CombatService executeCombat capture rate statistics for "Sukkub" with 20 player(s) participants should have consistent capture rate 1`] = `0.65`;
+
+exports[`CombatService executeCombat handles combat for Cerber with participants: [ "user1" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 2 HP",
+  "Cerber otrzymuje 7 obrażeń",
+  "Cerber korzysta z akcji Piekielne Wycie!",
+  "Player_user1 dostaje truciznę!",
+  "Player_user1 otrzymuje osłabienie!",
+  "Player_user1 dostaje ogłuszenie!",
+  "Player_user1 otrzymuje 4 obrażeń od efektu trucizna",
+  "Player_user1 korzysta z umiejętności Osłabienie!",
+  "Cerber otrzymuje osłabienie!",
+  "Cerber korzysta z akcji Piekielny Ogień!",
+  "Player_user1 otrzymuje 32 obrażeń",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user1 otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user1 otrzymuje 8 obrażeń od efektu podpalenie",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Cerber korzysta z akcji Kły Cerbera!",
+  "Cerber kradnie 18 HP",
+  "Player_user1 otrzymuje 37 obrażeń",
+  "Player_user1 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Cerber with participants: [ "user1", "user2" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 2 HP",
+  "Cerber otrzymuje 7 obrażeń",
+  "Player_user2 korzysta z umiejętności Berserk!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 wpada w szał! (może atakować sojuszników)",
+  "Cerber korzysta z akcji Kły Cerbera!",
+  "Cerber kradnie 20 HP",
+  "Player_user1 otrzymuje 41 obrażeń",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Player_user2 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user2 kradnie 3 HP",
+  "Cerber otrzymuje 11 obrażeń (BERSERK!)",
+  "Player_user2 kradnie 6 HP",
+  "Player_user1 otrzymuje 23 obrażeń (BERSERK!)",
+  "Cerber korzysta z akcji Strażnik Hadesu!",
+  "Cerber zyskuje tarczę!",
+  "Cerber regeneruje się!",
+  "Cerber regeneruje 8 HP",
+  "Player_user1 korzysta z umiejętności Modlitwa!",
+  "Player_user1 otrzymuje leczenie za 12 HP",
+  "Player_user2 otrzymuje leczenie za 0 HP",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Cerber otrzymuje leczenie za 3 HP",
+  "Cerber korzysta z akcji Trzygłowy Atak!",
+  "Player_user1 otrzymuje 30 obrażeń",
+  "Player_user1 dostaje truciznę!",
+  "Player_user1 nie może walczyć!",
+  "Player_user2 otrzymuje 30 obrażeń",
+  "Player_user2 dostaje truciznę!",
+  "Player_user2 otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user2 korzysta z umiejętności Osłabienie!",
+  "Cerber otrzymuje osłabienie!",
+  "Cerber korzysta z akcji Trzygłowy Atak!",
+  "Player_user2 otrzymuje 25 obrażeń",
+  "Player_user2 dostaje truciznę!",
+  "Player_user2 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Cerber with participants: [ "user1", "user2", "user3" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 2 HP",
+  "Cerber otrzymuje 7 obrażeń",
+  "Player_user2 korzysta z umiejętności Berserk!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 wpada w szał! (może atakować sojuszników)",
+  "Player_user3 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user3 kradnie 2 HP",
+  "Cerber otrzymuje 7 obrażeń",
+  "Cerber korzysta z akcji Piekielny Ogień!",
+  "Player_user1 otrzymuje 37 obrażeń",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user2 otrzymuje 37 obrażeń",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user3 otrzymuje 37 obrażeń",
+  "Player_user3 zaczyna płonąć!",
+  "Player_user1 otrzymuje 8 obrażeń od efektu podpalenie",
+  "Player_user2 otrzymuje 8 obrażeń od efektu podpalenie",
+  "Player_user3 otrzymuje 8 obrażeń od efektu podpalenie",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Player_user2 korzysta z umiejętności Heavy Blow!",
+  "Cerber otrzymuje 15 obrażeń (BERSERK!)",
+  "Player_user1 otrzymuje 27 obrażeń (BERSERK!)",
+  "Player_user1 traci przytomność!",
+  "Player_user3 otrzymuje 27 obrażeń (BERSERK!)",
+  "Player_user3 traci przytomność!",
+  "Cerber korzysta z akcji Strażnik Hadesu!",
+  "Cerber zyskuje tarczę!",
+  "Cerber regeneruje się!",
+  "Cerber regeneruje 8 HP",
+  "Player_user2 otrzymuje 7 obrażeń od efektu podpalenie",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Wampirzyca with participants: [ "user1" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 3 HP",
+  "Wampirzyca otrzymuje 12 obrażeń",
+  "Wampirzyca korzysta z akcji Krwawa Żądza!",
+  "Wampirzyca kradnie 25 HP",
+  "Player_user1 otrzymuje 37 obrażeń",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 18 HP",
+  "Player_user1 otrzymuje 30 obrażeń",
+  "Player_user1 korzysta z umiejętności Modlitwa!",
+  "Player_user1 otrzymuje leczenie za 12 HP",
+  "Wampirzyca korzysta z akcji Nocny Płaszcz!",
+  "Wampirzyca regeneruje się!",
+  "Wampirzyca rośnie w siłę!",
+  "Player_user1 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca otrzymuje 6 obrażeń",
+  "Wampirzyca dostaje truciznę!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 19 HP",
+  "Player_user1 otrzymuje 33 obrażeń",
+  "Player_user1 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Wampirzyca with participants: [ "user1", "user2" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 3 HP",
+  "Wampirzyca otrzymuje 11 obrażeń",
+  "Player_user2 korzysta z umiejętności Berserk!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 wpada w szał! (może atakować sojuszników)",
+  "Wampirzyca korzysta z akcji Nocny Płaszcz!",
+  "Wampirzyca regeneruje się!",
+  "Wampirzyca rośnie w siłę!",
+  "Wampirzyca regeneruje 6 HP",
+  "Player_user1 korzysta z umiejętności Tarcza Szmato!",
+  "Player_user1 zyskuje tarczę!",
+  "Player_user1 zyskuje kolce!",
+  "Player_user2 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca otrzymuje 9 obrażeń (BERSERK!)",
+  "Wampirzyca dostaje truciznę!",
+  "Player_user1 otrzymuje 2 obrażeń (BERSERK!)",
+  "Player_user1 dostaje truciznę!",
+  "Wampirzyca korzysta z akcji Krwawa Żądza!",
+  "Wampirzyca kradnie 18 HP",
+  "Player_user1 otrzymuje 26 obrażeń",
+  "Wampirzyca otrzymuje 5 obrażeń od kolców!",
+  "Wampirzyca regeneruje 5 HP",
+  "Wampirzyca otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user1 otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user1 korzysta z umiejętności Heavy Blow!",
+  "Wampirzyca otrzymuje 15 obrażeń",
+  "Player_user2 korzysta z umiejętności Osłabienie!",
+  "Wampirzyca otrzymuje osłabienie!",
+  "Wampirzyca korzysta z akcji Krwawy Tańcze!",
+  "Wampirzyca kradnie 1 HP",
+  "Player_user1 otrzymuje 3 obrażeń",
+  "Wampirzyca otrzymuje 4 obrażeń od kolców!",
+  "Wampirzyca kradnie 8 HP",
+  "Player_user2 otrzymuje 17 obrażeń",
+  "Wampirzyca regeneruje 4 HP",
+  "Wampirzyca otrzymuje 2 obrażeń od efektu trucizna",
+  "Player_user1 otrzymuje 2 obrażeń od efektu trucizna",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Player_user2 korzysta z umiejętności Tarcza Szmato!",
+  "Player_user2 zyskuje tarczę!",
+  "Player_user2 zyskuje kolce!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 16 HP",
+  "Player_user1 otrzymuje 27 obrażeń",
+  "Wampirzyca otrzymuje 1 obrażeń od efektu trucizna",
+  "Player_user1 otrzymuje 1 obrażeń od efektu trucizna",
+  "Player_user1 korzysta z umiejętności Modlitwa!",
+  "Player_user1 otrzymuje leczenie za 12 HP",
+  "Player_user2 otrzymuje leczenie za 12 HP",
+  "Player_user2 korzysta z umiejętności Wzmocnienie!",
+  "Player_user2 zyskuje tarczę!",
+  "Player_user1 zyskuje tarczę!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 12 HP",
+  "Player_user1 otrzymuje 21 obrażeń",
+  "Player_user1 nie może walczyć!",
+  "Player_user2 korzysta z umiejętności Cios!",
+  "Wampirzyca otrzymuje 7 obrażeń",
+  "Wampirzyca korzysta z akcji Hipnoza!",
+  "Player_user2 traci tarczę!",
+  "Player_user2 otrzymuje osłabienie!",
+  "Player_user2 dostaje ogłuszenie!",
+  "Player_user2 korzysta z umiejętności Cios!",
+  "Wampirzyca otrzymuje 3 obrażeń",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user2 unika ataku!",
+  "Player_user2 korzysta z umiejętności Odwaga!",
+  "Player_user2 rośnie w siłę!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 18 HP",
+  "Player_user2 otrzymuje 31 obrażeń",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Player_user2 otrzymuje leczenie za 20 HP",
+  "Wampirzyca korzysta z akcji Nocny Płaszcz!",
+  "Wampirzyca regeneruje się!",
+  "Wampirzyca rośnie w siłę!",
+  "Player_user2 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca otrzymuje 5 obrażeń",
+  "Wampirzyca dostaje truciznę!",
+  "Wampirzyca korzysta z akcji Hipnoza!",
+  "Player_user2 traci tarczę!",
+  "Player_user2 otrzymuje osłabienie!",
+  "Player_user2 dostaje ogłuszenie!",
+  "Wampirzyca regeneruje 5 HP",
+  "Wampirzyca otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user2 korzysta z umiejętności Osłabienie!",
+  "Wampirzyca otrzymuje osłabienie!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 15 HP",
+  "Player_user2 otrzymuje 26 obrażeń",
+  "Wampirzyca otrzymuje 2 obrażeń od efektu trucizna",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Player_user2 otrzymuje leczenie za 20 HP",
+  "Wampirzyca korzysta z akcji Krwawy Tańcze!",
+  "Wampirzyca kradnie 13 HP",
+  "Player_user2 otrzymuje 27 obrażeń (KRYTYK!)",
+  "Wampirzyca otrzymuje 1 obrażeń od efektu trucizna",
+  "Player_user2 korzysta z umiejętności Modlitwa!",
+  "Player_user2 otrzymuje leczenie za 12 HP",
+  "Wampirzyca korzysta z akcji Krwawa Żądza!",
+  "Player_user2 unika ataku!",
+  "Player_user2 korzysta z umiejętności Płonąca Pięść!",
+  "Wampirzyca otrzymuje 9 obrażeń",
+  "Wampirzyca zaczyna płonąć!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 18 HP",
+  "Player_user2 otrzymuje 31 obrażeń",
+  "Player_user2 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Wampirzyca with participants: [ "user1", "user2", "user3" ] 1`] = `
+[
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user1 kradnie 3 HP",
+  "Wampirzyca otrzymuje 11 obrażeń",
+  "Player_user2 korzysta z umiejętności Berserk!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 wpada w szał! (może atakować sojuszników)",
+  "Player_user3 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user3 kradnie 3 HP",
+  "Wampirzyca otrzymuje 11 obrażeń",
+  "Wampirzyca korzysta z akcji Krwawy Tańcze!",
+  "Wampirzyca kradnie 11 HP",
+  "Player_user1 otrzymuje 22 obrażeń",
+  "Wampirzyca kradnie 11 HP",
+  "Player_user2 otrzymuje 22 obrażeń",
+  "Wampirzyca kradnie 11 HP",
+  "Player_user3 otrzymuje 22 obrażeń",
+  "Player_user1 korzysta z umiejętności Modlitwa!",
+  "Player_user1 otrzymuje leczenie za 12 HP",
+  "Player_user2 otrzymuje leczenie za 12 HP",
+  "Player_user3 otrzymuje leczenie za 12 HP",
+  "Player_user2 korzysta z umiejętności Cios!",
+  "Wampirzyca otrzymuje 11 obrażeń (BERSERK!)",
+  "Player_user1 otrzymuje 19 obrażeń (BERSERK!)",
+  "Player_user3 otrzymuje 19 obrażeń (BERSERK!)",
+  "Player_user3 korzysta z umiejętności Berserk!",
+  "Player_user3 rośnie w siłę!",
+  "Player_user3 wpada w szał! (może atakować sojuszników)",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user2 unika ataku!",
+  "Player_user1 korzysta z umiejętności Heavy Blow!",
+  "Wampirzyca otrzymuje 15 obrażeń",
+  "Player_user2 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca unika ataku!",
+  "Player_user3 korzysta z umiejętności Cios!",
+  "Wampirzyca otrzymuje 11 obrażeń (BERSERK!)",
+  "Player_user1 unika ataku!",
+  "Player_user2 otrzymuje 19 obrażeń (BERSERK!)",
+  "Wampirzyca korzysta z akcji Nocny Płaszcz!",
+  "Wampirzyca regeneruje się!",
+  "Wampirzyca rośnie w siłę!",
+  "Wampirzyca regeneruje 6 HP",
+  "Player_user1 korzysta z umiejętności Odwaga!",
+  "Player_user1 rośnie w siłę!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user3 rośnie w siłę!",
+  "Player_user2 korzysta z umiejętności Heavy Blow!",
+  "Wampirzyca otrzymuje 21 obrażeń",
+  "Player_user3 korzysta z umiejętności Modlitwa!",
+  "Player_user3 otrzymuje leczenie za 12 HP",
+  "Player_user1 otrzymuje leczenie za 12 HP",
+  "Player_user2 otrzymuje leczenie za 12 HP",
+  "Wampirzyca korzysta z akcji Hipnoza!",
+  "Player_user1 traci tarczę!",
+  "Player_user1 otrzymuje osłabienie!",
+  "Player_user1 dostaje ogłuszenie!",
+  "Wampirzyca regeneruje 5 HP",
+  "Player_user1 korzysta z umiejętności Berserk!",
+  "Player_user1 rośnie w siłę!",
+  "Player_user1 wpada w szał! (może atakować sojuszników)",
+  "Player_user2 korzysta z umiejętności Cios!",
+  "Wampirzyca otrzymuje 12 obrażeń",
+  "Player_user3 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca otrzymuje 10 obrażeń",
+  "Wampirzyca dostaje truciznę!",
+  "Wampirzyca korzysta z akcji Krwawa Żądza!",
+  "Wampirzyca kradnie 26 HP",
+  "Player_user2 otrzymuje 38 obrażeń",
+  "Player_user2 nie może walczyć!",
+  "Wampirzyca regeneruje 4 HP",
+  "Wampirzyca otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user1 korzysta z umiejętności Wampirzy Sztylet!",
+  "Wampirzyca unika ataku!",
+  "Player_user1 kradnie 7 HP",
+  "Player_user3 otrzymuje 24 obrażeń (BERSERK!)",
+  "Player_user3 korzysta z umiejętności Bandaż!",
+  "Player_user3 otrzymuje leczenie za 20 HP",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 27 HP",
+  "Player_user1 otrzymuje 46 obrażeń (KRYTYK!)",
+  "Player_user1 nie może walczyć!",
+  "Wampirzyca otrzymuje 2 obrażeń od efektu trucizna",
+  "Player_user3 korzysta z umiejętności Osłabienie!",
+  "Wampirzyca otrzymuje osłabienie!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Wampirzyca kradnie 15 HP",
+  "Player_user3 otrzymuje 26 obrażeń",
+  "Wampirzyca otrzymuje 1 obrażeń od efektu trucizna",
+  "Player_user3 korzysta z umiejętności Heavy Blow!",
+  "Wampirzyca otrzymuje 22 obrażeń (KRYTYK!)",
+  "Wampirzyca korzysta z akcji Hipnoza!",
+  "Player_user3 traci tarczę!",
+  "Player_user3 otrzymuje osłabienie!",
+  "Player_user3 dostaje ogłuszenie!",
+  "Player_user3 korzysta z umiejętności Bandaż!",
+  "Player_user3 otrzymuje leczenie za 20 HP",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user3 unika ataku!",
+  "Player_user3 korzysta z umiejętności Cios!",
+  "Wampirzyca unika ataku!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user3 unika ataku!",
+  "Player_user3 korzysta z umiejętności Osłabienie!",
+  "Wampirzyca otrzymuje osłabienie!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user3 unika ataku!",
+  "Player_user3 korzysta z umiejętności Odwaga!",
+  "Player_user3 rośnie w siłę!",
+  "Wampirzyca korzysta z akcji Nocny Płaszcz!",
+  "Wampirzyca regeneruje się!",
+  "Wampirzyca rośnie w siłę!",
+  "Wampirzyca regeneruje 6 HP",
+  "Player_user3 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user3 kradnie 4 HP",
+  "Wampirzyca otrzymuje 16 obrażeń",
+  "Wampirzyca korzysta z akcji Hipnoza!",
+  "Player_user3 traci tarczę!",
+  "Player_user3 otrzymuje osłabienie!",
+  "Player_user3 dostaje ogłuszenie!",
+  "Wampirzyca regeneruje 5 HP",
+  "Player_user3 korzysta z umiejętności Zatruta Strzała!",
+  "Wampirzyca otrzymuje 1 obrażeń (KRYTYK!)",
+  "Wampirzyca dostaje truciznę!",
+  "Wampirzyca korzysta z akcji Ugryzienie Wampira!",
+  "Player_user3 unika ataku!",
+  "Wampirzyca regeneruje 4 HP",
+  "Wampirzyca otrzymuje 3 obrażeń od efektu trucizna",
+  "Player_user3 korzysta z umiejętności Tarcza Szmato!",
+  "Player_user3 zyskuje tarczę!",
+  "Player_user3 zyskuje kolce!",
+  "Wampirzyca korzysta z akcji Krwawy Tańcze!",
+  "Wampirzyca kradnie 3 HP",
+  "Player_user3 otrzymuje 7 obrażeń",
+  "Wampirzyca otrzymuje 5 obrażeń od kolców!",
+  "Wampirzyca otrzymuje 2 obrażeń od efektu trucizna",
+  "Player_user3 korzysta z umiejętności Wzmocnienie!",
+  "Player_user3 zyskuje tarczę!",
+  "Wampirzyca korzysta z akcji Krwawa Żądza!",
+  "Wampirzyca kradnie 23 HP",
+  "Player_user3 otrzymuje 34 obrażeń (KRYTYK!)",
+  "Wampirzyca otrzymuje 4 obrażeń od kolców!",
+  "Player_user3 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 1 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 2 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 3 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 4 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 5 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 6 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 7 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 8 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 9 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 10 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 12 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 15 player(s) participants should have consistent capture rate 1`] = `0.01`;
+
+exports[`CombatService executeCombat capture rate statistics for "Cerber" with 20 player(s) participants should have consistent capture rate 1`] = `0.09`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 1 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 2 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 3 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 4 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 5 player(s) participants should have consistent capture rate 1`] = `0.01`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 6 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 7 player(s) participants should have consistent capture rate 1`] = `0.11`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 8 player(s) participants should have consistent capture rate 1`] = `0.12`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 9 player(s) participants should have consistent capture rate 1`] = `0.23`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 10 player(s) participants should have consistent capture rate 1`] = `0.24`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 12 player(s) participants should have consistent capture rate 1`] = `0.34`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 15 player(s) participants should have consistent capture rate 1`] = `0.48`;
+
+exports[`CombatService executeCombat capture rate statistics for "Wampirzyca" with 20 player(s) participants should have consistent capture rate 1`] = `0.54`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 1 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 2 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 3 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 4 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 5 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 6 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 7 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 8 player(s) participants should have consistent capture rate 1`] = `0`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 9 player(s) participants should have consistent capture rate 1`] = `0.04`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 10 player(s) participants should have consistent capture rate 1`] = `0.02`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 12 player(s) participants should have consistent capture rate 1`] = `0.02`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 15 player(s) participants should have consistent capture rate 1`] = `0.03`;
+
+exports[`CombatService executeCombat capture rate statistics for "Jeździec Bez Głowy" with 20 player(s) participants should have consistent capture rate 1`] = `0.2`;
+
+exports[`CombatService executeCombat handles combat for Jeździec bez głowy with participants: [ "user1" ] 1`] = `
+[
+  "Jeździec bez głowy korzysta z akcji Eksplozja Dyni!",
+  "Player_user1 otrzymuje 30 obrażeń",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user1 korzysta z umiejętności Berserk!",
+  "Player_user1 rośnie w siłę!",
+  "Player_user1 wpada w szał! (może atakować sojuszników)",
+  "Player_user1 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Przerażający Widok!",
+  "Player_user1 otrzymuje osłabienie!",
+  "Player_user1 dostaje ogłuszenie!",
+  "Player_user1 ma efekt ogłuszenia i nie może nic zrobić!",
+  "Player_user1 otrzymuje 5 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Galop Nieumarłych!",
+  "Player_user1 unika ataku!",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Player_user1 otrzymuje 4 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Nieśmiertelny Pęd!",
+  "Jeździec bez głowy rośnie w siłę!",
+  "Player_user1 korzysta z umiejętności Płonąca Pięść!",
+  "Jeździec bez głowy otrzymuje 8 obrażeń",
+  "Jeździec bez głowy zaczyna płonąć!",
+  "Jeździec bez głowy otrzymuje 4 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user1 otrzymuje 42 obrażeń (KRYTYK!)",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user1 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Jeździec bez głowy with participants: [ "user1", "user2" ] 1`] = `
+[
+  "Jeździec bez głowy korzysta z akcji Eksplozja Dyni!",
+  "Player_user1 otrzymuje 31 obrażeń",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user2 otrzymuje 31 obrażeń",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user1 korzysta z umiejętności Tarcza Szmato!",
+  "Player_user1 zyskuje tarczę!",
+  "Player_user1 zyskuje kolce!",
+  "Player_user2 korzysta z umiejętności Płonąca Pięść!",
+  "Jeździec bez głowy unika ataku!",
+  "Player_user1 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Player_user2 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Nieśmiertelny Pęd!",
+  "Jeździec bez głowy rośnie w siłę!",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Player_user1 otrzymuje leczenie za 20 HP",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Player_user2 otrzymuje leczenie za 20 HP",
+  "Player_user1 otrzymuje 5 obrażeń od efektu podpalenie",
+  "Player_user2 otrzymuje 5 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Przerażający Widok!",
+  "Player_user2 otrzymuje osłabienie!",
+  "Player_user2 dostaje ogłuszenie!",
+  "Player_user1 korzysta z umiejętności Odwaga!",
+  "Player_user1 rośnie w siłę!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 ma efekt ogłuszenia i nie może nic zrobić!",
+  "Player_user1 otrzymuje 4 obrażeń od efektu podpalenie",
+  "Player_user2 otrzymuje 4 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user2 otrzymuje 37 obrażeń (KRYTYK!)",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user2 nie może walczyć!",
+  "Player_user1 korzysta z umiejętności Berserk!",
+  "Player_user1 rośnie w siłę!",
+  "Player_user1 wpada w szał! (może atakować sojuszników)",
+  "Jeździec bez głowy korzysta z akcji Galop Nieumarłych!",
+  "Player_user1 otrzymuje 27 obrażeń",
+  "Player_user1 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;
+
+exports[`CombatService executeCombat handles combat for Jeździec bez głowy with participants: [ "user1", "user2", "user3" ] 1`] = `
+[
+  "Jeździec bez głowy korzysta z akcji Eksplozja Dyni!",
+  "Player_user1 otrzymuje 31 obrażeń",
+  "Player_user1 zaczyna płonąć!",
+  "Player_user2 otrzymuje 31 obrażeń",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user3 otrzymuje 31 obrażeń",
+  "Player_user3 zaczyna płonąć!",
+  "Player_user1 korzysta z umiejętności Bandaż!",
+  "Jeździec bez głowy otrzymuje leczenie za 0 HP",
+  "Player_user2 korzysta z umiejętności Berserk!",
+  "Player_user2 rośnie w siłę!",
+  "Player_user2 wpada w szał! (może atakować sojuszników)",
+  "Player_user3 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user3 kradnie 2 HP",
+  "Jeździec bez głowy otrzymuje 9 obrażeń",
+  "Player_user1 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Player_user2 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Player_user3 otrzymuje 6 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Galop Nieumarłych!",
+  "Player_user1 otrzymuje 27 obrażeń",
+  "Player_user1 nie może walczyć!",
+  "Player_user2 unika ataku!",
+  "Player_user3 otrzymuje 27 obrażeń",
+  "Player_user3 nie może walczyć!",
+  "Player_user2 korzysta z umiejętności Wampirzy Sztylet!",
+  "Player_user2 kradnie 3 HP",
+  "Jeździec bez głowy otrzymuje 13 obrażeń (BERSERK!)",
+  "Player_user2 otrzymuje 5 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user2 unika ataku!",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Player_user2 otrzymuje leczenie za 20 HP",
+  "Player_user2 otrzymuje 4 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Przerażający Widok!",
+  "Player_user2 otrzymuje osłabienie!",
+  "Player_user2 dostaje ogłuszenie!",
+  "Player_user2 ma efekt ogłuszenia i nie może nic zrobić!",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user2 unika ataku!",
+  "Player_user2 korzysta z umiejętności Wzmocnienie!",
+  "Player_user2 zyskuje tarczę!",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user2 otrzymuje 16 obrażeń",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user2 korzysta z umiejętności Bandaż!",
+  "Player_user2 otrzymuje leczenie za 20 HP",
+  "Player_user2 otrzymuje 3 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Rzut Dynią!",
+  "Player_user2 otrzymuje 25 obrażeń",
+  "Player_user2 zaczyna płonąć!",
+  "Player_user2 korzysta z umiejętności Modlitwa!",
+  "Player_user2 otrzymuje leczenie za 12 HP",
+  "Player_user2 otrzymuje 3 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Nieśmiertelny Pęd!",
+  "Jeździec bez głowy rośnie w siłę!",
+  "Player_user2 korzysta z umiejętności Cios!",
+  "Jeździec bez głowy otrzymuje 5 obrażeń",
+  "Player_user2 otrzymuje 2 obrażeń od efektu podpalenie",
+  "Jeździec bez głowy korzysta z akcji Galop Nieumarłych!",
+  "Player_user2 otrzymuje 31 obrażeń",
+  "Player_user2 nie może walczyć!",
+  "Wszyscy gracze zostali pokonani!",
+]
+`;

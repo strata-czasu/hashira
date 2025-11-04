@@ -2,19 +2,38 @@ import type {
   MonsterData,
   PlayerData,
 } from "../../src/events/halloween2025/combatRepository";
-import { MONSTER_TEMPLATES } from "../../src/events/halloween2025/monsterData";
+import {
+  MONSTER_TEMPLATES,
+  type MonsterTemplate,
+} from "../../src/events/halloween2025/monsterData";
 
-export const createBasicMonster = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 1,
+const createMonsterFromTemplate = (
+  id: number,
+  template: MonsterTemplate,
+  overrides?: Partial<MonsterData>,
+): MonsterData => ({
+  id,
+  ...template,
+  baseSpeed: template.baseSpeed ?? 50,
+  actions: template.actions.map((action, index) => ({
+    id: index + 1,
+    ...action,
+  })),
+  rarity: "common",
+  ...overrides,
+});
+
+const TEST_TEMPLATE = {
   name: "Test Goblin",
   baseHp: 40,
   baseAttack: 6,
   baseDefense: 2,
   baseSpeed: 50,
+  enabled: true,
+  weight: 100,
   image: "",
   actions: [
     {
-      id: 1,
       name: "Slash",
       description: "Basic attack",
       actionType: "attack" as const,
@@ -25,81 +44,37 @@ export const createBasicMonster = (overrides?: Partial<MonsterData>): MonsterDat
       canTargetSelf: false,
     },
   ],
-  rarity: "common",
-  ...overrides,
-});
+} satisfies MonsterTemplate;
 
-export const createWereraccoon = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 2,
-  ...MONSTER_TEMPLATES.wereraccoon,
-  baseSpeed: MONSTER_TEMPLATES.wereraccoon.baseSpeed ?? 50,
-  actions: MONSTER_TEMPLATES.wereraccoon.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createBasicMonster = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(1, TEST_TEMPLATE, overrides);
 
-export const createFishermanGhost = (
-  overrides?: Partial<MonsterData>,
-): MonsterData => ({
-  id: 3,
-  ...MONSTER_TEMPLATES.fishermanGhost,
-  baseSpeed: MONSTER_TEMPLATES.fishermanGhost.baseSpeed ?? 50,
-  actions: MONSTER_TEMPLATES.fishermanGhost.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createWereraccoon = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(2, MONSTER_TEMPLATES.wereraccoon, overrides);
 
-export const createZombieCat = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 4,
-  ...MONSTER_TEMPLATES.zombieCat,
-  actions: MONSTER_TEMPLATES.zombieCat.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createFishermanGhost = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(3, MONSTER_TEMPLATES.fishermanGhost, overrides);
 
-export const createHarpy = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 5,
-  ...MONSTER_TEMPLATES.harpy,
-  baseSpeed: MONSTER_TEMPLATES.harpy.baseSpeed ?? 50,
-  actions: MONSTER_TEMPLATES.harpy.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createZombieCat = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(4, MONSTER_TEMPLATES.zombieCat, overrides);
 
-export const createPossessedDoll = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 6,
-  ...MONSTER_TEMPLATES.possessedDoll,
-  actions: MONSTER_TEMPLATES.possessedDoll.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createHarpy = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(5, MONSTER_TEMPLATES.harpy, overrides);
 
-export const createSuccubus = (overrides?: Partial<MonsterData>): MonsterData => ({
-  id: 7,
-  ...MONSTER_TEMPLATES.succubus,
-  baseSpeed: MONSTER_TEMPLATES.succubus.baseSpeed ?? 50,
-  actions: MONSTER_TEMPLATES.succubus.actions.map((action, index) => ({
-    id: index + 1,
-    ...action,
-  })),
-  rarity: "common",
-  ...overrides,
-});
+export const createPossessedDoll = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(6, MONSTER_TEMPLATES.possessedDoll, overrides);
+
+export const createSuccubus = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(7, MONSTER_TEMPLATES.succubus, overrides);
+
+export const createCerber = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(8, MONSTER_TEMPLATES.cerber, overrides);
+
+export const createVampire = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(9, MONSTER_TEMPLATES.vampire, overrides);
+
+export const createHeadlessHorseman = (overrides?: Partial<MonsterData>): MonsterData =>
+  createMonsterFromTemplate(10, MONSTER_TEMPLATES.headlessHorseman, overrides);
 
 export const createBasicPlayer = (id: string): PlayerData => ({
   userId: id,
