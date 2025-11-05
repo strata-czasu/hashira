@@ -7,6 +7,7 @@ import {
   type MessageCreateOptions,
   MessageFlags,
   type PublicThreadChannel,
+  ThreadAutoArchiveDuration,
   userMention,
 } from "discord.js";
 import { Effect } from "effect";
@@ -78,7 +79,11 @@ export const sendCombatlog = Effect.fn("sendCombatlog")(function* (
 ) {
   const thread = yield* Effect.tryPromise(() =>
     discordTry(
-      () => message.startThread({ name: "Combat Log" }),
+      () =>
+        message.startThread({
+          name: "Combat Log",
+          autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+        }),
       [DiscordjsErrorCodes.MessageExistingThread],
       () => message.thread as PublicThreadChannel<false>,
     ),
