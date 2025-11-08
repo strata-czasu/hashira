@@ -448,7 +448,7 @@ describe("Combat System", () => {
       expect(turnCount).toBeLessThanOrEqual(maxIterations);
     });
 
-    it("should force berserk player to attack and hit companions and monster", () => {
+    it("should force berserk player to attack and hit his companion and monster", () => {
       const monster = createBasicMonster();
       const abilities: PlayerAbility[] = [
         {
@@ -499,12 +499,11 @@ describe("Combat System", () => {
           "Player_user3 otrzymuje 12 obrażeń",
           "Player_user1 korzysta z umiejętności Strike!",
           "Test Goblin otrzymuje 15 obrażeń (BERSERK!)",
-          "Player_user2 unika ataku!",
-          "Player_user3 otrzymuje 15 obrażeń (BERSERK!)",
+          "Player_user2 otrzymuje 15 obrażeń (BERSERK!)",
           "Player_user2 korzysta z umiejętności Heal!",
-          "Test Goblin otrzymuje leczenie za 15 HP",
+          "Player_user2 otrzymuje leczenie za 15 HP",
           "Player_user3 korzysta z umiejętności Heal!",
-          "Test Goblin otrzymuje leczenie za 0 HP",
+          "Player_user3 otrzymuje leczenie za 12 HP",
         ]
       `);
     });

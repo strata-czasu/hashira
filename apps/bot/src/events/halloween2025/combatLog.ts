@@ -402,6 +402,10 @@ const selectPlayerAction = (
     return { ability, targetType: "self" };
   }
 
+  if (ability.abilityType === "heal") {
+    return { ability, targetType: ability.canTargetSelf ? "self" : "ally" };
+  }
+
   return { ability, targetType: "monster" };
 };
 
@@ -582,8 +586,14 @@ const executePlayerAction = (
   } else {
     switch (targetType) {
       case "monster":
-        if (monster && !monster.isDefeated) targets.push(monster);
-        if (berserk) targets.push(...alivePlayers);
+        if (monster.isDefeated) break;
+        targets.push(monster);
+
+        if (berserk) {
+          const ally = selectRandomTarget(alivePlayers, random);
+          if (ally) targets.push(ally);
+        }
+
         break;
       case "self":
         targets.push(player);

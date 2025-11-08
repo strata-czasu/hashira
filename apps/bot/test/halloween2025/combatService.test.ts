@@ -291,7 +291,7 @@ describe("CombatService", () => {
           const captureCount = Math.round(captureRate * NUM_FIGHTS);
 
           console.log(
-            `${name} with ${playerCount} player(s): ${captureCount}/${NUM_FIGHTS} captures (${(captureRate * 100).toFixed(1)}%`,
+            `${name} with ${playerCount} player(s): ${captureCount}/${NUM_FIGHTS} captures (${(captureRate * 100).toFixed(1)}%)`,
           );
 
           expect(captureRate).toMatchSnapshot();
