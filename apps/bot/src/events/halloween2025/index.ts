@@ -78,10 +78,7 @@ const createCheckIfActive = (end: DateTime.DateTime) => () =>
   Effect.gen(function* () {
     const now = yield* DateTime.now;
 
-    return DateTime.greaterThanOrEqualTo(
-      end,
-      now.pipe(DateTime.setZone(zone, { adjustForTimeZone: true })),
-    );
+    return DateTime.greaterThanOrEqualTo(end, now.pipe(DateTime.setZone(zone)));
   });
 
 const STRATA_CZASU_END = DateTime.unsafeMakeZoned(
