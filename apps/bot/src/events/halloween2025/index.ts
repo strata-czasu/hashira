@@ -74,12 +74,40 @@ const HALLOWEEN_2025_START = {
   [GUILD_IDS.Homik]: DateTime.unsafeNow(),
 };
 
+const createCheckIfActive = (end: DateTime.DateTime) => () =>
+  Effect.gen(function* () {
+    const now = yield* DateTime.now;
+
+    return DateTime.greaterThanOrEqualTo(end, now);
+  });
+
+const STRATA_CZASU_END = DateTime.unsafeMakeZoned({
+  year: 2025,
+  month: 11,
+  day: 10,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  zone,
+});
+
 const HALLOWEEN_2025_SCHEDULES: Record<
   string,
   Schedule.Schedule<unknown, unknown, never>
 > = {
-  [GUILD_IDS.StrataCzasu]: Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)),
-  [GUILD_IDS.Homik]: Schedule.cron(Cron.unsafeParse("*/2 * * * *", zone)),
+  [GUILD_IDS.StrataCzasu]: Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)).pipe(
+    Schedule.checkEffect(createCheckIfActive(STRATA_CZASU_END)),
+  ),
+  [GUILD_IDS.Homik]: Schedule.fixed("5 seconds").pipe(
+    Schedule.checkEffect(
+      createCheckIfActive(
+        DateTime.unsafeNow().pipe(
+          DateTime.setZone(zone),
+          DateTime.addDuration("10 seconds"),
+        ),
+      ),
+    ),
+  ),
 };
 
 const createSpawnComponent = (
@@ -146,13 +174,10 @@ const getDuration = (rarity: keyof typeof rarityToExpiration, duration?: Duratio
   return randomDuration({ minutes: minMinutes }, { minutes: maxMinutes }, Math.random);
 };
 
-const sendSpawn = Effect.fn("sendSpawn")(function* (
-  prisma: ExtendedPrismaClient,
+const sendToSpawnChannel = Effect.fn("sendToSpawnChannel")(function* (
   client: Client<true>,
-  messageQueue: MessageQueueType,
   guildId: string,
-  duration?: Duration,
-  forcedMonster?: Halloween2025Monster,
+  message: MessageCreateOptions,
 ) {
   const guildSettings = getGuildSetting(
     HALLOWEEN_2025_CHANNELS.SPAWN_CHANNELS,
@@ -171,6 +196,17 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
       `Channel ${channel?.id} is not sendable in guild ${guildId}`,
     );
 
+  return yield* Effect.tryPromise(() => channel.send(message));
+});
+
+const sendSpawn = Effect.fn("sendSpawn")(function* (
+  prisma: ExtendedPrismaClient,
+  client: Client<true>,
+  messageQueue: MessageQueueType,
+  guildId: string,
+  duration?: Duration,
+  forcedMonster?: Halloween2025Monster,
+) {
   const rarity = yield* Random.choice([
     "common",
     "uncommon",
@@ -178,32 +214,30 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
     "epic",
     "legendary",
   ] as const);
+
   const expirationDuration = getDuration(rarity, duration);
   const now = new Date();
   const expiresAt = add(now, expirationDuration);
 
   const monster = yield* getMonster(prisma, guildId, forcedMonster);
-
-  const initialMessage = yield* Effect.tryPromise(async () => {
-    return await channel.send({
-      components: [
-        new ContainerBuilder().addTextDisplayComponents((td) =>
-          td.setContent(`Przygotowuję się do pojawienia się potwora...`),
-        ),
-        new ActionRowBuilder<ButtonBuilder>({
-          components: [
-            new ButtonBuilder({
-              customId: `halloween2025-catch:placeholder`,
-              emoji: "🎃",
-              label: "Łap",
-              style: 1,
-              disabled: true,
-            }),
-          ],
-        }),
-      ],
-      flags: MessageFlags.IsComponentsV2,
-    });
+  const initialMessage = yield* sendToSpawnChannel(client, guildId, {
+    components: [
+      new ContainerBuilder().addTextDisplayComponents((td) =>
+        td.setContent(`Przygotowuję się do pojawienia się potwora...`),
+      ),
+      new ActionRowBuilder<ButtonBuilder>({
+        components: [
+          new ButtonBuilder({
+            customId: `halloween2025-catch:placeholder`,
+            emoji: "🎃",
+            label: "Łap",
+            style: 1,
+            disabled: true,
+          }),
+        ],
+      }),
+    ],
+    flags: MessageFlags.IsComponentsV2,
   });
 
   const spawn = yield* Effect.tryPromise(() =>
@@ -212,7 +246,7 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
         data: {
           monster: { connect: { id: monster.id } },
           guild: { connect: { id: guildId } },
-          channelId: channel.id,
+          channelId: initialMessage.channelId,
           messageId: initialMessage.id,
           expiresAt: expiresAt,
           rarity,
@@ -342,6 +376,31 @@ const handleGuild = Effect.fn("handleGuild")(
     Effect.log(`[Halloween 2025] No monsters found for guild ${error.guildId}`),
   ),
 );
+
+const sendEndEventNotification = Effect.fn("sendEndEventNotification")(function* (
+  client: Client<true>,
+  guildId: string,
+) {
+  const message = yield* sendToSpawnChannel(client, guildId, {
+    components: [
+      new ContainerBuilder()
+        .addTextDisplayComponents((td) =>
+          td.setContent(
+            [
+              heading("Polowanie na potwory zakończone!"),
+              `Gildia z przyjemnością informuje, że loch się zamknął!`,
+              `W niedalekiej przyszłości nagrody zostaną rozlokowane wszystkim łowcom potworów.`,
+              `Dziękujemy za udział i do zobaczenia na następnym *otwarciu*!`,
+            ].join("\n"),
+          ),
+        )
+        .setAccentColor(0xff5500),
+    ],
+    flags: MessageFlags.IsComponentsV2,
+  });
+
+  yield* Effect.tryPromise(() => message.react("😭"));
+});
 
 export const halloween2025 = new Hashira({ name: "halloween2025" })
   .use(base)
@@ -627,6 +686,7 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
       Effect.delay(
         pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
       ),
+      Effect.andThen(sendEndEventNotification(guild.client, guild.id)),
       Effect.runFork,
     );
   })
