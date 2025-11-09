@@ -78,18 +78,23 @@ const createCheckIfActive = (end: DateTime.DateTime) => () =>
   Effect.gen(function* () {
     const now = yield* DateTime.now;
 
-    return DateTime.greaterThanOrEqualTo(end, now);
+    return DateTime.greaterThanOrEqualTo(
+      end,
+      now.pipe(DateTime.setZone(zone, { adjustForTimeZone: true })),
+    );
   });
 
-const STRATA_CZASU_END = DateTime.unsafeMakeZoned({
-  year: 2025,
-  month: 11,
-  day: 10,
-  hours: 0,
-  minutes: 0,
-  seconds: 0,
-  zone,
-});
+const STRATA_CZASU_END = DateTime.unsafeMakeZoned(
+  {
+    year: 2025,
+    month: 11,
+    day: 10,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  },
+  { adjustForTimeZone: true, timeZone: zone },
+);
 
 const HALLOWEEN_2025_SCHEDULES: Record<
   string,
