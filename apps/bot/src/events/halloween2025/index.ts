@@ -3,41 +3,24 @@ import {
   DatabasePaginator,
   type ExtendedPrismaClient,
   type Halloween2025Monster,
-  type Halloween2025MonsterCatchAttempt,
   type Halloween2025MonsterSpawn,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { add, type Duration } from "date-fns";
 import {
   ActionRowBuilder,
-  type APIMessageTopLevelComponent,
   ButtonBuilder,
-  ButtonStyle,
   bold,
   type Client,
   ContainerBuilder,
-  type ContainerComponent,
-  channelMention,
   heading,
   type MessageCreateOptions,
   MessageFlags,
   roleMention,
   subtext,
-  TextDisplayBuilder,
-  type TextDisplayComponent,
   time,
-  userMention,
 } from "discord.js";
-import {
-  Cron,
-  Data,
-  DateTime,
-  Effect,
-  Duration as EffectDuration,
-  pipe,
-  Random,
-  Schedule,
-} from "effect";
+import { Data, Effect, Random } from "effect";
 import { base } from "../../base";
 import { GUILD_IDS } from "../../specializedConstants";
 import { parseDuration, randomDuration } from "../../util/duration";
@@ -58,58 +41,6 @@ export const HALLOWEEN_2025_CHANNELS = {
     [GUILD_IDS.Homik]: ["1318731068165193848"],
     [GUILD_IDS.StrataCzasu]: ["683025889658929231"],
   },
-};
-
-const zone = DateTime.zoneUnsafeMakeNamed("Europe/Warsaw");
-const HALLOWEEN_2025_START = {
-  [GUILD_IDS.StrataCzasu]: DateTime.unsafeMakeZoned({
-    year: 2025,
-    month: 10,
-    day: 31,
-    hours: 21,
-    minutes: 30,
-    seconds: 0,
-    zone,
-  }),
-  [GUILD_IDS.Homik]: DateTime.unsafeNow(),
-};
-
-const createCheckIfActive = (end: DateTime.DateTime) => () =>
-  Effect.gen(function* () {
-    const now = yield* DateTime.now;
-
-    return DateTime.greaterThanOrEqualTo(end, now.pipe(DateTime.setZone(zone)));
-  });
-
-const STRATA_CZASU_END = DateTime.unsafeMakeZoned(
-  {
-    year: 2025,
-    month: 11,
-    day: 10,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  },
-  { adjustForTimeZone: true, timeZone: zone },
-);
-
-const HALLOWEEN_2025_SCHEDULES: Record<
-  string,
-  Schedule.Schedule<unknown, unknown, never>
-> = {
-  [GUILD_IDS.StrataCzasu]: Schedule.cron(Cron.unsafeParse("*/15 * * * *", zone)).pipe(
-    Schedule.checkEffect(createCheckIfActive(STRATA_CZASU_END)),
-  ),
-  [GUILD_IDS.Homik]: Schedule.fixed("5 seconds").pipe(
-    Schedule.checkEffect(
-      createCheckIfActive(
-        DateTime.unsafeNow().pipe(
-          DateTime.setZone(zone),
-          DateTime.addDuration("10 seconds"),
-        ),
-      ),
-    ),
-  ),
 };
 
 const createSpawnComponent = (
@@ -288,169 +219,11 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
   return { monster, message, spawn };
 });
 
-const sendNotification = Effect.fn("sendNotification")(function* (
-  client: Client<true>,
-  guildId: string,
-  message: MessageCreateOptions,
-) {
-  const guildSettings = getGuildSetting(
-    HALLOWEEN_2025_CHANNELS.NOTIFICATION_CHANNELS,
-    guildId,
-  );
-
-  if (!guildSettings || guildSettings.length === 0) {
-    return yield* Effect.die(
-      `No halloween2025 notification channels configured for guild ${guildId}`,
-    );
-  }
-
-  const notificationChannels = guildSettings
-    .map((channelId) => client.channels.cache.get(channelId) ?? null)
-    .filter((channel) => channel !== null)
-    .filter((channel) => channel.isSendable() && !channel.isDMBased());
-
-  return yield* Effect.all(
-    notificationChannels.map((channel) =>
-      Effect.tryPromise(() => channel.send(message)),
-    ),
-    { concurrency: "unbounded" },
-  ).pipe(Effect.parallelErrors);
-});
-
-const handleGuild = Effect.fn("handleGuild")(
-  function* (
-    prisma: ExtendedPrismaClient,
-    client: Client<true>,
-    messageQueue: MessageQueueType,
-    guildId: string,
-  ) {
-    const guildSettings = getGuildSetting(
-      HALLOWEEN_2025_CHANNELS.SPAWN_CHANNELS,
-      guildId,
-    );
-
-    if (!guildSettings) return yield* Effect.die("No halloween2025 channel configured");
-
-    const channel = client.channels.cache.get(guildSettings) ?? null;
-
-    if (!channel?.isTextBased()) return yield* Effect.fail("Channel is not text based");
-
-    const { message: spawnMessage, spawn } = yield* sendSpawn(
-      prisma,
-      client,
-      messageQueue,
-      guildId,
-    );
-
-    const message = {
-      components: [
-        new ContainerBuilder().addTextDisplayComponents((td) =>
-          td.setContent(
-            `W okolicy pojawił się potwór! Sprawdź kanał ${channelMention(channel.id)}, aby spróbować go schwytać!`,
-          ),
-        ),
-        new ActionRowBuilder<ButtonBuilder>({
-          components: [
-            new ButtonBuilder({
-              label: "Idź do kanału",
-              style: ButtonStyle.Link,
-              url: spawnMessage.url,
-            }),
-          ],
-        }),
-      ],
-      flags: MessageFlags.IsComponentsV2,
-    } satisfies MessageCreateOptions;
-
-    const messages = yield* sendNotification(client, guildId, message);
-
-    yield* Effect.tryPromise(async () => {
-      await prisma.halloween2025MonsterSpawnNotifications.createMany({
-        data: messages.map((msg) => ({
-          channelId: msg.channelId,
-          messageId: msg.id,
-          spawnId: spawn.id,
-        })),
-      });
-    });
-  },
-  Effect.catchTag("MonsterNotFoundError", (error) =>
-    Effect.log(`[Halloween 2025] No monsters found for guild ${error.guildId}`),
-  ),
-);
-
-const sendEndEventNotification = Effect.fn("sendEndEventNotification")(function* (
-  client: Client<true>,
-  guildId: string,
-) {
-  const message = yield* sendToSpawnChannel(client, guildId, {
-    components: [
-      new ContainerBuilder()
-        .addTextDisplayComponents((td) =>
-          td.setContent(
-            [
-              heading("Polowanie na potwory zakończone!"),
-              `Gildia z przyjemnością informuje, że loch się zamknął!`,
-              `W niedalekiej przyszłości nagrody zostaną rozlokowane wszystkim łowcom potworów.`,
-              `Dziękujemy za udział i do zobaczenia na następnym *otwarciu*!`,
-            ].join("\n"),
-          ),
-        )
-        .setAccentColor(0xff5500),
-    ],
-    flags: MessageFlags.IsComponentsV2,
-  });
-
-  yield* Effect.tryPromise(() => message.react("😭"));
-});
-
 export const halloween2025 = new Hashira({ name: "halloween2025" })
   .use(base)
   .group("halloween", (group) =>
     group
       .setDescription("Dowiedz się więcej o Halloween.")
-      .addCommand("info", (command) =>
-        command
-          .setDescription("Informacje o wydarzeniu Halloween 2025")
-          .handle(async (_, __, itx) => {
-            if (!itx.inCachedGuild()) return;
-            const spawnChannel = getGuildSetting(
-              HALLOWEEN_2025_CHANNELS.SPAWN_CHANNELS,
-              itx.guildId,
-            );
-
-            if (!spawnChannel) {
-              await itx.reply({
-                content: `Kanał wydarzenia Halloween 2025 nie został skonfigurowany na tym serwerze.`,
-                flags: [MessageFlags.Ephemeral],
-              });
-              return;
-            }
-
-            const lines = [
-              heading("🎃 Event Halloween 🎃"),
-              ``,
-              `Co jakiś czas na ${channelMention(spawnChannel)} pojawi się potwór, którego będzie można spróbować schwytać klikając przycisk "Łap".`,
-              `Jeśli uda Ci się schwytać potwora, otrzymasz specjalną nagrodę!`,
-              ``,
-              `Czasem potwory pojawiają się w parach lub większych grupach, więc warto być czujnym!`,
-              `A czasem pojawiają się tylko w reakcji na specjalne wydarzenia na serwerze... Kto wie, co przyniesie Halloween w tym roku?`,
-              ``,
-              `Bądź czujnx i nie przegap swojej szansy na złapanie potwora!`,
-            ];
-
-            const components = new ContainerBuilder()
-              .addTextDisplayComponents((td) => td.setContent(lines.join("\n")))
-              .addMediaGalleryComponents((mg) =>
-                mg.addItems((mgi) => mgi.setURL("https://i.imgur.com/8FbNC9u.jpeg")),
-              );
-
-            await itx.reply({
-              components: [components],
-              flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2],
-            });
-          }),
-      )
       .addCommand("kolekcja", (command) =>
         command
           .setDescription("Zobacz swoje schwytane potwory")
@@ -676,152 +449,4 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
             );
           }),
       ),
-  )
-  .handle("guildAvailable", async ({ prisma, messageQueue }, guild) => {
-    const start = getGuildSetting(HALLOWEEN_2025_START, guild.id);
-    const runSchedule = getGuildSetting(HALLOWEEN_2025_SCHEDULES, guild.id);
-    if (!start || !runSchedule) return;
-
-    handleGuild(prisma, guild.client, messageQueue, guild.id).pipe(
-      Effect.catchAll(Effect.logError),
-      Effect.schedule(runSchedule),
-      Effect.delay(
-        pipe(DateTime.distance(DateTime.unsafeNow(), start), EffectDuration.millis),
-      ),
-      Effect.andThen(sendEndEventNotification(guild.client, guild.id)),
-      Effect.runFork,
-    );
-  })
-  .handle("clientReady", async ({ prisma }, client) => {
-    client.on("interactionCreate", async (itx) => {
-      if (!itx.isButton()) return;
-      if (!itx.customId.startsWith("halloween2025-catch:")) return;
-      if (!itx.inCachedGuild()) return;
-
-      const [, spawnIdStr] = itx.customId.split(":");
-      const spawnId = Number(spawnIdStr);
-      if (Number.isNaN(spawnId)) return;
-
-      await itx.deferReply({ flags: MessageFlags.Ephemeral });
-      await ensureUserExists(prisma, itx.user);
-
-      const result = await prisma.$transaction(async (tx) => {
-        const spawn = await tx.halloween2025MonsterSpawn.findUnique({
-          where: { id: spawnId },
-          select: { expiresAt: true, guildId: true, channelId: true, messageId: true },
-        });
-
-        if (!spawn) return { value: null, error: "Spawn not found" } as const;
-
-        const expiresAt = DateTime.unsafeFromDate(spawn.expiresAt);
-        const itxCreatedAt = DateTime.unsafeFromDate(itx.createdAt);
-        if (DateTime.greaterThanOrEqualTo(itxCreatedAt, expiresAt)) {
-          return { value: null, error: "Spawn has expired" } as const;
-        }
-
-        // Check if user has already attempted to catch this spawn
-        const existingAttempt = await tx.halloween2025MonsterCatchAttempt.findUnique({
-          where: {
-            userId_spawnId: {
-              userId: itx.user.id,
-              spawnId,
-            },
-          },
-        });
-
-        if (existingAttempt) {
-          return { value: null, error: "Already attempted" } as const;
-        }
-
-        await tx.halloween2025MonsterCatchAttempt.create({
-          data: {
-            userId: itx.user.id,
-            spawnId,
-          },
-        });
-
-        const allAttempts = await tx.halloween2025MonsterCatchAttempt.findMany({
-          where: { spawnId },
-          orderBy: { attemptedAt: "asc" },
-        });
-
-        return {
-          value: { ...spawn, participants: allAttempts },
-          error: null,
-        } as const;
-      });
-
-      if (result.error) {
-        if (result.error === "Already attempted") {
-          await itx.editReply({
-            content: `Gildia już przyjęła Twoje zgłoszenie! Czekaj na rozpoczęcie walki.`,
-          });
-        } else {
-          await itx.editReply({
-            content: `Niestety, potwór już zniknął... Spróbuj szybciej następnym razem!`,
-          });
-        }
-        return;
-      }
-
-      const monsterMessageChannel = await itx.guild.channels.fetch(
-        result.value.channelId,
-      );
-      if (!monsterMessageChannel?.isTextBased()) {
-        await itx.editReply({
-          content: `Nie udało się znaleźć wiadomości z potworem. Skontaktuj się z developerem.`,
-        });
-
-        return;
-      }
-
-      const monsterMessage = await monsterMessageChannel?.messages.fetch(
-        result.value.messageId,
-      );
-
-      if (!monsterMessage) {
-        await itx.editReply({
-          content: `Nie udało się znaleźć wiadomości z potworem. Skontaktuj się z developerem.`,
-        });
-
-        return;
-      }
-
-      const [displayContainer, ...rest] = monsterMessage.components as [
-        ContainerComponent,
-        ...APIMessageTopLevelComponent[],
-      ];
-      const textComponent = displayContainer.components[1] as TextDisplayComponent;
-
-      // Rebuild participant list from database
-      const participantLines = await Promise.all(
-        result.value.participants.map(
-          async (attempt: Halloween2025MonsterCatchAttempt) => {
-            const user = await itx.client.users.fetch(attempt.userId).catch(() => null);
-            const username = user?.username ?? attempt.userId;
-            return `- ${userMention(attempt.userId)} (${username})`;
-          },
-        ),
-      );
-
-      const newContent =
-        participantLines.length > 0
-          ? `Lista uczestników:\n${participantLines.join("\n")}`
-          : `Lista uczestników: (brak)`;
-
-      const textComponentBuilder = new TextDisplayBuilder(
-        textComponent.toJSON(),
-      ).setContent(newContent);
-      const displayComponents = new ContainerBuilder(
-        displayContainer.toJSON(),
-      ).spliceComponents(1, 1, textComponentBuilder);
-
-      await monsterMessage.edit({
-        components: [displayComponents, ...rest],
-      });
-
-      await itx.editReply({
-        content: `Dołączono do wyprawy, powodzenia w łapaniu.`,
-      });
-    });
-  });
+  );
