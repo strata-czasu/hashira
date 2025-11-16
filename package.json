@@ -11,19 +11,19 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "fix": "biome check --write",
     "debug": "bun run --cwd apps/bot debug",
-    "start": "bun run --cwd apps/bot start",
-    "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
-    "prisma-studio": "bun run --cwd packages/db prisma-studio",
-    "prisma-generate": "bun run --cwd packages/db prisma generate",
+    "fix": "biome check --write",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
-    "prisma-migrate-dev": "bun run --cwd packages/db prisma migrate dev",
+    "prisma-generate": "bun run --cwd packages/db prisma generate",
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",
+    "prisma-migrate-dev": "bun run --cwd packages/db prisma migrate dev",
     "prisma-migrate-reset": "bun run --cwd packages/db prisma migrate reset",
     "prisma-push": "bun run --cwd packages/db prisma-push",
+    "prisma-studio": "bun run --cwd packages/db prisma-studio",
     "reload-commands": "bun run --cwd apps/bot reload-commands",
     "seed": "bun run --cwd apps/bot seed",
+    "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
+    "start": "bun run --cwd apps/bot start",
     "typecheck": "bun --workspaces typecheck"
   },
   "trustedDependencies": [
