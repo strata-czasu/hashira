@@ -12,7 +12,8 @@
   ],
   "postCreateCommand": "bun install && fc-cache -f -v",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli": {}
+    "ghcr.io/devcontainers/features/github-cli": {},
+    "ghcr.io/devcontainers-extra/features/ripgrep": {}
   },
   "customizations": {
     "vscode": {
