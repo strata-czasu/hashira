@@ -11,6 +11,7 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
+    "bump": "bun ./scripts/bunVersion.ts",
     "debug": "bun run --cwd apps/bot debug",
     "fix": "biome check --write",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",

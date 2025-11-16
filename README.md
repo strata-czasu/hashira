@@ -74,3 +74,18 @@ Using VSCode Dev containers is the easiest way to setup the development environm
 7. Start the bot - `bun start`
 
 8. When you're finished, stop development databases - `stop-database && stop-redis`
+
+### Updating Bun
+
+Use the helper script in `scripts/bunVersion.ts` anytime you need to bump the Bun runtime. It updates the devcontainer image, production Dockerfile, CI workflow, Nix shell, and the `@types/bun` dev dependency so everything stays in sync.
+
+```bash
+# To preview changes without writing them:
+bun bump 1.4.0 --dry-run
+
+# To execute the changes
+bun bump 1.4.0
+
+# Afterwards refresh dependencies to update bun.lock
+bun install
+```
