@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { PermissionFlagsBits } from "discord.js";
+import { HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -11,19 +11,17 @@ import {
   ShopItemNotFoundError,
   UserPurchaseLimitExceededError,
 } from "./economyError";
-import { getCurrency } from "./managers/currencyManager";
 import {
+  createShopItem,
+  deleteShopItem,
   getRemainingStock,
+  getShopItemWithDetails,
   purchaseShopItem,
+  type ShopItemChanges,
   type ShopItemWithDetails,
+  updateShopItem,
 } from "./managers/shopService";
-import {
-  formatBalance,
-  formatItem,
-  getItem,
-  getShopItem,
-  getTypeNameForList,
-} from "./util";
+import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -39,11 +37,58 @@ const formatAmount = (amount: number) => {
   return divideAndRound(amount, 1);
 };
 
+/**
+ * Format stock info for display
+ */
 const formatStockInfo = (shopItem: ShopItemWithDetails): string => {
   const remaining = getRemainingStock(shopItem);
   if (remaining === null) return "";
   if (remaining === 0) return " Wyprzedane";
   return ` (${remaining}/${shopItem.globalStock})`;
+};
+
+/**
+ * Format limits info for admin commands
+ */
+const formatLimitsInfo = (
+  globalStock: number | null | undefined,
+  userLimit: number | null | undefined,
+): string => {
+  const parts: string[] = [];
+  if (globalStock != null) {
+    parts.push(`limit globalny: ${globalStock}`);
+  }
+  if (userLimit != null) {
+    parts.push(`limit na użytkownika: ${userLimit}`);
+  }
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+};
+
+/**
+ * Format changes made to a shop item
+ */
+const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string => {
+  const parts: string[] = [];
+
+  if (changes.price !== undefined) {
+    parts.push(`cena: ${formatBalance(changes.price, currencySymbol)}`);
+  }
+  if (changes.globalStock !== undefined) {
+    parts.push(
+      changes.globalStock === null
+        ? "limit globalny: usunięto"
+        : `limit globalny: ${changes.globalStock}`,
+    );
+  }
+  if (changes.userPurchaseLimit !== undefined) {
+    parts.push(
+      changes.userPurchaseLimit === null
+        ? "limit na użytkownika: usunięto"
+        : `limit na użytkownika: ${changes.userPurchaseLimit}`,
+    );
+  }
+
+  return parts.join(", ");
 };
 
 export const shop = new Hashira({ name: "shop" })
@@ -179,35 +224,55 @@ export const shop = new Hashira({ name: "shop" })
           .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
-          .handle(async ({ prisma }, { id, price }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .addInteger("global-stock", (stock) =>
+            stock
+              .setDescription("Globalny limit sztuk (puste = bez limitu)")
+              .setRequired(false)
+              .setMinValue(1),
+          )
+          .addInteger("user-limit", (limit) =>
+            limit
+              .setDescription("Limit sztuk na użytkownika (puste = bez limitu)")
+              .setRequired(false)
+              .setMinValue(1),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                id,
+                price,
+                "global-stock": globalStock,
+                "user-limit": userPurchaseLimit,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const item = await getItem(prisma, id, itx.guildId);
-            if (!item) {
-              await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
-              return;
-            }
+              const item = await getItem(prisma, id, itx.guildId);
+              if (!item) {
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu o podanym ID");
+                return;
+              }
 
-            const currency = await getCurrency({
-              prisma,
-              guildId: itx.guildId,
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-            });
-
-            await prisma.shopItem.create({
-              data: {
+              const shopItem = await createShopItem({
+                prisma,
                 itemId: id,
-                currencyId: currency.id,
+                guildId: itx.guildId,
+                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
                 price,
                 createdBy: itx.user.id,
-              },
-            });
+                globalStock,
+                userPurchaseLimit,
+              });
 
-            await itx.editReply(
-              `Wystawiono ${formatItem(item)} za ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`,
-            );
-          }),
+              const limitsInfo = formatLimitsInfo(globalStock, userPurchaseLimit);
+              await itx.editReply(
+                `Wystawiono ${formatItem(item)} za ${formatBalance(price, shopItem.currency.symbol)}${limitsInfo}`,
+              );
+            },
+          ),
       )
       .addCommand("usuń", (command) =>
         command
@@ -217,33 +282,108 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const shopItem = await getShopItem(prisma, id, itx.guildId);
-            if (!shopItem) {
-              await errorFollowUp(
-                itx,
-                "Nie znaleziono przedmiotu w sklepie o podanym ID",
-              );
-              return;
+            try {
+              const shopItem = await deleteShopItem({
+                prisma,
+                shopItemId: id,
+                guildId: itx.guildId,
+              });
+              await itx.editReply(`Usunięto ${formatItem(shopItem.item)} ze sklepu`);
+            } catch (error) {
+              if (error instanceof ShopItemNotFoundError) {
+                await errorFollowUp(
+                  itx,
+                  "Nie znaleziono przedmiotu w sklepie o podanym ID",
+                );
+              } else {
+                throw error;
+              }
             }
-
-            await prisma.shopItem.update({
-              where: { id },
-              data: { deletedAt: itx.createdAt },
-            });
-
-            await itx.editReply(`Usunięto ${formatItem(shopItem.item)} ze sklepu`);
           }),
       )
       .addCommand("edytuj", (command) =>
         command
-          .setDescription("Zmień cenę przedmiotu w sklepie")
+          .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .addInteger("price", (price) => price.setDescription("Nowa cena przedmiotu"))
-          .handle(async ({ prisma }, { id, price }, itx) => {
+          .addInteger("price", (price) =>
+            price.setDescription("Nowa cena przedmiotu").setRequired(false),
+          )
+          .addInteger("global-stock", (stock) =>
+            stock
+              .setDescription("Nowy limit globalny (0 = usuń limit)")
+              .setRequired(false)
+              .setMinValue(0),
+          )
+          .addInteger("user-limit", (limit) =>
+            limit
+              .setDescription("Nowy limit na użytkownika (0 = usuń limit)")
+              .setRequired(false)
+              .setMinValue(0),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                id,
+                price,
+                "global-stock": globalStock,
+                "user-limit": userPurchaseLimit,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
+
+              // Check if at least one field is being updated
+              if (
+                price === null &&
+                globalStock === null &&
+                userPurchaseLimit === null
+              ) {
+                await errorFollowUp(itx, "Nie podano żadnych zmian do wprowadzenia");
+                return;
+              }
+
+              try {
+                const { shopItem, changes } = await updateShopItem({
+                  prisma,
+                  shopItemId: id,
+                  guildId: itx.guildId,
+                  price,
+                  globalStock,
+                  userPurchaseLimit,
+                });
+
+                await itx.editReply(
+                  `Zaktualizowano ${formatItem(shopItem.item)}: ${formatChanges(changes, shopItem.currency.symbol)}`,
+                );
+              } catch (error) {
+                if (error instanceof ShopItemNotFoundError) {
+                  await errorFollowUp(
+                    itx,
+                    "Nie znaleziono przedmiotu w sklepie o podanym ID",
+                  );
+                } else {
+                  throw error;
+                }
+              }
+            },
+          ),
+      )
+      .addCommand("info", (command) =>
+        command
+          .setDescription("Pokaż szczegóły przedmiotu w sklepie")
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const shopItem = await getShopItem(prisma, id, itx.guildId);
+            const shopItem = await getShopItemWithDetails({
+              prisma,
+              shopItemId: id,
+              guildId: itx.guildId,
+            });
+
             if (!shopItem) {
               await errorFollowUp(
                 itx,
@@ -252,14 +392,30 @@ export const shop = new Hashira({ name: "shop" })
               return;
             }
 
-            await prisma.shopItem.update({
-              where: { id },
-              data: { price, editedAt: itx.createdAt },
-            });
+            const lines = [
+              heading(`${shopItem.item.name} [${shopItem.id}]`, HeadingLevel.Three),
+              `**Cena:** ${formatBalance(shopItem.price, shopItem.currency.symbol)}`,
+              `**Sprzedano:** ${shopItem.soldCount}`,
+            ];
 
-            await itx.editReply(
-              `Zmieniono cenę ${formatItem(shopItem.item)} na ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`,
-            );
+            if (shopItem.globalStock !== null) {
+              const remaining = shopItem.globalStock - shopItem.soldCount;
+              lines.push(`**Limit globalny:** ${remaining}/${shopItem.globalStock}`);
+            } else {
+              lines.push("**Limit globalny:** brak");
+            }
+
+            if (shopItem.userPurchaseLimit !== null) {
+              lines.push(`**Limit na użytkownika:** ${shopItem.userPurchaseLimit}`);
+            } else {
+              lines.push("**Limit na użytkownika:** brak");
+            }
+
+            if (shopItem.item.description) {
+              lines.push(`**Opis:** ${shopItem.item.description}`);
+            }
+
+            await itx.editReply(lines.join("\n"));
           }),
       ),
   );
