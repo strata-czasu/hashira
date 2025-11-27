@@ -41,3 +41,26 @@ export class CurrencyNotFoundError extends EconomyError {
     super("Currency not found");
   }
 }
+
+export class ShopItemNotFoundError extends EconomyError {
+  constructor() {
+    super("Shop item not found");
+  }
+}
+
+export class OutOfStockError extends EconomyError {
+  constructor() {
+    super("Item is out of stock");
+  }
+}
+
+export class UserPurchaseLimitExceededError extends EconomyError {
+  public readonly limit: number;
+  public readonly currentQuantity: number;
+
+  constructor(limit: number, currentQuantity: number) {
+    super(`User purchase limit exceeded: ${currentQuantity}/${limit}`);
+    this.limit = limit;
+    this.currentQuantity = currentQuantity;
+  }
+}

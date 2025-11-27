@@ -1,13 +1,22 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Prisma } from "@hashira/db";
-import { nestedTransaction } from "@hashira/db/transaction";
+import { DatabasePaginator } from "@hashira/db";
 import { PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { addBalance } from "./managers/transferManager";
-import { getDefaultWallet } from "./managers/walletManager";
+import {
+  InsufficientBalanceError,
+  OutOfStockError,
+  ShopItemNotFoundError,
+  UserPurchaseLimitExceededError,
+} from "./economyError";
+import { getCurrency } from "./managers/currencyManager";
+import {
+  getRemainingStock,
+  purchaseShopItem,
+  type ShopItemWithDetails,
+} from "./managers/shopService";
 import {
   formatBalance,
   formatItem,
@@ -30,6 +39,13 @@ const formatAmount = (amount: number) => {
   return divideAndRound(amount, 1);
 };
 
+const formatStockInfo = (shopItem: ShopItemWithDetails): string => {
+  const remaining = getRemainingStock(shopItem);
+  if (remaining === null) return "";
+  if (remaining === 0) return " Wyprzedane";
+  return ` (${remaining}/${shopItem.globalStock})`;
+};
+
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -47,19 +63,26 @@ export const shop = new Hashira({ name: "shop" })
               (props, price) =>
                 prisma.shopItem.findMany({
                   ...props,
+                  where: { deletedAt: null, item: { guildId: itx.guildId } },
                   orderBy: { price },
-                  include: { item: true },
+                  include: { item: true, currency: true },
                 }),
-              () => prisma.shopItem.count(),
+              () =>
+                prisma.shopItem.count({
+                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                }),
             );
 
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              ({ id, price, item: { name, description, type } }) => {
+              (shopItem) => {
+                const { id, price, item, currency } = shopItem;
+                const { name, description, type } = item;
+                const stockInfo = formatStockInfo(shopItem);
                 const lines = [];
                 lines.push(
-                  `### ${name} - ${formatAmount(price)} [${id}] ${getTypeNameForList(type)}`,
+                  `### ${name} - ${formatAmount(price)}${currency.symbol}${stockInfo} [${id}] ${getTypeNameForList(type)}`,
                 );
                 if (description) lines.push(description);
 
@@ -111,56 +134,38 @@ export const shop = new Hashira({ name: "shop" })
 
             await ensureUserExists(prisma, itx.user.id);
 
-            const amount = rawAmount ?? 1;
+            const quantity = rawAmount ?? 1;
 
-            const success = await prisma.$transaction(async (tx) => {
-              const shopItem = await getShopItem(tx, id, itx.guildId);
-              if (!shopItem) {
-                await errorFollowUp(
-                  itx,
-                  "Nie znaleziono przedmiotu o podanym ID w sklepie",
-                );
-                return false;
-              }
-
-              const allItemsPrice = shopItem.price * amount;
-
-              const wallet = await getDefaultWallet({
-                prisma: nestedTransaction(tx),
+            try {
+              const result = await purchaseShopItem({
+                prisma,
+                shopItemId: id,
                 userId: itx.user.id,
-                guildId: itx.guild.id,
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                guildId: itx.guildId,
+                quantity,
               });
 
-              if (wallet.balance < allItemsPrice) {
-                const missing = allItemsPrice - wallet.balance;
+              const { shopItem, totalPrice } = result;
+              const quantityText = quantity > 1 ? ` x${quantity}` : "";
+              await itx.editReply(
+                `Kupiono **${shopItem.item.name}**${quantityText} za ${formatBalance(totalPrice, shopItem.currency.symbol)}`,
+              );
+            } catch (error) {
+              if (error instanceof ShopItemNotFoundError) {
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie");
+              } else if (error instanceof OutOfStockError) {
+                await errorFollowUp(itx, "Przedmiot jest wyprzedany");
+              } else if (error instanceof UserPurchaseLimitExceededError) {
                 await errorFollowUp(
                   itx,
-                  `Nie masz wystarczająco punktów. Brakuje Ci ${formatBalance(missing, STRATA_CZASU_CURRENCY.symbol)}`,
+                  `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
                 );
-                return false;
+              } else if (error instanceof InsufficientBalanceError) {
+                await errorFollowUp(itx, "Nie masz wystarczająco środków");
+              } else {
+                throw error;
               }
-
-              await addBalance({
-                prisma: nestedTransaction(tx),
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-                guildId: itx.guild.id,
-                toUserId: itx.user.id,
-                amount: -allItemsPrice,
-                reason: `Zakup przedmiotu ${shopItem.id}`,
-              });
-
-              const items = new Array<Prisma.InventoryItemCreateManyInput>(amount).fill(
-                { itemId: shopItem.itemId, userId: itx.user.id },
-              );
-              await tx.inventoryItem.createMany({ data: items });
-
-              return true;
-            });
-
-            if (!success) return;
-
-            await itx.editReply("Kupiono przedmiot ze sklepu");
+            }
           }),
       ),
   )
@@ -184,9 +189,16 @@ export const shop = new Hashira({ name: "shop" })
               return;
             }
 
+            const currency = await getCurrency({
+              prisma,
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            });
+
             await prisma.shopItem.create({
               data: {
                 itemId: id,
+                currencyId: currency.id,
                 price,
                 createdBy: itx.user.id,
               },
