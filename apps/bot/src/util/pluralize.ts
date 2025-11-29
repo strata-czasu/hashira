@@ -58,4 +58,10 @@ export const pluralizers = {
     1: "dnia",
     2: "dni",
   }),
+  warns: createPluralize({
+    0: "ostrzeżeń",
+    1: "ostrzeżenie",
+    2: "ostrzeżenia",
+    5: "ostrzeżeń",
+  }),
 };
