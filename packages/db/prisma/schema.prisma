@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
 datasource db {
@@ -166,7 +166,6 @@ model User {
   moderatorLeaves                   ModeratorLeave[]
   halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]
   halloween2025MonsterLoot          Halloween2025MonsterLoot[]
-  shopItemPurchases                 ShopItemPurchase[]
 
   @@map("users")
 }

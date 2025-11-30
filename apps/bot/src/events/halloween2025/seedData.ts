@@ -1,36 +1,9 @@
 import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
-import { USER_IDS } from "../../specializedConstants";
-import { ensureUserExists } from "../../util/ensureUsersExist";
 import {
   MONSTER_TEMPLATES,
   type MonsterTemplate,
   PLAYER_ABILITIES,
 } from "./monsterData";
-
-export const TOKENY_CURRENCY = {
-  name: "Tokeny",
-  symbol: "T",
-} as const;
-
-export const seedTokenyCurrency = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-) => {
-  await ensureUserExists(prisma, USER_IDS.Defous);
-  await prisma.currency.createMany({
-    data: [
-      {
-        guildId,
-        name: TOKENY_CURRENCY.name,
-        symbol: TOKENY_CURRENCY.symbol,
-        createdBy: USER_IDS.Defous,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  console.log(`Seeding Tokeny currency completed for guild ${guildId}`);
-};
 
 export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) => {
   for (const ability of PLAYER_ABILITIES) {
@@ -45,9 +18,9 @@ export const seedDefaultPlayerAbilities = async (prisma: ExtendedPrismaClient) =
         effects: "effects" in ability ? ability.effects : Prisma.JsonNull,
       },
     });
-  }
 
-  console.log(`Seeding default player abilities completed`);
+    console.log(`Seeded player ability: ${ability.name}`);
+  }
 };
 
 async function seedMonster(
@@ -79,6 +52,8 @@ async function seedMonster(
     },
   });
 
+  console.log(`Created monster: ${monster.name} for guild ${guildId}`);
+
   for (const action of template.actions) {
     await prisma.halloween2025MonsterAction.upsert({
       where: { monsterId_name: { monsterId: monster.id, name: action.name } },
@@ -92,6 +67,10 @@ async function seedMonster(
         effects: "effects" in action ? action.effects : Prisma.JsonNull,
       },
     });
+
+    console.log(
+      `Seeded action: ${action.name} for monster ${monster.name} in guild ${guildId}`,
+    );
   }
 }
 
@@ -108,6 +87,4 @@ export const seedMonstersForGuild = async (
   await seedMonster(prisma, MONSTER_TEMPLATES.cerber, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.vampire, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.headlessHorseman, guildId);
-
-  console.log(`Seeding monsters completed for guild ${guildId}`);
 };
