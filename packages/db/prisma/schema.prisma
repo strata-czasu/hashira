@@ -65,29 +65,30 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                     String                      @id(map: "core_guild_pkey")
-  autoRole               AutoRole[]
-  colorRole              ColorRole[]
-  currency               Currency[]
-  dailyPointsRedeems     DailyPointsRedeems[]
-  emojiUsage             EmojiUsage[]
-  guildSettings          GuildSettings?
-  mute                   Mute[]
-  userTextActivity       UserTextActivity[]
-  verification           Verification[]
-  wallet                 Wallet[]
-  warn                   Warn[]
-  protectedInvites       ProtectedInvite[]
-  ultimatums             Ultimatum[]
-  stickyMessages         StickyMessage[]
-  channelRestrictions    ChannelRestriction[]
-  voiceSessions          VoiceSession[]
-  lastFishings           LastFishing[]
-  giveaways              Giveaway[]
-  items                  Item[]
-  moderatorLeaves        ModeratorLeave[]
-  halloweenMonsters      Halloween2025Monster[]
-  halloweenMonsterSpawns Halloween2025MonsterSpawn[]
+  id                        String                        @id(map: "core_guild_pkey")
+  autoRole                  AutoRole[]
+  colorRole                 ColorRole[]
+  currency                  Currency[]
+  dailyPointsRedeems        DailyPointsRedeems[]
+  emojiUsage                EmojiUsage[]
+  guildSettings             GuildSettings?
+  mute                      Mute[]
+  userTextActivity          UserTextActivity[]
+  verification              Verification[]
+  wallet                    Wallet[]
+  warn                      Warn[]
+  protectedInvites          ProtectedInvite[]
+  ultimatums                Ultimatum[]
+  stickyMessages            StickyMessage[]
+  channelRestrictions       ChannelRestriction[]
+  voiceSessions             VoiceSession[]
+  lastFishings              LastFishing[]
+  giveaways                 Giveaway[]
+  items                     Item[]
+  moderatorLeaves           ModeratorLeave[]
+  halloweenMonsters         Halloween2025Monster[]
+  halloweenMonsterSpawns    Halloween2025MonsterSpawn[]
+  halloween2025TokenTransfers Halloween2025TokenTransfer[]
 
   @@map("guild")
 }
@@ -167,6 +168,7 @@ model User {
   halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]
   halloween2025MonsterLoot          Halloween2025MonsterLoot[]
   shopItemPurchases                 ShopItemPurchase[]
+  halloween2025TokenTransfers       Halloween2025TokenTransfer[]
 
   @@map("users")
 }
