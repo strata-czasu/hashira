@@ -18,12 +18,14 @@ export const seedTokenyCurrency = async (
 ) => {
   await ensureUserExists(prisma, USER_IDS.Defous);
   await prisma.currency.createMany({
-    data: {
-      guildId,
-      name: TOKENY_CURRENCY.name,
-      symbol: TOKENY_CURRENCY.symbol,
-      createdBy: USER_IDS.Defous,
-    },
+    data: [
+      {
+        guildId,
+        name: TOKENY_CURRENCY.name,
+        symbol: TOKENY_CURRENCY.symbol,
+        createdBy: USER_IDS.Defous,
+      },
+    ],
     skipDuplicates: true,
   });
 
