@@ -180,22 +180,17 @@ export const deleteShopItem = async ({
       deletedAt: null,
       item: { guildId },
     },
-    include: {
-      item: true,
-      currency: true,
-    },
   });
 
   if (!existing) {
     throw new ShopItemNotFoundError();
   }
 
-  await prisma.shopItem.update({
+  return await prisma.shopItem.update({
     where: { id: shopItemId },
     data: { deletedAt: new Date() },
+    include: { item: true, currency: true },
   });
-
-  return existing;
 };
 
 type GetShopItemOptions = {
