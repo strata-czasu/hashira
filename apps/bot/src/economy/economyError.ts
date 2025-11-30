@@ -78,3 +78,19 @@ export class InvalidStockError extends EconomyError {
     this.soldCount = soldCount;
   }
 }
+
+export class CurrencyTransferLimitExceededError extends EconomyError {
+  public readonly currentReceived: number;
+  public readonly limit: number;
+  public readonly requestedAmount: number;
+
+  constructor(currentReceived: number, limit: number, requestedAmount: number) {
+    super(
+      `Currency transfer limit exceeded: ${currentReceived}/${limit}, requested: ${requestedAmount}`,
+    );
+
+    this.currentReceived = currentReceived;
+    this.limit = limit;
+    this.requestedAmount = requestedAmount;
+  }
+}
