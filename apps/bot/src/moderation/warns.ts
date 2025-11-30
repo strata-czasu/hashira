@@ -6,6 +6,7 @@ import {
   type Warn,
 } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
+import { sub } from "date-fns";
 import {
   ActionRowBuilder,
   type ContextMenuCommandInteraction,
@@ -31,6 +32,7 @@ import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { pluralizers } from "../util/pluralize";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 import { formatUserWithId } from "./util";
 
@@ -99,6 +101,34 @@ const getUserWarnsPaginatedView = (
   );
 };
 
+const handleRecentWarns = async (
+  prisma: ExtendedPrismaClient,
+  warn: Warn,
+  user: User,
+  replyToModerator: (content: string) => Promise<unknown>,
+) => {
+  const days = 30;
+  const recentWarns = await prisma.warn.findMany({
+    where: {
+      guildId: warn.guildId,
+      userId: warn.userId,
+      deletedAt: null,
+      // Look only 30 days back
+      createdAt: { gte: sub(new Date(), { days: days }) },
+      // Exclude the current warn from the list
+      id: { not: warn.id },
+    },
+  });
+  if (recentWarns.length === 0) return;
+
+  const recentWarnsFormatted = recentWarns.map(
+    createWarnFormat({ includeUser: false }),
+  );
+  await replyToModerator(
+    `Użytkownik ${user.tag} ma ${recentWarns.length} ${pluralizers.warns(recentWarns.length)} w ciągu ostatnich ${days} dni:\n${recentWarnsFormatted.join("\n")}`,
+  );
+};
+
 const universalAddWarn = async ({
   prisma,
   log,
@@ -130,6 +160,12 @@ const universalAddWarn = async ({
   });
   log.push("warnCreate", guild, { warn, moderator });
 
+  await reply(
+    `Dodano ostrzeżenie [${inlineCode(
+      warn.id.toString(),
+    )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
+  );
+
   const sentMessage = await sendDirectMessage(
     user,
     `Hejka! Przed chwilą ${userMention(moderator.id)} (${
@@ -139,16 +175,13 @@ const universalAddWarn = async ({
     )}.\n\nPrzeczytaj powód ostrzeżenia i nie rób więcej tego za co zostałxś ostrzeżony. W innym razie możesz otrzymać karę wyciszenia.`,
   );
 
-  await reply(
-    `Dodano ostrzeżenie [${inlineCode(
-      warn.id.toString(),
-    )}] dla ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-  );
   if (!sentMessage) {
     await replyToModerator(
       `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
     );
   }
+
+  await handleRecentWarns(prisma, warn, user, replyToModerator);
 };
 
 const handleContextMenu = async ({
