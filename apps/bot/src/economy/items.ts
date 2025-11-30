@@ -1,10 +1,12 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item, type Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 import { bold, inlineCode, italic, PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { getCurrency } from "./managers/currencyManager";
 import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
 const formatItemInList = ({ id, name, description, type }: Item) => {
@@ -79,9 +81,15 @@ export const items = new Hashira({ name: "items" })
 
               if (!item) return null;
               if (price !== null) {
+                const currency = await getCurrency({
+                  prisma: nestedTransaction(tx),
+                  guildId: itx.guildId,
+                  currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                });
                 await tx.shopItem.create({
                   data: {
                     item: { connect: { id: item.id } },
+                    currency: { connect: { id: currency.id } },
                     price,
                     creator: { connect: { id: itx.user.id } },
                   },

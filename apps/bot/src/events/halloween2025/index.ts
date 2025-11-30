@@ -29,6 +29,8 @@ import { fetchMembers } from "../../util/fetchMembers";
 import { getGuildSetting } from "../../util/getGuildSetting";
 import { modifyMembers } from "../../util/modifyMembers";
 import { weightedRandom } from "../../util/weightedRandom";
+import { tokenShop } from "./tokenShop";
+import { tokens } from "./tokens";
 
 type MessageQueueType = ExtractContext<typeof base>["messageQueue"];
 
@@ -221,6 +223,8 @@ const sendSpawn = Effect.fn("sendSpawn")(function* (
 
 export const halloween2025 = new Hashira({ name: "halloween2025" })
   .use(base)
+  .use(tokens)
+  .use(tokenShop)
   .group("halloween", (group) =>
     group
       .setDescription("Dowiedz się więcej o Halloween.")

@@ -52,17 +52,40 @@ model TintColor {
 }
 
 model ShopItem {
-  id        Int       @id(map: "core_shop_item_pkey") @default(autoincrement())
-  itemId    Int
-  price     Int
+  id         Int @id(map: "core_shop_item_pkey") @default(autoincrement())
+  itemId     Int
+  currencyId Int
+  price      Int
+
+  soldCount         Int  @default(0)
+  globalStock       Int? // null = unlimited stock
+  userPurchaseLimit Int? // null = unlimited per user
+
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   editedAt  DateTime? @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
   createdBy String
-  creator   User      @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_createdBy_users_id_fk")
-  item      Item      @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_itemId_item_id_fk")
+
+  creator   User               @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_createdBy_users_id_fk")
+  item      Item               @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shopItem_itemId_item_id_fk")
+  currency  Currency           @relation(fields: [currencyId], references: [id])
+  purchases ShopItemPurchase[]
 
   @@map("shopItem")
+}
+
+// Keeps track of how many of a specific ShopItem a user has purchased over time.
+model ShopItemPurchase {
+  id         Int      @id @default(autoincrement())
+  shopItemId Int
+  userId     String
+  quantity   Int // Incremented on each purchase, never decremented to keep a record of total purchased items
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([shopItemId, userId])
 }
 
 model InventoryItem {

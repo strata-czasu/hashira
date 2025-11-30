@@ -6,9 +6,10 @@ model Currency {
   createdBy String
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  user                             User     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
-  guild                            Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
-  wallet_wallet_currencyTocurrency Wallet[] @relation("wallet_currencyTocurrency")
+  user                             User       @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
+  guild                            Guild      @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
+  wallet_wallet_currencyTocurrency Wallet[]   @relation("wallet_currencyTocurrency")
+  shopItems                        ShopItem[]
 
   @@unique([guildId, name], map: "currency_guildId_name_unique")
   @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")

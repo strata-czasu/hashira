@@ -1,10 +1,13 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
-import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
-import { ensureUserExists } from "../util/ensureUsersExist";
-import { errorFollowUp } from "../util/errorFollowUp";
+import {
+  HeadingLevel,
+  heading,
+  PermissionFlagsBits,
+  TimestampStyles,
+  time,
+} from "discord.js";
+import { base } from "../../base";
 import {
   InsufficientBalanceError,
   InvalidAmountError,
@@ -12,7 +15,7 @@ import {
   OutOfStockError,
   ShopItemNotFoundError,
   UserPurchaseLimitExceededError,
-} from "./economyError";
+} from "../../economy/economyError";
 import {
   createShopItem,
   deleteShopItem,
@@ -22,8 +25,37 @@ import {
   type ShopItemChanges,
   type ShopItemWithDetails,
   updateShopItem,
-} from "./managers/shopService";
-import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
+} from "../../economy/managers/shopService";
+import {
+  formatBalance,
+  formatItem,
+  getItem,
+  getTypeNameForList,
+} from "../../economy/util";
+import { ensureUserExists } from "../../util/ensureUsersExist";
+import { errorFollowUp } from "../../util/errorFollowUp";
+import { TOKENY_CURRENCY } from "./seedData";
+
+/** Shop opening time: December 1st, 2025 at 16:00 Warsaw time (Europe/Warsaw) */
+const SHOP_OPENING_DATE = new Date("2025-12-01T16:00:00+01:00");
+
+/**
+ * Check if the shop is open for purchases
+ */
+const isShopOpen = (): boolean => {
+  return new Date() >= SHOP_OPENING_DATE;
+};
+
+/**
+ * Get a message explaining when the shop will open
+ */
+const getShopClosedMessage = (): string => {
+  const now = new Date();
+  const remainingMs = SHOP_OPENING_DATE.getTime() - now.getTime();
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+  return `Sklep otworzy się ${time(SHOP_OPENING_DATE, TimestampStyles.RelativeTime)} (${time(SHOP_OPENING_DATE, TimestampStyles.LongDateTime)})\nCzas serwera: pozostało ${remainingSeconds} sekund`;
+};
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -93,15 +125,15 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
   return parts.join(", ");
 };
 
-export const shop = new Hashira({ name: "shop" })
+export const tokenShop = new Hashira({ name: "token-shop" })
   .use(base)
-  .group("sklep", (group) =>
+  .group("tokeny-sklep", (group) =>
     group
-      .setDescription("Komendy sklepu")
+      .setDescription("Komendy sklepu z tokenami")
       .setDMPermission(false)
       .addCommand("lista", (command) =>
         command
-          .setDescription("Wyświetl listę przedmiotów w sklepie")
+          .setDescription("Wyświetl listę przedmiotów w sklepie z tokenami")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
@@ -110,19 +142,27 @@ export const shop = new Hashira({ name: "shop" })
               (props, price) =>
                 prisma.shopItem.findMany({
                   ...props,
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: TOKENY_CURRENCY.symbol },
+                  },
                   orderBy: { price },
                   include: { item: true, currency: true },
                 }),
               () =>
                 prisma.shopItem.count({
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: TOKENY_CURRENCY.symbol },
+                  },
                 }),
             );
 
             const paginatedView = new PaginatedView(
               paginator,
-              "Sklep",
+              "Sklep z Tokenami",
               (shopItem) => {
                 const { id, price, item, currency } = shopItem;
                 const { name, description, type } = item;
@@ -136,14 +176,13 @@ export const shop = new Hashira({ name: "shop" })
                 return lines.join("\n");
               },
               true,
-              "T - tytuł profilu",
             );
             await paginatedView.render(itx);
           }),
       )
       .addCommand("kup", (command) =>
         command
-          .setDescription("Kup przedmiot ze sklepu")
+          .setDescription("Kup przedmiot ze sklepu z tokenami")
           .addInteger("przedmiot", (przedmiot) =>
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
@@ -165,6 +204,7 @@ export const shop = new Hashira({ name: "shop" })
                     mode: "insensitive",
                   },
                 },
+                currency: { symbol: TOKENY_CURRENCY.symbol },
               },
               include: { item: true },
             });
@@ -178,6 +218,11 @@ export const shop = new Hashira({ name: "shop" })
           .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            if (!isShopOpen()) {
+              await errorFollowUp(itx, getShopClosedMessage());
+              return;
+            }
 
             await ensureUserExists(prisma, itx.user.id);
 
@@ -218,14 +263,14 @@ export const shop = new Hashira({ name: "shop" })
           }),
       ),
   )
-  .group("sklep-admin", (group) =>
+  .group("tokeny-sklep-admin", (group) =>
     group
-      .setDescription("Zarządzanie sklepem")
+      .setDescription("Zarządzanie sklepem z tokenami")
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addCommand("wystaw", (command) =>
         command
-          .setDescription("Wystaw przedmiot w sklepie")
+          .setDescription("Wystaw przedmiot w sklepie z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
           .addInteger("global-stock", (stock) =>
@@ -264,7 +309,7 @@ export const shop = new Hashira({ name: "shop" })
                 prisma,
                 itemId: id,
                 guildId: itx.guildId,
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                currencySymbol: TOKENY_CURRENCY.symbol,
                 price,
                 createdBy: itx.user.id,
                 globalStock,
@@ -280,7 +325,7 @@ export const shop = new Hashira({ name: "shop" })
       )
       .addCommand("usuń", (command) =>
         command
-          .setDescription("Usuń przedmiot ze sklepu")
+          .setDescription("Usuń przedmiot ze sklepu z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -307,7 +352,7 @@ export const shop = new Hashira({ name: "shop" })
       )
       .addCommand("edytuj", (command) =>
         command
-          .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie")
+          .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .addInteger("price", (price) =>
             price.setDescription("Nowa cena przedmiotu").setRequired(false),
@@ -381,7 +426,7 @@ export const shop = new Hashira({ name: "shop" })
       )
       .addCommand("info", (command) =>
         command
-          .setDescription("Pokaż szczegóły przedmiotu w sklepie")
+          .setDescription("Pokaż szczegóły przedmiotu w sklepie z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .handle(async ({ prisma }, { id }, itx) => {
             if (!itx.inCachedGuild()) return;
