@@ -1,6 +1,12 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
+import {
+  HeadingLevel,
+  heading,
+  PermissionFlagsBits,
+  TimestampStyles,
+  time,
+} from "discord.js";
 import { base } from "../../base";
 import {
   InsufficientBalanceError,
@@ -29,6 +35,27 @@ import {
 import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import { TOKENY_CURRENCY } from "./seedData";
+
+/** Shop opening time: December 1st, 2025 at 16:00 Warsaw time (Europe/Warsaw) */
+const SHOP_OPENING_DATE = new Date("2025-12-01T16:00:00+01:00");
+
+/**
+ * Check if the shop is open for purchases
+ */
+const isShopOpen = (): boolean => {
+  return new Date() >= SHOP_OPENING_DATE;
+};
+
+/**
+ * Get a message explaining when the shop will open
+ */
+const getShopClosedMessage = (): string => {
+  const now = new Date();
+  const remainingMs = SHOP_OPENING_DATE.getTime() - now.getTime();
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+  return `Sklep otworzy się ${time(SHOP_OPENING_DATE, TimestampStyles.RelativeTime)} (${time(SHOP_OPENING_DATE, TimestampStyles.LongDateTime)})\nCzas serwera: pozostało ${remainingSeconds} sekund`;
+};
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -100,7 +127,7 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
 
 export const tokenShop = new Hashira({ name: "token-shop" })
   .use(base)
-  .group("sklep-tokeny", (group) =>
+  .group("tokeny-sklep", (group) =>
     group
       .setDescription("Komendy sklepu z tokenami")
       .setDMPermission(false)
@@ -149,7 +176,6 @@ export const tokenShop = new Hashira({ name: "token-shop" })
                 return lines.join("\n");
               },
               true,
-              "T - tytuł profilu",
             );
             await paginatedView.render(itx);
           }),
@@ -193,6 +219,11 @@ export const tokenShop = new Hashira({ name: "token-shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            if (!isShopOpen()) {
+              await errorFollowUp(itx, getShopClosedMessage());
+              return;
+            }
+
             await ensureUserExists(prisma, itx.user.id);
 
             const quantity = rawAmount ?? 1;
@@ -232,7 +263,7 @@ export const tokenShop = new Hashira({ name: "token-shop" })
           }),
       ),
   )
-  .group("sklep-tokeny-admin", (group) =>
+  .group("tokeny-sklep-admin", (group) =>
     group
       .setDescription("Zarządzanie sklepem z tokenami")
       .setDMPermission(false)

@@ -159,18 +159,3 @@ model Halloween2025MonsterLoot {
   @@unique([spawnId, userId])
   @@index([userId])
 }
-
-/// Tracks tokens received by users via transfers (receiving side only)
-/// Used to enforce the 50 token transfer limit per user
-model Halloween2025TokenTransfer {
-  id         Int      @id @default(autoincrement())
-  guildId    String
-  receiverId String
-  amount     Int
-  createdAt  DateTime @default(now())
-
-  guild    Guild @relation(fields: [guildId], references: [id])
-  receiver User  @relation(fields: [receiverId], references: [id])
-
-  @@index([guildId, receiverId])
-}

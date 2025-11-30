@@ -10,6 +10,42 @@ const getDefaultWalletName = (guildId: string) => {
   return "Wallet";
 };
 
+type GetReceivedTransfersOptions = {
+  prisma: ExtendedPrismaClient;
+  userId: string;
+  guildId: string;
+} & GetCurrencyConditionOptions;
+
+/**
+ * Get the total amount of currency received by a user via transfers.
+ * Uses the Transaction table - looks for credit entries with transfer type
+ * on the user's wallet for the specified currency.
+ */
+export const getReceivedTransfers = async ({
+  prisma,
+  userId,
+  guildId,
+  ...currencyOptions
+}: GetReceivedTransfersOptions): Promise<number> => {
+  const wallet = await getDefaultWallet({
+    prisma,
+    userId,
+    guildId,
+    ...currencyOptions,
+  });
+
+  const result = await prisma.transaction.aggregate({
+    where: {
+      walletId: wallet.id,
+      entryType: "credit",
+      transactionType: "transfer",
+    },
+    _sum: { amount: true },
+  });
+
+  return result._sum.amount ?? 0;
+};
+
 type CreateDefaultWalletsOptions = {
   prisma: PrismaTransaction;
   currencyId: number;

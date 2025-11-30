@@ -9,6 +9,7 @@ import { PaginatorOrder } from "@hashira/paginate";
 import { italic, PermissionFlagsBits, TimestampStyles, time } from "discord.js";
 import { base } from "../../base";
 import {
+  CurrencyTransferLimitExceededError,
   EconomyError,
   InsufficientBalanceError,
   InvalidAmountError,
@@ -16,7 +17,10 @@ import {
 } from "../../economy/economyError";
 import { getCurrency } from "../../economy/managers/currencyManager";
 import { addBalances } from "../../economy/managers/transferManager";
-import { getDefaultWallet } from "../../economy/managers/walletManager";
+import {
+  getDefaultWallet,
+  getReceivedTransfers,
+} from "../../economy/managers/walletManager";
 import { formatBalance } from "../../economy/util";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
 import { fetchMembers } from "../../util/fetchMembers";
@@ -26,36 +30,6 @@ import { TOKENY_CURRENCY } from "./seedData";
 
 /** Maximum number of tokens a user can receive via transfers */
 const TOKEN_TRANSFER_LIMIT = 50;
-
-/**
- * Get the total amount of tokens received by a user via transfers
- */
-const getReceivedTokens = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-  receiverId: string,
-): Promise<number> => {
-  const result = await prisma.halloween2025TokenTransfer.aggregate({
-    where: { guildId, receiverId },
-    _sum: { amount: true },
-  });
-  return result._sum.amount ?? 0;
-};
-
-export class TokenTransferLimitExceededError extends EconomyError {
-  public readonly currentReceived: number;
-  public readonly limit: number;
-  public readonly requestedAmount: number;
-
-  constructor(currentReceived: number, limit: number, requestedAmount: number) {
-    super(
-      `Token transfer limit exceeded: ${currentReceived}/${limit}, requested: ${requestedAmount}`,
-    );
-    this.currentReceived = currentReceived;
-    this.limit = limit;
-    this.requestedAmount = requestedAmount;
-  }
-}
 
 /**
  * Transfer tokens with transfer limit enforcement (receiver side only)
@@ -96,13 +70,14 @@ const transferTokensWithLimit = async ({
     if (fromWallet.balance < amount) throw new InsufficientBalanceError();
 
     // Check transfer limit for receiver
-    const currentReceived = await getReceivedTokens(
-      nestedTransaction(tx),
+    const currentReceived = await getReceivedTransfers({
+      prisma: nestedTransaction(tx),
+      userId: toUserId,
       guildId,
-      toUserId,
-    );
+      currencySymbol: TOKENY_CURRENCY.symbol,
+    });
     if (currentReceived + amount > TOKEN_TRANSFER_LIMIT) {
-      throw new TokenTransferLimitExceededError(
+      throw new CurrencyTransferLimitExceededError(
         currentReceived,
         TOKEN_TRANSFER_LIMIT,
         amount,
@@ -150,11 +125,6 @@ const transferTokensWithLimit = async ({
         },
       },
     });
-
-    // Record transfer on receiver side
-    await tx.halloween2025TokenTransfer.create({
-      data: { guildId, receiverId: toUserId, amount },
-    });
   });
 };
 
@@ -186,7 +156,12 @@ export const tokens = new Hashira({ name: "tokens" })
               currencySymbol: TOKENY_CURRENCY.symbol,
             });
 
-            const receivedTokens = await getReceivedTokens(prisma, itx.guildId, userId);
+            const receivedTokens = await getReceivedTransfers({
+              prisma,
+              userId,
+              guildId: itx.guildId,
+              currencySymbol: TOKENY_CURRENCY.symbol,
+            });
 
             const self = itx.user.id === userId;
             const balance = formatBalance(wallet.balance, TOKENY_CURRENCY.symbol);
@@ -351,7 +326,7 @@ export const tokens = new Hashira({ name: "tokens" })
                   reason,
                 });
               } catch (error) {
-                if (error instanceof TokenTransferLimitExceededError) {
+                if (error instanceof CurrencyTransferLimitExceededError) {
                   const remaining = error.limit - error.currentReceived;
                   await itx.reply(
                     `Użytkownik ${user} może otrzymać jeszcze maksymalnie ${remaining} tokenów z transferów (${error.currentReceived}/${error.limit}).`,
