@@ -2,6 +2,7 @@ import { Prisma, prisma, redis } from "@hashira/db";
 import {
   seedDefaultPlayerAbilities,
   seedMonstersForGuild,
+  seedTokenyCurrency,
 } from "./src/events/halloween2025/seedData";
 import {
   DEFAULT_ITEMS,
@@ -96,6 +97,7 @@ if (isProduction) {
   await createDefaultItems(GUILD_IDS.StrataCzasu);
   await seedDefaultPlayerAbilities(prisma);
   await seedMonstersForGuild(prisma, GUILD_IDS.StrataCzasu);
+  await seedTokenyCurrency(prisma, GUILD_IDS.StrataCzasu);
   console.log("Seeding completed for production environment");
 } else {
   const testingServers = [GUILD_IDS.Homik, GUILD_IDS.Piwnica];
@@ -106,6 +108,7 @@ if (isProduction) {
     await setDefaultLogChannels(guildId);
     await seedDefaultPlayerAbilities(prisma);
     await seedMonstersForGuild(prisma, guildId);
+    await seedTokenyCurrency(prisma, guildId);
     console.log(`Seeding completed for test guild ${guildId}`);
   }
 }
