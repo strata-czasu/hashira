@@ -64,3 +64,17 @@ export class UserPurchaseLimitExceededError extends EconomyError {
     this.currentQuantity = currentQuantity;
   }
 }
+
+export class InvalidStockError extends EconomyError {
+  public readonly requestedStock: number;
+  public readonly soldCount: number;
+
+  constructor(requestedStock: number, soldCount: number) {
+    super(
+      `Cannot set global stock to ${requestedStock} when ${soldCount} items have already been sold`,
+    );
+
+    this.requestedStock = requestedStock;
+    this.soldCount = soldCount;
+  }
+}

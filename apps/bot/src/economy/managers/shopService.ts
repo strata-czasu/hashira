@@ -10,6 +10,7 @@ import { nestedTransaction } from "@hashira/db/transaction";
 import {
   InsufficientBalanceError,
   InvalidAmountError,
+  InvalidStockError,
   OutOfStockError,
   ShopItemNotFoundError,
   UserPurchaseLimitExceededError,
@@ -99,6 +100,7 @@ export type ShopItemChanges = {
  * Update an existing shop item.
  *
  * @throws {ShopItemNotFoundError} If the shop item doesn't exist
+ * @throws {InvalidStockError} If globalStock is set below the current soldCount
  */
 export const updateShopItem = async ({
   prisma,
@@ -118,6 +120,10 @@ export const updateShopItem = async ({
 
   if (!existing) {
     throw new ShopItemNotFoundError();
+  }
+
+  if (globalStock != null && globalStock > 0 && existing.soldCount > globalStock) {
+    throw new InvalidStockError(globalStock, existing.soldCount);
   }
 
   const updateData: Prisma.ShopItemUpdateInput = { editedAt: new Date() };

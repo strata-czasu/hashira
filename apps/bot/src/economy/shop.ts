@@ -8,6 +8,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import {
   InsufficientBalanceError,
   InvalidAmountError,
+  InvalidStockError,
   OutOfStockError,
   ShopItemNotFoundError,
   UserPurchaseLimitExceededError,
@@ -365,6 +366,11 @@ export const shop = new Hashira({ name: "shop" })
                   await errorFollowUp(
                     itx,
                     "Nie znaleziono przedmiotu w sklepie o podanym ID",
+                  );
+                } else if (error instanceof InvalidStockError) {
+                  await errorFollowUp(
+                    itx,
+                    `Nie można ustawić globalnego limitu na ${error.requestedStock}, gdy sprzedano już ${error.soldCount} sztuk`,
                   );
                 } else {
                   throw error;
