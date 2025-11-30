@@ -7,6 +7,7 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import {
   InsufficientBalanceError,
+  InvalidAmountError,
   OutOfStockError,
   ShopItemNotFoundError,
   UserPurchaseLimitExceededError,
@@ -207,6 +208,8 @@ export const shop = new Hashira({ name: "shop" })
                 );
               } else if (error instanceof InsufficientBalanceError) {
                 await errorFollowUp(itx, "Nie masz wystarczająco środków");
+              } else if (error instanceof InvalidAmountError) {
+                await errorFollowUp(itx, "Nieprawidłowa ilość");
               } else {
                 throw error;
               }
