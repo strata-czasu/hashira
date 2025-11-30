@@ -412,16 +412,14 @@ export const halloween2025 = new Hashira({ name: "halloween2025" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const participants = await prisma.halloween2025MonsterCatchAttempt.findMany(
-              {
-                where: {
-                  spawn: {
-                    guildId: itx.guildId,
-                  },
+            const participants = await prisma.halloween2025MonsterLoot.findMany({
+              where: {
+                spawn: {
+                  guildId: itx.guildId,
                 },
-                distinct: ["userId"],
               },
-            );
+              distinct: ["userId"],
+            });
 
             const guild = itx.guild;
             const roleInGuild = guild.roles.cache.get(role.id);
