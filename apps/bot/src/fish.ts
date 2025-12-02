@@ -8,8 +8,8 @@ import {
   ButtonStyle,
   channelLink,
   PermissionFlagsBits,
-  TimestampStyles,
   time,
+  TimestampStyles,
 } from "discord.js";
 import { randomInt } from "es-toolkit";
 import { base } from "./base";
@@ -44,7 +44,7 @@ const lizardFish =
   "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
 const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>";
 const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840518>";
-const xmasCarp = "<:ka:1445164399189954651><:rp:1445164386254721154>";
+const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
 
 // Sorted by the average value
 const FISH_TABLE = [
