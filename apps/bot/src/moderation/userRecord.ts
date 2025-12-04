@@ -13,6 +13,7 @@ import { base } from "../base";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
+import { truncate } from "../util/truncate";
 import { formatMuteLength } from "./util";
 import { formatVerificationType } from "./verification";
 
@@ -96,7 +97,7 @@ export const userRecord = new Hashira({ name: "user-record" })
             const joinedMutes = mutes
               .map(
                 (m) =>
-                  `${time(m.createdAt, TimestampStyles.ShortDateTime)}+${formatMuteLength(m)} ${italic(m.reason)}`,
+                  `${time(m.createdAt, TimestampStyles.ShortDateTime)}+${formatMuteLength(m)} ${truncate(italic(m.reason), 100)}`,
               )
               .join("\n");
             embed.addFields({
@@ -118,7 +119,7 @@ export const userRecord = new Hashira({ name: "user-record" })
             const joinedWarns = warns
               .map(
                 (w) =>
-                  `${time(w.createdAt, TimestampStyles.ShortDateTime)} ${italic(w.reason)}`,
+                  `${time(w.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(w.reason), 100)}`,
               )
               .join("\n");
             embed.addFields({
@@ -138,7 +139,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           if (channelRestrictions.length > 0) {
             const joinedRestrictions = channelRestrictions
               .map((cr) => {
-                const line = `${time(cr.createdAt, TimestampStyles.ShortDateTime)} ${italic(cr.reason)}`;
+                const line = `${time(cr.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(cr.reason), 100)}`;
                 return cr.deletedAt ? strikethrough(line) : line;
               })
               .join("\n");
@@ -159,7 +160,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           if (ultimatums.length > 0) {
             const joinedUltimatums = ultimatums
               .map((u) => {
-                const line = `${time(u.createdAt, TimestampStyles.ShortDateTime)} ${italic(u.reason)}`;
+                const line = `${time(u.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(u.reason), 200)}`;
                 return u.endedAt ? strikethrough(line) : line;
               })
               .join("\n");
