@@ -13,7 +13,7 @@ export const getUserTextActivity = async ({
   prisma: ExtendedPrismaClient;
   guildId: string;
   userId: string;
-  since: Date;
+  since?: Date;
   to?: Date;
 }) => {
   return prisma.userTextActivity.count({
@@ -21,7 +21,7 @@ export const getUserTextActivity = async ({
       userId,
       guildId,
       timestamp: {
-        gte: since,
+        ...(since ? { gte: since } : {}),
         ...(to ? { lte: to } : {}),
       },
     },
@@ -38,7 +38,7 @@ export const getUsersTextActivity = async ({
   prisma: ExtendedPrismaClient | PrismaTransaction;
   guildId: string;
   userIds: string[];
-  since: Date;
+  since?: Date;
   to?: Date;
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) {
@@ -51,7 +51,10 @@ export const getUsersTextActivity = async ({
     where: {
       userId: { in: userIds },
       guildId,
-      timestamp: { gte: since, ...(to ? { lte: to } : {}) },
+      timestamp: {
+        ...(since ? { gte: since } : {}),
+        ...(to ? { lte: to } : {}),
+      },
     },
     _count: { id: true },
   });
@@ -76,7 +79,7 @@ export const getUserVoiceActivity = async ({
   prisma: ExtendedPrismaClient;
   guildId: string;
   userId: string;
-  since: Date;
+  since?: Date;
   to?: Date;
 }) => {
   const {
@@ -93,7 +96,7 @@ export const getUserVoiceActivity = async ({
         guildId,
         userId,
         joinedAt: {
-          gte: since,
+          ...(since ? { gte: since } : {}),
           ...(to ? { lte: to } : {}),
         },
       },
@@ -116,7 +119,7 @@ export const getUsersVoiceActivity = async ({
   prisma: ExtendedPrismaClient | PrismaTransaction;
   guildId: string;
   userIds: string[];
-  since: Date;
+  since?: Date;
   to?: Date;
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) return new Map();
@@ -124,7 +127,7 @@ export const getUsersVoiceActivity = async ({
   const results = await prisma.$queryRaw<
     Array<{ userId: string; totalSeconds: bigint }>
   >`
-    SELECT 
+    SELECT
       vs."userId",
       COALESCE(SUM(vst."secondsSpent"), 0)::bigint as "totalSeconds"
     FROM "VoiceSession" vs
@@ -134,8 +137,8 @@ export const getUsersVoiceActivity = async ({
       AND vst."isAlone" = false
     WHERE vs."userId" = ANY(${userIds})
       AND vs."guildId" = ${guildId}
-      AND vs."joinedAt" >= ${since}
-      AND (${to}::timestamp IS NULL OR vs."joinedAt" <= ${to})
+      ${since ? `AND vs."joinedAt" >= ${since}` : ""}
+      ${to ? `AND vs."joinedAt" <= ${to}` : ""}
     GROUP BY vs."userId"
   `;
 

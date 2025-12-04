@@ -18,6 +18,14 @@ import { formatVerificationType } from "./verification";
 
 const forceNewline = (text: string) => `${text}\n\u{200e}`;
 
+const formatActivities = (voiceActivitySeconds: number, textActivity: number) => {
+  const parts = [
+    `🎙️ ${secondsToHours(voiceActivitySeconds)}h`,
+    `🗨️ ${textActivity} wiad.`,
+  ];
+  return parts.join(" | ");
+};
+
 export const userRecord = new Hashira({ name: "user-record" })
   .use(base)
   .command("kartoteka", (command) =>
@@ -141,25 +149,37 @@ export const userRecord = new Hashira({ name: "user-record" })
           }
 
           const activitySince = sub(itx.createdAt, { days: 30 });
-          const textActivity = await getUserTextActivity({
+          const textActivity30Days = await getUserTextActivity({
             prisma,
             guildId: itx.guildId,
             userId: user.id,
             since: activitySince,
           });
-          const voiceActivitySeconds = await getUserVoiceActivity({
+          const voiceActivitySeconds30Days = await getUserVoiceActivity({
             prisma,
             guildId: itx.guildId,
             userId: user.id,
             since: activitySince,
           });
+
+          const textActivityAllTime = await getUserTextActivity({
+            prisma,
+            guildId: itx.guildId,
+            userId: user.id,
+          });
+          const voiceActivitySecondsAllTime = await getUserVoiceActivity({
+            prisma,
+            guildId: itx.guildId,
+            userId: user.id,
+          });
+
           const activityLines = [
-            `🎙️ ${secondsToHours(voiceActivitySeconds)}h`,
-            `🗨️ ${textActivity} wiad.`,
+            `${formatActivities(voiceActivitySeconds30Days, textActivity30Days)} (30 dni)`,
+            `${formatActivities(voiceActivitySecondsAllTime, textActivityAllTime)} (od początku)`,
           ];
           embed.addFields({
-            name: "Aktywność z 30 dni",
-            value: forceNewline(activityLines.join(" | ")),
+            name: "Aktywność",
+            value: forceNewline(activityLines.join("\n")),
           });
         }
 
