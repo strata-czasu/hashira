@@ -148,6 +148,27 @@ export const userRecord = new Hashira({ name: "user-record" })
             });
           }
 
+          const ultimatums = await prisma.ultimatum.findMany({
+            where: {
+              guildId: itx.guild.id,
+              userId: member.id,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 3,
+          });
+          if (ultimatums.length > 0) {
+            const joinedUltimatums = ultimatums
+              .map((u) => {
+                const line = `${time(u.createdAt, TimestampStyles.ShortDateTime)} ${italic(u.reason)}`;
+                return u.endedAt ? strikethrough(line) : line;
+              })
+              .join("\n");
+            embed.addFields({
+              name: "💀 Ostatnie ultimatum",
+              value: forceNewline(joinedUltimatums),
+            });
+          }
+
           const activitySince = sub(itx.createdAt, { days: 30 });
           const textActivity30Days = await getUserTextActivity({
             prisma,
