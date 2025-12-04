@@ -159,7 +159,7 @@ export const access = new Hashira({ name: "access" })
                 composeChannelRestrictionMessage(
                   user,
                   itx.user,
-                  channel.id,
+                  channel.name,
                   reason,
                   endsAt,
                 ),

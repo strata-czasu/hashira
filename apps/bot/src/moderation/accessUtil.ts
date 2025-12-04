@@ -1,4 +1,11 @@
-import { channelMention, italic, TimestampStyles, time, type User } from "discord.js";
+import {
+  bold,
+  channelMention,
+  italic,
+  TimestampStyles,
+  time,
+  type User,
+} from "discord.js";
 
 const CHANNEL_RESTRICTION_TEMPLATE = `
 ## Hejka {{user}}!
@@ -28,7 +35,7 @@ Biszkopt`;
 export const composeChannelRestrictionMessage = (
   user: User,
   moderator: User,
-  channelId: string,
+  channelName: string,
   reason: string,
   endsAt: Date | null,
 ) => {
@@ -38,7 +45,7 @@ export const composeChannelRestrictionMessage = (
 
   return CHANNEL_RESTRICTION_TEMPLATE.replace("{{user}}", user.toString())
     .replace("{{moderator}}", `${moderator} (${moderator.tag})`)
-    .replace("{{channel}}", channelMention(channelId))
+    .replace("{{channel}}", bold(channelName))
     .replace("{{reason}}", italic(reason))
     .replace("{{duration_info}}", durationInfo);
 };
