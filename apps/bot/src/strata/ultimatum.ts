@@ -1,7 +1,22 @@
-import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient, Ultimatum } from "@hashira/db";
+import { Hashira, PaginatedView } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type Prisma,
+  type Ultimatum,
+} from "@hashira/db";
 import { addSeconds } from "date-fns";
-import { type Guild, italic, PermissionFlagsBits, type User } from "discord.js";
+import {
+  type Guild,
+  HeadingLevel,
+  heading,
+  italic,
+  PermissionFlagsBits,
+  TimestampStyles,
+  time,
+  type User,
+  userMention,
+} from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -131,23 +146,33 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const ultimatums = await prisma.ultimatum.findMany({
-              where: { guildId: itx.guild.id, endedAt: null },
-            });
+            const where: Prisma.UltimatumWhereInput = {
+              guildId: itx.guildId,
+              endedAt: null,
+            };
 
-            if (!ultimatums.length) {
-              await itx.editReply("Brak aktywnych ultimatum");
-              return;
-            }
+            const paginator = new DatabasePaginator(
+              (props, createdAt) =>
+                prisma.ultimatum.findMany({ ...props, where, orderBy: { createdAt } }),
+              () => prisma.ultimatum.count({ where }),
+              { pageSize: 5 },
+            );
 
-            const content = ultimatums
-              .map(
-                (ultimatum) =>
-                  `**${ultimatum.id}** - <@${ultimatum.userId}> - ${ultimatum.reason}`,
-              )
-              .join("\n");
+            const formatUltimatum = ({ id, userId, expiresAt, reason }: Ultimatum) => {
+              const lines = [
+                heading(`${userMention(userId)} [${id}]`, HeadingLevel.Three),
+                `Termin: ${time(expiresAt, TimestampStyles.ShortDateTime)}`,
+                `Powód: ${reason}`,
+              ];
+              return lines.join("\n");
+            };
 
-            await itx.editReply(content);
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Aktywne ultimatum",
+              formatUltimatum,
+            );
+            await paginatedView.render(itx);
           }),
       )
       .addCommand("zakończ", (command) =>
