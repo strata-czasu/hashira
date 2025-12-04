@@ -8,8 +8,8 @@ import {
   ButtonStyle,
   channelLink,
   PermissionFlagsBits,
-  time,
   TimestampStyles,
+  time,
 } from "discord.js";
 import { randomInt } from "es-toolkit";
 import { base } from "./base";
