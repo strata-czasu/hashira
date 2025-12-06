@@ -299,5 +299,60 @@ export const inventory = new Hashira({ name: "inventory" })
               `Usunięto ${bold(item.name)} z ekwipunku ${bold(user.tag)}.`,
             );
           }),
+      )
+      .addCommand("posiadacze", (command) =>
+        command
+          .setDescription("Znajdź wszystkich użytkowników posiadających dany przedmiot")
+          .addInteger("przedmiot", (id) =>
+            id.setDescription("Przedmiot").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteItem({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { przedmiot: itemId }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const item = await getItem(prisma, itemId, itx.guildId);
+            if (!item) {
+              return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+            }
+
+            const where: Prisma.InventoryItemWhereInput = {
+              itemId,
+              item: { guildId: itx.guildId },
+              deletedAt: null,
+            };
+
+            const paginator = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.inventoryItem.groupBy({
+                  by: "userId",
+                  where,
+                  _count: true,
+                  orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                  ...props,
+                }),
+              async () => {
+                const count = await prisma.inventoryItem.groupBy({
+                  by: "userId",
+                  where,
+                });
+                return count.length;
+              },
+            );
+
+            const paginatedView = new PaginatedView(
+              paginator,
+              `Posiadacze ${item.name} ${getTypeNameForList(item.type)}`,
+              ({ _count, userId }, idx) => {
+                if (_count === 1) return `${idx}. <@${userId}>`;
+                return `${idx}. <@${userId}> (x${bold(_count.toString())})`;
+              },
+              true,
+            );
+            await paginatedView.render(itx);
+          }),
       ),
   );
