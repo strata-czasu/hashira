@@ -4,8 +4,7 @@
   "compilerOptions": {
     "skipLibCheck": true,
     "composite": true,
-    "noEmit": true,
-    "jsx": "react"
+    "noEmit": true
   },
   "exclude": ["node_modules"]
 }
