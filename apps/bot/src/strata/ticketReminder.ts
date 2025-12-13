@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import type { GuildChannel } from "discord.js";
+import { channelMention, type GuildChannel } from "discord.js";
 import { TICKET_REMINDER_SETTINGS } from "../specializedConstants";
 import { getGuildSetting } from "../util/getGuildSetting";
 
@@ -12,11 +12,10 @@ export const ticketReminder = new Hashira({ name: "ticketReminder" }).handle(
     if (channel.parent?.id !== settings.CATEGORY) return;
 
     const pingChannel = await channel.client.channels.fetch(settings.TICKET_PING);
-
     if (!pingChannel?.isSendable()) return;
 
     await pingChannel.send({
-      content: `Pojawił się nowy ticket: <#${channel.id}>\n\n@here`,
+      content: `Pojawił się nowy ticket: ${channelMention(channel.id)} (${channel.name})\n\n@here`,
       allowedMentions: { parse: ["everyone"] },
     });
   },
