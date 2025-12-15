@@ -1,9 +1,9 @@
 import { TZDate } from "@date-fns/tz";
 import { Hashira } from "@hashira/core";
 import { startOfDay } from "date-fns";
-import { base } from "./base";
-import { STRATA_CZASU, TZ } from "./specializedConstants";
-import { Cooldown } from "./util/cooldown";
+import { base } from "../base";
+import { STRATA_CZASU, TZ } from "../specializedConstants";
+import { Cooldown } from "../util/cooldown";
 
 const channelId = "683025889658929231";
 const guildId = STRATA_CZASU.GUILD_ID;
