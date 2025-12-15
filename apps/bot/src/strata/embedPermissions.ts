@@ -10,13 +10,18 @@ const MEDIA_URL_PATTERNS = [
   new URLPattern({ hostname: "*.imgur.com" }),
 ];
 
+const REMINDER_TTL_SECONDS = 60 * 60 * 24; // 1 day
+
+const getReminderKey = (userId: string, guildId: string) =>
+  `embed-permissions:reminder:${guildId}:${userId}`;
+
 export const embedPermissions = new Hashira({ name: "embed-permissions" })
   .use(base)
-  .handle("messageCreate", async (_, message) => {
+  .handle("messageCreate", async (ctx, message) => {
     if (message.author.bot || !message.inGuild()) return;
     if (message.embeds.length > 0 || message.attachments.size > 0) return;
 
-    // Don't even check for users with embed permissions
+    // Don't check users with embed permissions
     const permissions = message.channel.permissionsFor(message.author);
     if (!permissions) return;
     if (
@@ -27,9 +32,14 @@ export const embedPermissions = new Hashira({ name: "embed-permissions" })
 
     if (MEDIA_URL_PATTERNS.some((pattern) => pattern.test(message.content))) return;
 
-    // TODO: Check if user got a reply at any point and don't reply
+    // Don't send the reminder if there was one in the last day
+    const reminderKey = getReminderKey(message.author.id, message.guildId);
+    const hasReceivedReminder = await ctx.redis.get(reminderKey);
+    if (hasReceivedReminder) return;
 
     await message.reply({ content: REPLY_IMAGE_URL });
 
-    // TODO: Save to the db that we replied to this user
+    await ctx.redis.set(reminderKey, "1", {
+      expiration: { type: "EX", value: REMINDER_TTL_SECONDS },
+    });
   });
