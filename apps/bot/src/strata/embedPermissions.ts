@@ -5,9 +5,9 @@ import { base } from "../base";
 const REPLY_IMAGE_URL = "https://i.imgur.com/haYuB2P.gif";
 const MEDIA_URL_PATTERNS = [
   new URLPattern({ pathname: "/*.:ext(jpg|jpeg|png|gif|webp|mp4|mov)" }),
-  new URLPattern({ hostname: "*.tenor.com" }),
-  new URLPattern({ hostname: "*.giphy.com" }),
-  new URLPattern({ hostname: "*.imgur.com" }),
+  new URLPattern({ hostname: "*tenor.com" }),
+  new URLPattern({ hostname: "*giphy.com" }),
+  new URLPattern({ hostname: "*imgur.com" }),
 ];
 
 const REMINDER_TTL_SECONDS = 60 * 60 * 24; // 1 day
