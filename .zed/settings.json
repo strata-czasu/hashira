@@ -85,6 +85,10 @@
         "..."
       ],
       "formatter": { "language_server": { "name": "prisma-language-server" } }
+    },
+
+    "Dockerfile": {
+      "tab_size": 4
     }
   }
 }
