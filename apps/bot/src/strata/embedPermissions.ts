@@ -30,7 +30,7 @@ export const embedPermissions = new Hashira({ name: "embed-permissions" })
     )
       return;
 
-    if (MEDIA_URL_PATTERNS.some((pattern) => pattern.test(message.content))) return;
+    if (!MEDIA_URL_PATTERNS.some((pattern) => pattern.test(message.content))) return;
 
     // Don't send the reminder if there was one in the last day
     const reminderKey = getReminderKey(message.author.id, message.guildId);
