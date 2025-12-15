@@ -156,17 +156,17 @@ export const items = new Hashira({ name: "items" })
             const imageData = await fetch(image.url);
 
             await ensureUserExists(prisma, itx.user);
-            const item = await prisma.badge.create({
+            const item = await prisma.item.create({
               data: {
-                item: {
+                name,
+                guildId: itx.guildId,
+                createdBy: itx.user.id,
+                type: "badge",
+                badge: {
                   create: {
-                    name,
-                    guildId: itx.guildId,
-                    createdBy: itx.user.id,
-                    type: "badge",
+                    image: new Uint8Array(await imageData.arrayBuffer()),
                   },
                 },
-                image: new Uint8Array(await imageData.arrayBuffer()),
               },
             });
 
@@ -236,14 +236,13 @@ export const items = new Hashira({ name: "items" })
                 return null;
               }
 
-              await tx.item.update({
+              return tx.item.update({
                 where: { id },
                 data: {
                   name: name ?? item.name,
                   description: description ?? item.description,
                 },
               });
-              return item;
             });
             if (!item) return;
 
