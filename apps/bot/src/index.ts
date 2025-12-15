@@ -28,7 +28,6 @@ import { roles } from "./roles";
 import { settings } from "./settings";
 import { stickyMessage } from "./stickyMessage/stickyMessage";
 import { strataCzasu } from "./strata";
-import { ticketReminder } from "./strata/ticketReminder";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
@@ -72,7 +71,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(inviteManagement)
   .use(dmVoting)
   .use(ping)
-  .use(ticketReminder)
   .use(massDM)
   .use(fish)
   .use(giveaway)
