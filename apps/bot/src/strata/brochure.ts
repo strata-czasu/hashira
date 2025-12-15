@@ -1,8 +1,8 @@
 import { Hashira } from "@hashira/core";
 import { type GuildMember, type PartialGuildMember, userMention } from "discord.js";
-import { BROCHURE_ROLES } from "./specializedConstants";
-import { getGuildSetting } from "./util/getGuildSetting";
-import { sendDirectMessage } from "./util/sendDirectMessage";
+import { BROCHURE_ROLES } from "../specializedConstants";
+import { getGuildSetting } from "../util/getGuildSetting";
+import { sendDirectMessage } from "../util/sendDirectMessage";
 
 const addedRole = (
   oldMember: GuildMember | PartialGuildMember,

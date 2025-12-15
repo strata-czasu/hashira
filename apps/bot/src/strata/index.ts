@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import { brochure } from "./brochure";
 import { colorRoles } from "./colorRoles";
 import { misc } from "./misc";
 import { pearto } from "./pearto";
@@ -7,6 +8,7 @@ import { ticketReminder } from "./ticketReminder";
 import { ultimatum } from "./ultimatum";
 
 export const strataCzasu = new Hashira({ name: "strata-czasu" })
+  .use(brochure)
   .use(colorRoles)
   .use(misc)
   .use(pearto)

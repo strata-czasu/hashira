@@ -6,7 +6,6 @@ import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
-import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
@@ -64,7 +63,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(tasks)
   .use(ai)
   .use(stickyMessage)
-  .use(brochure)
   .use(userActivity)
   .use(userComplaint)
   .use(userTransfer)
