@@ -3,27 +3,12 @@ import { PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 
 const REPLY_IMAGE_URL = "https://i.imgur.com/haYuB2P.gif";
-
-const IMAGE_URL = /https?:\/\/\S+\.(gif|png|jpe?g|webp|bmp|svg)(\?[^\s]*)?/gi;
-const DISCORD_CDN_URL = /https?:\/\/cdn\.discordapp\.com\/attachments\/[\w/.-]+/gi;
-const TENOR_URL = /https?:\/\/(www\.)?tenor\.com\/view\//gi;
-const GIPHY_URL = /https?:\/\/(www\.)?giphy\.com\/(gifs|media)\//gi;
-const IMGUR_URL = /https?:\/\/(www\.)?(i\.)?imgur\.com\/(a\/|gallery\/)?[\w]+/gi;
-
-function hasEmbeddableContent(content: string): boolean {
-  // Check for image file URLs specifically
-  if (IMAGE_URL.test(content)) return true;
-
-  // Should catch other non-image URLs
-  if (DISCORD_CDN_URL.test(content)) return true;
-
-  // Common image sharing sites
-  if (TENOR_URL.test(content)) return true;
-  if (GIPHY_URL.test(content)) return true;
-  if (IMGUR_URL.test(content)) return true;
-
-  return false;
-}
+const MEDIA_URL_PATTERNS = [
+  new URLPattern({ pathname: "/*.:ext(jpg|jpeg|png|gif|webp|mp4|mov)" }),
+  new URLPattern({ hostname: "*.tenor.com" }),
+  new URLPattern({ hostname: "*.giphy.com" }),
+  new URLPattern({ hostname: "*.imgur.com" }),
+];
 
 export const embedPermissions = new Hashira({ name: "embed-permissions" })
   .use(base)
@@ -40,7 +25,7 @@ export const embedPermissions = new Hashira({ name: "embed-permissions" })
     )
       return;
 
-    if (!hasEmbeddableContent(message.content)) return;
+    if (MEDIA_URL_PATTERNS.some((pattern) => pattern.test(message.content))) return;
 
     // TODO: Check if user got a reply at any point and don't reply
 
