@@ -250,6 +250,54 @@ export const items = new Hashira({ name: "items" })
             // TODO)) Logs of item edits
           }),
       )
+      .addCommand("edytuj-odznakę", (command) =>
+        command
+          .setDescription("Edytuj obrazek odznaki profilu")
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addAttachment("image", (image) =>
+            image.setDescription("Nowy obrazek odznaki (PNG, 128x128px)"),
+          )
+          .handle(async ({ prisma }, { id, image }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            if (image.contentType !== "image/png") {
+              await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
+              return;
+            }
+            if (image.width !== 128 || image.height !== 128) {
+              await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
+              return;
+            }
+
+            const imageData = await fetch(image.url);
+
+            const item = await prisma.$transaction(async (tx) => {
+              const item = await getItem(tx, id, itx.guildId);
+              if (!item) {
+                await errorFollowUp(itx, "Nie znaleziono odznaki o podanym ID");
+                return null;
+              }
+
+              return tx.item.update({
+                where: { id },
+                data: {
+                  badge: {
+                    update: {
+                      image: new Uint8Array(await imageData.arrayBuffer()),
+                    },
+                  },
+                },
+              });
+            });
+            if (!item) return;
+
+            await itx.editReply(
+              `Edytowano obrazek odznaki ${inlineCode(id.toString())}`,
+            );
+            // TODO)) Logs of item edits
+          }),
+      )
       .addCommand("usun", (command) =>
         command
           .setDescription("Usuń przedmiot")
