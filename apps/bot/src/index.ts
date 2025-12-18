@@ -6,7 +6,6 @@ import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
 import { base } from "./base";
-import { brochure } from "./brochure";
 import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
@@ -21,7 +20,6 @@ import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
 import { moderation } from "./moderation";
 import { moderatorLeave } from "./moderatorLeave";
-import { pearto } from "./pearto";
 import { ping } from "./ping";
 import { profile } from "./profile";
 import { ranking } from "./ranking";
@@ -29,7 +27,6 @@ import { roles } from "./roles";
 import { settings } from "./settings";
 import { stickyMessage } from "./stickyMessage/stickyMessage";
 import { strataCzasu } from "./strata";
-import { ticketReminder } from "./strata/ticketReminder";
 import { tasks } from "./tasks";
 import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
@@ -66,18 +63,15 @@ export const bot = new Hashira({ name: "bot" })
   .use(tasks)
   .use(ai)
   .use(stickyMessage)
-  .use(brochure)
   .use(userActivity)
   .use(userComplaint)
   .use(userTransfer)
   .use(inviteManagement)
   .use(dmVoting)
   .use(ping)
-  .use(ticketReminder)
   .use(massDM)
   .use(fish)
   .use(giveaway)
-  .use(pearto)
   .use(ranking)
   .use(moderatorLeave)
   .use(halloween2025)

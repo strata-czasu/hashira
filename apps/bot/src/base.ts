@@ -3,11 +3,11 @@ import env from "@hashira/env";
 import * as Sentry from "@sentry/bun";
 import { database } from "./db";
 import { emojiCountingBase } from "./emojiCounting/emojiCountingBase";
-import { LockManager } from "./lock";
 import { loggingBase } from "./logging/base";
 import { messageQueueBase } from "./messageQueueBase";
 import { redis } from "./redis";
 import { userActivityBase } from "./userActivity/userActivityBase";
+import { LockManager } from "./util/lock";
 
 export const base = new Hashira({ name: "base" })
   .use(database)
@@ -16,6 +16,7 @@ export const base = new Hashira({ name: "base" })
   .use(messageQueueBase)
   .use(userActivityBase)
   .use(emojiCountingBase)
+  .const("lock", new LockManager())
   .addExceptionHandler("default", (e, itx) => {
     if (env.SENTRY_DSN) {
       Sentry.withScope((scope) => {
@@ -57,5 +58,4 @@ export const base = new Hashira({ name: "base" })
     }
 
     console.error(e);
-  })
-  .const("lock", new LockManager());
+  });

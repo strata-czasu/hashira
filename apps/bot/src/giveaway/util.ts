@@ -75,7 +75,14 @@ export function parseRewards(input: string): GiveawayReward[] {
     });
 }
 
-const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const allowedMimeTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+];
+const bannedMimeTypesFromFormatting = ["image/avif"];
 
 export function getExtension(mimeType: string | null) {
   if (!mimeType) return "webp";
@@ -96,7 +103,9 @@ export async function formatBanner(
     !banner.contentType ||
     !allowedMimeTypes.includes(banner.contentType) ||
     !banner.width ||
-    !banner.height
+    !banner.height ||
+    (ratio !== GiveawayBannerRatio.Auto &&
+      bannedMimeTypesFromFormatting.includes(banner.contentType))
   )
     return [null, ""];
 

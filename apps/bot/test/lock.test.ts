@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { LockManager } from "../src/lock";
+import { LockManager } from "../src/util/lock";
 
 describe("lockManager", () => {
   test("acquires lock", () => {

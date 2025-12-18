@@ -123,7 +123,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 if (!buffer) {
                   return await errorFollowUp(
                     itx,
-                    `Podano nieprawidłowy format baneru. (${banner.contentType})`,
+                    `Podano baner z nieprawidłowym rozszerzeniem lub ten typ nie obsługuje formatowania. (${banner.contentType})`,
                   );
                 }
 
