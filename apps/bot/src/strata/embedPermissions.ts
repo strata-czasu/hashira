@@ -2,13 +2,14 @@ import { Hashira } from "@hashira/core";
 import { PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 
-const REPLY_IMAGE_URL = "https://i.imgur.com/haYuB2P.gif";
 const MEDIA_URL_PATTERNS = [
   new URLPattern({ pathname: "/*.:ext(jpg|jpeg|png|gif|webp|mp4|mov)" }),
   new URLPattern({ hostname: "*tenor.com" }),
   new URLPattern({ hostname: "*giphy.com" }),
   new URLPattern({ hostname: "*imgur.com" }),
 ];
+const REPLY_CONTENT =
+  "-# <#1213901611836117052> w razie braku permisji mimo zrobienia jednego z zadań[.](https://i.imgur.com/Rsn2uKa.gif) **[Link do poradnika](<https://www.youtube.com/watch?v=vmUW3pnXv1E>)** jak ustawić .gg/strataczasu jako Activity.";
 
 const REMINDER_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
@@ -37,7 +38,7 @@ export const embedPermissions = new Hashira({ name: "embed-permissions" })
     const hasReceivedReminder = await ctx.redis.get(reminderKey);
     if (hasReceivedReminder) return;
 
-    await message.reply({ content: REPLY_IMAGE_URL });
+    await message.reply({ content: REPLY_CONTENT });
 
     await ctx.redis.set(reminderKey, "1", {
       expiration: { type: "EX", value: REMINDER_TTL_SECONDS },
