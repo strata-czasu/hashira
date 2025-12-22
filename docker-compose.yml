@@ -1,6 +1,38 @@
 services:
   app:
     build: .
-    restart: unless-stopped
     env_file:
       - .env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - hashira-network
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hashira
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: hashira
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hashira-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - hashira-network
+
+networks:
+  hashira-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
