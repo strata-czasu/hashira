@@ -14,7 +14,7 @@ export class StickyMessageCache {
     if (hit !== undefined) return hit;
 
     const stickyMessage = await this.#prisma.stickyMessage.findFirst({
-      where: { channelId },
+      where: { channelId, enabled: true },
     });
 
     this.#cache.set(channelId, stickyMessage);
