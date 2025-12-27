@@ -14,7 +14,12 @@ import {
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { getInventoryItem, getItem, getTypeNameForList } from "./util";
+import {
+  getInventoryItem,
+  getInventoryItems,
+  getItem,
+  getTypeNameForList,
+} from "./util";
 
 const autocompleteItem = async ({
   prisma,
@@ -33,6 +38,7 @@ const autocompleteItem = async ({
       },
     },
   });
+
   return itx.respond(
     results.map(({ id, name, type }) => ({
       value: id,
@@ -249,56 +255,107 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("zabierz", (command) =>
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addInteger("przedmiot", (id) =>
             id.setDescription("Przedmiot").setAutocomplete(true),
           )
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addInteger("ilość", (amount) =>
+            amount
+              .setDescription("Ilość przedmiotów do zabrania")
+              .setRequired(false)
+              .setMinValue(1),
+          )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
-          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, economyLog },
+              { przedmiot: itemId, ilość: amount, user },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(prisma, itemId, itx.guildId);
-              if (!item) {
-                return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-              }
+              const qty = amount ?? 1;
 
-              const inventoryItem = await getInventoryItem(
-                tx,
-                itemId,
-                itx.guildId,
-                user.id,
-              );
-              if (!inventoryItem) {
-                await errorFollowUp(
-                  itx,
-                  `${bold(user.tag)} nie posiada ${bold(item.name)}`,
-                );
-                return null;
-              }
+              const result = await prisma.$transaction(async (tx) => {
+                const item = await getItem(tx, itemId, itx.guildId);
+                if (!item) {
+                  return { ok: false, reason: "not_found" } as const;
+                }
 
-              await tx.inventoryItem.update({
-                where: { id: inventoryItem.id, deletedAt: null },
-                data: { deletedAt: itx.createdAt },
+                const owned = await getInventoryItems(tx, itx.guildId, user.id, [
+                  itemId,
+                ]);
+
+                if (owned.length === 0) {
+                  return { ok: false, reason: "no_items", item } as const;
+                }
+                if (owned.length < qty) {
+                  return {
+                    ok: false,
+                    reason: "insufficient",
+                    item,
+                    ownedCount: owned.length,
+                  } as const;
+                }
+
+                const sorted = owned.sort((a, b) => {
+                  const timeCompare = a.createdAt.getTime() - b.createdAt.getTime();
+                  if (timeCompare !== 0) return timeCompare;
+                  return a.id - b.id;
+                });
+                const toDelete = sorted.slice(0, qty).map((i) => i.id);
+
+                const { count } = await tx.inventoryItem.updateMany({
+                  where: { id: { in: toDelete }, deletedAt: null },
+                  data: { deletedAt: itx.createdAt },
+                });
+
+                if (count !== qty) {
+                  throw new Error("Concurrency conflict: some items were modified");
+                }
+
+                return { ok: true, item, deletedCount: count } as const;
               });
 
-              return item;
-            });
-            if (!item) return;
+              if (!result.ok) {
+                switch (result.reason) {
+                  case "not_found":
+                    return await errorFollowUp(
+                      itx,
+                      "Przedmiot o podanym ID nie istnieje",
+                    );
+                  case "no_items":
+                    return await errorFollowUp(
+                      itx,
+                      `${bold(user.tag)} nie posiada ${bold(result.item.name)}`,
+                    );
+                  case "insufficient":
+                    return await errorFollowUp(
+                      itx,
+                      `${bold(user.tag)} posiada tylko ${bold(result.ownedCount.toString())} sztuk ${bold(result.item.name)}, a próbujesz zabrać ${bold(qty.toString())}`,
+                    );
+                }
+              }
 
-            economyLog.push("itemRemoveFromInventory", itx.guild, {
-              moderator: itx.user,
-              user,
-              item,
-            });
-            await itx.editReply(
-              `Usunięto ${bold(item.name)} z ekwipunku ${bold(user.tag)}.`,
-            );
-          }),
+              economyLog.push("itemRemoveFromInventory", itx.guild, {
+                moderator: itx.user,
+                user,
+                item: result.item,
+              });
+
+              const countText =
+                result.deletedCount === 1
+                  ? ""
+                  : ` (x${bold(result.deletedCount.toString())})`;
+              await itx.editReply(
+                `Usunięto ${bold(result.item.name)}${countText} z ekwipunku ${bold(user.tag)}.`,
+              );
+            },
+          ),
       )
       .addCommand("posiadacze", (command) =>
         command

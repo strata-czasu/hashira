@@ -45,6 +45,24 @@ export const getInventoryItem = async (
     },
   });
 
+export const getInventoryItems = async (
+  prisma: PrismaTransaction,
+  guildId: string,
+  userId: string,
+  itemIds?: number[],
+) =>
+  prisma.inventoryItem.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      item: { guildId },
+      ...(itemIds ? { itemId: { in: itemIds } } : {}),
+    },
+    include: {
+      item: true,
+    },
+  });
+
 export const formatItem = ({ name, id }: Item) =>
   `${bold(name)} [${inlineCode(id.toString())}]`;
 
