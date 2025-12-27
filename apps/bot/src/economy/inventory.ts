@@ -246,7 +246,9 @@ export const inventory = new Hashira({ name: "inventory" })
               moderator: itx.user,
               user,
               item,
+              quantity: 1,
             });
+
             await itx.editReply(
               `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${bold(user.tag)}`,
             );
@@ -345,6 +347,7 @@ export const inventory = new Hashira({ name: "inventory" })
                 moderator: itx.user,
                 user,
                 item: result.item,
+                quantity: qty,
               });
 
               const countText =
