@@ -50,12 +50,13 @@ const autocompleteItem = async ({
 const autocompleteUserInventoryItem = async ({
   prisma,
   itx,
+  userId,
 }: {
   prisma: ExtractContext<typeof base>["prisma"];
   itx: AutocompleteInteraction<"cached">;
+  userId: string | undefined;
 }) => {
   const focusedValue = itx.options.getFocused();
-  const userId = itx.options.get("user")?.value as string | undefined;
 
   const results = await prisma.item.findMany({
     where: {
@@ -152,7 +153,13 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Przekaż przedmiot innemu użytkownikowi")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
+          .addInteger("id", (id) =>
+            id.setDescription("ID przedmiotu").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            return autocompleteUserInventoryItem({ prisma, itx, userId: itx.user.id });
+          })
           .handle(
             async (
               { prisma, lock, economyLog },
@@ -310,7 +317,9 @@ export const inventory = new Hashira({ name: "inventory" })
           )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            return autocompleteUserInventoryItem({ prisma, itx });
+            const userId = itx.options.get("user")?.value as string | undefined;
+
+            return autocompleteUserInventoryItem({ prisma, itx, userId });
           })
           .handle(
             async (
