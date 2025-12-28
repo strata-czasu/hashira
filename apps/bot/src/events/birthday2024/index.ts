@@ -378,9 +378,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       },
     );
   })
-  .handle("interactionCreate", async ({ prisma }, itx) => {
-    if (!itx.isButton()) return;
-
+  .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
     const customId = itx.customId.split("_")[0];
     if (!customId) return;
 

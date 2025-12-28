@@ -603,8 +603,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           }),
       ),
   )
-  .handle("interactionCreate", async ({ prisma }, itx) => {
-    if (!itx.isButton()) return;
+  .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
     // giveaway-option:optionId
     if (!itx.customId.startsWith("giveaway-option:")) return;
     if (!itx.inCachedGuild()) return;
