@@ -603,163 +603,160 @@ export const giveaway = new Hashira({ name: "giveaway" })
           }),
       ),
   )
-  .handle("clientReady", async ({ prisma }, client) => {
-    client.on("interactionCreate", async (itx) => {
-      if (!itx.isButton()) return;
-      // giveaway-option:optionId
-      if (!itx.customId.startsWith("giveaway-option:")) return;
-      if (!itx.inCachedGuild()) return;
+  .handle("interactionCreate", async ({ prisma }, itx) => {
+    if (!itx.isButton()) return;
+    // giveaway-option:optionId
+    if (!itx.customId.startsWith("giveaway-option:")) return;
+    if (!itx.inCachedGuild()) return;
 
-      // To ensure user exists before trying to join to giveaway
-      await ensureUserExists(prisma, itx.user);
+    // To ensure user exists before trying to join to giveaway
+    await ensureUserExists(prisma, itx.user);
 
-      await itx.deferReply({ flags: "Ephemeral" });
+    await itx.deferReply({ flags: "Ephemeral" });
 
-      const giveaway = await prisma.giveaway.findFirst({
-        where: {
-          guildId: itx.message.guildId,
-          channelId: itx.message.channelId,
-          messageId: itx.message.id,
-        },
-      });
-
-      if (!giveaway) {
-        await itx.followUp({
-          content: "Ten giveaway nie istnieje!",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      const channel = await client.channels.fetch(giveaway.channelId);
-      if (!channel || !channel.isSendable()) {
-        throw new Error(`Channel ${channel} is not sendable or not found.`);
-      }
-
-      const message = await channel.messages.fetch(giveaway.messageId);
-      if (!message) {
-        throw new Error(`Message ${message} not found.`);
-      }
-
-      if (giveaway.endAt <= itx.createdAt) {
-        await itx.followUp({
-          content: "Ten giveaway już się zakończył!",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (itx.customId.endsWith("list")) {
-        const participants: GiveawayParticipant[] =
-          await prisma.giveawayParticipant.findMany({
-            where: { giveawayId: giveaway.id, isRemoved: false },
-          });
-
-        const fmtParticipants =
-          participants.length > 0
-            ? participants.map((user) => `<@${user.userId}>`).join(", ")
-            : "Brak uczestników";
-
-        await itx.followUp({
-          content: `Uczestnicy: ${fmtParticipants}`,
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (!itx.customId.endsWith("join")) {
-        await itx.followUp({
-          content: `unexpected road: ${giveaway.messageId}`,
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      let returnMsg = "Już jesteś uczestnikiem do tego giveaway!";
-
-      const existing = await prisma.giveawayParticipant.findFirst({
-        where: { userId: itx.user.id, giveawayId: giveaway.id },
-      });
-
-      if (existing?.forcefullyRemoved) {
-        await itx.followUp({
-          content: "Usunięto cię z giveawayu i nie możesz już do niego dołączyć.",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (!existing || existing.isRemoved) {
-        // check if user has required roles and doesn't have banned roles
-        for (const roleId of giveaway.roleWhitelist) {
-          if (!itx.member.roles.cache.has(roleId)) {
-            await itx.followUp({
-              content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveawayu.`,
-              flags: "Ephemeral",
-            });
-            return;
-          }
-        }
-
-        for (const roleId of giveaway.roleBlacklist) {
-          if (itx.member.roles.cache.has(roleId)) {
-            await itx.followUp({
-              content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveawayu.`,
-              flags: "Ephemeral",
-            });
-            return;
-          }
-        }
-
-        await prisma.giveawayParticipant.upsert({
-          where: {
-            giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
-          },
-          create: { userId: itx.user.id, giveawayId: giveaway.id },
-          update: { isRemoved: false },
-        });
-
-        returnMsg = `${itx.user} dołączyłxś do giveaway!`;
-        await updateGiveaway(itx.message, giveaway, prisma);
-      }
-
-      const joinResponse = await itx.followUp({
-        content: returnMsg,
-        components: [createLeaveButtonRow()],
-      });
-
-      if (!joinResponse) {
-        throw new Error("Failed to receive response from interaction reply");
-      }
-
-      const leaveButtonClick = await waitForButtonClick(
-        joinResponse,
-        "leave_giveaway",
-        { minutes: 1 },
-        (interaction) => interaction.user.id === itx.user.id,
-      );
-
-      if (!leaveButtonClick.interaction) return;
-
-      if (giveaway.endAt <= itx.createdAt) {
-        await itx.followUp({
-          content: "Ten giveaway już się zakończył!",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      // replying to original giveaway so user can jump to it instead of reply > reply > giveaway
-      await leaveButtonClick.interaction.deferReply({ flags: "Ephemeral" });
-      await leaveButtonClick.interaction.deleteReply();
-
-      await prisma.giveawayParticipant.update({
-        where: { giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id } },
-        data: { isRemoved: true },
-      });
-
-      await updateGiveaway(itx.message, giveaway, prisma);
-
-      await itx.followUp({ content: "Opuściłxś giveaway.", flags: "Ephemeral" });
+    const giveaway = await prisma.giveaway.findFirst({
+      where: {
+        guildId: itx.message.guildId,
+        channelId: itx.message.channelId,
+        messageId: itx.message.id,
+      },
     });
+    if (!giveaway) {
+      await itx.followUp({
+        content: "Ten giveaway nie istnieje!",
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    const channel = await itx.guild.channels.fetch(giveaway.channelId);
+    if (!channel?.isSendable()) {
+      throw new Error(`Channel ${channel} is not sendable or not found.`);
+    }
+
+    const message = await channel.messages.fetch(giveaway.messageId);
+    if (!message) {
+      throw new Error(`Message ${message} not found.`);
+    }
+
+    if (giveaway.endAt <= itx.createdAt) {
+      await itx.followUp({
+        content: "Ten giveaway już się zakończył!",
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    if (itx.customId.endsWith("list")) {
+      const participants: GiveawayParticipant[] =
+        await prisma.giveawayParticipant.findMany({
+          where: { giveawayId: giveaway.id, isRemoved: false },
+        });
+
+      const fmtParticipants =
+        participants.length > 0
+          ? participants.map((user) => `<@${user.userId}>`).join(", ")
+          : "Brak uczestników";
+
+      await itx.followUp({
+        content: `Uczestnicy: ${fmtParticipants}`,
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    if (!itx.customId.endsWith("join")) {
+      await itx.followUp({
+        content: `unexpected button ID for giveaway ${giveaway.id}: ${itx.customId}`,
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    let returnMsg = "Już jesteś uczestnikiem do tego giveaway!";
+
+    const existing = await prisma.giveawayParticipant.findFirst({
+      where: { userId: itx.user.id, giveawayId: giveaway.id },
+    });
+
+    if (existing?.forcefullyRemoved) {
+      await itx.followUp({
+        content: "Usunięto cię z giveawayu i nie możesz już do niego dołączyć.",
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    if (!existing || existing.isRemoved) {
+      // check if user has required roles and doesn't have banned roles
+      for (const roleId of giveaway.roleWhitelist) {
+        if (!itx.member.roles.cache.has(roleId)) {
+          await itx.followUp({
+            content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveawayu.`,
+            flags: "Ephemeral",
+          });
+          return;
+        }
+      }
+
+      for (const roleId of giveaway.roleBlacklist) {
+        if (itx.member.roles.cache.has(roleId)) {
+          await itx.followUp({
+            content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveawayu.`,
+            flags: "Ephemeral",
+          });
+          return;
+        }
+      }
+
+      await prisma.giveawayParticipant.upsert({
+        where: {
+          giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
+        },
+        create: { userId: itx.user.id, giveawayId: giveaway.id },
+        update: { isRemoved: false },
+      });
+
+      returnMsg = `${itx.user} dołączyłxś do giveaway!`;
+      await updateGiveaway(itx.message, giveaway, prisma);
+    }
+
+    const joinResponse = await itx.followUp({
+      content: returnMsg,
+      components: [createLeaveButtonRow()],
+    });
+
+    if (!joinResponse) {
+      throw new Error("Failed to receive response from interaction reply");
+    }
+
+    const leaveButtonClick = await waitForButtonClick(
+      joinResponse,
+      "leave_giveaway",
+      { minutes: 1 },
+      (interaction) => interaction.user.id === itx.user.id,
+    );
+
+    if (!leaveButtonClick.interaction) return;
+
+    if (giveaway.endAt <= itx.createdAt) {
+      await itx.followUp({
+        content: "Ten giveaway już się zakończył!",
+        flags: "Ephemeral",
+      });
+      return;
+    }
+
+    // replying to original giveaway so user can jump to it instead of reply > reply > giveaway
+    await leaveButtonClick.interaction.deferReply({ flags: "Ephemeral" });
+    await leaveButtonClick.interaction.deleteReply();
+
+    await prisma.giveawayParticipant.update({
+      where: { giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id } },
+      data: { isRemoved: true },
+    });
+
+    await updateGiveaway(itx.message, giveaway, prisma);
+
+    await itx.followUp({ content: "Opuściłxś giveaway.", flags: "Ephemeral" });
   });
