@@ -42,7 +42,47 @@ const autocompleteItem = async ({
   return itx.respond(
     results.map(({ id, name, type }) => ({
       value: id,
-      name: `${name} ${getTypeNameForList(type)}`,
+      name: `${name} ${getTypeNameForList(type)} [${id}]`,
+    })),
+  );
+};
+
+const autocompleteUserInventoryItem = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction<"cached">;
+}) => {
+  const focusedValue = itx.options.getFocused();
+  const userId = itx.options.get("user")?.value as string | undefined;
+
+  const results = await prisma.item.findMany({
+    where: {
+      deletedAt: null,
+      guildId: itx.guildId,
+      name: {
+        contains: focusedValue,
+        mode: "insensitive",
+      },
+      ...(userId
+        ? {
+            inventoryItem: {
+              some: {
+                userId,
+                deletedAt: null,
+              },
+            },
+          }
+        : {}),
+    },
+    take: 25,
+  });
+
+  return itx.respond(
+    results.map(({ id, name, type }) => ({
+      value: id,
+      name: `${name} ${getTypeNameForList(type)} [${id}]`,
     })),
   );
 };
@@ -111,8 +151,8 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("przekaz", (command) =>
         command
           .setDescription("Przekaż przedmiot innemu użytkownikowi")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
           .handle(
             async (
               { prisma, lock, economyLog },
@@ -212,10 +252,10 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("dodaj", (command) =>
         command
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
+          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .addInteger("przedmiot", (id) =>
             id.setDescription("Przedmiot").setAutocomplete(true),
           )
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
@@ -240,6 +280,7 @@ export const inventory = new Hashira({ name: "inventory" })
               });
               return item;
             });
+
             if (!item) return;
 
             economyLog.push("itemAddToInventory", itx.guild, {
@@ -269,7 +310,7 @@ export const inventory = new Hashira({ name: "inventory" })
           )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            return autocompleteItem({ prisma, itx });
+            return autocompleteUserInventoryItem({ prisma, itx });
           })
           .handle(
             async (
