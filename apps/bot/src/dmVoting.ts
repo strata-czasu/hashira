@@ -985,80 +985,78 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           ),
       ),
   )
-  .handle("clientReady", async ({ prisma }, client) => {
-    client.on("interactionCreate", async (itx) => {
-      if (!itx.isButton()) return;
-      // vote-option:optionId
-      if (!itx.customId.startsWith("vote-option:")) return;
+  .handle("interactionCreate", async ({ prisma }, itx) => {
+    if (!itx.isButton()) return;
+    // vote-option:optionId
+    if (!itx.customId.startsWith("vote-option:")) return;
 
-      await itx.deferReply({ flags: "Ephemeral" });
+    await itx.deferReply({ flags: "Ephemeral" });
 
-      const [_, rawOptionId] = itx.customId.split(":");
-      if (!rawOptionId) {
-        console.error("Invalid customId for vote-option button:", itx.customId);
+    const [_, rawOptionId] = itx.customId.split(":");
+    if (!rawOptionId) {
+      console.error("Invalid customId for vote-option button:", itx.customId);
+      await itx.editReply("Coś poszło nie tak...");
+      return;
+    }
+    const optionId = Number.parseInt(rawOptionId, 10);
+
+    await prisma.$transaction(async (tx) => {
+      const option = await tx.dmPollOption.findFirst({
+        where: { id: optionId },
+        include: { poll: true },
+      });
+      if (!option) {
+        console.error("Invalid optionId for vote-option button:", optionId);
         await itx.editReply("Coś poszło nie tak...");
         return;
       }
-      const optionId = Number.parseInt(rawOptionId, 10);
 
-      await prisma.$transaction(async (tx) => {
-        const option = await tx.dmPollOption.findFirst({
-          where: { id: optionId },
-          include: { poll: true },
-        });
-        if (!option) {
-          console.error("Invalid optionId for vote-option button:", optionId);
-          await itx.editReply("Coś poszło nie tak...");
-          return;
-        }
+      if (option.poll.finishedAt) {
+        await itx.editReply("Głosowanie zostało zakończone.");
+        return;
+      }
 
-        if (option.poll.finishedAt) {
-          await itx.editReply("Głosowanie zostało zakończone.");
-          return;
-        }
-
-        const participant = await tx.dmPollParticipant.findFirst({
-          where: {
-            userId: itx.user.id,
-            poll: { options: { some: { id: optionId } } },
-          },
-        });
-        if (!participant) {
-          await itx.editReply("Nie możesz wziąć udziału w tym głosowaniu");
-          return;
-        }
-
-        const { count: deletedCount } = await tx.dmPollVote.deleteMany({
-          where: { userId: itx.user.id, option: { pollId: option.pollId } },
-        });
-        const vote = await tx.dmPollVote.create({
-          data: { userId: itx.user.id, optionId },
-          include: { option: true },
-        });
-
-        if (option.isOptOut) {
-          await tx.dmPollExclusion.upsert({
-            where: { userId: itx.user.id },
-            create: {
-              createdAt: itx.createdAt,
-              userId: itx.user.id,
-              optedOutDuringPollId: option.pollId,
-            },
-            update: {},
-          });
-          if (deletedCount > 0) {
-            await itx.editReply("Usunięto głos i wypisano z przyszłych głosowań");
-          } else {
-            await itx.editReply("Wypisano z przyszłych głosowań");
-          }
-          return;
-        }
-
-        if (deletedCount > 0) {
-          await itx.editReply(`Zmieniono głos na ${bold(vote.option.option)}`);
-        } else {
-          await itx.editReply(`Oddano głos na ${bold(vote.option.option)}`);
-        }
+      const participant = await tx.dmPollParticipant.findFirst({
+        where: {
+          userId: itx.user.id,
+          poll: { options: { some: { id: optionId } } },
+        },
       });
+      if (!participant) {
+        await itx.editReply("Nie możesz wziąć udziału w tym głosowaniu");
+        return;
+      }
+
+      const { count: deletedCount } = await tx.dmPollVote.deleteMany({
+        where: { userId: itx.user.id, option: { pollId: option.pollId } },
+      });
+      const vote = await tx.dmPollVote.create({
+        data: { userId: itx.user.id, optionId },
+        include: { option: true },
+      });
+
+      if (option.isOptOut) {
+        await tx.dmPollExclusion.upsert({
+          where: { userId: itx.user.id },
+          create: {
+            createdAt: itx.createdAt,
+            userId: itx.user.id,
+            optedOutDuringPollId: option.pollId,
+          },
+          update: {},
+        });
+        if (deletedCount > 0) {
+          await itx.editReply("Usunięto głos i wypisano z przyszłych głosowań");
+        } else {
+          await itx.editReply("Wypisano z przyszłych głosowań");
+        }
+        return;
+      }
+
+      if (deletedCount > 0) {
+        await itx.editReply(`Zmieniono głos na ${bold(vote.option.option)}`);
+      } else {
+        await itx.editReply(`Oddano głos na ${bold(vote.option.option)}`);
+      }
     });
   });
