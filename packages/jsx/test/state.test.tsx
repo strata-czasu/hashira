@@ -1,484 +1,203 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: this is a test file */
-/** @jsx jsx */
-/** @jsxFrag Fragment */
-/** @jsxImportSource @hashira/jsx */
+/** biome-ignore-all lint/suspicious/noExplicitAny: it helps with tests */
 import { describe, expect, it, mock } from "bun:test";
 import { ButtonStyle } from "discord.js";
-import {
-  ActionRow,
-  Button,
-  createRoot,
-  TextDisplay,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "../src";
-
-// These tests are AI generated after the implementation of state management features
-// TODO: They need to be revisited as they look terrible!
+import { ActionRow, Button, createProgram, TextDisplay } from "../src";
 
 describe("State Management", () => {
-  describe("createRoot", () => {
-    it("performs initial render and returns output", () => {
-      function App() {
-        return <TextDisplay content="Hello, World!" />;
-      }
+  it("performs initial render and returns output", () => {
+    type Model = { count: number };
+    type Msg = { type: "INCREMENT" };
 
-      const onUpdate = mock(() => {});
-      const root = createRoot(App, onUpdate);
-      const output = root.render();
+    const init: Model = { count: 0 };
+    const update = (_: Msg, model: Model) => model;
+    const view = (model: Model) => <TextDisplay content={`Count: ${model.count}`} />;
 
-      expect(output).toMatchInlineSnapshot(`
-        {
-          "components": [
-            TextDisplayBuilder {
-              "data": {
-                "content": "Hello, World!",
-                "type": 10,
-              },
+    const onUpdate = mock(() => {});
+    const program = createProgram({ init, update, view }, onUpdate);
+    const output = program.render();
+
+    expect(output).toMatchInlineSnapshot(`
+      {
+        "components": [
+          TextDisplayBuilder {
+            "data": {
+              "content": "Count: 0",
+              "type": 10,
             },
-          ],
-          "files": [],
-          "flags": 32768,
-        }
-      `);
-
-      // onUpdate is not called on initial render() - only on state changes
-      expect(onUpdate).not.toHaveBeenCalled();
-    });
-
-    it("calls onUpdate when state changes", async () => {
-      let setCounter: (v: number | ((prev: number) => number)) => void;
-
-      function Counter() {
-        const [count, setCount] = useState(0);
-        setCounter = setCount;
-        return <TextDisplay content={`Count: ${count}`} />;
+          },
+        ],
+        "files": [],
+        "flags": 32768,
       }
+    `);
 
-      const updates: unknown[] = [];
-      const onUpdate = mock((output: unknown) => {
-        updates.push(output);
-      });
-
-      const root = createRoot(Counter, onUpdate);
-      const initial = root.render();
-
-      // Initial render should show count 0
-      expect(initial.components).toHaveLength(1);
-
-      // Trigger state update
-      setCounter!(1);
-
-      // Wait for microtask to process
-      await Promise.resolve();
-
-      // onUpdate should have been called with new output
-      expect(onUpdate).toHaveBeenCalledTimes(1);
-      expect(updates).toHaveLength(1);
-    });
-
-    it("batches multiple state updates in same tick", async () => {
-      let setA: (v: number) => void;
-      let setB: (v: number) => void;
-
-      function App() {
-        const [a, _setA] = useState(0);
-        const [b, _setB] = useState(0);
-        setA = _setA;
-        setB = _setB;
-        return <TextDisplay content={`A: ${a}, B: ${b}`} />;
-      }
-
-      const onUpdate = mock(() => {});
-      const root = createRoot(App, onUpdate);
-      root.render();
-
-      // Trigger multiple updates in same tick
-      setA!(1);
-      setB!(2);
-
-      // Wait for microtask
-      await Promise.resolve();
-
-      // Should only call onUpdate once (batched)
-      expect(onUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it("preserves state across renders", async () => {
-      let increment: () => void;
-      const values: number[] = [];
-
-      function Counter() {
-        const [count, setCount] = useState(0);
-        values.push(count);
-        increment = () => setCount((prev) => prev + 1);
-        return <TextDisplay content={`Count: ${count}`} />;
-      }
-
-      const root = createRoot(Counter, () => {});
-      root.render();
-
-      increment!();
-      await Promise.resolve();
-
-      increment!();
-      await Promise.resolve();
-
-      increment!();
-      await Promise.resolve();
-
-      expect(values).toEqual([0, 1, 2, 3]);
-    });
-
-    it("supports functional updates to state", async () => {
-      let doubleCount: () => void;
-
-      function App() {
-        const [count, setCount] = useState(5);
-        doubleCount = () => setCount((prev) => prev * 2);
-        return <TextDisplay content={`Count: ${count}`} />;
-      }
-
-      const root = createRoot(App, () => {});
-      root.render();
-
-      doubleCount!();
-      await Promise.resolve();
-
-      doubleCount!();
-      await Promise.resolve();
-
-      // Should have doubled twice: 5 -> 10 -> 20
-      // We can verify by doing a sync render
-      const output = root.updateSync();
-      expect(output.components).toHaveLength(1);
-    });
-
-    it("does not re-render when state value is the same", async () => {
-      let setCount: (v: number) => void;
-      let renderCount = 0;
-
-      function App() {
-        const [count, _setCount] = useState(5);
-        setCount = _setCount;
-        renderCount++;
-        return <TextDisplay content={`Count: ${count}`} />;
-      }
-
-      const onUpdate = mock(() => {});
-      const root = createRoot(App, onUpdate);
-      root.render();
-
-      expect(renderCount).toBe(1);
-
-      // Set to same value
-      setCount!(5);
-      await Promise.resolve();
-
-      // Should not trigger re-render
-      expect(onUpdate).not.toHaveBeenCalled();
-      expect(renderCount).toBe(1);
-    });
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  describe("useState", () => {
-    it("throws when called outside render context", () => {
-      expect(() => useState(0)).toThrow(
-        "Hooks can only be called inside a component during rendering",
-      );
-    });
+  it("updates state and re-renders on dispatch", async () => {
+    type Model = { count: number };
+    type Msg = { type: "INCREMENT" } | { type: "DECREMENT" };
 
-    it("maintains multiple independent states", async () => {
-      let setName: (v: string) => void;
-      let setAge: (v: number) => void;
+    const init: Model = { count: 0 };
 
-      function Profile() {
-        const [name, _setName] = useState("Alice");
-        const [age, _setAge] = useState(25);
-        setName = _setName;
-        setAge = _setAge;
-        return <TextDisplay content={`${name}, ${age}`} />;
+    const update = (msg: Msg, model: Model): Model => {
+      switch (msg.type) {
+        case "INCREMENT":
+          return { count: model.count + 1 };
+        case "DECREMENT":
+          return { count: model.count - 1 };
       }
+    };
 
-      const root = createRoot(Profile, () => {});
-      root.render();
+    const view = (model: Model) => <TextDisplay content={`Count: ${model.count}`} />;
 
-      setName!("Bob");
-      await Promise.resolve();
-
-      setAge!(30);
-      await Promise.resolve();
-
-      // Verify both states are preserved
-      const output = root.updateSync();
-      expect(output.components).toHaveLength(1);
+    const updates: unknown[] = [];
+    const onUpdate = mock((output: unknown) => {
+      updates.push(output);
     });
+
+    const program = createProgram({ init, update, view }, onUpdate);
+    program.render();
+
+    program.dispatch({ type: "INCREMENT" });
+
+    await Promise.resolve();
+
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(updates).toHaveLength(1);
+
+    // Verify content
+    expect(program.getLastOutput()?.components?.at(0)).toMatchInlineSnapshot(`
+      TextDisplayBuilder {
+        "data": {
+          "content": "Count: 1",
+          "type": 10,
+        },
+      }
+    `);
   });
 
-  describe("useRef", () => {
-    it("persists value across renders without triggering updates", async () => {
-      let triggerRender: () => void;
-      const refValues: number[] = [];
+  it("batches multiple dispatches", async () => {
+    type Model = { count: number };
+    type Msg = { type: "INCREMENT" };
 
-      function App() {
-        const [, forceUpdate] = useState(0);
-        const renderCount = useRef(0);
+    const init: Model = { count: 0 };
+    const update = (_: Msg, model: Model) => ({ count: model.count + 1 });
+    const view = (model: Model) => <TextDisplay content={`Count: ${model.count}`} />;
 
-        triggerRender = () => forceUpdate((n) => n + 1);
-        renderCount.current++;
-        refValues.push(renderCount.current);
+    const onUpdate = mock(() => {});
+    const program = createProgram({ init, update, view }, onUpdate);
+    program.render();
 
-        return <TextDisplay content={`Renders: ${renderCount.current}`} />;
+    program.dispatch({ type: "INCREMENT" });
+    program.dispatch({ type: "INCREMENT" });
+    program.dispatch({ type: "INCREMENT" });
+
+    await Promise.resolve();
+
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(program.getLastOutput()?.components?.at(0)).toMatchInlineSnapshot(`
+      TextDisplayBuilder {
+        "data": {
+          "content": "Count: 3",
+          "type": 10,
+        },
       }
-
-      const root = createRoot(App, () => {});
-      root.render();
-
-      triggerRender!();
-      await Promise.resolve();
-
-      triggerRender!();
-      await Promise.resolve();
-
-      expect(refValues).toEqual([1, 2, 3]);
-    });
-
-    it("does not trigger re-render when mutated", async () => {
-      let mutateRef: () => void;
-      let renderCount = 0;
-
-      function App() {
-        const ref = useRef(0);
-        renderCount++;
-        mutateRef = () => {
-          ref.current++;
-        };
-        return <TextDisplay content="Test" />;
-      }
-
-      const onUpdate = mock(() => {});
-      const root = createRoot(App, onUpdate);
-      root.render();
-
-      expect(renderCount).toBe(1);
-
-      mutateRef!();
-      await Promise.resolve();
-
-      // Mutating ref should not trigger update
-      expect(onUpdate).not.toHaveBeenCalled();
-      expect(renderCount).toBe(1);
-    });
+    `);
   });
 
-  describe("useMemo", () => {
-    it("memoizes computed value", async () => {
-      let triggerRender: () => void;
-      let computeCount = 0;
+  it("simulates a paginated view with external interactions", async () => {
+    type Model = {
+      page: number;
+      items: string[];
+      pageSize: number;
+    };
 
-      function App() {
-        const [count, _setCount] = useState(0);
-        const [other, setOther] = useState(0);
-        triggerRender = () => setOther((n) => n + 1);
+    type Msg = { type: "NEXT" } | { type: "PREV" };
 
-        const expensive = useMemo(() => {
-          computeCount++;
-          return count * 2;
-        }, [count]);
+    const allItems = Array.from({ length: 10 }, (_, i) => `Item ${i + 1}`);
+    const init: Model = {
+      page: 0,
+      items: allItems,
+      pageSize: 3,
+    };
 
-        return <TextDisplay content={`Result: ${expensive}, Other: ${other}`} />;
+    const update = (msg: Msg, model: Model): Model => {
+      const totalPages = Math.ceil(model.items.length / model.pageSize);
+      switch (msg.type) {
+        case "NEXT":
+          return {
+            ...model,
+            page: Math.min(model.page + 1, totalPages - 1),
+          };
+        case "PREV":
+          return {
+            ...model,
+            page: Math.max(model.page - 1, 0),
+          };
       }
+    };
 
-      const root = createRoot(App, () => {});
-      root.render();
+    const view = (model: Model) => {
+      const start = model.page * model.pageSize;
+      const end = start + model.pageSize;
+      const currentItems = model.items.slice(start, end);
+      const totalPages = Math.ceil(model.items.length / model.pageSize);
 
-      expect(computeCount).toBe(1);
-
-      // Trigger render without changing count
-      triggerRender!();
-      await Promise.resolve();
-
-      // Should not recompute
-      expect(computeCount).toBe(1);
-    });
-
-    it("recomputes when dependencies change", async () => {
-      let setCount: (v: number) => void;
-      let computeCount = 0;
-
-      function App() {
-        const [count, _setCount] = useState(0);
-        setCount = _setCount;
-
-        const doubled = useMemo(() => {
-          computeCount++;
-          return count * 2;
-        }, [count]);
-
-        return <TextDisplay content={`Doubled: ${doubled}`} />;
-      }
-
-      const root = createRoot(App, () => {});
-      root.render();
-
-      expect(computeCount).toBe(1);
-
-      setCount!(5);
-      await Promise.resolve();
-
-      expect(computeCount).toBe(2);
-    });
-  });
-
-  describe("useCallback", () => {
-    it("memoizes callback function", async () => {
-      let triggerRender: () => void;
-      const callbacks: Array<() => void> = [];
-
-      function App() {
-        const [other, setOther] = useState(0);
-        triggerRender = () => setOther((n) => n + 1);
-
-        const handleClick = useCallback(() => {
-          console.log("clicked");
-        }, []);
-
-        callbacks.push(handleClick);
-        return <TextDisplay content={`Other: ${other}`} />;
-      }
-
-      const root = createRoot(App, () => {});
-      root.render();
-
-      triggerRender!();
-      await Promise.resolve();
-
-      // Should be the same function reference
-      expect(callbacks[0]).toBe(callbacks[1]);
-    });
-  });
-
-  describe("nested components with state", () => {
-    it("renders nested user components with independent state", async () => {
-      let setParentCount: (v: number) => void;
-      let setChildCount: (v: number) => void;
-
-      function Child() {
-        const [count, setCount] = useState(100);
-        setChildCount = setCount;
-        return <TextDisplay content={`Child: ${count}`} />;
-      }
-
-      function Parent() {
-        const [count, setCount] = useState(0);
-        setParentCount = setCount;
-        return (
-          <>
-            <TextDisplay content={`Parent: ${count}`} />
-            <Child />
-          </>
-        );
-      }
-
-      const root = createRoot(Parent, () => {});
-      const output = root.render();
-
-      // Should have both text displays
-      expect(output.components).toHaveLength(2);
-
-      setParentCount!(1);
-      await Promise.resolve();
-
-      setChildCount!(200);
-      await Promise.resolve();
-
-      const finalOutput = root.updateSync();
-      expect(finalOutput.components).toHaveLength(2);
-    });
-  });
-
-  describe("components with host children", () => {
-    it("renders user component with Button children", () => {
-      function ButtonGroup() {
-        const [selected, _setSelected] = useState(0);
-        return (
+      return (
+        <>
+          <TextDisplay content={currentItems.join("\\n")} />
           <ActionRow>
             <Button
-              label={selected === 0 ? "Selected" : "Option 1"}
-              customId="btn-1"
-              style={selected === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary}
+              label="Previous"
+              customId="prev"
+              style={ButtonStyle.Primary}
+              disabled={model.page === 0}
             />
             <Button
-              label={selected === 1 ? "Selected" : "Option 2"}
-              customId="btn-2"
-              style={selected === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary}
+              label={`Page ${model.page + 1}/${totalPages}`}
+              customId="page-indicator"
+              style={ButtonStyle.Secondary}
+              disabled
+            />
+            <Button
+              label="Next"
+              customId="next"
+              style={ButtonStyle.Primary}
+              disabled={model.page === totalPages - 1}
             />
           </ActionRow>
-        );
-      }
+        </>
+      );
+    };
 
-      const root = createRoot(ButtonGroup, () => {});
-      const output = root.render();
+    const onUpdate = mock(() => {});
+    const program = createProgram({ init, update, view }, onUpdate);
 
-      expect(output.components).toHaveLength(1); // One ActionRow
-    });
-  });
+    const initialOutput = program.render() as any;
 
-  describe("Root methods", () => {
-    it("update() schedules async re-render", async () => {
-      let renderCount = 0;
+    expect(initialOutput.components[0].data.content).toBe("Item 1\\nItem 2\\nItem 3");
+    expect(initialOutput.components[1].components[0].data.disabled).toBe(true); // Prev disabled
 
-      function App() {
-        renderCount++;
-        return <TextDisplay content="Test" />;
-      }
+    program.dispatch({ type: "NEXT" });
+    await Promise.resolve();
 
-      const onUpdate = mock(() => {});
-      const root = createRoot(App, onUpdate);
-      root.render();
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    const page2Output = program.getLastOutput() as any;
+    expect(page2Output.components[0].data.content).toBe("Item 4\\nItem 5\\nItem 6");
+    expect(page2Output.components[1].components[0].data.disabled).toBeFalsy(); // Prev enabled
 
-      expect(renderCount).toBe(1);
+    program.dispatch({ type: "NEXT" });
+    await Promise.resolve();
 
-      root.update();
-      expect(renderCount).toBe(1); // Not yet rendered
+    const page3Output = program.getLastOutput() as any;
+    expect(page3Output.components[0].data.content).toBe("Item 7\\nItem 8\\nItem 9");
 
-      await Promise.resolve();
+    program.dispatch({ type: "NEXT" });
+    await Promise.resolve();
 
-      expect(renderCount).toBe(2);
-      expect(onUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it("updateSync() performs immediate re-render", () => {
-      let renderCount = 0;
-
-      function App() {
-        renderCount++;
-        return <TextDisplay content="Test" />;
-      }
-
-      const root = createRoot(App, () => {});
-      root.render();
-
-      expect(renderCount).toBe(1);
-
-      root.updateSync();
-
-      expect(renderCount).toBe(2);
-    });
-
-    it("getLastOutput() returns previous render result", () => {
-      function App() {
-        return <TextDisplay content="Hello" />;
-      }
-
-      const root = createRoot(App, () => {});
-
-      expect(root.getLastOutput()).toBeNull();
-
-      const output = root.render();
-      expect(root.getLastOutput()).toBe(output);
-    });
+    const page4Output = program.getLastOutput() as any;
+    expect(page4Output.components[0].data.content).toBe("Item 10");
+    expect(page4Output.components[1].components[2].data.disabled).toBe(true); // Next disabled
   });
 });

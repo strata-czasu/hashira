@@ -44,6 +44,7 @@
     "packages/core": {
       "name": "@hashira/core",
       "dependencies": {
+        "@hashira/jsx": "workspace:*",
         "@hashira/paginate": "workspace:*",
       },
     },

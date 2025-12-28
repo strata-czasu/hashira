@@ -1,6 +1,3 @@
-/** @jsx jsx */
-/** @jsxFrag Fragment */
-/** @jsxImportSource @hashira/jsx */
 import { Hashira } from "@hashira/core";
 import type { PrismaClient } from "@hashira/db";
 import { Container, type JSXNode, render, TextDisplay } from "@hashira/jsx";
@@ -153,22 +150,26 @@ async function getMemberFields(
     userId: member.id,
     since: activitySince,
   });
+
   const voiceActivitySeconds30Days = await getUserVoiceActivity({
     prisma,
     guildId: member.guild.id,
     userId: member.id,
     since: activitySince,
   });
+
   const textActivityAllTime = await getUserTextActivity({
     prisma,
     guildId: member.guild.id,
     userId: member.id,
   });
+
   const voiceActivitySecondsAllTime = await getUserVoiceActivity({
     prisma,
     guildId: member.guild.id,
     userId: member.id,
   });
+
   const activityLines = [
     `${formatActivities(voiceActivitySeconds30Days, textActivity30Days)} (30 dni)`,
     `${formatActivities(voiceActivitySecondsAllTime, textActivityAllTime)} (od początku)`,

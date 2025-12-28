@@ -43,7 +43,9 @@ type Files = (
   | AttachmentPayload
 )[];
 
-export function render(element: JSXNode): MessageEditOptions {
+export function render(
+  element: JSXNode,
+): MessageEditOptions & { components: Components } {
   const resolved = Array.isArray(element) ? element : [element];
 
   const needsReconciliation = resolved.some(

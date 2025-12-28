@@ -10,6 +10,7 @@
     "typecheck": "tsgo"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:*"
+    "@hashira/paginate": "workspace:*",
+    "@hashira/jsx": "workspace:*"
   }
 }
