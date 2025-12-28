@@ -418,7 +418,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
             }
 
             await itx.reply({
-              content: `Nowy wygrany: <@${newWinner.userId}>${giveawayFooter(giveaway)}`,
+              content: `Wygrywa: <@${newWinner.userId}>${giveawayFooter(giveaway)}`,
               allowedMentions: { users: [newWinner.userId] },
             });
           }),
