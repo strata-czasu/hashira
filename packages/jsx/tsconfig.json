@@ -1,0 +1,3 @@
+{
+  "extends": "@hashira/tsconfig/base.json"
+}
