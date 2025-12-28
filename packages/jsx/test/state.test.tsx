@@ -1,3 +1,4 @@
+/** @jsxImportSource @hashira/jsx */
 /** biome-ignore-all lint/suspicious/noExplicitAny: it helps with tests */
 import { describe, expect, it, mock } from "bun:test";
 import { ButtonStyle } from "discord.js";

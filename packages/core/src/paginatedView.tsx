@@ -1,3 +1,4 @@
+/** @jsxImportSource @hashira/jsx */
 import {
   ActionRow,
   Button,
