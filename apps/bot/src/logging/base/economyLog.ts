@@ -25,10 +25,12 @@ type ItemTransferData = {
   toUser: User;
   item: Item;
 };
+
 type ItemAddToOrRemoveFromInventoryData = {
   moderator: User;
   user: User;
   item: Item;
+  quantity: number;
 };
 
 export const economyLog = new Hashira({ name: "economyLog" }).const(
@@ -120,11 +122,11 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
       "itemAddToInventory",
       async (
         { timestamp },
-        { moderator, user, item }: ItemAddToOrRemoveFromInventoryData,
+        { moderator, user, item, quantity }: ItemAddToOrRemoveFromInventoryData,
       ) => {
         return getLogMessageEmbed(moderator, timestamp)
           .setDescription(
-            `Dodaje ${bold(item.name)} [${inlineCode(item.id.toString())}] do ekwipunku ${userMention(user.id)}`,
+            `Dodaje ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}] do ekwipunku ${userMention(user.id)}`,
           )
           .setColor("Green");
       },
@@ -133,11 +135,11 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
       "itemRemoveFromInventory",
       async (
         { timestamp },
-        { moderator, user, item }: ItemAddToOrRemoveFromInventoryData,
+        { moderator, user, item, quantity }: ItemAddToOrRemoveFromInventoryData,
       ) => {
         return getLogMessageEmbed(moderator, timestamp)
           .setDescription(
-            `Zabiera ${bold(item.name)} [${inlineCode(item.id.toString())}] z ekwipunku ${userMention(user.id)}`,
+            `Zabiera ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}] z ekwipunku ${userMention(user.id)}`,
           )
           .setColor("Red");
       },
