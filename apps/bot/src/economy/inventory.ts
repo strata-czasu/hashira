@@ -37,6 +37,7 @@ const autocompleteItem = async ({
         mode: "insensitive",
       },
     },
+    take: 25,
   });
 
   return itx.respond(
