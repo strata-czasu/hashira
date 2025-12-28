@@ -44,13 +44,19 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           )
           .handle(async (_, { csv }, itx) => {
             if (csv.size > 100_000) return;
-            // rank,name,id,count
-            // 1,username_1,123456789012345678,100
             const content = await fetch(csv.url).then((res) => res.text());
             const lines = content.split("\n");
+
+            const header = lines[0];
+            if (!header) return errorFollowUp(itx, "Plik CSV jest pusty");
+
+            const idIndex = header.split(",").indexOf("id");
+            if (idIndex === -1)
+              return errorFollowUp(itx, "Nie znaleziono kolumny 'id'");
+
             const ids = lines.slice(1).map((line) => {
-              const [_, __, id] = line.split(",");
-              return `<@${id}>`;
+              const parts = line.split(",");
+              return `<@${parts[idIndex]}>`;
             });
 
             const attachment = new AttachmentBuilder(Buffer.from(ids.join(" ")), {
