@@ -63,6 +63,10 @@ export class DatabasePaginator<T> implements Paginator<T> {
     return (this.#page + 1) * this.#pageSize < this.#count;
   }
 
+  public get ordering() {
+    return this.#ordering;
+  }
+
   private get prismaOrdering() {
     if (this.#ordering === PaginatorOrder.ASC) return "asc";
     return "desc";

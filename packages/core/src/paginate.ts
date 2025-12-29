@@ -1,4 +1,4 @@
-import type { Paginator } from "@hashira/paginate";
+import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import type { Message, TextBasedChannel } from "discord.js";
 
 interface TextChannelPaginatorOptions {
@@ -87,6 +87,11 @@ export class TextChannelPaginator implements Paginator<Message> {
   public get canNext() {
     if (this.#lastPage === null) return true;
     return this.#page < this.#lastPage;
+  }
+
+  public get ordering(): PaginatorOrder {
+    // NOTE: We don't support ordering, but messages are from latest to oldest by default
+    return PaginatorOrder.DESC;
   }
 
   public async next(): Promise<Message[]> {

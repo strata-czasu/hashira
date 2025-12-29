@@ -13,6 +13,7 @@ export interface Paginator<T> {
   displayCurrentPage: string;
   canPrevious: boolean;
   canNext: boolean;
+  ordering: PaginatorOrder;
 
   current(): Promise<T[]>;
   reorder(orderBy?: PaginatorOrder): Promise<T[]>;
@@ -66,6 +67,10 @@ export class StaticPaginator<T> implements Paginator<T> {
 
   get canNext(): boolean {
     return (this.#page + 1) * this.#pageSize < this.#items.length;
+  }
+
+  get ordering(): PaginatorOrder {
+    return this.#ordering;
   }
 
   async current(): Promise<T[]> {

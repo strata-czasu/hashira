@@ -7,7 +7,7 @@ import {
   Separator,
   TextDisplay,
 } from "@hashira/jsx";
-import type { Paginator } from "@hashira/paginate";
+import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import {
   ButtonStyle,
   type CacheType,
@@ -41,10 +41,12 @@ function PaginatedViewButtons({
   canPrev,
   canNext,
   orderingEnabled,
+  ordering,
 }: {
   canPrev: boolean;
   canNext: boolean;
   orderingEnabled: boolean;
+  ordering: PaginatorOrder;
 }) {
   return (
     <ActionRow>
@@ -61,7 +63,11 @@ function PaginatedViewButtons({
         style={ButtonStyle.Primary}
       />
       {orderingEnabled && (
-        <Button label="Order by" customId="reorder" style={ButtonStyle.Secondary} />
+        <Button
+          label={ordering === PaginatorOrder.DESC ? "🔽" : "🔼"}
+          customId="reorder"
+          style={ButtonStyle.Secondary}
+        />
       )}
     </ActionRow>
   );
@@ -138,6 +144,7 @@ export class PaginatedView<T> {
             canPrev={this.#paginator.canPrevious}
             canNext={this.#paginator.canNext}
             orderingEnabled={this.#orderingEnabled}
+            ordering={this.#paginator.ordering}
           />
         )}
       </>,
