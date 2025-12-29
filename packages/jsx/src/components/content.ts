@@ -6,13 +6,45 @@ import {
   ThumbnailBuilder,
 } from "discord.js";
 import { getTextContent, markAsHost } from "../internal/utils";
-import type {
-  FileProps,
-  MediaGalleryItemProps,
-  MediaGalleryProps,
-  TextDisplayProps,
-  ThumbnailProps,
-} from "../types";
+import type { JSXNode } from "../types";
+
+export interface TextDisplayProps {
+  /** Text content to display (supports markdown) */
+  content?: string;
+  children?: JSXNode;
+}
+
+export interface ThumbnailProps {
+  /** URL of the thumbnail image */
+  url: string;
+  /** Alt text description */
+  description?: string;
+  /** Whether to display as spoiler */
+  spoiler?: boolean;
+  children?: undefined;
+}
+
+export interface MediaGalleryItemProps {
+  /** URL of the media */
+  url: string;
+  /** Alt text description */
+  description?: string;
+  /** Whether to display as spoiler */
+  spoiler?: boolean;
+  children?: undefined;
+}
+
+export interface MediaGalleryProps {
+  children?: JSXNode;
+}
+
+export interface FileProps {
+  /** File URL (attachment://filename format) */
+  url: string;
+  /** Whether to display as spoiler */
+  spoiler?: boolean;
+  children?: undefined;
+}
 
 export const TextDisplay = markAsHost(function TextDisplay(
   props: TextDisplayProps,

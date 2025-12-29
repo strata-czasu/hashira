@@ -1,20 +1,96 @@
 import {
   ChannelSelectMenuBuilder,
+  type ChannelType,
+  type ComponentEmojiResolvable,
   MentionableSelectMenuBuilder,
   RoleSelectMenuBuilder,
+  type Snowflake,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   UserSelectMenuBuilder,
 } from "discord.js";
 import { markAsHost } from "../internal/utils";
-import type {
-  ChannelSelectProps,
-  MentionableSelectProps,
-  OptionProps,
-  RoleSelectProps,
-  StringSelectProps,
-  UserSelectProps,
-} from "../types";
+import type { JSXNode } from "../types";
+
+/**
+ * Base props shared by all select menu types
+ */
+interface BaseSelectMenuProps {
+  /** Developer-defined identifier; max 100 characters */
+  customId: string;
+  /** Placeholder text if nothing is selected; max 150 characters */
+  placeholder?: string;
+  /** Minimum number of items that must be chosen (0-25, default 1) */
+  minValues?: number;
+  /** Maximum number of items that can be chosen (1-25, default 1) */
+  maxValues?: number;
+  /** Whether the select menu is disabled */
+  disabled?: boolean;
+}
+
+/**
+ * Props for StringSelect (string select menu with predefined options)
+ */
+export interface StringSelectProps extends BaseSelectMenuProps {
+  children?: JSXNode;
+}
+
+/**
+ * Props for UserSelect (auto-populated with server users)
+ */
+export interface UserSelectProps extends BaseSelectMenuProps {
+  /** Default selected user IDs */
+  defaultUsers?: Snowflake[];
+  children?: undefined;
+}
+
+/**
+ * Props for RoleSelect (auto-populated with server roles)
+ */
+export interface RoleSelectProps extends BaseSelectMenuProps {
+  /** Default selected role IDs */
+  defaultRoles?: Snowflake[];
+  children?: undefined;
+}
+
+/**
+ * Props for MentionableSelect (auto-populated with users and roles)
+ */
+export interface MentionableSelectProps extends BaseSelectMenuProps {
+  /** Default selected user IDs */
+  defaultUsers?: Snowflake[];
+  /** Default selected role IDs */
+  defaultRoles?: Snowflake[];
+  children?: undefined;
+}
+
+/**
+ * Props for ChannelSelect (auto-populated with server channels)
+ */
+export interface ChannelSelectProps extends BaseSelectMenuProps {
+  /** Filter by channel types */
+  channelTypes?: ChannelType[];
+  /** Default selected channel IDs */
+  defaultChannels?: Snowflake[];
+  children?: undefined;
+}
+
+/**
+ * Props for StringSelectOption component
+ */
+export interface OptionProps {
+  /** User-facing name of the option; max 100 characters */
+  label: string;
+  /** Developer-defined value of the option; max 100 characters */
+  value: string;
+  /** Additional description of the option; max 100 characters */
+  description?: string;
+  /** Emoji to display */
+  emoji?: ComponentEmojiResolvable;
+  /** Whether this option is selected by default */
+  default?: boolean;
+  children?: undefined;
+}
 
 export const StringSelectMenu = markAsHost(function StringSelectMenu(
   props: StringSelectProps,

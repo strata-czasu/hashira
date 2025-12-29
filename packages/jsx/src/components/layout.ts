@@ -10,18 +10,49 @@ import {
   RoleSelectMenuBuilder,
   SectionBuilder,
   SeparatorBuilder,
+  type SeparatorSpacingSize,
   StringSelectMenuBuilder,
   TextDisplayBuilder,
   ThumbnailBuilder,
   UserSelectMenuBuilder,
 } from "discord.js";
 import { flattenChildren, markAsHost } from "../internal/utils";
-import type {
-  ActionRowProps,
-  ContainerProps,
-  SectionProps,
-  SeparatorProps,
-} from "../types";
+import type { JSXNode } from "../types";
+
+export interface ActionRowProps {
+  children?: JSXNode;
+}
+
+/**
+ * Props for Section component
+ */
+export interface SectionProps {
+  /** Required accessory component (Button or Thumbnail) */
+  accessory: ButtonBuilder | ThumbnailBuilder | JSXNode;
+  children?: JSXNode;
+}
+
+/**
+ * Props for Separator component
+ */
+export interface SeparatorProps {
+  /** Whether to show a visible divider line */
+  divider?: boolean;
+  /** Spacing size (Small=1, Large=2) */
+  spacing?: SeparatorSpacingSize;
+  children?: undefined;
+}
+
+/**
+ * Props for Container component
+ */
+export interface ContainerProps {
+  /** Accent color as integer (e.g., 0xFF0000 for red) */
+  accentColor?: number;
+  /** Whether the container content is spoilered */
+  spoiler?: boolean;
+  children?: JSXNode;
+}
 
 export const ActionRow = markAsHost(function ActionRow({
   children,
