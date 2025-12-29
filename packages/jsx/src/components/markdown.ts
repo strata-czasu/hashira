@@ -1,6 +1,8 @@
 import {
   bold,
   codeBlock,
+  HeadingLevel,
+  heading,
   inlineCode,
   italic,
   spoiler,
@@ -12,6 +14,21 @@ import {
 } from "discord.js";
 import { getTextContent, markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
+
+export const H1 = markAsHost(function H1(props: { children?: JSXNode }): string {
+  const content = getTextContent(props.children);
+  return content ? heading(content, HeadingLevel.One) : "";
+});
+
+export const H2 = markAsHost(function H2(props: { children?: JSXNode }): string {
+  const content = getTextContent(props.children);
+  return content ? heading(content, HeadingLevel.Two) : "";
+});
+
+export const H3 = markAsHost(function H3(props: { children?: JSXNode }): string {
+  const content = getTextContent(props.children);
+  return content ? heading(content, HeadingLevel.Three) : "";
+});
 
 export const Bold = markAsHost(function Bold(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
