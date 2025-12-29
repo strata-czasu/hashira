@@ -63,7 +63,7 @@ export const TextDisplay = markAsHost(function TextDisplay(
   const childContent = props.children ? getTextContent(props.children) : null;
   const content = props.content ?? childContent;
 
-  if (content) text.setContent(content);
+  if (content != null) text.setContent(content);
 
   return text;
 });

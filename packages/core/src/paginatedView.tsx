@@ -30,7 +30,7 @@ function PaginatedViewComponent({
   return (
     <Container>
       <TextDisplay content={`# ${title}`} />
-      <TextDisplay content={items.join("\n")} />
+      {items.length !== 0 && <TextDisplay content={items.join("\n")} />}
       <Separator />
       <TextDisplay content={footer} />
     </Container>
@@ -108,6 +108,7 @@ export class PaginatedView<T> {
     const { resource } = await interaction.reply({
       components: options.components,
       withResponse: true,
+      flags: "IsComponentsV2",
     });
 
     if (!resource?.message) {
