@@ -283,16 +283,3 @@ export interface OptionProps {
   default?: boolean;
   children?: undefined;
 }
-
-declare global {
-  namespace JSX {
-    type Element = JSXNode;
-    interface IntrinsicElements {}
-    interface ElementAttributesProperty {
-      props: object;
-    }
-    interface ElementChildrenAttribute {
-      children: object;
-    }
-  }
-}

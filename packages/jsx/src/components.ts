@@ -326,7 +326,7 @@ export const MediaGallery = markAsHost(function MediaGallery(
   if (props.children) {
     if (!Array.isArray(props.children)) {
       throw new Error(
-        "StringSelect children must be an array of StringSelectOption components",
+        "MediaGallery children must be an array of MediaGalleryItem components",
       );
     }
 

@@ -24,7 +24,6 @@ import {
 } from "discord.js";
 import { reconcile } from "./reconciler";
 import type { JSXNode } from "./types";
-import { isVNode } from "./types";
 
 // Extracted from BaseMessageOptions["components"] to be mutable
 type Components = (
@@ -46,15 +45,8 @@ type Files = (
 export function render(
   element: JSXNode,
 ): MessageEditOptions & { components: Components } {
-  const resolved = Array.isArray(element) ? element : [element];
-
-  const needsReconciliation = resolved.some(
-    (child) => isVNode(child) || (Array.isArray(child) && child.some(isVNode)),
-  );
-
-  const children = needsReconciliation
-    ? reconcile(element)
-    : (resolved as unknown[]).flat(Infinity);
+  // reconcile() is idempotent - already resolved nodes pass through unchanged
+  const children = reconcile(element);
 
   const components: Components = [];
   const files: Files = [];

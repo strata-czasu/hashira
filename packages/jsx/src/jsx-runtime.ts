@@ -1,18 +1,28 @@
-import type {
-  ComponentFunction,
-  HostComponent,
-  JSXNode,
-  JSXRecord,
-  VNode,
-} from "./types";
-import { hostMarker, isHostComponent, isVNode, vnodeMarker } from "./types";
+import { reconcile } from "./reconciler";
+import type { ComponentFunction, JSXNode, JSXRecord, VNode } from "./types";
+import { isHostComponent, vnodeMarker } from "./types";
 
-export const Fragment: HostComponent<JSXRecord, JSXNode> = Object.assign(
+const fragmentMarker = Symbol.for("fragment");
+
+interface FragmentFunction {
+  (props: { children?: JSXNode }): JSXNode;
+  readonly [fragmentMarker]: true;
+}
+
+/**
+ * Fragment is a pass-through component that returns its children.
+ * Unlike host components, it doesn't produce a Builder - it just groups children.
+ */
+export const Fragment: FragmentFunction = Object.assign(
   function Fragment(props: { children?: JSXNode }): JSXNode {
     return props.children ?? null;
   },
-  { [hostMarker]: true as const },
+  { [fragmentMarker]: true as const },
 );
+
+function isFragment(fn: unknown): fn is FragmentFunction {
+  return typeof fn === "function" && Object.hasOwn(fn, fragmentMarker);
+}
 
 function flattenJSXNodes(nodes: JSXNode): JSXNode[] {
   if (nodes === null || nodes === undefined) return [];
@@ -22,18 +32,6 @@ function flattenJSXNodes(nodes: JSXNode): JSXNode[] {
   }
 
   return [nodes];
-}
-
-function resolveChildren(children: JSXNode[]): JSXNode[] {
-  return children.map((child) => {
-    const actualChild = isVNode(child) ? child.type(child.props) : child;
-
-    if (isVNode(actualChild)) return resolveChildren([actualChild])[0];
-
-    if (Array.isArray(actualChild)) return resolveChildren(actualChild);
-
-    return actualChild;
-  });
 }
 
 /**
@@ -63,11 +61,16 @@ export function jsx<P extends JSXRecord, R extends JSXNode>(
     (c) => c !== null && c !== undefined && c !== false && c !== true,
   );
 
+  // Fragment is a special case - it returns children directly without creating a VNode
+  if (isFragment(tag)) {
+    return flatChildren;
+  }
+
   // Host components (Button, ActionRow, etc.) are called immediately
   // They produce discord.js Builders and don't need state management
   if (isHostComponent(tag)) {
-    // For host components, we need to resolve any VNode children first
-    const resolvedChildren = resolveChildren(flatChildren);
+    // Use reconcile to resolve any VNode children first
+    const resolvedChildren = reconcile(flatChildren);
     const mergedProps = { ...props, children: resolvedChildren } as P;
     return tag(mergedProps);
   }
