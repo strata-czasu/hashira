@@ -45,6 +45,24 @@
       }
     },
 
+    "TSX": {
+      "language_servers": [
+        "!typescript-language-server",
+        "!prisma-language-server",
+        "!eslint",
+        "!prettier",
+        "!vtsls",
+        "tsgo",
+        "biome",
+        "..."
+      ],
+      "formatter": { "language_server": { "name": "biome" } },
+      "code_actions_on_format": {
+        "source.organizeImports.biome": true,
+        "source.fixAll.biome": true
+      }
+    },
+
     "JSON": {
       "language_servers": [
         "!typescript-language-server",
