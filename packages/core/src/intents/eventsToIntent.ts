@@ -102,9 +102,15 @@ export const guildMessageCreateToIntent = createEventsToIntent(
   ],
 );
 
+export const buttonInteractionCreateToIntent = createEventsToIntent(
+  events.buttonInteractionCreate,
+  [],
+);
+
 export const customEventsToIntent = {
   ...directMessageCreateToIntent,
   ...guildMessageCreateToIntent,
+  ...buttonInteractionCreateToIntent,
 };
 
 export const allEventsToIntent = {

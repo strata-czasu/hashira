@@ -460,7 +460,9 @@ class Hashira<
       for (const rawHandler of handlers) {
         if (isCustomEvent(event)) {
           const [discordEvent, handler] = handleCustomEvent(event, rawHandler);
-          discordClient.on(discordEvent, (...args) => handler(this.context(), ...args));
+          discordClient.on(discordEvent, (...args) =>
+            (handler as UnknownEventWithContext)(this.context(), ...args),
+          );
         } else {
           discordClient.on(event, (...args) => rawHandler(this.context(), ...args));
         }

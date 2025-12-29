@@ -4,6 +4,7 @@ import type { CustomEventMethodName } from "./intents";
 const customEventToInternalEvent = {
   directMessageCreate: "messageCreate",
   guildMessageCreate: "messageCreate",
+  buttonInteractionCreate: "interactionCreate",
 } as const;
 
 type CustomEventToInternalEvent = typeof customEventToInternalEvent;
@@ -17,7 +18,7 @@ type InternalHandler<T extends CustomEventMethodName> = (
 ) => Promise<void>;
 
 const filter =
-  <T extends CustomEventMethodName>(
+  <const T extends CustomEventMethodName>(
     predicate: (...args: InternalHandlerArgs<T>) => boolean,
     handler: InternalHandler<T>,
   ): InternalHandler<T> =>
@@ -26,22 +27,34 @@ const filter =
     await handler(ctx, ...args);
   };
 
+type CreateTuple<T extends CustomEventMethodName> = T extends unknown
+  ? [CustomEventToInternalEvent[T], InternalHandler<T>]
+  : never;
+
 export const handleCustomEvent = (
   event: CustomEventMethodName,
   handler: (...args: unknown[]) => Promise<void>,
-): readonly [
-  CustomEventToInternalEvent[typeof event],
-  InternalHandler<typeof event>,
-] => {
+): CreateTuple<typeof event> => {
   if (event === "directMessageCreate") {
     return [
       customEventToInternalEvent[event],
-      filter((message) => !message.inGuild(), handler),
+      filter<typeof event>((message) => !message.inGuild(), handler),
     ] as const;
   }
 
-  return [
-    customEventToInternalEvent[event],
-    filter((message) => message.inGuild(), handler),
-  ] as const;
+  if (event === "guildMessageCreate") {
+    return [
+      customEventToInternalEvent[event],
+      filter<typeof event>((message) => message.inGuild(), handler),
+    ] as const;
+  }
+
+  if (event === "buttonInteractionCreate") {
+    return [
+      customEventToInternalEvent[event],
+      filter<typeof event>((itx) => itx.isButton(), handler),
+    ] as const;
+  }
+
+  throw new Error(`Invalid custom event: ${event}`);
 };

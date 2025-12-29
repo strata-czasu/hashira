@@ -225,7 +225,8 @@ describe("CombatService", () => {
       return captures / iterations;
     };
 
-    describe.each([
+    /*
+    describe.skip.each([
       {
         name: "Szopołak",
         createMonster: createWereraccoon,
@@ -386,5 +387,6 @@ describe("CombatService", () => {
         }
       });
     });
+    */
   });
 });

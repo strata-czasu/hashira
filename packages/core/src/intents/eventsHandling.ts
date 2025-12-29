@@ -1,4 +1,4 @@
-import type { Message } from "discord.js";
+import type { ButtonInteraction, Message } from "discord.js";
 import type * as events from "./events";
 import type { EventsToHandling } from "./util";
 
@@ -64,8 +64,13 @@ export type GuildMessageCreateHandling = {
   guildMessageCreate: (message: Message<true>) => Promise<void>;
 };
 
+export type ButtonInteractionCreateHandling = {
+  buttonInteractionCreate: (interaction: ButtonInteraction) => Promise<void>;
+};
+
 export type CustomEventsHandling = DirectMessageCreateHandling &
-  GuildMessageCreateHandling;
+  GuildMessageCreateHandling &
+  ButtonInteractionCreateHandling;
 
 export type AllEventsHandling = AutoModerationConfigurationHandling &
   AutoModerationActionExecutionHandling &

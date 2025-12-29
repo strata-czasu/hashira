@@ -378,27 +378,22 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       },
     );
   })
-  .handle("clientReady", async ({ prisma }, client) => {
-    client.on("interactionCreate", async (interaction) => {
-      if (!interaction.isButton()) return;
+  .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
+    const customId = itx.customId.split("_")[0];
+    if (!customId) return;
 
-      const customId = interaction.customId.split("_")[0];
-
-      if (!customId) return;
-
-      const matchingStage = await prisma.birthdayEventStage2024.findFirst({
-        where: { keyword: customId },
-      });
-
-      if (!matchingStage) return;
-
-      await handleStageInput(
-        prisma,
-        interaction.user.id,
-        matchingStage.keyword,
-        async (options) => {
-          await interaction.reply(options);
-        },
-      );
+    const matchingStage = await prisma.birthdayEventStage2024.findFirst({
+      where: { keyword: customId },
     });
+
+    if (!matchingStage) return;
+
+    await handleStageInput(
+      prisma,
+      itx.user.id,
+      matchingStage.keyword,
+      async (options) => {
+        await itx.reply(options);
+      },
+    );
   });

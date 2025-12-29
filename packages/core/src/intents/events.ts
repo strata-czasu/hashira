@@ -86,7 +86,12 @@ export const interactionCreate = ["interactionCreate"] as const;
 
 export const directMessageCreate = ["directMessageCreate"] as const;
 export const guildMessageCreate = ["guildMessageCreate"] as const;
-export const allCustomEvents = [...directMessageCreate, ...guildMessageCreate] as const;
+export const buttonInteractionCreate = ["buttonInteractionCreate"] as const;
+export const allCustomEvents = [
+  ...directMessageCreate,
+  ...guildMessageCreate,
+  ...buttonInteractionCreate,
+] as const;
 
 export const allEvents = [
   ...autoModerationConfigurationEvents,
