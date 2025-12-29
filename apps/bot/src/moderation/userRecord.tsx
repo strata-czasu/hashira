@@ -1,18 +1,23 @@
 import { Hashira } from "@hashira/core";
 import type { PrismaClient } from "@hashira/db";
-import { Container, type JSXNode, render, TextDisplay } from "@hashira/jsx";
+import {
+  Container,
+  H3,
+  type JSXNode,
+  render,
+  Separator,
+  Subtext,
+  TextDisplay,
+} from "@hashira/jsx";
 import { secondsToHours, sub } from "date-fns";
 import {
   bold,
   type Guild,
   type GuildMember,
-  HeadingLevel,
-  heading,
   italic,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   strikethrough,
-  subtext,
   TimestampStyles,
   time,
   type User,
@@ -205,24 +210,27 @@ export const userRecord = new Hashira({ name: "user-record" })
 
         const opts = render(
           <Container>
-            <TextDisplay
-              content={heading(`Kartoteka ${user.tag}`, HeadingLevel.Three)}
-            />
+            <TextDisplay>
+              <H3>Kartoteka ${user.tag}</H3>
+            </TextDisplay>
 
             <Field
               name="📆 Data założenia konta"
               value={`${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`}
             />
-            {member?.joinedAt ? (
+            {member?.joinedAt && (
               <Field
                 name="📆 Data dołączenia na serwer"
                 value={`${time(member.joinedAt, TimestampStyles.ShortDateTime)} (${time(member.joinedAt, TimestampStyles.RelativeTime)})`}
               />
-            ) : null}
+            )}
             <Field name="🔞 Poziom weryfikacji" value={formattedVerification} />
             {memberFields}
 
-            <TextDisplay content={subtext(user.id)} />
+            <Separator />
+            <TextDisplay>
+              <Subtext>ID: {user.id}</Subtext>
+            </TextDisplay>
           </Container>,
         );
 
