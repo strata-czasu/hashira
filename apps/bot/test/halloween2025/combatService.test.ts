@@ -198,7 +198,7 @@ describe("CombatService", () => {
       });
     });
 
-    const calculateCaptureRate = async (
+    /*const calculateCaptureRate = async (
       monsterCreator: () => ReturnType<typeof createBasicMonster>,
       playerCount: number,
       iterations: number,
@@ -225,7 +225,6 @@ describe("CombatService", () => {
       return captures / iterations;
     };
 
-    /*
     describe.skip.each([
       {
         name: "Szopołak",
