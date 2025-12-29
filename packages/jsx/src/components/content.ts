@@ -51,7 +51,12 @@ export const TextDisplay = markAsHost(function TextDisplay(
 ): TextDisplayBuilder {
   const text = new TextDisplayBuilder();
 
-  if (Array.isArray(props.children) && props.children.length > 0 && props.content) {
+  const hasChildren =
+    props.children !== undefined &&
+    props.children !== null &&
+    (!Array.isArray(props.children) || props.children.length > 0);
+
+  if (props.content !== undefined && hasChildren) {
     throw new Error("TextDisplay cannot have both `content` prop and children.");
   }
 
