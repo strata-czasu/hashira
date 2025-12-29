@@ -5,6 +5,7 @@ import {
   italic,
   spoiler,
   strikethrough,
+  subtext,
   type TimestampStylesString,
   time,
   underline,
@@ -62,6 +63,13 @@ export const Spoiler = markAsHost(function Spoiler(props: {
 }): string {
   const content = getTextContent(props.children);
   return content ? spoiler(content) : "";
+});
+
+export const Subtext = markAsHost(function Subtext(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? subtext(content) : "";
 });
 
 export const TimeStamp = markAsHost(function TimeStamp(props: {
