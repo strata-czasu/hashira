@@ -1,28 +1,36 @@
-/** @jsx jsx */
-/** @jsxFrag Fragment */
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
-import { ButtonStyle, ChannelType, SeparatorSpacingSize } from "discord.js";
+import {
+  ButtonStyle,
+  ChannelType,
+  SeparatorSpacingSize,
+  TimestampStyles,
+} from "discord.js";
 import {
   ActionRow,
+  Bold,
+  Br,
   Button,
   ChannelSelect,
+  CodeBlock,
   Container,
   File,
-  // biome-ignore lint/correctness/noUnusedImports: h and Fragment are required for JSX
-  Fragment,
-  jsx,
+  InlineCode,
+  Italic,
   MediaGallery,
   MediaGalleryItem,
   MentionableSelect,
   RoleSelect,
+  reconcile,
   render,
   Section,
   Separator,
+  Strikethrough,
   StringSelectMenu,
   StringSelectOption,
   TextDisplay,
   Thumbnail,
+  TimeStamp,
   UserSelect,
 } from "../src";
 
@@ -712,6 +720,55 @@ describe("JSX", () => {
         }
       `);
     });
+
+    it("renders text display with children as content", () => {
+      expect(
+        <TextDisplay>This is some text inside the TextDisplay component.</TextDisplay>,
+      ).toMatchInlineSnapshot(`
+        TextDisplayBuilder {
+          "data": {
+            "content": "This is some text inside the TextDisplay component.",
+            "type": 10,
+          },
+        }
+      `);
+    });
+
+    it("renders text display with children using Markdown components", () => {
+      expect(
+        <TextDisplay>
+          <Bold>Bold Text</Bold> <Br />
+          <Italic>
+            Italic <Strikethrough>Strike</Strikethrough> Text
+          </Italic>{" "}
+          <Br />
+          <CodeBlock language="js">console.log("Hello, World!");</CodeBlock>
+          <TimeStamp timestamp={new Date(0)} format={TimestampStyles.LongDate} /> <Br />
+          <InlineCode>Inline Code</InlineCode>
+        </TextDisplay>,
+      ).toMatchInlineSnapshot(`
+        TextDisplayBuilder {
+          "data": {
+            "content": 
+        "**Bold Text** 
+        _Italic ~~Strike~~ Text_ 
+        \`\`\`js
+        console.log("Hello, World!");
+        \`\`\`
+        <t:0:D> 
+        \`Inline Code\`"
+        ,
+            "type": 10,
+          },
+        }
+      `);
+    });
+
+    it("renders text display throws if both content and children are provided", () => {
+      expect(() => (
+        <TextDisplay content="Content prop">Child content</TextDisplay>
+      )).toThrowError("TextDisplay cannot have both `content` prop and children");
+    });
   });
 
   describe("Thumbnail", () => {
@@ -1064,5 +1121,124 @@ describe("JSX", () => {
         }
       `);
     });
+  });
+});
+
+describe("reconcile", () => {
+  it("is idempotent - calling twice produces same result", () => {
+    const element = (
+      <>
+        <TextDisplay content="Hello" />
+        <Button label="Click" style={ButtonStyle.Primary} customId="btn" />
+      </>
+    );
+
+    const once = reconcile(element);
+    const twice = reconcile(once);
+
+    expect(twice).toEqual(once);
+  });
+
+  it("passes through already-resolved builders unchanged", () => {
+    const button = <Button label="Test" style={ButtonStyle.Primary} customId="test" />;
+    const result = reconcile(button);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe(button); // Same reference
+  });
+
+  it("flattens nested arrays", () => {
+    const nested = [
+      [<TextDisplay content="A" />],
+      [[<TextDisplay content="B" />], <TextDisplay content="C" />],
+    ];
+
+    const result = reconcile(nested);
+
+    expect(result).toHaveLength(3);
+  });
+
+  it("filters out null, undefined, and boolean values", () => {
+    const withNulls = [
+      <TextDisplay content="Real" />,
+      null,
+      undefined,
+      true,
+      false,
+      <TextDisplay content="Also Real" />,
+    ];
+
+    const result = reconcile(withNulls);
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("resolves user-defined components (VNodes)", () => {
+    const MyComponent = () => <TextDisplay content="From component" />;
+
+    const result = reconcile(<MyComponent />);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchInlineSnapshot(`
+      TextDisplayBuilder {
+        "data": {
+          "content": "From component",
+          "type": 10,
+        },
+      }
+    `);
+  });
+
+  it("resolves deeply nested user components", () => {
+    const Inner = () => <TextDisplay content="Inner" />;
+    const Middle = () => <Inner />;
+    const Outer = () => <Middle />;
+
+    const result = reconcile(<Outer />);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchInlineSnapshot(`
+      TextDisplayBuilder {
+        "data": {
+          "content": "Inner",
+          "type": 10,
+        },
+      }
+    `);
+  });
+
+  it("handles mixed VNodes and resolved builders", () => {
+    const MyText = () => <TextDisplay content="Component text" />;
+
+    const mixed = (
+      <>
+        <TextDisplay content="Direct" />
+        <MyText />
+        <Button label="Button" style={ButtonStyle.Primary} customId="btn" />
+      </>
+    );
+
+    const result = reconcile(mixed);
+
+    expect(result).toHaveLength(3);
+  });
+
+  it("preserves strings and numbers", () => {
+    const result = reconcile(["hello", 42, "world"]);
+
+    expect(result).toEqual(["hello", 42, "world"]);
+  });
+
+  it("returns empty array for null input", () => {
+    expect(reconcile(null)).toEqual([]);
+  });
+
+  it("returns empty array for undefined input", () => {
+    expect(reconcile(undefined)).toEqual([]);
+  });
+
+  it("returns empty array for boolean input", () => {
+    expect(reconcile(true)).toEqual([]);
+    expect(reconcile(false)).toEqual([]);
   });
 });

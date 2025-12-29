@@ -2,10 +2,14 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  bold,
   ChannelSelectMenuBuilder,
   ComponentBuilder,
   ContainerBuilder,
+  codeBlock,
   FileBuilder,
+  inlineCode,
+  italic,
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   MentionableSelectMenuBuilder,
@@ -15,9 +19,14 @@ import {
   SeparatorBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  spoiler,
+  strikethrough,
   TextDisplayBuilder,
   ThumbnailBuilder,
+  type TimestampStylesString,
+  time,
   UserSelectMenuBuilder,
+  underline,
 } from "discord.js";
 import {
   type ActionRowProps,
@@ -57,18 +66,20 @@ function flattenChildren(children: JSXNode): ComponentBuilder[] {
   return [];
 }
 
-function getTextContent(children: JSXNode): string | null {
+function getTextContent(children: JSXNode, separator = ""): string | null {
   if (typeof children === "string" || typeof children === "number") {
     return String(children);
   }
 
-  if (Array.isArray(children)) {
-    const parts = children.map(getTextContent).filter((s): s is string => s !== null);
+  if (!Array.isArray(children)) return null;
 
-    return parts.length > 0 ? parts.join("") : null;
-  }
+  const parts = children
+    .map((child) => getTextContent(child, separator))
+    .filter((s): s is string => s !== null);
 
-  return null;
+  if (parts.length === 0) return null;
+
+  return parts.join(separator);
 }
 
 export const ActionRow = markAsHost(function ActionRow({
@@ -284,13 +295,14 @@ export const Section = markAsHost(function Section(
   return section;
 });
 
-/**
- * TextDisplay component - displays markdown text
- */
 export const TextDisplay = markAsHost(function TextDisplay(
   props: TextDisplayProps,
 ): TextDisplayBuilder {
   const text = new TextDisplayBuilder();
+
+  if (Array.isArray(props.children) && props.children.length > 0 && props.content) {
+    throw new Error("TextDisplay cannot have both `content` prop and children.");
+  }
 
   const childContent = props.children ? getTextContent(props.children) : null;
   const content = props.content ?? childContent;
@@ -300,9 +312,70 @@ export const TextDisplay = markAsHost(function TextDisplay(
   return text;
 });
 
-/**
- * Thumbnail component - small image accessory
- */
+export const Bold = markAsHost(function Bold(props: { children?: JSXNode }): string {
+  const content = getTextContent(props.children);
+  return content ? bold(content) : "";
+});
+
+export const Italic = markAsHost(function Italic(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? italic(content) : "";
+});
+
+export const Strikethrough = markAsHost(function Strikethrough(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? strikethrough(content) : "";
+});
+
+export const Underline = markAsHost(function Underline(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? underline(content) : "";
+});
+
+export const InlineCode = markAsHost(function InlineCode(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? inlineCode(content) : "";
+});
+
+export const CodeBlock = markAsHost(function CodeBlock(props: {
+  children?: JSXNode;
+  language?: string;
+}): string {
+  const content = getTextContent(props.children, "\n");
+
+  if (!content) return "";
+  if (props.language) return `${codeBlock(props.language, content)}\n`;
+
+  return `${codeBlock(content)}\n`;
+});
+
+export const Spoiler = markAsHost(function Spoiler(props: {
+  children?: JSXNode;
+}): string {
+  const content = getTextContent(props.children);
+  return content ? spoiler(content) : "";
+});
+
+export const TimeStamp = markAsHost(function TimeStamp(props: {
+  timestamp: Date;
+  format: TimestampStylesString;
+  children?: undefined;
+}): string {
+  return time(props.timestamp, props.format);
+});
+
+export const Br = markAsHost(function Br(): string {
+  return "\n";
+});
+
 export const Thumbnail = markAsHost(function Thumbnail(
   props: ThumbnailProps,
 ): ThumbnailBuilder {
@@ -315,9 +388,6 @@ export const Thumbnail = markAsHost(function Thumbnail(
   return thumb;
 });
 
-/**
- * MediaGallery component - displays multiple media items
- */
 export const MediaGallery = markAsHost(function MediaGallery(
   props: MediaGalleryProps,
 ): MediaGalleryBuilder {
@@ -350,9 +420,6 @@ export const MediaGalleryItem = markAsHost(function MediaGalleryItem(
   return item;
 });
 
-/**
- * File component - displays an attached file
- */
 export const File = markAsHost(function File(props: FileProps): FileBuilder {
   const file = new FileBuilder();
   file.setURL(props.url);
@@ -362,9 +429,6 @@ export const File = markAsHost(function File(props: FileProps): FileBuilder {
   return file;
 });
 
-/**
- * Separator component - adds vertical padding and optional divider
- */
 export const Separator = markAsHost(function Separator(
   props: SeparatorProps,
 ): SeparatorBuilder {
@@ -376,9 +440,6 @@ export const Separator = markAsHost(function Separator(
   return sep;
 });
 
-/**
- * Container component - visually groups components
- */
 export const Container = markAsHost(function Container(
   props: ContainerProps,
 ): ContainerBuilder {
