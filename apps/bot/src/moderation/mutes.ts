@@ -82,7 +82,7 @@ export const createFormatMuteInList =
     const header = heading(
       `${mutedUserMention}${userMention(moderatorId)} ${time(
         createdAt,
-        TimestampStyles.ShortDateTime,
+        TimestampStyles.LongDateShortTime,
       )} [${id}]`,
       HeadingLevel.Three,
     );
@@ -95,7 +95,7 @@ export const createFormatMuteInList =
 
     if (deletedAt) {
       lines.push(
-        `${bold("Data usunięcia")}: ${time(deletedAt, TimestampStyles.ShortDateTime)}`,
+        `${bold("Data usunięcia")}: ${time(deletedAt, TimestampStyles.LongDateShortTime)}`,
       );
     }
     if (deleteReason) {
@@ -717,7 +717,7 @@ export const mutes = new Hashira({ name: "mutes" })
               (mute) => {
                 const lines = [
                   heading(
-                    `${userMention(mute.userId)} ${time(mute.createdAt, TimestampStyles.ShortDateTime)} [${mute.id}]`,
+                    `${userMention(mute.userId)} ${time(mute.createdAt, TimestampStyles.LongDateShortTime)} [${mute.id}]`,
                     HeadingLevel.Three,
                   ),
                   `${bold("Moderator")}: ${userMention(mute.moderatorId)}`,

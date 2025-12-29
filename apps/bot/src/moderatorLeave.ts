@@ -200,7 +200,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             });
 
             await itx.editReply({
-              content: `Usunięto urlop ${userMention(leave.userId)} ${time(leave.startsAt, TimestampStyles.ShortDateTime)} - ${time(leave.endsAt, TimestampStyles.ShortDateTime)} [${leave.id}]`,
+              content: `Usunięto urlop ${userMention(leave.userId)} ${time(leave.startsAt, TimestampStyles.LongDateShortTime)} - ${time(leave.endsAt, TimestampStyles.LongDateShortTime)} [${leave.id}]`,
               components: [],
             });
           }),
@@ -231,8 +231,8 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             (leave) => {
               const lines = [
                 heading(userMention(leave.userId), HeadingLevel.Two),
-                `${bold("Start")}: ${time(leave.startsAt, TimestampStyles.ShortDateTime)}`,
-                `${bold("Koniec")}: ${time(leave.endsAt, TimestampStyles.ShortDateTime)}`,
+                `${bold("Start")}: ${time(leave.startsAt, TimestampStyles.LongDateShortTime)}`,
+                `${bold("Koniec")}: ${time(leave.endsAt, TimestampStyles.LongDateShortTime)}`,
               ];
               return lines.join("\n");
             },

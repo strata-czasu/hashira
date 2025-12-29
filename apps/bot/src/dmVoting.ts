@@ -318,12 +318,12 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               ];
               if (poll.startedAt) {
                 lines.push(
-                  `**Rozpoczęto**: ${time(poll.startedAt, TimestampStyles.ShortDateTime)}`,
+                  `**Rozpoczęto**: ${time(poll.startedAt, TimestampStyles.LongDateShortTime)}`,
                 );
               }
               if (poll.finishedAt) {
                 lines.push(
-                  `**Zakończono**: ${time(poll.finishedAt, TimestampStyles.ShortDateTime)}`,
+                  `**Zakończono**: ${time(poll.finishedAt, TimestampStyles.LongDateShortTime)}`,
                 );
               }
               const firstRowOptions = poll.options.filter((o) => o.row === 0);
@@ -500,13 +500,13 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             if (poll.startedAt) {
               return await errorFollowUp(
                 itx,
-                `Głosowanie zostało już rozpoczęte (${time(poll.startedAt, TimestampStyles.LongDateTime)})`,
+                `Głosowanie zostało już rozpoczęte (${time(poll.startedAt, TimestampStyles.FullDateShortTime)})`,
               );
             }
             if (poll.finishedAt) {
               return await errorFollowUp(
                 itx,
-                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.LongDateTime)})`,
+                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.FullDateShortTime)})`,
               );
             }
 
@@ -672,7 +672,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             if (poll.finishedAt) {
               return await errorFollowUp(
                 itx,
-                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.LongDateTime)})`,
+                `Głosowanie zostało już zakończone (${time(poll.finishedAt, TimestampStyles.FullDateShortTime)})`,
               );
             }
 
@@ -879,7 +879,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 );
 
                 const formatExclusion = (exclusion: DmPollExclusion, _idx: number) => {
-                  return `- ${userMention(exclusion.userId)} ${time(exclusion.createdAt, TimestampStyles.ShortDateTime)}`;
+                  return `- ${userMention(exclusion.userId)} ${time(exclusion.createdAt, TimestampStyles.LongDateShortTime)}`;
                 };
 
                 const view = new PaginatedView(
@@ -967,7 +967,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                     `${userMention(user.id)} jest wykluczony z głosowań DM`,
                     `Data wykluczenia: ${time(
                       exclusion.createdAt,
-                      TimestampStyles.LongDateTime,
+                      TimestampStyles.FullDateShortTime,
                     )}`,
                   ];
                   if (exclusion.optedOutDuringPoll) {

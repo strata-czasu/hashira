@@ -54,7 +54,7 @@ const getShopClosedMessage = (): string => {
   const remainingMs = SHOP_OPENING_DATE.getTime() - now.getTime();
   const remainingSeconds = Math.ceil(remainingMs / 1000);
 
-  return `Sklep otworzy się ${time(SHOP_OPENING_DATE, TimestampStyles.RelativeTime)} (${time(SHOP_OPENING_DATE, TimestampStyles.LongDateTime)})\nCzas serwera: pozostało ${remainingSeconds} sekund`;
+  return `Sklep otworzy się ${time(SHOP_OPENING_DATE, TimestampStyles.RelativeTime)} (${time(SHOP_OPENING_DATE, TimestampStyles.FullDateShortTime)})\nCzas serwera: pozostało ${remainingSeconds} sekund`;
 };
 
 /**

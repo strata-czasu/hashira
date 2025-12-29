@@ -41,7 +41,7 @@ async function formatVerification(prisma: PrismaClient, guild: Guild, user: User
   });
   if (!verification?.acceptedAt) return formatVerificationType(null);
 
-  return `${formatVerificationType(verification.type)} (przyjęto ${time(verification.acceptedAt, TimestampStyles.ShortDateTime)})`;
+  return `${formatVerificationType(verification.type)} (przyjęto ${time(verification.acceptedAt, TimestampStyles.LongDateShortTime)})`;
 }
 
 const formatActivities = (voiceActivitySeconds: number, textActivity: number) => {
@@ -81,7 +81,7 @@ async function getMemberFields(
     const joinedMutes = mutes
       .map(
         (m) =>
-          `${time(m.createdAt, TimestampStyles.ShortDateTime)}+${formatMuteLength(m)} ${truncate(italic(m.reason), 100)}`,
+          `${time(m.createdAt, TimestampStyles.LongDateShortTime)}+${formatMuteLength(m)} ${truncate(italic(m.reason), 100)}`,
       )
       .join("\n");
     fields.push(<Field name="🔇 Ostatnie wyciszenia" value={joinedMutes} />);
@@ -101,7 +101,7 @@ async function getMemberFields(
     const joinedWarns = warns
       .map(
         (w) =>
-          `${time(w.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(w.reason), 100)}`,
+          `${time(w.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(w.reason), 100)}`,
       )
       .join("\n");
     fields.push(<Field name="⚠️ Ostatnie ostrzeżenia" value={joinedWarns} />);
@@ -119,7 +119,7 @@ async function getMemberFields(
   if (channelRestrictions.length > 0) {
     const joinedRestrictions = channelRestrictions
       .map((cr) => {
-        const line = `${time(cr.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(cr.reason), 100)}`;
+        const line = `${time(cr.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(cr.reason), 100)}`;
         return cr.deletedAt ? strikethrough(line) : line;
       })
       .join("\n");
@@ -140,7 +140,7 @@ async function getMemberFields(
   if (ultimatums.length > 0) {
     const joinedUltimatums = ultimatums
       .map((u) => {
-        const line = `${time(u.createdAt, TimestampStyles.ShortDateTime)} ${truncate(italic(u.reason), 200)}`;
+        const line = `${time(u.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(u.reason), 200)}`;
         return u.endedAt ? strikethrough(line) : line;
       })
       .join("\n");
@@ -216,12 +216,12 @@ export const userRecord = new Hashira({ name: "user-record" })
 
             <Field
               name="📆 Data założenia konta"
-              value={`${time(user.createdAt, TimestampStyles.ShortDateTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`}
+              value={`${time(user.createdAt, TimestampStyles.LongDateShortTime)} (${time(user.createdAt, TimestampStyles.RelativeTime)})`}
             />
             {member?.joinedAt && (
               <Field
                 name="📆 Data dołączenia na serwer"
-                value={`${time(member.joinedAt, TimestampStyles.ShortDateTime)} (${time(member.joinedAt, TimestampStyles.RelativeTime)})`}
+                value={`${time(member.joinedAt, TimestampStyles.LongDateShortTime)} (${time(member.joinedAt, TimestampStyles.RelativeTime)})`}
               />
             )}
             <Field name="🔞 Poziom weryfikacji" value={formattedVerification} />

@@ -86,7 +86,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
 
             const formatTransaction = (transaction: Transaction) => {
               const parts: string[] = [
-                time(transaction.createdAt, TimestampStyles.ShortDateTime),
+                time(transaction.createdAt, TimestampStyles.LongDateShortTime),
                 formatBalance(transaction.amount, STRATA_CZASU_CURRENCY.symbol),
               ];
               if (transaction.reason) {

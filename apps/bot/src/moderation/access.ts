@@ -40,7 +40,7 @@ const createRestrictionFormatter =
     if (includeUser) headerParts.push(userMention(restriction.userId));
     if (includeChannel) headerParts.push(channelMention(restriction.channelId));
     headerParts.push(
-      `${userMention(restriction.moderatorId)} ${time(restriction.createdAt, TimestampStyles.ShortDateTime)} [${restriction.id}]`,
+      `${userMention(restriction.moderatorId)} ${time(restriction.createdAt, TimestampStyles.LongDateShortTime)} [${restriction.id}]`,
     );
     const header = heading(headerParts.join(" "), HeadingLevel.Three);
 
@@ -52,7 +52,7 @@ const createRestrictionFormatter =
       );
     if (restriction.deletedAt)
       lines.push(
-        `${bold("Data przywrócenia")}: ${time(restriction.deletedAt, TimestampStyles.ShortDateTime)}`,
+        `${bold("Data przywrócenia")}: ${time(restriction.deletedAt, TimestampStyles.LongDateShortTime)}`,
       );
     if (restriction.deleteReason)
       lines.push(`${bold("Powód przywrócenia")}: ${italic(restriction.deleteReason)}`);

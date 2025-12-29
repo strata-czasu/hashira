@@ -10,7 +10,7 @@ const formatCurrency = (
   { name, symbol, createdAt, createdBy }: Currency,
   showOwner = false,
 ) => {
-  const formattedTime = time(createdAt, TimestampStyles.LongDateTime);
+  const formattedTime = time(createdAt, TimestampStyles.FullDateShortTime);
   const base = `${name} - ${symbol} - ${formattedTime}`;
 
   return showOwner ? `${base} - <@${createdBy}>` : base;
