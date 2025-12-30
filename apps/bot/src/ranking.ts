@@ -2,9 +2,11 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, Prisma } from "@hashira/db";
 import { type PaginatorItem, PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
+import { intervalToDuration } from "date-fns/fp";
 import { ChannelType, TimestampStyles, time } from "discord.js";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
+import { durationToSeconds } from "./util/duration";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
 
@@ -41,6 +43,11 @@ function formatTimeRange(start: Date, end: Date) {
   return `${time(start, TimestampStyles.ShortDate)} - ${time(end, TimestampStyles.ShortDate)}`;
 }
 
+function isValidTimeRange(start: Date, end: Date) {
+  const duration = intervalToDuration({ start, end });
+  return durationToSeconds(duration) <= durationToSeconds({ days: 90 });
+}
+
 export const ranking = new Hashira({ name: "ranking" })
   .use(base)
   .group("ranking", (group) =>
@@ -70,6 +77,13 @@ export const ranking = new Hashira({ name: "ranking" })
             );
             if (!parsedTimeRange) return;
             const [periodStart, periodEnd] = parsedTimeRange;
+
+            if (!isValidTimeRange(periodStart, periodEnd)) {
+              return await errorFollowUp(
+                itx,
+                "Przedział czasowy nie może być dłuższy niż 90 dni.",
+              );
+            }
 
             const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
@@ -146,6 +160,13 @@ export const ranking = new Hashira({ name: "ranking" })
               if (!parsedTimeRange) return;
               const [periodStart, periodEnd] = parsedTimeRange;
 
+              if (!isValidTimeRange(periodStart, periodEnd)) {
+                return await errorFollowUp(
+                  itx,
+                  "Przedział czasowy nie może być dłuższy niż 90 dni.",
+                );
+              }
+
               const where: Prisma.UserTextActivityWhereInput = {
                 guildId: itx.guild.id,
                 channelId: channel.id,
@@ -217,6 +238,13 @@ export const ranking = new Hashira({ name: "ranking" })
             );
             if (!parsedTimeRange) return;
             const [periodStart, periodEnd] = parsedTimeRange;
+
+            if (!isValidTimeRange(periodStart, periodEnd)) {
+              return await errorFollowUp(
+                itx,
+                "Przedział czasowy nie może być dłuższy niż 90 dni.",
+              );
+            }
 
             const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
@@ -296,6 +324,13 @@ export const ranking = new Hashira({ name: "ranking" })
             );
             if (!parsedTimeRange) return;
             const [periodStart, periodEnd] = parsedTimeRange;
+
+            if (!isValidTimeRange(periodStart, periodEnd)) {
+              return await errorFollowUp(
+                itx,
+                "Przedział czasowy nie może być dłuższy niż 90 dni.",
+              );
+            }
 
             const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
