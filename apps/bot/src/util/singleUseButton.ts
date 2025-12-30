@@ -7,7 +7,9 @@ import {
   type CollectorFilter,
   ComponentType,
   type Message,
+  RESTJSONErrorCodes,
 } from "discord.js";
+import { discordTry } from "./discordTry";
 import { durationToMilliseconds } from "./duration";
 
 type ButtonFilter = CollectorFilter<[ButtonInteraction]>;
@@ -119,9 +121,17 @@ async function editButton(
   const builder = await fn(ButtonBuilder.from(button));
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(builder);
 
-  await message.edit({ components: [row] });
+  await discordTry(
+    () => message.edit({ components: [row] }),
+    [RESTJSONErrorCodes.UnknownMessage, RESTJSONErrorCodes.UnknownChannel],
+    () => {},
+  );
 }
 
 async function removeButton(message: Message<boolean>) {
-  await message.edit({ components: [] });
+  await discordTry(
+    () => message.edit({ components: [] }),
+    [RESTJSONErrorCodes.UnknownMessage, RESTJSONErrorCodes.UnknownChannel],
+    () => {},
+  );
 }
