@@ -86,3 +86,21 @@ export function jsx<P extends JSXRecord, R extends JSXNode>(
 
   return vnode;
 }
+
+/**
+ * JSX factory function for elements with multiple static children.
+ *
+ * Per the React 17+ JSX Transform RFC, `jsxs` is called by the compiler when an element
+ * has more than one static child. The semantic guarantee is that `props.children` is
+ * a statically-generated array (not user-provided).
+ *
+ * In this Discord JSX implementation, `jsxs` behaves identically to `jsx` since we don't
+ * perform React-style key validation. Both functions flatten children and create VNodes
+ * the same way. The distinction exists for spec compliance and potential future use.
+ *
+ * @param tag - Component function to call
+ * @param props - Props including children (guaranteed to be a static array with >1 elements)
+ * @param key - Optional key for list rendering
+ * @returns A VNode for user components, or the result of calling host components
+ */
+export const jsxs = jsx;
