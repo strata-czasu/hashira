@@ -29,7 +29,8 @@ COPY --link . .
 
 RUN bun prisma-generate
 
-ENV NODE_ENV=production # This ensures the production optimized build is used in Bun
+# This ensures the production optimized build is used in Bun
+ENV NODE_ENV=production 
 
 USER bun
 CMD ["bun", "start:prod"]
