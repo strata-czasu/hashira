@@ -5,7 +5,7 @@
     "base.json"
   ],
   "devDependencies": {
-    "@tsconfig/bun": "^1.0.9",
-    "@tsconfig/strictest": "^2.0.6"
+    "@tsconfig/bun": "^1.0.10",
+    "@tsconfig/strictest": "^2.0.8"
   }
 }

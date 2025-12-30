@@ -19,6 +19,7 @@
     "@hashira/core": "workspace:*",
     "@hashira/db": "workspace:*",
     "@hashira/env": "workspace:*",
+    "@hashira/jsx": "workspace:*",
     "@hashira/paginate": "workspace:*",
     "@hashira/yotei": "workspace:*",
     "@prisma/instrumentation": "^6.16.2",

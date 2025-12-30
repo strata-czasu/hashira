@@ -34,7 +34,7 @@ const createDefaultStrataCzasuCurrency = async (guildId: string) => {
 
 const createDefaultItems = async (guildId: string) => {
   const existingItems = await prisma.item.findMany({
-    where: { type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
+    where: { guildId, type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
   });
   const existingItemTypes = existingItems.map((item) => item.type);
   console.log(

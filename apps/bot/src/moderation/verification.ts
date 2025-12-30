@@ -307,7 +307,7 @@ export const verification = new Hashira({ name: "verification" })
                   verificationInProgress.moderatorId,
                 )}\nData rozpoczęcia: ${time(
                   verificationInProgress.createdAt,
-                  TimestampStyles.ShortDateTime,
+                  TimestampStyles.LongDateShortTime,
                 )}\nKoniec: ${time(
                   get16PlusVerificationEnd(verificationInProgress.createdAt),
                   TimestampStyles.RelativeTime,
@@ -405,7 +405,7 @@ export const verification = new Hashira({ name: "verification" })
               paginate,
               "Aktywne weryfikacje 16+",
               ({ createdAt, userId, moderatorId }) =>
-                `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.ShortDateTime)}\nKoniec: ${time(
+                `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.LongDateShortTime)}\nKoniec: ${time(
                   get16PlusVerificationEnd(createdAt),
                   TimestampStyles.RelativeTime,
                 )}`,

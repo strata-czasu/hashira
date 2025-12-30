@@ -277,26 +277,23 @@ describe("CombatService", () => {
         [name, 12],
         [name, 15],
         [name, 20],
-      ])(
-        "%p with %i player(s) participants should have consistent capture rate",
-        async (_, playerCount) => {
-          const NUM_FIGHTS = 100;
+      ])("%p with %i player(s) participants should have consistent capture rate", async (_, playerCount) => {
+        const NUM_FIGHTS = 100;
 
-          const captureRate = await calculateCaptureRate(
-            createMonster,
-            playerCount,
-            NUM_FIGHTS,
-          );
+        const captureRate = await calculateCaptureRate(
+          createMonster,
+          playerCount,
+          NUM_FIGHTS,
+        );
 
-          const captureCount = Math.round(captureRate * NUM_FIGHTS);
+        const captureCount = Math.round(captureRate * NUM_FIGHTS);
 
-          console.log(
-            `${name} with ${playerCount} player(s): ${captureCount}/${NUM_FIGHTS} captures (${(captureRate * 100).toFixed(1)}%)`,
-          );
+        console.log(
+          `${name} with ${playerCount} player(s): ${captureCount}/${NUM_FIGHTS} captures (${(captureRate * 100).toFixed(1)}%)`,
+        );
 
-          expect(captureRate).toMatchSnapshot();
-        },
-      );
+        expect(captureRate).toMatchSnapshot();
+      });
     });
 
     describe("loot distribution", () => {

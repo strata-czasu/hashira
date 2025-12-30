@@ -161,7 +161,7 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
             const formatUltimatum = ({ id, userId, expiresAt, reason }: Ultimatum) => {
               const lines = [
                 heading(`${userMention(userId)} [${id}]`, HeadingLevel.Three),
-                `Termin: ${time(expiresAt, TimestampStyles.ShortDateTime)}`,
+                `Termin: ${time(expiresAt, TimestampStyles.LongDateShortTime)}`,
                 `Powód: ${reason}`,
               ];
               return lines.join("\n");

@@ -50,7 +50,7 @@ export const createWarnFormat =
     const header = heading(
       `${warnedUserMention}${userMention(moderatorId)} ${time(
         createdAt,
-        TimestampStyles.ShortDateTime,
+        TimestampStyles.LongDateShortTime,
       )} [${id}]`,
       HeadingLevel.Three,
     );
@@ -61,7 +61,9 @@ export const createWarnFormat =
     ];
 
     if (deletedAt) {
-      lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.ShortDateTime)}`);
+      lines.push(
+        `Data usunięcia: ${time(deletedAt, TimestampStyles.LongDateShortTime)}`,
+      );
     }
 
     if (deleteReason) {

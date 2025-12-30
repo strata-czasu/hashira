@@ -413,7 +413,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             await sendDirectMessage(
               member.user,
-              `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.ShortDateTime)}).`,
+              `Hej, właśnie zaczął się Twój urlop! Skończy się ${time(leave.endsAt, TimestampStyles.RelativeTime)} (${time(leave.endsAt, TimestampStyles.LongDateShortTime)}).`,
             );
 
             const moderatorLeaveManagerId = settings?.moderatorLeaveManagerId;
@@ -426,7 +426,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               if (leaveManager) {
                 await sendDirectMessage(
                   leaveManager,
-                  `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.ShortDateTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
+                  `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.LongDateShortTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
                 );
               }
             }

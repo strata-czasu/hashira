@@ -211,7 +211,7 @@ export const tokens = new Hashira({ name: "tokens" })
 
             const formatTransaction = (transaction: Transaction) => {
               const parts: string[] = [
-                time(transaction.createdAt, TimestampStyles.ShortDateTime),
+                time(transaction.createdAt, TimestampStyles.LongDateShortTime),
                 formatBalance(transaction.amount, TOKENY_CURRENCY.symbol),
               ];
               if (transaction.reason) {

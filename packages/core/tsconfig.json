@@ -1,6 +1,8 @@
 {
   "extends": ["@hashira/tsconfig/base.json"],
   "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@hashira/jsx",
     "noErrorTruncation": true
   }
 }
