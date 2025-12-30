@@ -3,6 +3,7 @@ import {
   ActionRow,
   Button,
   Container,
+  H3,
   render,
   Separator,
   TextDisplay,
@@ -29,7 +30,9 @@ function PaginatedViewComponent({
 }) {
   return (
     <Container>
-      <TextDisplay content={`# ${title}`} />
+      <TextDisplay>
+        <H3>{title}</H3>
+      </TextDisplay>
       {items.length !== 0 && <TextDisplay content={items.join("\n")} />}
       <Separator />
       <TextDisplay content={footer} />
