@@ -2,11 +2,15 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
-import { ChannelType } from "discord.js";
+import { ChannelType, TimestampStyles, time } from "discord.js";
 import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
+
+function formatTimeRange(start: Date, end: Date) {
+  return `${time(start, TimestampStyles.ShortDate)} - ${time(end, TimestampStyles.ShortDate)}`;
+}
 
 export const ranking = new Hashira({ name: "ranking" })
   .use(base)
@@ -71,9 +75,10 @@ export const ranking = new Hashira({ name: "ranking" })
 
             const paginator = new PaginatedView(
               paginate,
-              `Ranking wiadomości tekstowych użytkownika ${user.tag} (${rawPeriod})`,
+              `Ranking wiadomości ${user.tag}`,
               formatEntry,
               true,
+              formatTimeRange(periodStart, periodEnd),
             );
             await paginator.render(itx);
           }),
@@ -135,9 +140,10 @@ export const ranking = new Hashira({ name: "ranking" })
 
             const paginator = new PaginatedView(
               paginate,
-              `Ranking wiadomości tekstowych na kanale ${channel.name} (${rawPeriod})`,
+              `Ranking wiadomości na kanale ${channel.name}`,
               formatEntry,
               true,
+              formatTimeRange(periodStart, periodEnd),
             );
             await paginator.render(itx);
           }),
@@ -207,9 +213,10 @@ export const ranking = new Hashira({ name: "ranking" })
 
             const paginator = new PaginatedView(
               paginate,
-              `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
+              "Ranking kanałów na serwerze",
               formatEntry,
               true,
+              formatTimeRange(periodStart, periodEnd),
             );
             await paginator.render(itx);
           }),
@@ -279,15 +286,16 @@ export const ranking = new Hashira({ name: "ranking" })
 
             const paginator = new PaginatedView(
               paginate,
-              `Ranking wiadomości tekstowych na serwerze (${rawPeriod})`,
+              `Ranking użytkowników na serwerze`,
               formatEntry,
               true,
+              formatTimeRange(periodStart, periodEnd),
             );
             await paginator.render(itx);
           }),
       )
 
-      .addCommand("wedka", (command) =>
+      .addCommand("wędka", (command) =>
         command
           .setDescription("Ranking wędkarzy")
 
@@ -298,6 +306,7 @@ export const ranking = new Hashira({ name: "ranking" })
             if (!itx.inCachedGuild()) return;
 
             const periodWhere: Prisma.TransactionWhereInput = {};
+            let footer: string | null = null;
             if (rawPeriod) {
               const periodStart = parseDate(rawPeriod, "start", null);
               if (!periodStart) {
@@ -311,6 +320,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 gte: periodStart,
                 lte: periodEnd,
               };
+              footer = formatTimeRange(periodStart, periodEnd);
             }
 
             const where: Prisma.TransactionWhereInput = {
@@ -348,12 +358,9 @@ export const ranking = new Hashira({ name: "ranking" })
               wallets.map((wallet) => [wallet.id, wallet.userId]),
             );
 
-            const titleParts = ["Ranking wędkarzy"];
-            if (rawPeriod) titleParts.push(`(${rawPeriod})`);
-
             const paginator = new PaginatedView(
               paginate,
-              titleParts.join(" "),
+              "Ranking wędkarzy",
               (item, idx) => {
                 const amountSum = item._sum.amount ?? 0;
                 const userId = walletToUserId.get(item.walletId);
@@ -364,6 +371,7 @@ export const ranking = new Hashira({ name: "ranking" })
                 );
               },
               true,
+              footer,
             );
             await paginator.render(itx);
           }),
