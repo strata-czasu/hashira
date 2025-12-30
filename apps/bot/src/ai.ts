@@ -1,187 +1,40 @@
-import { ConfirmationDialog, type ExtractContext, Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
+import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
-import { format, intervalToDuration, isAfter } from "date-fns";
-import {
-  ChannelType,
-  type Guild,
-  type GuildMember,
-  type GuildTextBasedChannel,
-  type User,
-  userMention,
-} from "discord.js";
+import { format } from "date-fns";
+import { ChannelType, type Message, RESTJSONErrorCodes, userMention } from "discord.js";
 import OpenAI from "openai";
+import {
+  createFetchMessage,
+  createGetLatestMutes,
+  createGetLatestWarns,
+  createMute,
+  readInterpreterFunction,
+  snowflake,
+} from "./ai/tools";
 import { base } from "./base";
-import { universalAddMute } from "./moderation/mutes";
-import { AsyncFunction } from "./util/asyncFunction";
-import { formatDuration } from "./util/duration";
-import { isNotOwner } from "./util/isOwner";
-import safeSendCode from "./util/safeSendCode";
+import { discordTry } from "./util/discordTry";
 import safeSendLongMessage from "./util/safeSendLongMessage";
 
-const createMute = (
-  prisma: ExtendedPrismaClient,
-  messageQueue: ExtractContext<typeof base>["messageQueue"],
-  log: ExtractContext<typeof base>["moderationLog"],
-  guild: Guild,
-  moderator: User,
-  reply: (content: string) => Promise<unknown>,
-  replyToModerator: (content: string) => Promise<unknown>,
-) => {
-  async function mute({
-    userId,
-    duration,
-    reason,
-  }: {
-    userId: string;
-    duration: string;
-    reason: string;
-  }) {
-    await universalAddMute({
-      prisma,
-      messageQueue,
-      log,
-      userId,
-      guild,
-      moderator,
-      duration,
-      reason,
-      reply,
-      replyToModerator,
-    });
+const extractImagesFromMessage = (message: Message) => {
+  const images: string[] = [];
+
+  for (const attachment of message.attachments.values()) {
+    if (attachment.contentType?.startsWith("image/")) {
+      images.push(attachment.url);
+    }
   }
 
-  return mute;
+  for (const embed of message.embeds) {
+    if (embed.image?.url) {
+      images.push(embed.image.url);
+    }
+    if (embed.thumbnail?.url) {
+      images.push(embed.thumbnail.url);
+    }
+  }
+
+  return images;
 };
-
-const createGetLatestMutes = (prisma: ExtendedPrismaClient, guildId: string) => {
-  return async function getLatestMutes({ userId }: { userId: string }) {
-    const mutes = await prisma.mute.findMany({
-      where: { guildId, userId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    const now = new Date();
-
-    return mutes.map((mute) => ({
-      id: mute.id,
-      mutedBy: mute.moderatorId,
-      reason: mute.reason,
-      duration: formatDuration(
-        intervalToDuration({ start: mute.createdAt, end: mute.endsAt }),
-      ),
-      ...(isAfter(now, mute.endsAt)
-        ? {
-            timeSinceEnd: formatDuration(
-              intervalToDuration({ start: mute.endsAt, end: now }),
-            ),
-          }
-        : {}),
-    }));
-  };
-};
-
-const createGetLatestWarns = (prisma: ExtendedPrismaClient, guildId: string) => {
-  return async function getLatestWarns({ userId }: { userId: string }) {
-    const warns = await prisma.warn.findMany({
-      where: { guildId, userId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    return warns.map((warn) => ({
-      id: warn.id,
-      warnedBy: warn.moderatorId,
-      reason: warn.reason,
-      timeSince: formatDuration(
-        intervalToDuration({ start: warn.createdAt, end: new Date() }),
-      ),
-    }));
-  };
-};
-
-type InterpreterContext = {
-  prisma: ExtendedPrismaClient;
-  guild: Guild;
-  invokedBy: GuildMember;
-  channel: GuildTextBasedChannel;
-};
-
-const createCodeInterpreter = (context: InterpreterContext) => {
-  return async function interpretCode({ code }: { code: string }) {
-    let result: unknown;
-    await safeSendCode(context.channel.send.bind(context.channel), code, "js");
-    const confirmation = new ConfirmationDialog(
-      "Are you sure you want to run this code?",
-      "Yes",
-      "No",
-      async () => {
-        try {
-          const fn = AsyncFunction("prisma", "guild", "moderator", "channel", code);
-          result = await fn(
-            context.prisma,
-            context.guild,
-            context.invokedBy,
-            context.channel,
-          );
-        } catch (error) {
-          await context.invokedBy.send(`Error: ${error}`);
-          throw error;
-        }
-      },
-      async () => {
-        result = "Code execution cancelled by user interaction or timeout.";
-      },
-      (interaction) => interaction.user.id === context.invokedBy.id,
-    );
-
-    await confirmation.render({ send: context.channel.send.bind(context.channel) });
-    return result;
-  };
-};
-
-const readInterpreterFunction = async (
-  invoker: GuildMember,
-  context: InterpreterContext,
-) => {
-  if (await isNotOwner(invoker)) return [];
-
-  return [
-    {
-      type: "function",
-      function: {
-        function: createCodeInterpreter(context),
-        description: `Write a code snippet to run in the context of the bot.
-You can import using \`import { ... } from 'module'\`.
-The code will be executed inside of a function with the following signature:
-\`\`\`ts
-async function (prisma: ExtendedPrismaClient, guild: Guild, moderator: GuildMember, channel: GuildTextBasedChannel): Promise<unknown> {
-  // Your code here
-}
-\`\`\`
-Do not write the function signature, just the code inside the function.`,
-        parse: JSON.parse,
-        parameters: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description:
-                "The code snippet to run. It should be a valid JavaScript code. It should always return a value.",
-            },
-          },
-        },
-      },
-    },
-  ] as const;
-};
-
-const snowflake = {
-  type: "string",
-  pattern: "^\\d+$",
-  description: "A Discord snowflake. Can be parsed from mention like <@id>, <#id>.",
-} as const;
 
 export const ai = new Hashira({ name: "ai" })
   .use(base)
@@ -202,26 +55,78 @@ export const ai = new Hashira({ name: "ai" })
 
       const thread = await message.startThread({ name: "AI Command" });
 
+      const reference = message.reference;
+      const repliedMessage = reference?.messageId
+        ? await discordTry(
+            () => message.channel.messages.fetch(reference.messageId as string),
+            [RESTJSONErrorCodes.UnknownMessage],
+            () => null,
+          )
+        : null;
+
       const prompt = [
-        "You are a helpful moderation assistant for a Discord server. Formulate your responses in Polish. Your name is Biszkopt, a male assistant.",
-        "You cannot interact with the moderator, only provide them with information and perform actions.",
-        "If not given snowflake, respond that you need a user to be mentioned or their id.",
+        "You are Biszkopt, an advanced AI moderation assistant for a Discord server. You identify as male.",
+        "Your responsibilities include analyzing user behavior, checking moderation history, and executing punishments using available tools.",
+        "Directives:",
+        "1. Language: Always respond in Polish.",
+        "2. Tone: Professional, objective, and concise. Avoid unnecessary pleasantries.",
+        "3. Tools: Use the provided tools to fetch information or perform actions. Do not guess or hallucinate information.",
+        "4. Missing Info: If some information (e.g. User ID) is not provided, ask for it explicitly in a new message. You cannot work multi-turn as you have no memory.",
+        "5. Scope: Focus solely on moderation and server management tasks.",
         `Current time: ${format(new Date(), "EEEE yyyy-MM-dd HH:mm:ss XXX")}`,
       ];
 
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        {
+          role: "system",
+          content: prompt.join("\n"),
+        },
+      ];
+
+      if (repliedMessage) {
+        const repliedImages = extractImagesFromMessage(repliedMessage);
+        const repliedContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+          {
+            type: "text",
+            text: `Context from replied message (by ${repliedMessage.author.tag}):\n${repliedMessage.content}`,
+          },
+        ];
+
+        for (const imageUrl of repliedImages) {
+          repliedContent.push({
+            type: "image_url",
+            image_url: { url: imageUrl, detail: "auto" },
+          });
+        }
+
+        messages.push({
+          role: "user",
+          content: repliedContent,
+        });
+      }
+
+      const triggerImages = extractImagesFromMessage(message);
+      const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+        { type: "text", text: content },
+      ];
+
+      for (const imageUrl of triggerImages) {
+        userContent.push({
+          type: "image_url",
+          image_url: { url: imageUrl, detail: "auto" },
+        });
+      }
+
+      messages.push({
+        role: "user",
+        content: userContent,
+      });
+
       const runner = ai.chat.completions
         .runTools({
-          model: "gpt-5",
-          messages: [
-            {
-              role: "system",
-              content: prompt.join("\n"),
-            },
-            {
-              role: "user",
-              content,
-            },
-          ],
+          model: "gpt-5.2",
+          reasoning_effort: "low",
+          messages,
           tools: [
             {
               type: "function",
@@ -271,6 +176,21 @@ export const ai = new Hashira({ name: "ai" })
                   type: "object",
                   properties: {
                     userId: snowflake,
+                  },
+                },
+              },
+            },
+            {
+              type: "function",
+              function: {
+                function: createFetchMessage(message.guild),
+                description: "Fetch a message by its ID and channel ID.",
+                parse: JSON.parse,
+                parameters: {
+                  type: "object",
+                  properties: {
+                    channelId: snowflake,
+                    messageId: snowflake,
                   },
                 },
               },
