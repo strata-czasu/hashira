@@ -1,6 +1,6 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, Prisma } from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
+import { type PaginatorItem, PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
 import { ChannelType, TimestampStyles, time } from "discord.js";
 import { base } from "./base";
@@ -63,10 +63,7 @@ export const ranking = new Hashira({ name: "ranking" })
               { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
-            const formatEntry = (
-              item: { channelId: string; _count: number },
-              idx: number,
-            ) => {
+            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
               return (
                 `${idx}\\.` +
                 ` <#${item.channelId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
@@ -128,10 +125,7 @@ export const ranking = new Hashira({ name: "ranking" })
               { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
-            const formatEntry = (
-              item: { userId: string; _count: number },
-              idx: number,
-            ) => {
+            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
               return (
                 `${idx}\\.` +
                 ` <@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
@@ -200,10 +194,7 @@ export const ranking = new Hashira({ name: "ranking" })
               { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
-            const formatEntry = (
-              item: { channelId: string; total: number; uniqueMembers: number },
-              idx: number,
-            ) => {
+            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
               return (
                 `${idx}\\.` +
                 ` <#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
@@ -273,10 +264,7 @@ export const ranking = new Hashira({ name: "ranking" })
               { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
             );
 
-            const formatEntry = (
-              item: { userId: string; total: number; uniqueChannels: number },
-              idx: number,
-            ) => {
+            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
               return (
                 `${idx}\\.` +
                 ` <@${item.userId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
@@ -358,18 +346,20 @@ export const ranking = new Hashira({ name: "ranking" })
               wallets.map((wallet) => [wallet.id, wallet.userId]),
             );
 
+            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
+              const amountSum = item._sum.amount ?? 0;
+              const userId = walletToUserId.get(item.walletId);
+              return (
+                `${idx}\\.` +
+                ` <@${userId}> - ${amountSum.toLocaleString("pl-PL")} ${pluralizers.points(amountSum)} ` +
+                `[${item._count} :fishing_pole_and_fish:]`
+              );
+            };
+
             const paginator = new PaginatedView(
               paginate,
               "Ranking wędkarzy",
-              (item, idx) => {
-                const amountSum = item._sum.amount ?? 0;
-                const userId = walletToUserId.get(item.walletId);
-                return (
-                  `${idx}\\.` +
-                  ` <@${userId}> - ${amountSum.toLocaleString("pl-PL")} ${pluralizers.points(amountSum)} ` +
-                  `[${item._count} :fishing_pole_and_fish:]`
-                );
-              },
+              formatEntry,
               true,
               footer,
             );

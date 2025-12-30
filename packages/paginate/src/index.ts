@@ -21,6 +21,15 @@ export interface Paginator<T> {
   previous(): Promise<T[]>;
 }
 
+/**
+ * Extracts the item type from a Paginator.
+
+ * @example
+ * const paginator = new StaticPaginator(...);
+ * type Item = PaginatorItem<typeof paginator>;
+ */
+export type PaginatorItem<P> = P extends Paginator<infer T> ? T : never;
+
 const defaultCompare = <T>(_a: T, _b: T) => 0;
 
 interface StaticPaginatorOptions<T> {
