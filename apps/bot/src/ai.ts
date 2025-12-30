@@ -108,7 +108,10 @@ export const ai = new Hashira({ name: "ai" })
 
       const triggerImages = extractImagesFromMessage(message);
       const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
-        { type: "text", text: content },
+        {
+          type: "text",
+          text: `Context from invoking message (by ${message.author.tag}):\n${content}`,
+        },
       ];
 
       for (const imageUrl of triggerImages) {
