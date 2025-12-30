@@ -8,6 +8,35 @@ import { parseDate } from "./util/dateParsing";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
 
+/**
+ * Parse a time range from raw input strings with an optional closing date.
+ *
+ * @param onError Callback which will be called before returning `null`.
+ * @returns `[Date, Date]` if input is valid, `null` otherwise.
+ */
+async function parseTimeRange(
+  rawStart: string,
+  rawEnd: string | null,
+  onError: (message: string) => Promise<void>,
+): Promise<[Date, Date] | null> {
+  const periodStart = parseDate(rawStart, "start", null);
+  if (!periodStart) {
+    await onError("Nieprawidłowy format początkowej daty. Przykład: 2025-01");
+    return null;
+  }
+
+  if (rawEnd !== null) {
+    const periodEnd = parseDate(rawEnd, "end", null);
+    if (!periodEnd) {
+      await onError("Nieprawidłowy format końcowej daty. Przykład: 2025-01-15");
+      return null;
+    }
+    return [periodStart, periodEnd];
+  }
+
+  return [periodStart, endOfMonth(periodStart)];
+}
+
 function formatTimeRange(start: Date, end: Date) {
   return `${time(start, TimestampStyles.ShortDate)} - ${time(end, TimestampStyles.ShortDate)}`;
 }
@@ -21,19 +50,28 @@ export const ranking = new Hashira({ name: "ranking" })
         command
           .setDescription("Ranking kanałów użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addString("okres", (period) =>
-            period.setDescription("Okres czasu, np. 2025-01"),
+          .addString("od", (period) =>
+            period.setDescription("Początek danych, np. 2025-01"),
           )
-          .handle(async ({ prisma }, { user, okres: rawPeriod }, itx) => {
+          .addString("do", (period) =>
+            period
+              .setDescription(
+                "Koniec danych, np. 2025-01-15 (domyślnie koniec miesiąca)",
+              )
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { user, od: rawStart, do: rawEnd }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const periodStart = parseDate(rawPeriod, "start", null);
-            if (!periodStart) {
-              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
-            }
-            const periodEnd = endOfMonth(periodStart);
+            const parsedTimeRange = await parseTimeRange(
+              rawStart,
+              rawEnd,
+              async (message) => errorFollowUp(itx, message),
+            );
+            if (!parsedTimeRange) return;
+            const [periodStart, periodEnd] = parsedTimeRange;
 
-            const where = {
+            const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
               userId: user.id,
               timestamp: {
@@ -86,78 +124,101 @@ export const ranking = new Hashira({ name: "ranking" })
           .addChannel("kanał", (channel) =>
             channel.setDescription("Kanał").setChannelType(ChannelType.GuildText),
           )
-          .addString("okres", (period) =>
-            period.setDescription("Okres czasu, np. 2025-01"),
+          .addString("od", (period) =>
+            period.setDescription("Początek danych, np. 2025-01"),
           )
-          .handle(async ({ prisma }, { kanał: channel, okres: rawPeriod }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addString("do", (period) =>
+            period
+              .setDescription(
+                "Koniec danych, np. 2025-01-15 (domyślnie koniec miesiąca)",
+              )
+              .setRequired(false),
+          )
+          .handle(
+            async ({ prisma }, { kanał: channel, od: rawStart, do: rawEnd }, itx) => {
+              if (!itx.inCachedGuild()) return;
 
-            const periodStart = parseDate(rawPeriod, "start", null);
-            if (!periodStart) {
-              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
-            }
-            const periodEnd = endOfMonth(periodStart);
-
-            const where = {
-              guildId: itx.guild.id,
-              channelId: channel.id,
-              timestamp: {
-                gte: periodStart,
-                lte: periodEnd,
-              },
-            };
-            const paginate = new DatabasePaginator(
-              (props, ordering) =>
-                prisma.userTextActivity.groupBy({
-                  ...props,
-                  by: "userId",
-                  where,
-                  _count: true,
-                  orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
-                }),
-              async () => {
-                const count = await prisma.userTextActivity.groupBy({
-                  by: "userId",
-                  where,
-                });
-                return count.length;
-              },
-              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
-            );
-
-            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
-              return (
-                `${idx}\\.` +
-                ` <@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
+              const parsedTimeRange = await parseTimeRange(
+                rawStart,
+                rawEnd,
+                async (message) => errorFollowUp(itx, message),
               );
-            };
+              if (!parsedTimeRange) return;
+              const [periodStart, periodEnd] = parsedTimeRange;
 
-            const paginator = new PaginatedView(
-              paginate,
-              `Ranking wiadomości na kanale ${channel.name}`,
-              formatEntry,
-              true,
-              formatTimeRange(periodStart, periodEnd),
-            );
-            await paginator.render(itx);
-          }),
+              const where: Prisma.UserTextActivityWhereInput = {
+                guildId: itx.guild.id,
+                channelId: channel.id,
+                timestamp: {
+                  gte: periodStart,
+                  lte: periodEnd,
+                },
+              };
+              const paginate = new DatabasePaginator(
+                (props, ordering) =>
+                  prisma.userTextActivity.groupBy({
+                    ...props,
+                    by: "userId",
+                    where,
+                    _count: true,
+                    orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                  }),
+                async () => {
+                  const count = await prisma.userTextActivity.groupBy({
+                    by: "userId",
+                    where,
+                  });
+                  return count.length;
+                },
+                { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
+              );
+
+              const formatEntry = (
+                item: PaginatorItem<typeof paginate>,
+                idx: number,
+              ) => {
+                return (
+                  `${idx}\\.` +
+                  ` <@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
+                );
+              };
+
+              const paginator = new PaginatedView(
+                paginate,
+                `Ranking wiadomości na kanale ${channel.name}`,
+                formatEntry,
+                true,
+                formatTimeRange(periodStart, periodEnd),
+              );
+              await paginator.render(itx);
+            },
+          ),
       )
       .addCommand("serwer", (command) =>
         command
           .setDescription("Ranking kanałów na serwerze")
-          .addString("okres", (period) =>
-            period.setDescription("Okres czasu, np. 2025-01"),
+          .addString("od", (period) =>
+            period.setDescription("Początek danych, np. 2025-01"),
           )
-          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
+          .addString("do", (period) =>
+            period
+              .setDescription(
+                "Koniec danych, np. 2025-01-15 (domyślnie koniec miesiąca)",
+              )
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { od: rawStart, do: rawEnd }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const periodStart = parseDate(rawPeriod, "start", null);
-            if (!periodStart) {
-              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
-            }
-            const periodEnd = endOfMonth(periodStart);
+            const parsedTimeRange = await parseTimeRange(
+              rawStart,
+              rawEnd,
+              async (message) => errorFollowUp(itx, message),
+            );
+            if (!parsedTimeRange) return;
+            const [periodStart, periodEnd] = parsedTimeRange;
 
-            const where = {
+            const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
               timestamp: {
                 gte: periodStart,
@@ -215,19 +276,28 @@ export const ranking = new Hashira({ name: "ranking" })
       .addCommand("serwer-użytkownicy", (command) =>
         command
           .setDescription("Ranking użytkowników na serwerze")
-          .addString("okres", (period) =>
-            period.setDescription("Okres czasu, np. 2025-01"),
+          .addString("od", (period) =>
+            period.setDescription("Początek danych, np. 2025-01"),
           )
-          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
+          .addString("do", (period) =>
+            period
+              .setDescription(
+                "Koniec danych, np. 2025-01-15 (domyślnie koniec miesiąca)",
+              )
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { od: rawStart, do: rawEnd }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const periodStart = parseDate(rawPeriod, "start", null);
-            if (!periodStart) {
-              return await errorFollowUp(itx, "Nieprawidłowy okres. Przykład: 2025-01");
-            }
-            const periodEnd = endOfMonth(periodStart);
+            const parsedTimeRange = await parseTimeRange(
+              rawStart,
+              rawEnd,
+              async (message) => errorFollowUp(itx, message),
+            );
+            if (!parsedTimeRange) return;
+            const [periodStart, periodEnd] = parsedTimeRange;
 
-            const where = {
+            const where: Prisma.UserTextActivityWhereInput = {
               guildId: itx.guild.id,
               timestamp: {
                 gte: periodStart,
@@ -286,37 +356,49 @@ export const ranking = new Hashira({ name: "ranking" })
       .addCommand("wędka", (command) =>
         command
           .setDescription("Ranking wędkarzy")
-
-          .addString("okres", (period) =>
-            period.setDescription("Okres czasu, np. 2025-01").setRequired(false),
+          .addString("od", (period) =>
+            period.setDescription("Początek danych, np. 2025-01").setRequired(false),
           )
-          .handle(async ({ prisma }, { okres: rawPeriod }, itx) => {
+          .addString("do", (period) =>
+            period
+              .setDescription(
+                "Koniec danych, np. 2025-01-15 (domyślnie koniec miesiąca)",
+              )
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { od: rawStart, do: rawEnd }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const periodWhere: Prisma.TransactionWhereInput = {};
+            // No start specified, but end is specified
+            if (!rawStart && rawEnd) {
+              return await errorFollowUp(itx, "Nie podano początku okresu");
+            }
+
+            const periodWhere: Prisma.TransactionWhereInput["createdAt"] = {};
             let footer: string | null = null;
-            if (rawPeriod) {
-              const periodStart = parseDate(rawPeriod, "start", null);
-              if (!periodStart) {
-                return await errorFollowUp(
-                  itx,
-                  "Nieprawidłowy okres. Przykład: 2025-01",
-                );
-              }
-              const periodEnd = endOfMonth(periodStart);
-              periodWhere.createdAt = {
-                gte: periodStart,
-                lte: periodEnd,
-              };
+
+            // Start is not null, end is optional
+            if (rawStart) {
+              const parsedTimeRange = await parseTimeRange(
+                rawStart,
+                rawEnd,
+                async (message) => errorFollowUp(itx, message),
+              );
+              if (!parsedTimeRange) return;
+              const [periodStart, periodEnd] = parsedTimeRange;
+              periodWhere.gte = periodStart;
+              periodWhere.lte = periodEnd;
               footer = formatTimeRange(periodStart, periodEnd);
             }
+
+            // Don't filter by start/end date by default if at least start date wasn't provided
 
             const where: Prisma.TransactionWhereInput = {
               wallet: { guildId: itx.guild.id },
               reason: { startsWith: "Łowienie" },
               transactionType: "add",
               entryType: "credit",
-              ...periodWhere,
+              createdAt: periodWhere,
             };
             const paginate = new DatabasePaginator(
               (props, ordering) =>
