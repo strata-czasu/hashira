@@ -4,6 +4,7 @@ import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
 import { modifyMembers } from "./util/modifyMembers";
 import { parseUserMentions } from "./util/parseUsers";
+import { pluralizers } from "./util/pluralize";
 
 export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (group) =>
   group
@@ -25,7 +26,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
           const toAdd = members.filter((m) => !m.roles.cache.has(role.id));
 
           await itx.editReply(
-            `Dodaję rolę ${bold(toAdd.size.toString())} użytkownikom....`,
+            `Dodaję rolę ${bold(toAdd.size.toString())} ${pluralizers.dativeUsers(toAdd.size)}...`,
           );
           log.push("guildMemberBulkRoleAdd", itx.guild, {
             moderator: itx.member,
@@ -38,15 +39,23 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
           );
           const added = results.filter((r) => r).length;
 
-          await itx.editReply(
-            `Dodano rolę ${roleMention(role.id)} ${bold(
-              added.toString(),
-            )} użytkownikom. ${bold(
-              (members.size - toAdd.size).toString(),
-            )} użytkowników miało już rolę. ${bold(
-              (toAdd.size - added).toString(),
-            )} użytkowników ma za wysokie permisje.`,
-          );
+          const reply = [
+            `Dodano rolę ${roleMention(role.id)} ${bold(added.toString())} ${pluralizers.dativeUsers(added)}.`,
+          ];
+          const alreadyHadRole = members.size - toAdd.size;
+          if (alreadyHadRole) {
+            reply.push(
+              `${bold(alreadyHadRole.toString())} ${pluralizers.users(alreadyHadRole)} ma już rolę.`,
+            );
+          }
+          const tooHighPerms = toAdd.size - added;
+          if (tooHighPerms) {
+            reply.push(
+              `${bold(tooHighPerms.toString())} ${pluralizers.users(tooHighPerms)} ma za wysokie permisje.`,
+            );
+          }
+
+          await itx.editReply(reply.join(" "));
         }),
     )
     .addCommand("zabierz", (command) =>
@@ -64,7 +73,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
           const toRemove = members.filter((m) => m.roles.cache.has(role.id));
 
           await itx.editReply(
-            `Zabieram rolę ${bold(toRemove.size.toString())} użytkownikom....`,
+            `Zabieram rolę ${bold(toRemove.size.toString())} ${pluralizers.dativeUsers(toRemove.size)}...`,
           );
           log.push("guildMemberBulkRoleRemove", itx.guild, {
             moderator: itx.member,
@@ -80,15 +89,23 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
           );
           const removed = results.filter((r) => r).length;
 
-          await itx.editReply(
-            `Zabrano rolę ${roleMention(role.id)} ${bold(
-              removed.toString(),
-            )} użytkownikom. ${bold(
-              (members.size - toRemove.size).toString(),
-            )} użytkowników nie miało już roli. ${bold(
-              (toRemove.size - removed).toString(),
-            )} użytkowników ma za wysokie permisje.`,
-          );
+          const reply = [
+            `Zabrano rolę ${roleMention(role.id)} ${bold(removed.toString())} ${pluralizers.dativeUsers(removed)}.`,
+          ];
+          const alreadyHadRole = members.size - toRemove.size;
+          if (alreadyHadRole) {
+            reply.push(
+              `${bold(alreadyHadRole.toString())} ${pluralizers.users(alreadyHadRole)} nie miało już roli.`,
+            );
+          }
+          const tooHighPerms = toRemove.size - removed;
+          if (tooHighPerms) {
+            reply.push(
+              `${bold(tooHighPerms.toString())} ${pluralizers.users(tooHighPerms)} ma za wysokie permisje.`,
+            );
+          }
+
+          await itx.editReply(reply.join(" "));
         }),
     ),
 );

@@ -37,6 +37,11 @@ export const pluralizers = {
     1: "użytkownik",
     2: "użytkowników",
   }),
+  dativeUsers: createPluralize({
+    0: "użytkownikom",
+    1: "użytkownikowi",
+    2: "użytkownikom",
+  }),
   messages: createPluralize({
     0: "wiadomości",
     1: "wiadomość",
