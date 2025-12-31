@@ -4,6 +4,7 @@ import {
   Button,
   Container,
   H3,
+  type JSXNode,
   render,
   Separator,
   TextDisplay,
@@ -17,7 +18,7 @@ import {
   type Message,
 } from "discord.js";
 
-type RenderItem<T> = (item: T, index: number) => Promise<string> | string;
+type RenderItem<T> = (item: T, index: number) => Promise<JSXNode> | JSXNode;
 
 function PaginatedViewComponent({
   title,
@@ -25,7 +26,7 @@ function PaginatedViewComponent({
   footer,
 }: {
   title: string;
-  items: string[];
+  items: JSXNode[];
   footer: string;
 }) {
   return (
@@ -33,7 +34,7 @@ function PaginatedViewComponent({
       <TextDisplay>
         <H3>{title}</H3>
       </TextDisplay>
-      {items.length !== 0 && <TextDisplay content={items.join("\n")} />}
+      {items}
       <Separator />
       <TextDisplay content={footer} />
     </Container>
@@ -130,9 +131,16 @@ export class PaginatedView<T> {
   async #updateMessage(showButtons: boolean) {
     const items = await this.#paginator.current();
     const renderedItems = await Promise.all(
-      items.map((item, idx) =>
-        this.#renderItem(item, idx + this.#paginator.currentOffset + 1),
-      ),
+      items.map(async (item, idx) => {
+        const rendered = await this.#renderItem(
+          item,
+          idx + this.#paginator.currentOffset + 1,
+        );
+        if (typeof rendered === "string") {
+          return <TextDisplay content={rendered} />;
+        }
+        return rendered;
+      }),
     );
 
     const output = render(
