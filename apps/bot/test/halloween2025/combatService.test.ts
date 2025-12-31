@@ -21,21 +21,21 @@ import {
   createZombieCat,
 } from "./testEntities";
 
-const defaultPlayerAbilities = PLAYER_ABILITIES.map(
-  (ability, idx) =>
-    ({
-      id: idx + 1,
-      name: ability.name,
-      description: ability.description,
-      abilityType: ability.abilityType,
-      power: ability.power,
-      cooldown: ability.cooldown,
-      canTargetPlayers: ability.canTargetPlayers,
-      canTargetSelf: ability.canTargetSelf,
-      isAoe: ability.isAoe,
-      ...("effects" in ability ? { effects: ability.effects } : {}),
-    }) satisfies PlayerAbility,
-);
+// const defaultPlayerAbilities = PLAYER_ABILITIES.map(
+//   (ability, idx) =>
+//     ({
+//       id: idx + 1,
+//       name: ability.name,
+//       description: ability.description,
+//       abilityType: ability.abilityType,
+//       power: ability.power,
+//       cooldown: ability.cooldown,
+//       canTargetPlayers: ability.canTargetPlayers,
+//       canTargetSelf: ability.canTargetSelf,
+//       isAoe: ability.isAoe,
+//       ...("effects" in ability ? { effects: ability.effects } : {}),
+//     }) satisfies PlayerAbility,
+// );
 
 describe("CombatService", () => {
   let repository: MockCombatRepository;
