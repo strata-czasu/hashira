@@ -1,6 +1,8 @@
+/** @jsxImportSource @hashira/jsx */
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
+import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
+import { ButtonStyle, HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -93,6 +95,33 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
   return parts.join(", ");
 };
 
+function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
+  const { id, price, item, currency } = shopItem;
+
+  const stockInfo = formatStockInfo(shopItem);
+  const formattedPrice = `${formatAmount(price)}${currency.symbol}`;
+
+  return (
+    <Section
+      accessory={
+        <Button
+          label={formattedPrice}
+          style={ButtonStyle.Success}
+          customId={`shop-buy-${id}`}
+        />
+      }
+    >
+      <TextDisplay>
+        <H3>
+          {item.name}
+          {stockInfo}
+        </H3>
+      </TextDisplay>
+      {item.description && <TextDisplay>{item.description}</TextDisplay>}
+    </Section>
+  );
+}
+
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -120,24 +149,10 @@ export const shop = new Hashira({ name: "shop" })
                 }),
             );
 
-            const paginatedView = new PaginatedView(
-              paginator,
-              "Sklep",
-              (shopItem) => {
-                const { id, price, item, currency } = shopItem;
-                const { name, description, type } = item;
-                const stockInfo = formatStockInfo(shopItem);
-                const lines = [];
-                lines.push(
-                  `### ${name} - ${formatAmount(price)}${currency.symbol}${stockInfo} [${id}] ${getTypeNameForList(type)}`,
-                );
-                if (description) lines.push(description);
-
-                return lines.join("\n");
-              },
-              true,
-              "T - tytuł profilu",
-            );
+            const paginatedView = new PaginatedView(paginator, "Sklep", (shopItem) => (
+              <ShopItemComponent shopItem={shopItem} />
+            ));
+            // TODO)) Handle shop button clicks
             await paginatedView.render(itx);
           }),
       )
@@ -260,6 +275,7 @@ export const shop = new Hashira({ name: "shop" })
                 return;
               }
 
+              await ensureUserExists(prisma, itx.user);
               const shopItem = await createShopItem({
                 prisma,
                 itemId: id,
