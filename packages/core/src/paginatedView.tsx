@@ -56,20 +56,20 @@ function PaginatedViewButtons({
     <ActionRow>
       <Button
         emoji="⬅️"
-        customId="previous"
+        customId="paginated-view:previous"
         disabled={!canPrev}
         style={ButtonStyle.Primary}
       />
       <Button
         emoji="➡️"
-        customId="next"
+        customId="paginated-view:next"
         disabled={!canNext}
         style={ButtonStyle.Primary}
       />
       {orderingEnabled && (
         <Button
           label={ordering === PaginatorOrder.DESC ? "🔽" : "🔼"}
-          customId="reorder"
+          customId="paginated-view:reorder"
           style={ButtonStyle.Secondary}
         />
       )}
@@ -183,14 +183,16 @@ export class PaginatedView<T> {
   }
 
   async #handleButton(customId: string) {
+    if (!customId.startsWith("paginated-view:")) return;
+
     switch (customId) {
-      case "previous":
+      case "paginated-view:previous":
         await this.#paginator.previous();
         break;
-      case "next":
+      case "paginated-view:next":
         await this.#paginator.next();
         break;
-      case "reorder":
+      case "paginated-view:reorder":
         await this.#paginator.reorder();
         break;
       default:
