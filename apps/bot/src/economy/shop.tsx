@@ -1,8 +1,15 @@
 /** @jsxImportSource @hashira/jsx */
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
+import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
 import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
-import { ButtonStyle, HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
+import {
+  ButtonStyle,
+  type Guild,
+  HeadingLevel,
+  heading,
+  PermissionFlagsBits,
+  type User,
+} from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -107,7 +114,7 @@ function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
         <Button
           label={formattedPrice}
           style={ButtonStyle.Success}
-          customId={`shop-buy-${id}`}
+          customId={`shop-buy:${id}`}
         />
       }
     >
@@ -120,6 +127,54 @@ function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
       {item.description && <TextDisplay>{item.description}</TextDisplay>}
     </Section>
   );
+}
+
+async function universalPurchaseShopItem({
+  prisma,
+  shopItemId,
+  user,
+  guild,
+  quantity,
+  reply,
+}: {
+  prisma: ExtendedPrismaClient;
+  shopItemId: number;
+  user: User;
+  guild: Guild;
+  quantity: number;
+  reply: (content: string) => Promise<unknown>;
+}) {
+  try {
+    const result = await purchaseShopItem({
+      prisma,
+      shopItemId,
+      userId: user.id,
+      guildId: guild.id,
+      quantity,
+    });
+
+    const { shopItem, totalPrice } = result;
+    const quantityText = quantity > 1 ? ` x${quantity}` : "";
+    await reply(
+      `Kupiono **${shopItem.item.name}**${quantityText} za ${formatBalance(totalPrice, shopItem.currency.symbol)}`,
+    );
+  } catch (error) {
+    if (error instanceof ShopItemNotFoundError) {
+      await reply("Nie znaleziono przedmiotu w sklepie");
+    } else if (error instanceof OutOfStockError) {
+      await reply("Przedmiot jest wyprzedany");
+    } else if (error instanceof UserPurchaseLimitExceededError) {
+      await reply(
+        `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
+      );
+    } else if (error instanceof InsufficientBalanceError) {
+      await reply("Nie masz wystarczająco środków");
+    } else if (error instanceof InvalidAmountError) {
+      await reply("Nieprawidłowa ilość");
+    } else {
+      throw error;
+    }
+  }
 }
 
 export const shop = new Hashira({ name: "shop" })
@@ -135,6 +190,8 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
+            await ensureUserExists(prisma, itx.user.id);
+
             const paginator = new DatabasePaginator(
               (props, price) =>
                 prisma.shopItem.findMany({
@@ -149,10 +206,28 @@ export const shop = new Hashira({ name: "shop" })
                 }),
             );
 
-            const paginatedView = new PaginatedView(paginator, "Sklep", (shopItem) => (
-              <ShopItemComponent shopItem={shopItem} />
-            ));
-            // TODO)) Handle shop button clicks
+            const paginatedView = new PaginatedView(
+              paginator,
+              "Sklep",
+              (shopItem) => <ShopItemComponent shopItem={shopItem} />,
+              false,
+              null,
+              async ({ customId }) => {
+                if (!customId.startsWith("shop-buy:")) return;
+                const rawId = customId.split(":")[1];
+                if (!rawId) return;
+                const shopItemId = parseInt(rawId, 10);
+
+                await universalPurchaseShopItem({
+                  prisma,
+                  shopItemId,
+                  user: itx.user,
+                  guild: itx.guild,
+                  quantity: 1,
+                  reply: (content) => itx.followUp({ content, flags: "Ephemeral" }),
+                });
+              },
+            );
             await paginatedView.render(itx);
           }),
       )
@@ -198,38 +273,14 @@ export const shop = new Hashira({ name: "shop" })
 
             const quantity = rawAmount ?? 1;
 
-            try {
-              const result = await purchaseShopItem({
-                prisma,
-                shopItemId: id,
-                userId: itx.user.id,
-                guildId: itx.guildId,
-                quantity,
-              });
-
-              const { shopItem, totalPrice } = result;
-              const quantityText = quantity > 1 ? ` x${quantity}` : "";
-              await itx.editReply(
-                `Kupiono **${shopItem.item.name}**${quantityText} za ${formatBalance(totalPrice, shopItem.currency.symbol)}`,
-              );
-            } catch (error) {
-              if (error instanceof ShopItemNotFoundError) {
-                await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie");
-              } else if (error instanceof OutOfStockError) {
-                await errorFollowUp(itx, "Przedmiot jest wyprzedany");
-              } else if (error instanceof UserPurchaseLimitExceededError) {
-                await errorFollowUp(
-                  itx,
-                  `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
-                );
-              } else if (error instanceof InsufficientBalanceError) {
-                await errorFollowUp(itx, "Nie masz wystarczająco środków");
-              } else if (error instanceof InvalidAmountError) {
-                await errorFollowUp(itx, "Nieprawidłowa ilość");
-              } else {
-                throw error;
-              }
-            }
+            await universalPurchaseShopItem({
+              prisma,
+              shopItemId: id,
+              user: itx.user,
+              guild: itx.guild,
+              quantity,
+              reply: (content) => itx.followUp(content),
+            });
           }),
       ),
   )
