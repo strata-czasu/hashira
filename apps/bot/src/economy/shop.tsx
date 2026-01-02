@@ -1,7 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
-import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
+import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
 import {
   ButtonStyle,
   type Guild,
@@ -51,11 +51,11 @@ const formatAmount = (amount: number) => {
 /**
  * Format stock info for display
  */
-const formatStockInfo = (shopItem: ShopItemWithDetails): string => {
-  const remaining = getRemainingStock(shopItem);
-  if (remaining === null) return "";
-  if (remaining === 0) return " Wyprzedane";
-  return ` (${remaining}/${shopItem.globalStock})`;
+const formatStockInfo = (shopItem: ShopItemWithDetails): string | null => {
+  const stock = getRemainingStock(shopItem);
+  if (stock === null) return null;
+  if (stock === 0) return "Wyprzedane";
+  return `Dostępne: (${stock}/${shopItem.globalStock})`;
 };
 
 /**
@@ -105,8 +105,9 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
 function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
   const { id, price, item, currency } = shopItem;
 
-  const stockInfo = formatStockInfo(shopItem);
   const formattedPrice = `${formatAmount(price)}${currency.symbol}`;
+  const stock = getRemainingStock(shopItem);
+  const formattedStock = formatStockInfo(shopItem);
 
   return (
     <Section
@@ -115,16 +116,21 @@ function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
           label={formattedPrice}
           style={ButtonStyle.Success}
           customId={`shop-buy:${id}`}
+          disabled={stock === 0}
         />
       }
     >
       <TextDisplay>
         <H3>
-          {item.name}
-          {stockInfo}
+          {item.name} [{id}]
         </H3>
       </TextDisplay>
       {item.description && <TextDisplay>{item.description}</TextDisplay>}
+      {formattedStock && (
+        <TextDisplay>
+          <Subtext>{formattedStock}</Subtext>
+        </TextDisplay>
+      )}
     </Section>
   );
 }
