@@ -11,6 +11,7 @@ import {
 } from "@hashira/jsx";
 import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import {
+  type ButtonInteraction,
   ButtonStyle,
   type CacheType,
   type ChatInputCommandInteraction,
@@ -19,6 +20,7 @@ import {
 } from "discord.js";
 
 type RenderItem<T> = (item: T, index: number) => Promise<JSXNode> | JSXNode;
+type HandleButtonInteraction = (interaction: ButtonInteraction) => Promise<void>;
 
 function PaginatedViewComponent({
   title,
@@ -83,6 +85,7 @@ export class PaginatedView<T> {
   readonly #orderingEnabled: boolean;
   readonly #footerExtra: string | null;
   readonly #renderItem: RenderItem<T>;
+  readonly #handleOtherButton: HandleButtonInteraction | null;
   #message?: Message<boolean>;
 
   constructor(
@@ -91,12 +94,14 @@ export class PaginatedView<T> {
     renderItem: RenderItem<T>,
     orderingEnabled = false,
     footerExtra: string | null = null,
+    handleOtherButton: HandleButtonInteraction | null = null,
   ) {
     this.#paginator = paginator;
     this.#title = title;
     this.#renderItem = renderItem;
     this.#orderingEnabled = orderingEnabled;
     this.#footerExtra = footerExtra;
+    this.#handleOtherButton = handleOtherButton;
   }
 
   async render(interaction: ChatInputCommandInteraction<CacheType>) {
@@ -175,7 +180,15 @@ export class PaginatedView<T> {
       if (!action) return;
 
       action.deferUpdate();
-      await this.#handleButton(action.customId);
+
+      if (action.customId.startsWith("paginated-view:")) {
+        await this.#handleButton(action.customId);
+      } else if (this.#handleOtherButton) {
+        await this.#handleOtherButton(action);
+      } else {
+        throw new Error(`Unknown button: ${action.customId}`);
+      }
+
       await this.render(interaction);
     } catch {
       await this.#finalize();
@@ -183,8 +196,6 @@ export class PaginatedView<T> {
   }
 
   async #handleButton(customId: string) {
-    if (!customId.startsWith("paginated-view:")) return;
-
     switch (customId) {
       case "paginated-view:previous":
         await this.#paginator.previous();
