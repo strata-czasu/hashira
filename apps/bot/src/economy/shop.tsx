@@ -107,7 +107,13 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
   return parts.join(", ");
 };
 
-function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
+function ShopItemComponent({
+  shopItem,
+  active = true,
+}: {
+  shopItem: ShopItemWithDetails;
+  active: boolean;
+}) {
   const { id, price, item, currency } = shopItem;
 
   const formattedPrice = `${formatAmount(price)}${currency.symbol}`;
@@ -121,7 +127,7 @@ function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
           label={formattedPrice}
           style={ButtonStyle.Success}
           customId={`shop-buy:${id}`}
-          disabled={stock === 0}
+          disabled={!active || stock === 0}
         />
       }
     >
@@ -285,7 +291,9 @@ export const shop = new Hashira({ name: "shop" })
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              (shopItem) => <ShopItemComponent shopItem={shopItem} />,
+              (shopItem, _idx, active) => (
+                <ShopItemComponent shopItem={shopItem} active={active} />
+              ),
               false,
               null,
               // FIXME: The inner button handler has a blocking confirmation
@@ -294,7 +302,6 @@ export const shop = new Hashira({ name: "shop" })
               async (button) => handleShopPurchaseButtonClick({ prisma, itx, button }),
             );
             await paginatedView.render(itx);
-            // TODO: Gray out purchase buttons after the paginated view finishes
           }),
       )
       .addCommand("kup", (command) =>

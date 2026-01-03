@@ -19,7 +19,11 @@ import {
   type Message,
 } from "discord.js";
 
-type RenderItem<T> = (item: T, index: number) => Promise<JSXNode> | JSXNode;
+type RenderItem<T> = (
+  item: T,
+  index: number,
+  active: boolean,
+) => Promise<JSXNode> | JSXNode;
 type HandleButtonInteraction = (interaction: ButtonInteraction) => Promise<void>;
 
 function PaginatedViewComponent({
@@ -140,6 +144,7 @@ export class PaginatedView<T> {
         const rendered = await this.#renderItem(
           item,
           idx + this.#paginator.currentOffset + 1,
+          showButtons,
         );
         if (typeof rendered === "string") {
           return <TextDisplay content={rendered} />;
