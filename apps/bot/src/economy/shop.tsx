@@ -165,6 +165,8 @@ async function universalPurchaseShopItem({
   quantity: number;
   reply: (content: string) => Promise<unknown>;
 }) {
+  await ensureUserExists(prisma, user.id);
+
   try {
     const result = await purchaseShopItem({
       prisma,
@@ -306,8 +308,6 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(prisma, itx.user.id);
-
             const paginator = new DatabasePaginator(
               (props, price) =>
                 prisma.shopItem.findMany({
@@ -362,16 +362,12 @@ export const shop = new Hashira({ name: "shop" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(prisma, itx.user.id);
-
-            const quantity = rawAmount ?? 1;
-
             await universalPurchaseShopItem({
               prisma,
               shopItemId: id,
               user: itx.user,
               guild: itx.guild,
-              quantity,
+              quantity: rawAmount ?? 1,
               reply: (content) => itx.followUp(content),
             });
           }),
