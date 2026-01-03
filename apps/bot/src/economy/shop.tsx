@@ -1,14 +1,19 @@
 /** @jsxImportSource @hashira/jsx */
-import { Hashira, PaginatedView } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
 import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
 import {
+  type ButtonInteraction,
   ButtonStyle,
+  bold,
+  type ChatInputCommandInteraction,
   type Guild,
   HeadingLevel,
   heading,
+  type Message,
   PermissionFlagsBits,
   type User,
+  userMention,
 } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
@@ -122,6 +127,7 @@ function ShopItemComponent({ shopItem }: { shopItem: ShopItemWithDetails }) {
     >
       <TextDisplay>
         <H3>
+          {/* TODO: Remove the ID once we have autocomplete for all sklep-admin commands */}
           {item.name} [{id}]
         </H3>
       </TextDisplay>
@@ -183,6 +189,70 @@ async function universalPurchaseShopItem({
   }
 }
 
+/**
+ * Handle clicks of the "purchase" button on individual shop items
+ */
+async function handleShopPurchaseButtonClick({
+  prisma,
+  itx,
+  button,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: ChatInputCommandInteraction<"cached">;
+  button: ButtonInteraction;
+}) {
+  if (!button.customId.startsWith("shop-buy:")) return;
+  const rawId = button.customId.split(":")[1];
+  if (!rawId) return;
+  const shopItemId = parseInt(rawId, 10);
+  const shopItem = await getShopItemWithDetails({
+    prisma,
+    shopItemId,
+    guildId: itx.guildId,
+  });
+  if (!shopItem) return;
+  const { item, price, currency } = shopItem;
+
+  // FIXME: We don't have a way to get the confirmation dialog message and rely
+  // on it being a direct reply to an interaction, so this weird setup is needed
+  // in order to edit the actual confirmation message after accepting or rejecting
+  let confirmationDialogMessage: Message | undefined;
+  const confirmation = await waitForConfirmation(
+    {
+      send: async (args) => {
+        // Send as a follow up to the shop paginated view
+        confirmationDialogMessage = await itx.followUp.bind(itx)(args);
+        return confirmationDialogMessage;
+      },
+    },
+    `Czy na pewno chcesz kupić ${bold(item.name)} za ${formatBalance(price, currency.symbol)}? ${userMention(itx.user.id)}`,
+    "Tak",
+    "Nie",
+    (action) => action.user.id === itx.user.id,
+  );
+
+  if (!confirmation) {
+    await confirmationDialogMessage?.edit({
+      content: `Anulowano zakup ${bold(shopItem.item.name)}`,
+      components: [],
+    });
+    return;
+  }
+
+  await universalPurchaseShopItem({
+    prisma,
+    shopItemId,
+    user: itx.user,
+    guild: itx.guild,
+    quantity: 1,
+    reply: async (content) =>
+      confirmationDialogMessage?.edit({
+        content,
+        components: [],
+      }),
+  });
+}
+
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -218,23 +288,13 @@ export const shop = new Hashira({ name: "shop" })
               (shopItem) => <ShopItemComponent shopItem={shopItem} />,
               false,
               null,
-              async ({ customId }) => {
-                if (!customId.startsWith("shop-buy:")) return;
-                const rawId = customId.split(":")[1];
-                if (!rawId) return;
-                const shopItemId = parseInt(rawId, 10);
-
-                await universalPurchaseShopItem({
-                  prisma,
-                  shopItemId,
-                  user: itx.user,
-                  guild: itx.guild,
-                  quantity: 1,
-                  reply: (content) => itx.followUp({ content, flags: "Ephemeral" }),
-                });
-              },
+              // FIXME: The inner button handler has a blocking confirmation
+              // dialog, which prevents the user from interacting with the shop
+              // paginated view while a confirmation is active
+              async (button) => handleShopPurchaseButtonClick({ prisma, itx, button }),
             );
             await paginatedView.render(itx);
+            // TODO: Gray out purchase buttons after the paginated view finishes
           }),
       )
       .addCommand("kup", (command) =>
