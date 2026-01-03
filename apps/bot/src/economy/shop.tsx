@@ -3,6 +3,7 @@ import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
 import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
 import {
+  type AutocompleteInteraction,
   type ButtonInteraction,
   ButtonStyle,
   bold,
@@ -109,10 +110,12 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
 
 function ShopItemComponent({
   shopItem,
+  showId = false,
   active = true,
 }: {
   shopItem: ShopItemWithDetails;
-  active: boolean;
+  showId?: boolean;
+  active?: boolean;
 }) {
   const { id, price, item, currency } = shopItem;
 
@@ -133,8 +136,8 @@ function ShopItemComponent({
     >
       <TextDisplay>
         <H3>
-          {/* TODO: Remove the ID once we have autocomplete for all sklep-admin commands */}
-          {item.name} [{id}]
+          {item.name}
+          {showId && <> [{id}]</>}
         </H3>
       </TextDisplay>
       {item.description && <TextDisplay>{item.description}</TextDisplay>}
@@ -259,6 +262,34 @@ async function handleShopPurchaseButtonClick({
   });
 }
 
+async function autocompleteShopItems({
+  prisma,
+  itx,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+}) {
+  const shopItems = await prisma.shopItem.findMany({
+    where: {
+      deletedAt: null,
+      item: {
+        guildId: itx.guildId,
+        name: {
+          contains: itx.options.getFocused(),
+          mode: "insensitive",
+        },
+      },
+    },
+    include: { item: true, currency: true },
+  });
+  await itx.respond(
+    shopItems.map(({ id, price, item, currency }) => ({
+      value: id,
+      name: `${item.name} - ${formatAmount(price)}${currency.symbol} ${getTypeNameForList(item.type)}`,
+    })),
+  );
+}
+
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -268,7 +299,10 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów w sklepie")
-          .handle(async ({ prisma }, _, itx) => {
+          .addBoolean("id", (id) =>
+            id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
+          )
+          .handle(async ({ prisma }, { id: showId }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -292,7 +326,11 @@ export const shop = new Hashira({ name: "shop" })
               paginator,
               "Sklep",
               (shopItem, _idx, active) => (
-                <ShopItemComponent shopItem={shopItem} active={active} />
+                <ShopItemComponent
+                  shopItem={shopItem}
+                  showId={showId ?? false}
+                  active={active}
+                />
               ),
               false,
               null,
@@ -318,25 +356,7 @@ export const shop = new Hashira({ name: "shop" })
           )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            const results = await prisma.shopItem.findMany({
-              where: {
-                deletedAt: null,
-                item: {
-                  guildId: itx.guildId,
-                  name: {
-                    contains: itx.options.getFocused(),
-                    mode: "insensitive",
-                  },
-                },
-              },
-              include: { item: true },
-            });
-            await itx.respond(
-              results.map(({ id, price, item }) => ({
-                value: id,
-                name: `${item.name} - ${formatAmount(price)} ${getTypeNameForList(item.type)}`,
-              })),
-            );
+            await autocompleteShopItems({ prisma, itx });
           })
           .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -421,8 +441,14 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("usuń", (command) =>
         command
           .setDescription("Usuń przedmiot ze sklepu")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ prisma }, { id }, itx) => {
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { przedmiot: id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -448,7 +474,9 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("edytuj", (command) =>
         command
           .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
           .addInteger("price", (price) =>
             price.setDescription("Nowa cena przedmiotu").setRequired(false),
           )
@@ -464,11 +492,15 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(0),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
           .handle(
             async (
               { prisma },
               {
-                id,
+                przedmiot: id,
                 price,
                 "global-stock": globalStock,
                 "user-limit": userPurchaseLimit,
@@ -522,8 +554,14 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("info", (command) =>
         command
           .setDescription("Pokaż szczegóły przedmiotu w sklepie")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ prisma }, { id }, itx) => {
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { przedmiot: id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
