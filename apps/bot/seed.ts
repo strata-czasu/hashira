@@ -37,9 +37,11 @@ const createDefaultItems = async (guildId: string) => {
     where: { guildId, type: { in: DEFAULT_ITEMS.map((it) => it.type) } },
   });
   const existingItemTypes = existingItems.map((item) => item.type);
-  console.log(
-    `Default item types already exist in guild ${guildId}: ${existingItemTypes.join(", ")}`,
-  );
+  if (existingItemTypes.length > 0) {
+    console.log(
+      `Default item types already exist in guild ${guildId}: ${existingItemTypes.join(", ")}`,
+    );
+  }
   const itemTypesToCreate = DEFAULT_ITEMS.filter(
     ({ type }) => !existingItemTypes.includes(type),
   );
@@ -116,4 +118,4 @@ if (isProduction) {
 console.log(`Seeding completed for ${isProduction ? "production" : "dev"} environment`);
 
 await prisma.$disconnect();
-await redis.disconnect();
+await redis.close();

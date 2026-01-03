@@ -1,7 +1,7 @@
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item, type Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { bold, inlineCode, italic, PermissionFlagsBits } from "discord.js";
+import { bold, inlineCode, PermissionFlagsBits } from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -170,9 +170,8 @@ export const items = new Hashira({ name: "items" })
               },
             });
 
-            await itx.editReply(
-              `Utworzono nową odznakę ${italic(name)} [${inlineCode(item.id.toString())}]`,
-            );
+            await itx.editReply(`Utworzono odznakę ${formatItem(item)}`);
+            // TODO)) Logs of badge creation
           }),
       )
       .addCommand("utwórz-kolor", (command) =>
@@ -190,23 +189,22 @@ export const items = new Hashira({ name: "items" })
             }
 
             await ensureUserExists(prisma, itx.user);
-            const item = await prisma.tintColor.create({
+            const item = await prisma.item.create({
               data: {
-                item: {
+                name,
+                guildId: itx.guildId,
+                createdBy: itx.user.id,
+                type: "staticTintColor",
+                tintColor: {
                   create: {
-                    name,
-                    guildId: itx.guildId,
-                    createdBy: itx.user.id,
-                    type: "staticTintColor",
+                    color,
                   },
                 },
-                color,
               },
             });
 
-            await itx.editReply(
-              `Utworzono nowy kolor ${italic(name)} (${bold(hex)}) [${inlineCode(item.id.toString())}]`,
-            );
+            await itx.editReply(`Utworzono kolor ${formatItem(item)} - ${bold(hex)}`);
+            // TODO)) Logs of color creation
           }),
       )
 
@@ -298,7 +296,7 @@ export const items = new Hashira({ name: "items" })
             // TODO)) Logs of item edits
           }),
       )
-      .addCommand("usun", (command) =>
+      .addCommand("usuń", (command) =>
         command
           .setDescription("Usuń przedmiot")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))

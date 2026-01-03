@@ -4,12 +4,14 @@ import {
   Button,
   Container,
   H3,
+  type JSXNode,
   render,
   Separator,
   TextDisplay,
 } from "@hashira/jsx";
 import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import {
+  type ButtonInteraction,
   ButtonStyle,
   type CacheType,
   type ChatInputCommandInteraction,
@@ -17,7 +19,12 @@ import {
   type Message,
 } from "discord.js";
 
-type RenderItem<T> = (item: T, index: number) => Promise<string> | string;
+type RenderItem<T> = (
+  item: T,
+  index: number,
+  active: boolean,
+) => Promise<JSXNode> | JSXNode;
+type HandleButtonInteraction = (interaction: ButtonInteraction) => Promise<void>;
 
 function PaginatedViewComponent({
   title,
@@ -25,7 +32,7 @@ function PaginatedViewComponent({
   footer,
 }: {
   title: string;
-  items: string[];
+  items: JSXNode[];
   footer: string;
 }) {
   return (
@@ -33,7 +40,7 @@ function PaginatedViewComponent({
       <TextDisplay>
         <H3>{title}</H3>
       </TextDisplay>
-      {items.length !== 0 && <TextDisplay content={items.join("\n")} />}
+      {items}
       <Separator />
       <TextDisplay content={footer} />
     </Container>
@@ -55,20 +62,20 @@ function PaginatedViewButtons({
     <ActionRow>
       <Button
         emoji="⬅️"
-        customId="previous"
+        customId="paginated-view:previous"
         disabled={!canPrev}
         style={ButtonStyle.Primary}
       />
       <Button
         emoji="➡️"
-        customId="next"
+        customId="paginated-view:next"
         disabled={!canNext}
         style={ButtonStyle.Primary}
       />
       {orderingEnabled && (
         <Button
           label={ordering === PaginatorOrder.DESC ? "🔽" : "🔼"}
-          customId="reorder"
+          customId="paginated-view:reorder"
           style={ButtonStyle.Secondary}
         />
       )}
@@ -82,6 +89,7 @@ export class PaginatedView<T> {
   readonly #orderingEnabled: boolean;
   readonly #footerExtra: string | null;
   readonly #renderItem: RenderItem<T>;
+  readonly #handleOtherButton: HandleButtonInteraction | null;
   #message?: Message<boolean>;
 
   constructor(
@@ -90,12 +98,14 @@ export class PaginatedView<T> {
     renderItem: RenderItem<T>,
     orderingEnabled = false,
     footerExtra: string | null = null,
+    handleOtherButton: HandleButtonInteraction | null = null,
   ) {
     this.#paginator = paginator;
     this.#title = title;
     this.#renderItem = renderItem;
     this.#orderingEnabled = orderingEnabled;
     this.#footerExtra = footerExtra;
+    this.#handleOtherButton = handleOtherButton;
   }
 
   async render(interaction: ChatInputCommandInteraction<CacheType>) {
@@ -130,9 +140,17 @@ export class PaginatedView<T> {
   async #updateMessage(showButtons: boolean) {
     const items = await this.#paginator.current();
     const renderedItems = await Promise.all(
-      items.map((item, idx) =>
-        this.#renderItem(item, idx + this.#paginator.currentOffset + 1),
-      ),
+      items.map(async (item, idx) => {
+        const rendered = await this.#renderItem(
+          item,
+          idx + this.#paginator.currentOffset + 1,
+          showButtons,
+        );
+        if (typeof rendered === "string") {
+          return <TextDisplay content={rendered} />;
+        }
+        return rendered;
+      }),
     );
 
     const output = render(
@@ -167,7 +185,15 @@ export class PaginatedView<T> {
       if (!action) return;
 
       action.deferUpdate();
-      await this.#handleButton(action.customId);
+
+      if (action.customId.startsWith("paginated-view:")) {
+        await this.#handleButton(action.customId);
+      } else if (this.#handleOtherButton) {
+        await this.#handleOtherButton(action);
+      } else {
+        throw new Error(`Unknown button: ${action.customId}`);
+      }
+
       await this.render(interaction);
     } catch {
       await this.#finalize();
@@ -176,13 +202,13 @@ export class PaginatedView<T> {
 
   async #handleButton(customId: string) {
     switch (customId) {
-      case "previous":
+      case "paginated-view:previous":
         await this.#paginator.previous();
         break;
-      case "next":
+      case "paginated-view:next":
         await this.#paginator.next();
         break;
-      case "reorder":
+      case "paginated-view:reorder":
         await this.#paginator.reorder();
         break;
       default:
