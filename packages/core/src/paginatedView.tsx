@@ -28,19 +28,19 @@ type HandleButtonInteraction = (interaction: ButtonInteraction) => Promise<void>
 
 function PaginatedViewComponent({
   title,
-  items,
   footer,
+  children,
 }: {
   title: string;
-  items: JSXNode[];
   footer: string;
+  children: JSXNode;
 }) {
   return (
     <Container>
       <TextDisplay>
         <H3>{title}</H3>
       </TextDisplay>
-      {items}
+      {children}
       <Separator />
       <TextDisplay content={footer} />
     </Container>
@@ -157,7 +157,7 @@ export class PaginatedView<T> {
       <>
         <PaginatedViewComponent
           title={this.#title}
-          items={renderedItems}
+          children={renderedItems}
           footer={this.#getFooter()}
         />
         {showButtons && (
