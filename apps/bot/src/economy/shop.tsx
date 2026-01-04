@@ -305,9 +305,11 @@ export const shop = new Hashira({ name: "shop" })
           .addBoolean("id", (id) =>
             id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
           )
-          .handle(async ({ prisma }, { id: showId }, itx) => {
+          .handle(async ({ prisma }, { id: maybeShowId }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            const showId = maybeShowId ?? false;
 
             const paginator = new DatabasePaginator(
               (props, price) =>
@@ -329,7 +331,7 @@ export const shop = new Hashira({ name: "shop" })
               (shopItem, _idx, active) => (
                 <ShopItemComponent
                   shopItem={shopItem}
-                  showId={showId ?? false}
+                  showId={showId}
                   active={active}
                 />
               ),
