@@ -1,6 +1,20 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
-import { HeadingLevel, heading, PermissionFlagsBits } from "discord.js";
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
+import {
+  type AutocompleteInteraction,
+  type ButtonInteraction,
+  ButtonStyle,
+  bold,
+  type ChatInputCommandInteraction,
+  type Guild,
+  HeadingLevel,
+  heading,
+  type Message,
+  PermissionFlagsBits,
+  type User,
+  userMention,
+} from "discord.js";
 import { base } from "../base";
 import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -42,11 +56,11 @@ const formatAmount = (amount: number) => {
 /**
  * Format stock info for display
  */
-const formatStockInfo = (shopItem: ShopItemWithDetails): string => {
-  const remaining = getRemainingStock(shopItem);
-  if (remaining === null) return "";
-  if (remaining === 0) return " Wyprzedane";
-  return ` (${remaining}/${shopItem.globalStock})`;
+const formatStockInfo = (shopItem: ShopItemWithDetails): string | null => {
+  const stock = getRemainingStock(shopItem);
+  if (stock === null) return null;
+  if (stock === 0) return "Wyprzedane";
+  return `Dostępne: (${stock}/${shopItem.globalStock})`;
 };
 
 /**
@@ -93,6 +107,191 @@ const formatChanges = (changes: ShopItemChanges, currencySymbol: string): string
   return parts.join(", ");
 };
 
+function ShopItemComponent({
+  shopItem,
+  showId = false,
+  active = true,
+}: {
+  shopItem: ShopItemWithDetails;
+  showId?: boolean;
+  active?: boolean;
+}) {
+  const { id, price, item, currency } = shopItem;
+
+  const formattedPrice = `${formatAmount(price)}${currency.symbol}`;
+  const stock = getRemainingStock(shopItem);
+  const formattedStock = formatStockInfo(shopItem);
+
+  return (
+    <Section
+      accessory={
+        <Button
+          label={formattedPrice}
+          style={ButtonStyle.Success}
+          customId={`shop-buy:${id}`}
+          disabled={!active || stock === 0}
+        />
+      }
+    >
+      <TextDisplay>
+        <H3>
+          {item.name}
+          {showId && <> [{id}]</>}
+        </H3>
+      </TextDisplay>
+      {item.description && <TextDisplay>{item.description}</TextDisplay>}
+      {formattedStock && (
+        <TextDisplay>
+          <Subtext>{formattedStock}</Subtext>
+        </TextDisplay>
+      )}
+    </Section>
+  );
+}
+
+async function universalPurchaseShopItem({
+  prisma,
+  shopItemId,
+  user,
+  guild,
+  quantity,
+  reply,
+}: {
+  prisma: ExtendedPrismaClient;
+  shopItemId: number;
+  user: User;
+  guild: Guild;
+  quantity: number;
+  reply: (content: string) => Promise<unknown>;
+}) {
+  await ensureUserExists(prisma, user.id);
+
+  try {
+    const result = await purchaseShopItem({
+      prisma,
+      shopItemId,
+      userId: user.id,
+      guildId: guild.id,
+      quantity,
+    });
+
+    const { shopItem, totalPrice } = result;
+    const quantityText = quantity > 1 ? ` x${quantity}` : "";
+    await reply(
+      `Kupiono **${shopItem.item.name}**${quantityText} za ${formatBalance(totalPrice, shopItem.currency.symbol)}`,
+    );
+  } catch (error) {
+    if (error instanceof ShopItemNotFoundError) {
+      await reply("Nie znaleziono przedmiotu w sklepie");
+    } else if (error instanceof OutOfStockError) {
+      await reply("Przedmiot jest wyprzedany");
+    } else if (error instanceof UserPurchaseLimitExceededError) {
+      await reply(
+        `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
+      );
+    } else if (error instanceof InsufficientBalanceError) {
+      await reply("Nie masz wystarczająco środków");
+    } else if (error instanceof InvalidAmountError) {
+      await reply("Nieprawidłowa ilość");
+    } else {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Handle clicks of the "purchase" button on individual shop items
+ */
+async function handleShopPurchaseButtonClick({
+  prisma,
+  itx,
+  button,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: ChatInputCommandInteraction<"cached">;
+  button: ButtonInteraction;
+}) {
+  if (!button.customId.startsWith("shop-buy:")) return;
+  const rawId = button.customId.split(":")[1];
+  if (!rawId) return;
+  const shopItemId = parseInt(rawId, 10);
+  const shopItem = await getShopItemWithDetails({
+    prisma,
+    shopItemId,
+    guildId: itx.guildId,
+  });
+  if (!shopItem) return;
+  const { item, price, currency } = shopItem;
+
+  // FIXME: We don't have a way to get the confirmation dialog message and rely
+  // on it being a direct reply to an interaction, so this weird setup is needed
+  // in order to edit the actual confirmation message after accepting or rejecting
+  let confirmationDialogMessage: Message | undefined;
+  const confirmation = await waitForConfirmation(
+    {
+      send: async (args) => {
+        // Send as a follow up to the shop paginated view
+        confirmationDialogMessage = await itx.followUp.bind(itx)(args);
+        return confirmationDialogMessage;
+      },
+    },
+    `Czy na pewno chcesz kupić ${bold(item.name)} za ${formatBalance(price, currency.symbol)}? ${userMention(itx.user.id)}`,
+    "Tak",
+    "Nie",
+    (action) => action.user.id === itx.user.id,
+  );
+
+  if (!confirmation) {
+    await confirmationDialogMessage?.edit({
+      content: `Anulowano zakup ${bold(shopItem.item.name)}`,
+      components: [],
+    });
+    return;
+  }
+
+  await universalPurchaseShopItem({
+    prisma,
+    shopItemId,
+    user: itx.user,
+    guild: itx.guild,
+    quantity: 1,
+    reply: async (content) =>
+      confirmationDialogMessage?.edit({
+        content,
+        components: [],
+      }),
+  });
+}
+
+async function autocompleteShopItems({
+  prisma,
+  itx,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+}) {
+  const shopItems = await prisma.shopItem.findMany({
+    where: {
+      deletedAt: null,
+      item: {
+        guildId: itx.guildId,
+        name: {
+          contains: itx.options.getFocused(),
+          mode: "insensitive",
+        },
+      },
+    },
+    include: { item: true, currency: true },
+    take: 25,
+  });
+  await itx.respond(
+    shopItems.map(({ id, price, item, currency }) => ({
+      value: id,
+      name: `${item.name} - ${formatAmount(price)}${currency.symbol} ${getTypeNameForList(item.type)}`,
+    })),
+  );
+}
+
 export const shop = new Hashira({ name: "shop" })
   .use(base)
   .group("sklep", (group) =>
@@ -102,9 +301,14 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów w sklepie")
-          .handle(async ({ prisma }, _, itx) => {
+          .addBoolean("id", (id) =>
+            id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
+          )
+          .handle(async ({ prisma }, { id: maybeShowId }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
+
+            const showId = maybeShowId ?? false;
 
             const paginator = new DatabasePaginator(
               (props, price) =>
@@ -123,20 +327,19 @@ export const shop = new Hashira({ name: "shop" })
             const paginatedView = new PaginatedView(
               paginator,
               "Sklep",
-              (shopItem) => {
-                const { id, price, item, currency } = shopItem;
-                const { name, description, type } = item;
-                const stockInfo = formatStockInfo(shopItem);
-                const lines = [];
-                lines.push(
-                  `### ${name} - ${formatAmount(price)}${currency.symbol}${stockInfo} [${id}] ${getTypeNameForList(type)}`,
-                );
-                if (description) lines.push(description);
-
-                return lines.join("\n");
-              },
-              true,
-              "T - tytuł profilu",
+              (shopItem, _idx, active) => (
+                <ShopItemComponent
+                  shopItem={shopItem}
+                  showId={showId}
+                  active={active}
+                />
+              ),
+              false,
+              null,
+              // FIXME: The inner button handler has a blocking confirmation
+              // dialog, which prevents the user from interacting with the shop
+              // paginated view while a confirmation is active
+              async (button) => handleShopPurchaseButtonClick({ prisma, itx, button }),
             );
             await paginatedView.render(itx);
           }),
@@ -155,66 +358,20 @@ export const shop = new Hashira({ name: "shop" })
           )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            const results = await prisma.shopItem.findMany({
-              where: {
-                deletedAt: null,
-                item: {
-                  guildId: itx.guildId,
-                  name: {
-                    contains: itx.options.getFocused(),
-                    mode: "insensitive",
-                  },
-                },
-              },
-              include: { item: true },
-            });
-            await itx.respond(
-              results.map(({ id, price, item }) => ({
-                value: id,
-                name: `${item.name} - ${formatAmount(price)} ${getTypeNameForList(item.type)}`,
-              })),
-            );
+            await autocompleteShopItems({ prisma, itx });
           })
           .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            await ensureUserExists(prisma, itx.user.id);
-
-            const quantity = rawAmount ?? 1;
-
-            try {
-              const result = await purchaseShopItem({
-                prisma,
-                shopItemId: id,
-                userId: itx.user.id,
-                guildId: itx.guildId,
-                quantity,
-              });
-
-              const { shopItem, totalPrice } = result;
-              const quantityText = quantity > 1 ? ` x${quantity}` : "";
-              await itx.editReply(
-                `Kupiono **${shopItem.item.name}**${quantityText} za ${formatBalance(totalPrice, shopItem.currency.symbol)}`,
-              );
-            } catch (error) {
-              if (error instanceof ShopItemNotFoundError) {
-                await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie");
-              } else if (error instanceof OutOfStockError) {
-                await errorFollowUp(itx, "Przedmiot jest wyprzedany");
-              } else if (error instanceof UserPurchaseLimitExceededError) {
-                await errorFollowUp(
-                  itx,
-                  `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
-                );
-              } else if (error instanceof InsufficientBalanceError) {
-                await errorFollowUp(itx, "Nie masz wystarczająco środków");
-              } else if (error instanceof InvalidAmountError) {
-                await errorFollowUp(itx, "Nieprawidłowa ilość");
-              } else {
-                throw error;
-              }
-            }
+            await universalPurchaseShopItem({
+              prisma,
+              shopItemId: id,
+              user: itx.user,
+              guild: itx.guild,
+              quantity: rawAmount ?? 1,
+              reply: (content) => itx.followUp(content),
+            });
           }),
       ),
   )
@@ -260,6 +417,7 @@ export const shop = new Hashira({ name: "shop" })
                 return;
               }
 
+              await ensureUserExists(prisma, itx.user);
               const shopItem = await createShopItem({
                 prisma,
                 itemId: id,
@@ -281,8 +439,14 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("usuń", (command) =>
         command
           .setDescription("Usuń przedmiot ze sklepu")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ prisma }, { id }, itx) => {
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { przedmiot: id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -308,7 +472,9 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("edytuj", (command) =>
         command
           .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
           .addInteger("price", (price) =>
             price.setDescription("Nowa cena przedmiotu").setRequired(false),
           )
@@ -324,11 +490,15 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(0),
           )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
           .handle(
             async (
               { prisma },
               {
-                id,
+                przedmiot: id,
                 price,
                 "global-stock": globalStock,
                 "user-limit": userPurchaseLimit,
@@ -382,8 +552,14 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("info", (command) =>
         command
           .setDescription("Pokaż szczegóły przedmiotu w sklepie")
-          .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
-          .handle(async ({ prisma }, { id }, itx) => {
+          .addInteger("przedmiot", (przedmiot) =>
+            przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await autocompleteShopItems({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { przedmiot: id }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
