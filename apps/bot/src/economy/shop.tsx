@@ -283,6 +283,7 @@ async function autocompleteShopItems({
       },
     },
     include: { item: true, currency: true },
+    take: 25,
   });
   await itx.respond(
     shopItems.map(({ id, price, item, currency }) => ({
