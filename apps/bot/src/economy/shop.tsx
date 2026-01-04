@@ -1,6 +1,7 @@
 import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
 import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
+import { StaticPaginator } from "@hashira/paginate";
 import {
   type AutocompleteInteraction,
   type ButtonInteraction,
@@ -12,6 +13,7 @@ import {
   heading,
   type Message,
   PermissionFlagsBits,
+  subtext,
   type User,
   userMention,
 } from "discord.js";
@@ -138,13 +140,9 @@ function ShopItemComponent({
           {item.name}
           {showId && <> [{id}]</>}
         </H3>
+        {item.description && `\n${item.description}`}
+        {formattedStock && `\n${subtext(formattedStock)}`}
       </TextDisplay>
-      {item.description && <TextDisplay>{item.description}</TextDisplay>}
-      {formattedStock && (
-        <TextDisplay>
-          <Subtext>{formattedStock}</Subtext>
-        </TextDisplay>
-      )}
     </Section>
   );
 }
