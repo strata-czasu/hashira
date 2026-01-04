@@ -1,4 +1,3 @@
-/** @jsxImportSource @hashira/jsx */
 import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
 import { Button, H3, Section, Subtext, TextDisplay } from "@hashira/jsx";
