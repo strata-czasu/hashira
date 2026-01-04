@@ -184,7 +184,7 @@ export class PaginatedView<T> {
 
       if (!action) return;
 
-      action.deferUpdate();
+      await action.deferUpdate();
 
       if (action.customId.startsWith("paginated-view:")) {
         await this.#handleButton(action.customId);
