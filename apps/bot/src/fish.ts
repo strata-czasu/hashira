@@ -52,7 +52,7 @@ const FISH_TABLE = [
   { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   { id: 12, name: lizardFish, minAmount: -30, maxAmount: -10, weight: 1 },
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
-  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 6 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 35 },
   { id: 14, name: halloweenCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 15, name: xmasCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 19 },
