@@ -136,7 +136,10 @@ export const access = new Hashira({ name: "access" })
               );
 
               if (!result) {
-                return errorFollowUp(itx, "Brak permisji do edycji kanału");
+                return errorFollowUp(
+                  itx,
+                  "Brak permisji do edycji kanału. Dostęp do kanału nie został odebrany.",
+                );
               }
 
               if (endsAt) {
@@ -238,7 +241,10 @@ export const access = new Hashira({ name: "access" })
               );
 
               if (!result) {
-                return errorFollowUp(itx, "Brak permisji do edycji kanału");
+                return errorFollowUp(
+                  itx,
+                  "Brak permisji do edycji kanału. Dostęp do kanału nie został przywrócony.",
+                );
               }
 
               log.push("channelRestrictionRemove", itx.guild, {
