@@ -111,19 +111,6 @@ export const access = new Hashira({ name: "access" })
 
               const endsAt = duration ? add(itx.createdAt, duration) : null;
 
-              await ensureUsersExist(prisma, [user, itx.user]);
-
-              const restriction = await prisma.channelRestriction.create({
-                data: {
-                  guildId: itx.guildId,
-                  channelId: channel.id,
-                  userId: user.id,
-                  moderatorId: itx.user.id,
-                  reason,
-                  endsAt,
-                },
-              });
-
               const result = await discordTry(
                 () =>
                   channel.permissionOverwrites.edit(
@@ -141,6 +128,18 @@ export const access = new Hashira({ name: "access" })
                   "Brak permisji do edycji kanału. Dostęp do kanału nie został odebrany.",
                 );
               }
+
+              await ensureUsersExist(prisma, [user, itx.user]);
+              const restriction = await prisma.channelRestriction.create({
+                data: {
+                  guildId: itx.guildId,
+                  channelId: channel.id,
+                  userId: user.id,
+                  moderatorId: itx.user.id,
+                  reason,
+                  endsAt,
+                },
+              });
 
               if (endsAt) {
                 await messageQueue.push(
@@ -224,16 +223,6 @@ export const access = new Hashira({ name: "access" })
                 return errorFollowUp(itx, "Użytkownik nie ma odebranego dostępu");
               }
 
-              await prisma.channelRestriction.update({
-                where: { id: restriction.id },
-                data: { deletedAt: itx.createdAt, deleteReason: reason },
-              });
-
-              await messageQueue.cancel(
-                "channelRestrictionEnd",
-                restriction.id.toString(),
-              );
-
               const result = await discordTry(
                 () => channel.permissionOverwrites.delete(user, reason ?? undefined),
                 [RESTJSONErrorCodes.MissingPermissions],
@@ -246,6 +235,16 @@ export const access = new Hashira({ name: "access" })
                   "Brak permisji do edycji kanału. Dostęp do kanału nie został przywrócony.",
                 );
               }
+
+              await prisma.channelRestriction.update({
+                where: { id: restriction.id },
+                data: { deletedAt: itx.createdAt, deleteReason: reason },
+              });
+
+              await messageQueue.cancel(
+                "channelRestrictionEnd",
+                restriction.id.toString(),
+              );
 
               log.push("channelRestrictionRemove", itx.guild, {
                 restriction,
