@@ -28,7 +28,7 @@ type ItemTransferData = {
 
 type ItemAddToOrRemoveFromInventoryData = {
   moderator: User;
-  user: User;
+  users: User[];
   item: Item;
   quantity: number;
 };
@@ -122,26 +122,54 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
       "itemAddToInventory",
       async (
         { timestamp },
-        { moderator, user, item, quantity }: ItemAddToOrRemoveFromInventoryData,
+        { moderator, users, item, quantity }: ItemAddToOrRemoveFromInventoryData,
       ) => {
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(
-            `Dodaje ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}] do ekwipunku ${userMention(user.id)}`,
-          )
-          .setColor("Green");
+        const embed = getLogMessageEmbed(moderator, timestamp).setColor("Green");
+
+        const parts = [
+          `Dodaje ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}]`,
+          "do ekwipunku",
+        ];
+        if (users.length === 1) {
+          const [user] = users;
+          if (!user) throw new Error("Invalid state: user is undefined");
+          parts.push(userMention(user.id));
+        } else {
+          const userMentions = users.map((user) => user.toString()).join(", ");
+          parts.push(
+            `${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`,
+          );
+        }
+
+        embed.setDescription(parts.join(" "));
+        return embed;
       },
     )
     .addMessageType(
       "itemRemoveFromInventory",
       async (
         { timestamp },
-        { moderator, user, item, quantity }: ItemAddToOrRemoveFromInventoryData,
+        { moderator, users, item, quantity }: ItemAddToOrRemoveFromInventoryData,
       ) => {
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(
-            `Zabiera ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}] z ekwipunku ${userMention(user.id)}`,
-          )
-          .setColor("Red");
+        const embed = getLogMessageEmbed(moderator, timestamp).setColor("Red");
+
+        const parts = [
+          `Zabiera ${bold(item.name)} (x${bold(quantity.toString())}) [${inlineCode(item.id.toString())}]`,
+          "z ekwipunku",
+        ];
+        if (users.length === 1) {
+          const [user] = users;
+          if (!user) throw new Error("Invalid state: user is undefined");
+          parts.push(userMention(user.id));
+        } else {
+          const userMentions = users.map((user) => user.toString()).join(", ");
+          parts.push(
+            `${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`,
+          );
+        }
+
+        embed.setDescription(parts.join(" "));
+        return embed;
       },
     ),
 );

@@ -12,8 +12,11 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { base } from "../base";
-import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
+import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { fetchMembers } from "../util/fetchMembers";
+import { parseUserMentions } from "../util/parseUsers";
+import { pluralizers } from "../util/pluralize";
 import {
   getInventoryItem,
   getInventoryItems,
@@ -260,7 +263,11 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("dodaj", (command) =>
         command
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
-          .addUser("user", (user) => user.setDescription("Użytkownik"))
+          .addString("users", (user) =>
+            user.setDescription(
+              "Użytkownicy którym chcesz dodać przedmiot (oddzielone spacjami)",
+            ),
+          )
           .addInteger("przedmiot", (id) =>
             id.setDescription("Przedmiot").setAutocomplete(true),
           )
@@ -268,40 +275,57 @@ export const inventory = new Hashira({ name: "inventory" })
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
-          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, user }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+          .handle(
+            async (
+              { prisma, economyLog },
+              { przedmiot: itemId, users: rawUsers },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply();
 
-            await ensureUserExists(prisma, user);
-            const item = await prisma.$transaction(async (tx) => {
-              const item = await getItem(tx, itemId, itx.guildId);
-              if (!item) {
-                await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-                return null;
-              }
+              const members = await fetchMembers(
+                itx.guild,
+                parseUserMentions(rawUsers),
+              );
+              const users = members.map((m) => m.user);
 
-              await tx.inventoryItem.create({
-                data: {
-                  itemId,
-                  userId: user.id,
-                },
+              await ensureUsersExist(prisma, users);
+              const item = await prisma.$transaction(async (tx) => {
+                const item = await getItem(tx, itemId, itx.guildId);
+                if (!item) {
+                  await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                  return null;
+                }
+
+                await tx.inventoryItem.createMany({
+                  data: users.map((user) => ({
+                    itemId,
+                    userId: user.id,
+                  })),
+                });
+                return item;
               });
-              return item;
-            });
 
-            if (!item) return;
+              if (!item) return;
 
-            economyLog.push("itemAddToInventory", itx.guild, {
-              moderator: itx.user,
-              user,
-              item,
-              quantity: 1,
-            });
+              economyLog.push("itemAddToInventory", itx.guild, {
+                moderator: itx.user,
+                users,
+                item,
+                quantity: 1,
+              });
 
-            await itx.editReply(
-              `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${bold(user.tag)}`,
-            );
-          }),
+              const formattedUsers =
+                users.length === 1
+                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                    bold(users.at(0)!.tag)
+                  : `${bold(users.length.toString())} ${pluralizers.dativeUsers(users.length)}`;
+              await itx.editReply(
+                `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${formattedUsers}`,
+              );
+            },
+          ),
       )
       .addCommand("zabierz", (command) =>
         command
@@ -396,7 +420,7 @@ export const inventory = new Hashira({ name: "inventory" })
 
               economyLog.push("itemRemoveFromInventory", itx.guild, {
                 moderator: itx.user,
-                user,
+                users: [user],
                 item: result.item,
                 quantity: qty,
               });
