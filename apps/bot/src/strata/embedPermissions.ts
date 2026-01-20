@@ -8,8 +8,8 @@ const MEDIA_URL_PATTERNS = [
   new URLPattern({ hostname: "*giphy.com" }),
   new URLPattern({ hostname: "*imgur.com" }),
 ];
-const REPLY_CONTENT =
-  "-# <#1213901611836117052> w razie braku permisji mimo zrobienia jednego z zadań[.](https://i.imgur.com/Rsn2uKa.gif) **[Link do poradnika](<https://www.youtube.com/watch?v=vmUW3pnXv1E>)** jak ustawić .gg/strataczasu jako Activity.";
+const TUTORIAL_IMAGE_URL = "https://i.imgur.com/2ifiiIi.gif";
+const REPLY_CONTENT = `-# <#1213901611836117052> w razie braku permisji mimo zrobienia jednego z zadań[.](${TUTORIAL_IMAGE_URL}) **[Link do poradnika](<https://www.youtube.com/watch?v=vmUW3pnXv1E>)** jak ustawić .gg/strataczasu jako Activity.`;
 
 const REMINDER_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
