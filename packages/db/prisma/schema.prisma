@@ -158,6 +158,7 @@ model User {
   displayedProfileBadges            DisplayedProfileBadge[]
   easter2025TeamMember              Easter2025TeamMember[]
   lastFishings                      LastFishing[]
+  fishReminderEnabled               Boolean?
   givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
   receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
   giveawayParticipations            GiveawayParticipant[]
