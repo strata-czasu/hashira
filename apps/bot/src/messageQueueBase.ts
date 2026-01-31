@@ -63,6 +63,10 @@ type UltimatumEndData = {
   guildId: string;
 };
 
+// Time window (in minutes) for looking up recently-ended ultimatums
+// Used to avoid processing stale ultimatums when the message queue handler runs late
+const RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES = 5;
+
 type ReminderData = {
   userId: string;
   guildId: string;
@@ -118,12 +122,15 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             } else {
               // If no active ultimatum, look for a recently-ended one
               // This handles the case where the ultimatum was manually ended
-              // Only look for ultimatums ended in the last 5 minutes to avoid processing stale data
+              // Only look for ultimatums ended recently to avoid processing stale data
               ultimatum = await prisma.ultimatum.findFirst({
                 where: {
                   userId,
                   guildId,
-                  endedAt: { not: null, gte: subMinutes(new Date(), 5) },
+                  endedAt: {
+                    not: null,
+                    gte: subMinutes(new Date(), RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES),
+                  },
                 },
                 orderBy: { endedAt: "desc" },
               });
