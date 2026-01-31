@@ -141,7 +141,6 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                   userId,
                   guildId,
                   endedAt: {
-                    not: null,
                     gte: subMinutes(now, RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES),
                   },
                 },
