@@ -179,11 +179,8 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
         command
           .setDescription("Zakończ aktywne ultimatum")
           .addUser("użytkownik", (user) => user.setDescription("Użytkownik"))
-          .addBoolean("force", (force) =>
-            force.setDescription("Zakończ ultimatum siłą").setRequired(false),
-          )
           .handle(
-            async ({ prisma, messageQueue }, { użytkownik: user, force }, itx) => {
+            async ({ prisma, messageQueue }, { użytkownik: user }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -193,18 +190,18 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 return;
               }
 
+              // Update the database immediately to ensure consistency
+              await prisma.ultimatum.update({
+                where: { id: ultimatum.id },
+                data: { endedAt: new Date() },
+              });
+
+              // Schedule the message queue handler to remove role, send DM, and log
               await messageQueue.updateDelay(
                 "ultimatumEnd",
                 ultimatum.id.toString(),
                 new Date(),
               );
-
-              if (force) {
-                await prisma.ultimatum.update({
-                  where: { id: ultimatum.id },
-                  data: { endedAt: new Date() },
-                });
-              }
 
               await itx.editReply("Zakończono ultimatum");
             },

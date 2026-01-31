@@ -104,15 +104,28 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         .addHandler(
           "ultimatumEnd",
           async ({ client }, { userId, guildId }: UltimatumEndData) => {
-            const currentUltimatum = await prisma.ultimatum.findFirst({
+            // First try to find an active ultimatum
+            let ultimatum = await prisma.ultimatum.findFirst({
               where: { userId, guildId, endedAt: null },
             });
-            if (!currentUltimatum) return;
 
-            const updatedUltimatum = await prisma.ultimatum.update({
-              where: { id: currentUltimatum.id },
-              data: { endedAt: new Date() },
-            });
+            // If we found an active ultimatum, end it now
+            if (ultimatum) {
+              ultimatum = await prisma.ultimatum.update({
+                where: { id: ultimatum.id },
+                data: { endedAt: new Date() },
+              });
+            } else {
+              // If no active ultimatum, look for a recently-ended one
+              // This handles the case where the ultimatum was manually ended
+              ultimatum = await prisma.ultimatum.findFirst({
+                where: { userId, guildId, endedAt: { not: null } },
+                orderBy: { endedAt: "desc" },
+              });
+
+              // If no ultimatum found at all, nothing to do
+              if (!ultimatum) return;
+            }
 
             const member = await fetchGuildMember(client, guildId, userId);
             if (!member) return;
@@ -126,10 +139,10 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
               user: member.user,
-              createdAt: updatedUltimatum.createdAt,
-              // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
-              endedAt: updatedUltimatum.endedAt!,
-              reason: updatedUltimatum.reason,
+              createdAt: ultimatum.createdAt,
+              // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has ended
+              endedAt: ultimatum.endedAt!,
+              reason: ultimatum.reason,
             });
           },
         )
