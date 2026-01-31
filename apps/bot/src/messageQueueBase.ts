@@ -65,6 +65,11 @@ type UltimatumEndData = {
 
 // Time window (in minutes) for looking up recently-ended ultimatums
 // Used to avoid processing stale ultimatums when the message queue handler runs late
+// This window should be:
+// - Large enough to account for normal message queue delays (seconds to low minutes)
+// - Small enough to prevent processing very old ultimatums incorrectly
+// - 5 minutes provides a reasonable buffer for typical delays while preventing
+//   confusion from processing ultimatums that ended hours/days ago
 const RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES = 5;
 
 type ReminderData = {
