@@ -316,6 +316,7 @@ export const profile = new Hashira({ name: "profile" })
                     },
                   },
                   include: { item: true },
+                  take: 25,
                 });
                 await itx.respond(
                   results.map(({ item: { id, name } }) => ({ value: id, name })),
@@ -426,6 +427,7 @@ export const profile = new Hashira({ name: "profile" })
                     },
                   },
                   include: { item: true },
+                  take: 25,
                 });
                 await itx.respond(
                   results.map(({ item: { id, name } }) => ({ value: id, name })),
@@ -621,6 +623,7 @@ export const profile = new Hashira({ name: "profile" })
                     },
                   },
                   include: { item: true },
+                  take: 25,
                 });
                 await itx.respond(
                   results.map(({ item: { id, name } }) => ({ value: id, name })),

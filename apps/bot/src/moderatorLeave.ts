@@ -137,6 +137,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
                 deletedAt: null,
                 endsAt: { gt: itx.createdAt },
               },
+              take: 25,
             });
             const userIds = results.map((r) => r.userId);
             const members = await fetchMembers(itx.guild, userIds);

@@ -207,6 +207,7 @@ export const tokenShop = new Hashira({ name: "token-shop" })
                 currency: { symbol: TOKENY_CURRENCY.symbol },
               },
               include: { item: true },
+              take: 25,
             });
             await itx.respond(
               results.map(({ id, price, item }) => ({

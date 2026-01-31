@@ -24,6 +24,7 @@ export const badges = new Hashira({ name: "badges" })
                 guildId: itx.guildId,
                 type: "badge",
               },
+              take: 25,
             });
             await itx.respond(results.map(({ id, name }) => ({ value: id, name })));
           })
