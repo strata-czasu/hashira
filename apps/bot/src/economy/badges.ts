@@ -23,6 +23,10 @@ export const badges = new Hashira({ name: "badges" })
                 deletedAt: null,
                 guildId: itx.guildId,
                 type: "badge",
+                name: {
+                  contains: itx.options.getFocused(),
+                  mode: "insensitive",
+                },
               },
               take: 25,
             });
