@@ -70,6 +70,8 @@ type UltimatumEndData = {
 // - Small enough to prevent processing very old ultimatums incorrectly
 // - 5 minutes provides a reasonable buffer for typical delays while preventing
 //   confusion from processing ultimatums that ended hours/days ago
+// Note: If the queue handler runs more than 5 minutes late after a manual end,
+// the role removal and DM won't happen, but the database will still be correct
 const RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES = 5;
 
 type ReminderData = {
@@ -131,7 +133,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               // This handles the case where the ultimatum was manually ended
               // Only look for ultimatums ended recently to avoid processing stale data
               // Note: In rare cases, multiple ultimatums could match if a user had several ended
-              // within the time window, but we use orderBy to get the most recent one
+              // within the time window, but we use orderBy to get the most recent one.
+              // The message queue uses the ultimatum ID as a deduplication key, so each
+              // ultimatum's handler is only called once, preventing duplicate processing.
               ultimatum = await prisma.ultimatum.findFirst({
                 where: {
                   userId,
