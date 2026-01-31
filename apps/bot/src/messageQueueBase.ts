@@ -109,7 +109,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           "ultimatumEnd",
           async ({ client }, { userId, guildId }: UltimatumEndData) => {
             const now = new Date();
-            
+
             // First try to find an active ultimatum
             let ultimatum = await prisma.ultimatum.findFirst({
               where: { userId, guildId, endedAt: null },
