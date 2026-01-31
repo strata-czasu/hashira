@@ -130,6 +130,8 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               // If no active ultimatum, look for a recently-ended one
               // This handles the case where the ultimatum was manually ended
               // Only look for ultimatums ended recently to avoid processing stale data
+              // Note: In rare cases, multiple ultimatums could match if a user had several ended
+              // within the time window, but we use orderBy to get the most recent one
               ultimatum = await prisma.ultimatum.findFirst({
                 where: {
                   userId,
@@ -159,7 +161,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
               user: member.user,
               createdAt: ultimatum.createdAt,
-              // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has ended
+              // biome-ignore lint/style/noNonNullAssertion: endedAt is guaranteed to be non-null - either just set above or already set when manually ended
               endedAt: ultimatum.endedAt!,
               reason: ultimatum.reason,
             });
