@@ -140,6 +140,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 where: {
                   userId,
                   guildId,
+                  // The gte comparison on endedAt implicitly excludes null values
                   endedAt: {
                     gte: subMinutes(now, RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES),
                   },
