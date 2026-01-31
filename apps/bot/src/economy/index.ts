@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import { badges } from "./badges";
 import { currency } from "./currency";
 import { inventory } from "./inventory";
 import { items } from "./items";
@@ -10,4 +11,5 @@ export const economy = new Hashira({ name: "economy" })
   .use(items)
   .use(shop)
   .use(inventory)
-  .use(currency);
+  .use(currency)
+  .use(badges);
