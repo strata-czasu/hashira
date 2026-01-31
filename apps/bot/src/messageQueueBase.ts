@@ -1,7 +1,7 @@
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
 import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
-import { compareAsc, type Duration, formatDuration } from "date-fns";
+import { compareAsc, type Duration, formatDuration, subMinutes } from "date-fns";
 import {
   type ActionRow,
   ActionRowBuilder,
@@ -118,8 +118,13 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             } else {
               // If no active ultimatum, look for a recently-ended one
               // This handles the case where the ultimatum was manually ended
+              // Only look for ultimatums ended in the last 5 minutes to avoid processing stale data
               ultimatum = await prisma.ultimatum.findFirst({
-                where: { userId, guildId, endedAt: { not: null } },
+                where: {
+                  userId,
+                  guildId,
+                  endedAt: { not: null, gte: subMinutes(new Date(), 5) },
+                },
                 orderBy: { endedAt: "desc" },
               });
 
