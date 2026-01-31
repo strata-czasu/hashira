@@ -315,7 +315,7 @@ export async function endGiveaway(
 
   await message.reply({
     components: [resultContainer],
-    allowedMentions: { users: participants.map((p) => p.userId) },
+    allowedMentions: { users: winningUsers.map((p) => p.userId) },
     flags: MessageFlags.IsComponentsV2,
   });
 
