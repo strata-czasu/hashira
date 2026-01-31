@@ -190,17 +190,19 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
                 return;
               }
 
+              const endTime = new Date();
+
               // Update the database immediately to ensure consistency
               await prisma.ultimatum.update({
                 where: { id: ultimatum.id },
-                data: { endedAt: new Date() },
+                data: { endedAt: endTime },
               });
 
               // Schedule the message queue handler to remove role, send DM, and log
               await messageQueue.updateDelay(
                 "ultimatumEnd",
                 ultimatum.id.toString(),
-                new Date(),
+                endTime,
               );
 
               await itx.editReply("Zakończono ultimatum");

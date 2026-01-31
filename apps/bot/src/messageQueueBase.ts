@@ -108,6 +108,8 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         .addHandler(
           "ultimatumEnd",
           async ({ client }, { userId, guildId }: UltimatumEndData) => {
+            const now = new Date();
+            
             // First try to find an active ultimatum
             let ultimatum = await prisma.ultimatum.findFirst({
               where: { userId, guildId, endedAt: null },
@@ -117,7 +119,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (ultimatum) {
               ultimatum = await prisma.ultimatum.update({
                 where: { id: ultimatum.id },
-                data: { endedAt: new Date() },
+                data: { endedAt: now },
               });
             } else {
               // If no active ultimatum, look for a recently-ended one
@@ -129,7 +131,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                   guildId,
                   endedAt: {
                     not: null,
-                    gte: subMinutes(new Date(), RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES),
+                    gte: subMinutes(now, RECENTLY_ENDED_ULTIMATUM_WINDOW_MINUTES),
                   },
                 },
                 orderBy: { endedAt: "desc" },
