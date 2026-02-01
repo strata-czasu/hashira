@@ -1,5 +1,5 @@
-const mentionRegex = /^<@!?(\d{15,20})>$/;
-const idRegex = /^\d{15,20}$/;
+const mentionRegex = /^<@!?(\d{17,20})>$/;
+const idRegex = /^\d{17,20}$/;
 
 const getFromIdOrMention = (idOrMention: string) => {
   const match = idOrMention.match(mentionRegex);
