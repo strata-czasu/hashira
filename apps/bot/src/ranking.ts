@@ -8,6 +8,7 @@ import { base } from "./base";
 import { parseDate } from "./util/dateParsing";
 import { durationToSeconds } from "./util/duration";
 import { errorFollowUp } from "./util/errorFollowUp";
+import { parseChannelMentions } from "./util/parseChannels";
 import { pluralizers } from "./util/pluralize";
 
 /**
@@ -228,37 +229,51 @@ export const ranking = new Hashira({ name: "ranking" })
               )
               .setRequired(false),
           )
-          .handle(async ({ prisma }, { od: rawStart, do: rawEnd }, itx) => {
-            if (!itx.inCachedGuild()) return;
+          .addString("kanały", (channels) =>
+            channels.setDescription("Lista kanałów do wyświetlenia").setRequired(false),
+          )
+          .handle(
+            async (
+              { prisma },
+              { od: rawStart, do: rawEnd, kanały: rawChannels },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            const parsedTimeRange = await parseTimeRange(
-              rawStart,
-              rawEnd,
-              async (message) => errorFollowUp(itx, message),
-            );
-            if (!parsedTimeRange) return;
-            const [periodStart, periodEnd] = parsedTimeRange;
-
-            if (!isValidTimeRange(periodStart, periodEnd)) {
-              return await errorFollowUp(
-                itx,
-                "Przedział czasowy nie może być dłuższy niż 90 dni.",
+              const parsedTimeRange = await parseTimeRange(
+                rawStart,
+                rawEnd,
+                async (message) => errorFollowUp(itx, message),
               );
-            }
+              if (!parsedTimeRange) return;
+              const [periodStart, periodEnd] = parsedTimeRange;
 
-            const where: Prisma.UserTextActivityWhereInput = {
-              guildId: itx.guild.id,
-              timestamp: {
-                gte: periodStart,
-                lte: periodEnd,
-              },
-            };
-            const paginate = new DatabasePaginator(
-              (props, ordering) => {
-                const sqlOrdering = Prisma.sql([ordering]);
-                return prisma.$queryRaw<
-                  { channelId: string; total: number; uniqueMembers: number }[]
-                >`
+              if (!isValidTimeRange(periodStart, periodEnd)) {
+                return await errorFollowUp(
+                  itx,
+                  "Przedział czasowy nie może być dłuższy niż 90 dni.",
+                );
+              }
+
+              const channels = rawChannels ? parseChannelMentions(rawChannels) : null;
+              const where: Prisma.UserTextActivityWhereInput = {
+                guildId: itx.guild.id,
+                timestamp: {
+                  gte: periodStart,
+                  lte: periodEnd,
+                },
+                ...(channels ? { channelId: { in: channels } } : {}),
+              };
+              const channelFilterSql = channels
+                ? Prisma.sql`and "channelId" in (${Prisma.join(channels)})`
+                : Prisma.sql``;
+
+              const paginate = new DatabasePaginator(
+                (props, ordering) => {
+                  const sqlOrdering = Prisma.sql([ordering]);
+                  return prisma.$queryRaw<
+                    { channelId: string; total: number; uniqueMembers: number }[]
+                  >`
                   select
                     "channelId",
                     count(*) as "total",
@@ -267,39 +282,44 @@ export const ranking = new Hashira({ name: "ranking" })
                   where
                     "guildId" = ${itx.guild.id}
                     and "timestamp" between ${periodStart} and ${periodEnd}
+                    ${channelFilterSql}
                   group by "channelId"
                   order by "total" ${sqlOrdering}
                   offset ${props.skip}
                   limit ${props.take};
                 `;
-              },
-              async () => {
-                const count = await prisma.userTextActivity.groupBy({
-                  by: "channelId",
-                  where,
-                });
-                return count.length;
-              },
-              { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
-            );
-
-            const formatEntry = (item: PaginatorItem<typeof paginate>, idx: number) => {
-              return (
-                `${idx}\\.` +
-                ` <#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
-                ` [${item.uniqueMembers} :busts_in_silhouette:]`
+                },
+                async () => {
+                  const count = await prisma.userTextActivity.groupBy({
+                    by: "channelId",
+                    where,
+                  });
+                  return count.length;
+                },
+                { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
               );
-            };
 
-            const paginator = new PaginatedView(
-              paginate,
-              "Ranking kanałów na serwerze",
-              formatEntry,
-              true,
-              formatTimeRange(periodStart, periodEnd),
-            );
-            await paginator.render(itx);
-          }),
+              const formatEntry = (
+                item: PaginatorItem<typeof paginate>,
+                idx: number,
+              ) => {
+                return (
+                  `${idx}\\.` +
+                  ` <#${item.channelId}> - ${item.total.toLocaleString("pl-PL")} ${pluralizers.messages(item.total)}` +
+                  ` [${item.uniqueMembers} :busts_in_silhouette:]`
+                );
+              };
+
+              const paginator = new PaginatedView(
+                paginate,
+                "Ranking kanałów na serwerze",
+                formatEntry,
+                true,
+                formatTimeRange(periodStart, periodEnd),
+              );
+              await paginator.render(itx);
+            },
+          ),
       )
       .addCommand("serwer-użytkownicy", (command) =>
         command
