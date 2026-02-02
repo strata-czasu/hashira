@@ -46,18 +46,20 @@ export const BROCHURE_ROLES = {
 } as const;
 
 // Used for creating default items
-type DefaultItem = Pick<Item, "type" | "name" | "description">;
+type DefaultItem = Pick<Item, "type" | "name" | "description" | "perUserLimit">;
 export const DEFAULT_ITEMS: DefaultItem[] = [
   {
     type: "dynamicTintColorAccess",
     name: "Dostęp do koloru profilu z koloru nicku",
     description:
       "Daje możliwość ustawienia automatycznego koloru profilu z koloru nicku",
+    perUserLimit: 1,
   },
   {
     type: "customTintColorAccess",
     name: "Dostęp do dowolnego koloru profilu",
     description: "Daje możliwość ustawienia dowolnego koloru profilu",
+    perUserLimit: 1,
   },
 ] as const;
 
