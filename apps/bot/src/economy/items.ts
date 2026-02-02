@@ -9,10 +9,11 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { getCurrency } from "./managers/currencyManager";
 import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
-const formatItemInList = ({ id, name, description, type }: Item) => {
+const formatItemInList = ({ id, name, description, type, perUserLimit }: Item) => {
   const lines = [];
   lines.push(`### ${name} [${id}] ${getTypeNameForList(type)}`);
   if (description) lines.push(description);
+  if (perUserLimit !== null) lines.push(`Limit na użytkownika: ${perUserLimit}`);
 
   return lines.join("\n");
 };
@@ -55,15 +56,22 @@ export const items = new Hashira({ name: "items" })
         command
           .setDescription("Utwórz nowy przedmiot")
           .addString("name", (name) => name.setDescription("Nazwa przedmiotu"))
-          .addString("description", (name) => name.setDescription("Opis przedmiotu"))
-          .addInteger("price", (name) =>
-            name
+          .addString("description", (description) =>
+            description.setDescription("Opis przedmiotu"),
+          )
+          .addInteger("limit", (limit) =>
+            limit
+              .setDescription("Limit na użytkownika (domyślnie nieskończony)")
+              .setRequired(false),
+          )
+          .addInteger("price", (price) =>
+            price
               .setDescription(
                 "Cena przedmiotu. Zostanie on automatycznie dodany do sklepu",
               )
               .setRequired(false),
           )
-          .handle(async ({ prisma }, { name, description, price }, itx) => {
+          .handle(async ({ prisma }, { name, description, limit, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -76,6 +84,7 @@ export const items = new Hashira({ name: "items" })
                   type: "item",
                   name,
                   description,
+                  perUserLimit: limit,
                 },
               });
 
@@ -126,6 +135,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "profileTitle",
+                perUserLimit: 1,
               },
             });
 
@@ -162,6 +172,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "badge",
+                perUserLimit: 1,
                 badge: {
                   create: {
                     image: new Uint8Array(await imageData.arrayBuffer()),
@@ -195,6 +206,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "staticTintColor",
+                perUserLimit: 1,
                 tintColor: {
                   create: {
                     color,
@@ -218,11 +230,14 @@ export const items = new Hashira({ name: "items" })
           .addString("description", (name) =>
             name.setDescription("Nowy opis przedmiotu").setRequired(false),
           )
-          .handle(async ({ prisma }, { id, name, description }, itx) => {
+          .addInteger("limit", (limit) =>
+            limit.setDescription("Nowy limit na użytkownika").setRequired(false),
+          )
+          .handle(async ({ prisma }, { id, name, description, limit }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            if (!name && !description) {
+            if (!name && !description && !limit) {
               await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
               return;
             }
@@ -239,6 +254,7 @@ export const items = new Hashira({ name: "items" })
                 data: {
                   name: name ?? item.name,
                   description: description ?? item.description,
+                  perUserLimit: limit ?? item.perUserLimit,
                 },
               });
             });

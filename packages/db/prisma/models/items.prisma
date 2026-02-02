@@ -1,6 +1,5 @@
 // TODO)) `canBeTraded` or something like that to limit trading of items.
 // For the time being, only type=`item` items are tradeable.
-// TODO)) Some items (like type=`profileTitle`) should be unique per user.
 model Item {
   id        Int       @id(map: "core_item_pkey") @default(autoincrement())
   createdAt DateTime  @default(now()) @db.Timestamp(6)
@@ -9,9 +8,10 @@ model Item {
   guildId   String
   createdBy String
 
-  type        ItemType @default(item)
-  name        String
-  description String?
+  type         ItemType @default(item)
+  name         String
+  description  String?
+  perUserLimit Int?  // null = unlimited
 
   guild           Guild             @relation(fields: [guildId], references: [id])
   creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
