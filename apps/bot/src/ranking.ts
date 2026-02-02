@@ -49,6 +49,14 @@ function isValidTimeRange(start: Date, end: Date) {
   return durationToSeconds(duration) <= durationToSeconds({ days: 90 });
 }
 
+function formatFooter(total: number, periodStart: Date, periodEnd: Date) {
+  const parts = [
+    `Razem: ${total.toLocaleString("pl-PL")}`,
+    formatTimeRange(periodStart, periodEnd),
+  ];
+  return parts.join(" | ");
+}
+
 export const ranking = new Hashira({ name: "ranking" })
   .use(base)
   .group("ranking", (group) =>
@@ -128,7 +136,11 @@ export const ranking = new Hashira({ name: "ranking" })
               `Ranking wiadomości ${user.tag}`,
               formatEntry,
               true,
-              formatTimeRange(periodStart, periodEnd),
+              formatFooter(
+                await prisma.userTextActivity.count({ where }),
+                periodStart,
+                periodEnd,
+              ),
             );
             await paginator.render(itx);
           }),
@@ -210,7 +222,11 @@ export const ranking = new Hashira({ name: "ranking" })
                 `Ranking wiadomości na kanale ${channel.name}`,
                 formatEntry,
                 true,
-                formatTimeRange(periodStart, periodEnd),
+                formatFooter(
+                  await prisma.userTextActivity.count({ where }),
+                  periodStart,
+                  periodEnd,
+                ),
               );
               await paginator.render(itx);
             },
@@ -315,7 +331,11 @@ export const ranking = new Hashira({ name: "ranking" })
                 "Ranking kanałów na serwerze",
                 formatEntry,
                 true,
-                formatTimeRange(periodStart, periodEnd),
+                formatFooter(
+                  await prisma.userTextActivity.count({ where }),
+                  periodStart,
+                  periodEnd,
+                ),
               );
               await paginator.render(itx);
             },
@@ -402,7 +422,11 @@ export const ranking = new Hashira({ name: "ranking" })
               `Ranking użytkowników na serwerze`,
               formatEntry,
               true,
-              formatTimeRange(periodStart, periodEnd),
+              formatFooter(
+                await prisma.userTextActivity.count({ where }),
+                periodStart,
+                periodEnd,
+              ),
             );
             await paginator.render(itx);
           }),
@@ -429,21 +453,14 @@ export const ranking = new Hashira({ name: "ranking" })
               return await errorFollowUp(itx, "Nie podano początku okresu");
             }
 
-            const periodWhere: Prisma.TransactionWhereInput["createdAt"] = {};
-            let footer: string | null = null;
+            let period: [Date, Date] | null = null;
 
             // Start is not null, end is optional
             if (rawStart) {
-              const parsedTimeRange = await parseTimeRange(
-                rawStart,
-                rawEnd,
-                async (message) => errorFollowUp(itx, message),
+              period = await parseTimeRange(rawStart, rawEnd, async (message) =>
+                errorFollowUp(itx, message),
               );
-              if (!parsedTimeRange) return;
-              const [periodStart, periodEnd] = parsedTimeRange;
-              periodWhere.gte = periodStart;
-              periodWhere.lte = periodEnd;
-              footer = formatTimeRange(periodStart, periodEnd);
+              if (!period) return;
             }
 
             // Don't filter by start/end date by default if at least start date wasn't provided
@@ -453,7 +470,7 @@ export const ranking = new Hashira({ name: "ranking" })
               reason: { startsWith: "Łowienie" },
               transactionType: "add",
               entryType: "credit",
-              createdAt: periodWhere,
+              ...(period ? { createdAt: { gte: period[0], lte: period[1] } } : {}),
             };
             const paginate = new DatabasePaginator(
               (props, ordering) =>
@@ -493,12 +510,16 @@ export const ranking = new Hashira({ name: "ranking" })
               );
             };
 
+            const footerParts = [`Razem: ${await prisma.transaction.count({ where })}`];
+            if (period) {
+              footerParts.push(formatTimeRange(...period));
+            }
             const paginator = new PaginatedView(
               paginate,
               "Ranking wędkarzy",
               formatEntry,
               true,
-              footer,
+              footerParts.join(" | "),
             );
             await paginator.render(itx);
           }),
