@@ -87,7 +87,8 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
           const message = isCheckingOther
             ? `Użytkownik ${userMention(userToCheck.id)} już posiada tę rolę.`
             : "Już posiadasz tę rolę.";
-          return await itx.editReply(message);
+          await itx.editReply(message);
+          return;
         }
 
         // Add the role
