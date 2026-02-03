@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import { PermissionFlagsBits, RESTJSONErrorCodes } from "discord.js";
+import { PermissionFlagsBits, RESTJSONErrorCodes, userMention } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -63,7 +63,7 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
 
         if (!inventoryItem) {
           const message = isCheckingOther
-            ? `Użytkownik ${userToCheck.tag} nie posiada odznaki "${BADGE_NAME}".`
+            ? `Użytkownik ${userMention(userToCheck.id)} nie posiada odznaki "${BADGE_NAME}".`
             : `Nie posiadasz odznaki "${BADGE_NAME}".`;
           return await errorFollowUp(itx, message);
         }
@@ -78,27 +78,34 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
         if (!member) {
           return await errorFollowUp(
             itx,
-            `Nie można znaleźć użytkownika ${userToCheck.tag} na serwerze.`,
+            `Nie można znaleźć użytkownika ${userMention(userToCheck.id)} na serwerze.`,
           );
         }
 
         // Check if member already has the role
         if (member.roles.cache.has(ROLE_ID)) {
           const message = isCheckingOther
-            ? `Użytkownik ${userToCheck.tag} już posiada tę rolę.`
+            ? `Użytkownik ${userMention(userToCheck.id)} już posiada tę rolę.`
             : "Już posiadasz tę rolę.";
           return await itx.editReply(message);
         }
 
         // Add the role
-        await discordTry(
+        const roleAddResult = await discordTry(
           async () => member.roles.add(ROLE_ID, "Odznaka 100 poziom"),
           [],
           () => null,
         );
 
+        if (!roleAddResult) {
+          return await errorFollowUp(
+            itx,
+            "Nie udało się przypisać roli. Sprawdź, czy bot ma odpowiednie uprawnienia.",
+          );
+        }
+
         const message = isCheckingOther
-          ? `Przypisano rolę użytkownikowi ${userToCheck.tag} za posiadanie odznaki "${BADGE_NAME}".`
+          ? `Przypisano rolę użytkownikowi ${userMention(userToCheck.id)} za posiadanie odznaki "${BADGE_NAME}".`
           : `Przypisano ci rolę za posiadanie odznaki "${BADGE_NAME}"!`;
         await itx.editReply(message);
       }),
