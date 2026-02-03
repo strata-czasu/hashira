@@ -11,7 +11,7 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
   .use(base)
   .command("poziom100", (command) =>
     command
-      .setDescription("Odbierz rolę za odznakę 100 poziom")
+      .setDescription("Odzyskaj rolę za odznakę 100 poziom")
       .setDMPermission(false)
       .addUser("user", (user) =>
         user
