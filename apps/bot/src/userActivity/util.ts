@@ -144,3 +144,42 @@ export const getUsersVoiceActivity = async ({
 
   return new Map(results.map((row) => [row.userId, Number(row.totalSeconds)]));
 };
+
+/**
+ * Get a channel's guild voice activity in seconds
+ */
+export const getChannelVoiceActivity = async ({
+  prisma,
+  guildId,
+  channelId,
+  since,
+  to,
+}: {
+  prisma: PrismaTransaction;
+  guildId: string;
+  channelId: string;
+  since?: Date;
+  to?: Date;
+}) => {
+  const {
+    _sum: { secondsSpent },
+  } = await prisma.voiceSessionTotal.aggregate({
+    _sum: {
+      secondsSpent: true,
+    },
+    where: {
+      isMuted: false,
+      isDeafened: false,
+      isAlone: false,
+      voiceSession: {
+        guildId,
+        channelId,
+        joinedAt: {
+          ...(since ? { gte: since } : {}),
+          ...(to ? { lte: to } : {}),
+        },
+      },
+    },
+  });
+  return secondsSpent ?? 0;
+};

@@ -2,9 +2,10 @@ import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, Prisma } from "@hashira/db";
 import { type PaginatorItem, PaginatorOrder } from "@hashira/paginate";
 import { endOfMonth } from "date-fns";
-import { intervalToDuration } from "date-fns/fp";
-import { ChannelType, TimestampStyles, time } from "discord.js";
+import { intervalToDuration, secondsToHours } from "date-fns/fp";
+import { ChannelType, TimestampStyles, time, userMention } from "discord.js";
 import { base } from "./base";
+import { getChannelVoiceActivity } from "./userActivity/util";
 import { parseDate } from "./util/dateParsing";
 import { durationToSeconds } from "./util/duration";
 import { errorFollowUp } from "./util/errorFollowUp";
@@ -149,7 +150,9 @@ export const ranking = new Hashira({ name: "ranking" })
         command
           .setDescription("Ranking użytkowników na kanale")
           .addChannel("kanał", (channel) =>
-            channel.setDescription("Kanał").setChannelType(ChannelType.GuildText),
+            channel
+              .setDescription("Kanał")
+              .setChannelType(ChannelType.GuildText, ChannelType.GuildVoice),
           )
           .addString("od", (period) =>
             period.setDescription("Początek danych, np. 2025-01"),
@@ -180,55 +183,129 @@ export const ranking = new Hashira({ name: "ranking" })
                 );
               }
 
-              const where: Prisma.UserTextActivityWhereInput = {
-                guildId: itx.guild.id,
-                channelId: channel.id,
-                timestamp: {
-                  gte: periodStart,
-                  lte: periodEnd,
-                },
-              };
-              const paginate = new DatabasePaginator(
-                (props, ordering) =>
-                  prisma.userTextActivity.groupBy({
-                    ...props,
-                    by: "userId",
-                    where,
-                    _count: true,
-                    orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
-                  }),
-                async () => {
-                  const count = await prisma.userTextActivity.groupBy({
-                    by: "userId",
-                    where,
-                  });
-                  return count.length;
-                },
-                { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
-              );
-
-              const formatEntry = (
-                item: PaginatorItem<typeof paginate>,
-                idx: number,
-              ) => {
-                return (
-                  `${idx}\\.` +
-                  ` <@${item.userId}> - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
+              if (channel.type === ChannelType.GuildText) {
+                const where: Prisma.UserTextActivityWhereInput = {
+                  guildId: itx.guild.id,
+                  channelId: channel.id,
+                  timestamp: {
+                    gte: periodStart,
+                    lte: periodEnd,
+                  },
+                };
+                const paginate = new DatabasePaginator(
+                  (props, ordering) =>
+                    prisma.userTextActivity.groupBy({
+                      ...props,
+                      by: "userId",
+                      where,
+                      _count: true,
+                      orderBy: [{ _count: { userId: ordering } }, { userId: ordering }],
+                    }),
+                  async () => {
+                    const count = await prisma.userTextActivity.groupBy({
+                      by: "userId",
+                      where,
+                    });
+                    return count.length;
+                  },
+                  { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
                 );
-              };
 
-              const paginator = new PaginatedView(
-                paginate,
-                `Ranking wiadomości na kanale ${channel.name}`,
-                formatEntry,
-                true,
-                formatFooter(
-                  await prisma.userTextActivity.count({ where }),
-                  periodStart,
-                  periodEnd,
-                ),
-              );
-              await paginator.render(itx);
+                const formatEntry = (
+                  item: PaginatorItem<typeof paginate>,
+                  idx: number,
+                ) => {
+                  return (
+                    `${idx}\\.` +
+                    ` ${userMention(item.userId)} - ${item._count.toLocaleString("pl-PL")} ${pluralizers.messages(item._count)}`
+                  );
+                };
+
+                const paginator = new PaginatedView(
+                  paginate,
+                  `Ranking wiadomości na kanale ${channel.name}`,
+                  formatEntry,
+                  true,
+                  formatFooter(
+                    await prisma.userTextActivity.count({ where }),
+                    periodStart,
+                    periodEnd,
+                  ),
+                );
+                await paginator.render(itx);
+              } else {
+                const paginate = new DatabasePaginator(
+                  async (props, ordering) => {
+                    const sqlOrdering = Prisma.sql([ordering]);
+                    const results = await prisma.$queryRaw<
+                      Array<{ userId: string; totalSeconds: bigint }>
+                    >`
+                        select
+                          vs."userId",
+                          coalesce(sum(vst."secondsSpent"), 0)::bigint as "totalSeconds"
+                        from "VoiceSession" vs
+                        left join "VoiceSessionTotal" vst on vst."voiceSessionId" = vs.id
+                          and not vst."isMuted"
+                          and not vst."isDeafened"
+                          and not vst."isAlone"
+                        where
+                          vs."guildId" = ${itx.guild.id}
+                          and vs."channelId" = ${channel.id}
+                          and vs."joinedAt" between ${periodStart} and ${periodEnd}
+                        group by vs."userId"
+                        order by "totalSeconds" ${sqlOrdering}, vs."userId" ${sqlOrdering}
+                        offset ${props.skip}
+                        limit ${props.take};
+                      `;
+                    return results.map((row) => ({
+                      userId: row.userId,
+                      totalSeconds: Number(row.totalSeconds),
+                    }));
+                  },
+                  async () => {
+                    const count = await prisma.voiceSession.groupBy({
+                      by: "userId",
+                      where: {
+                        guildId: itx.guildId,
+                        channelId: channel.id,
+                        joinedAt: {
+                          gte: periodStart,
+                          lte: periodEnd,
+                        },
+                      },
+                    });
+                    return count.length;
+                  },
+                  { pageSize: 30, defaultOrder: PaginatorOrder.DESC },
+                );
+
+                const formatEntry = (
+                  item: PaginatorItem<typeof paginate>,
+                  idx: number,
+                ) => {
+                  return (
+                    `${idx}\\.` +
+                    ` <@${item.userId}> - ${secondsToHours(item.totalSeconds)}h`
+                  );
+                };
+
+                const totalSeconds = await getChannelVoiceActivity({
+                  prisma,
+                  guildId: itx.guildId,
+                  channelId: channel.id,
+                  since: periodStart,
+                  to: periodEnd,
+                });
+
+                const paginator = new PaginatedView(
+                  paginate,
+                  `Ranking głosowy na kanale ${channel.name}`,
+                  formatEntry,
+                  true,
+                  `Razem: ${secondsToHours(totalSeconds ?? 0)}h | ${formatTimeRange(periodStart, periodEnd)}`,
+                );
+                await paginator.render(itx);
+              }
             },
           ),
       )
