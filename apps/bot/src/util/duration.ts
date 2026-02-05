@@ -31,6 +31,23 @@ export const parseDuration = (input: string): Duration | null => {
   return Object.keys(out).length > 0 ? out : null;
 };
 
+/**
+ * Convert seconds to a duration object, splitting into days, hours, minutes and seconds
+ */
+export const secondsToDuration = (seconds: number): Duration => {
+  const days = Math.floor(seconds / (60 * 60 * 24));
+  const hours = Math.floor((seconds % (60 * 60 * 24)) / (60 * 60));
+  const minutes = Math.floor((seconds % (60 * 60)) / 60);
+
+  const out: Duration = {};
+  if (days) out.days = days;
+  if (hours) out.hours = hours;
+  if (minutes) out.minutes = minutes;
+  if (seconds % 60) out.seconds = seconds % 60;
+
+  return out;
+};
+
 export const durationToSeconds = (duration: Duration): number => {
   return (
     (duration.seconds ?? 0) +

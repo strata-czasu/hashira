@@ -5,6 +5,7 @@ import {
   formatDuration,
   parseDuration,
   randomDuration,
+  secondsToDuration,
 } from "../src/util/duration";
 
 // biome-ignore lint/style/noNonNullAssertion: test code
@@ -45,6 +46,40 @@ describe("parseDuration", () => {
     expect(parseDuration("8M")).toEqual({ minutes: 8 });
     expect(parseDuration("8H")).toEqual({ hours: 8 });
     expect(parseDuration("8D")).toEqual({ days: 8 });
+  });
+});
+
+describe("secondsToDuration", () => {
+  test("converts 0 seconds to empty duration", () => {
+    expect(secondsToDuration(0)).toEqual({});
+  });
+
+  test("converts seconds", () => {
+    expect(secondsToDuration(1)).toEqual({ seconds: 1 });
+    expect(secondsToDuration(59)).toEqual({ seconds: 59 });
+  });
+
+  test("converts minutes", () => {
+    expect(secondsToDuration(60)).toEqual({ minutes: 1 });
+    expect(secondsToDuration(140)).toEqual({ minutes: 2, seconds: 20 });
+  });
+
+  test("converts hours", () => {
+    expect(secondsToDuration(3600)).toEqual({ hours: 1 });
+    expect(secondsToDuration(7260)).toEqual({ hours: 2, minutes: 1 });
+    expect(secondsToDuration(7265)).toEqual({ hours: 2, minutes: 1, seconds: 5 });
+  });
+
+  test("converts days", () => {
+    expect(secondsToDuration(86400)).toEqual({ days: 1 });
+    expect(secondsToDuration(176400)).toEqual({ days: 2, hours: 1 });
+    expect(secondsToDuration(180060)).toEqual({ days: 2, hours: 2, minutes: 1 });
+    expect(secondsToDuration(180620)).toEqual({
+      days: 2,
+      hours: 2,
+      minutes: 10,
+      seconds: 20,
+    });
   });
 });
 
