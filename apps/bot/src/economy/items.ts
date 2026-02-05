@@ -62,7 +62,8 @@ export const items = new Hashira({ name: "items" })
           .addInteger("limit", (limit) =>
             limit
               .setDescription("Limit na użytkownika (domyślnie nieskończony)")
-              .setRequired(false),
+              .setRequired(false)
+              .setMinValue(1),
           )
           .addInteger("price", (price) =>
             price
@@ -231,16 +232,24 @@ export const items = new Hashira({ name: "items" })
             name.setDescription("Nowy opis przedmiotu").setRequired(false),
           )
           .addInteger("limit", (limit) =>
-            limit.setDescription("Nowy limit na użytkownika").setRequired(false),
+            limit
+              .setDescription("Nowy limit na użytkownika (0 = usuń limit)")
+              .setRequired(false)
+              .setMinValue(0),
           )
           .handle(async ({ prisma }, { id, name, description, limit }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            if (!name && !description && !limit) {
+            if (!name && !description && limit === null) {
               await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
               return;
             }
+
+            const updateData: Prisma.ItemUpdateInput = { editedAt: itx.createdAt };
+            if (name !== null) updateData.name = name;
+            if (description !== null) updateData.description = description;
+            if (limit !== null) updateData.perUserLimit = limit === 0 ? null : limit;
 
             const item = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, id, itx.guildId);
@@ -251,11 +260,7 @@ export const items = new Hashira({ name: "items" })
 
               return tx.item.update({
                 where: { id },
-                data: {
-                  name: name ?? item.name,
-                  description: description ?? item.description,
-                  perUserLimit: limit ?? item.perUserLimit,
-                },
+                data: updateData,
               });
             });
             if (!item) return;
