@@ -7,7 +7,7 @@ import { ChannelType, TimestampStyles, time, userMention } from "discord.js";
 import { base } from "./base";
 import { getChannelVoiceActivity } from "./userActivity/util";
 import { parseDate } from "./util/dateParsing";
-import { durationToSeconds } from "./util/duration";
+import { durationToSeconds, formatDuration, secondsToDuration } from "./util/duration";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { parseChannelMentions } from "./util/parseChannels";
 import { pluralizers } from "./util/pluralize";
@@ -50,9 +50,11 @@ function isValidTimeRange(start: Date, end: Date) {
   return durationToSeconds(duration) <= durationToSeconds({ days: 90 });
 }
 
-function formatFooter(total: number, periodStart: Date, periodEnd: Date) {
+function formatFooter(total: string | number, periodStart: Date, periodEnd: Date) {
   const parts = [
-    `Razem: ${total.toLocaleString("pl-PL")}`,
+    typeof total === "string"
+      ? `Razem: ${total}`
+      : `Razem: ${total.toLocaleString("pl-PL")}`,
     formatTimeRange(periodStart, periodEnd),
   ];
   return parts.join(" | ");
@@ -284,9 +286,10 @@ export const ranking = new Hashira({ name: "ranking" })
                   item: PaginatorItem<typeof paginate>,
                   idx: number,
                 ) => {
+                  const totalDuration = secondsToDuration(item.totalSeconds);
                   return (
                     `${idx}\\.` +
-                    ` <@${item.userId}> - ${secondsToHours(item.totalSeconds)}h`
+                    ` <@${item.userId}> - ${formatDuration(totalDuration)}`
                   );
                 };
 
@@ -298,12 +301,17 @@ export const ranking = new Hashira({ name: "ranking" })
                   to: periodEnd,
                 });
 
+                const formattedTotal =
+                  secondsToHours(totalSeconds) > 0
+                    ? `${secondsToHours(totalSeconds)}h`
+                    : `${formatDuration(secondsToDuration(totalSeconds))}`;
+
                 const paginator = new PaginatedView(
                   paginate,
                   `Ranking głosowy na kanale ${channel.name}`,
                   formatEntry,
                   true,
-                  `Razem: ${secondsToHours(totalSeconds ?? 0)}h | ${formatTimeRange(periodStart, periodEnd)}`,
+                  formatFooter(formattedTotal, periodStart, periodEnd),
                 );
                 await paginator.render(itx);
               }
