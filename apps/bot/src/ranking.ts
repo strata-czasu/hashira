@@ -253,6 +253,7 @@ export const ranking = new Hashira({ name: "ranking" })
                           and vs."channelId" = ${channel.id}
                           and vs."joinedAt" between ${periodStart} and ${periodEnd}
                         group by vs."userId"
+                        having sum(vst."secondsSpent") > 0
                         order by "totalSeconds" ${sqlOrdering}, vs."userId" ${sqlOrdering}
                         offset ${props.skip}
                         limit ${props.take};
