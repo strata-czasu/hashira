@@ -302,7 +302,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
                   colorStrings.push(`#${newColors.secondaryColor.toString(16)}`);
                 }
                 await itx.editReply({
-                  content: `Zmieniono kolor roli ${role.name} na ${colorStrings.join(" -> ")}}`,
+                  content: `Zmieniono kolor roli ${role.name} na ${colorStrings.join(" -> ")}`,
                 });
               }
             },
