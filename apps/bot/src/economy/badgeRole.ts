@@ -24,7 +24,7 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
 
         // Determine who we're checking - the target user or the command executor
         const userToCheck = targetUser ?? itx.user;
-        const isCheckingOther = targetUser !== undefined;
+        const isCheckingOther = targetUser !== null && targetUser.id !== itx.user.id;
 
         // If checking another user, verify the executor has ModerateMembers permission
         if (isCheckingOther) {
