@@ -18,6 +18,7 @@ COPY --link packages/core/package.json packages/core/package.json
 COPY --link packages/db/package.json packages/db/package.json
 COPY --link packages/env/package.json packages/env/package.json
 COPY --link packages/jsx/package.json packages/jsx/package.json
+COPY --link packages/keiken/package.json packages/keiken/package.json
 COPY --link packages/paginate/package.json packages/paginate/package.json
 COPY --link packages/utils/package.json packages/utils/package.json
 COPY --link packages/yotei/package.json packages/yotei/package.json
