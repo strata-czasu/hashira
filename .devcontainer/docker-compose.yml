@@ -6,7 +6,7 @@ services:
     env_file: ../.env
 
     volumes:
-      - ../..:/workspaces:cached
+      - ..:/workspaces/hashira:cached
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity

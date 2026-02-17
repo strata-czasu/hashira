@@ -2,7 +2,7 @@
   "name": "Bun",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceFolder": "/workspaces/hashira",
   "mounts": [
     {
       "source": "${localWorkspaceFolder}/fonts",
