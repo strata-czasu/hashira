@@ -112,9 +112,10 @@ export const inventory = new Hashira({ name: "inventory" })
 
             const items = await prisma.item.findMany({
               where: { guildId: itx.guildId },
-              select: { id: true, name: true },
+              select: { id: true, name: true, type: true },
             });
             const itemNames = new Map(items.map((item) => [item.id, item.name]));
+            const itemTypes = new Map(items.map((item) => [item.id, item.type]));
 
             const where: Prisma.InventoryItemWhereInput = {
               item: { guildId: itx.guildId },
@@ -143,10 +144,12 @@ export const inventory = new Hashira({ name: "inventory" })
               paginator,
               `Ekwipunek ${user.tag}`,
               ({ _count, itemId }) => {
-                const idString = `[${inlineCode(itemId.toString())}]`;
                 const itemName = itemNames.get(itemId) ?? "Nieznany przedmiot";
-                if (_count === 1) return `- ${itemName} ${idString}`;
-                return `- ${itemName} (x${bold(_count.toString())}) ${idString}`;
+                const itemType = itemTypes.get(itemId) ?? "item";
+                const parts = [`-`, getTypeNameForList(itemType), itemName];
+                if (_count !== 1) parts.push(`(x${bold(_count.toString())})`);
+                parts.push(`[${inlineCode(itemId.toString())}]`);
+                return parts.join(" ");
               },
               true,
             );
