@@ -82,7 +82,7 @@ async function getMemberFields(
     const joinedMutes = mutes
       .map(
         (m) =>
-          `${time(m.createdAt, TimestampStyles.LongDateShortTime)}+${formatMuteLength(m)} ${truncate(italic(m.reason), 100)}`,
+          `${time(m.createdAt, TimestampStyles.ShortDateShortTime)}+${formatMuteLength(m)} ${truncate(italic(m.reason), 100)}`,
       )
       .join("\n");
     fields.push(<Field name="🔇 Ostatnie wyciszenia" value={joinedMutes} />);
@@ -102,7 +102,7 @@ async function getMemberFields(
     const joinedWarns = warns
       .map(
         (w) =>
-          `${time(w.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(w.reason), 100)}`,
+          `${time(w.createdAt, TimestampStyles.ShortDateShortTime)} ${truncate(italic(w.reason), 100)}`,
       )
       .join("\n");
     fields.push(<Field name="⚠️ Ostatnie ostrzeżenia" value={joinedWarns} />);
@@ -120,7 +120,7 @@ async function getMemberFields(
   if (channelRestrictions.length > 0) {
     const joinedRestrictions = channelRestrictions
       .map((cr) => {
-        const line = `${time(cr.createdAt, TimestampStyles.LongDateShortTime)} ${channelMention(cr.channelId)} ${truncate(italic(cr.reason), 100)}`;
+        const line = `${time(cr.createdAt, TimestampStyles.ShortDateShortTime)} ${channelMention(cr.channelId)} ${truncate(italic(cr.reason), 100)}`;
         return cr.deletedAt ? strikethrough(line) : line;
       })
       .join("\n");
@@ -141,7 +141,7 @@ async function getMemberFields(
   if (ultimatums.length > 0) {
     const joinedUltimatums = ultimatums
       .map((u) => {
-        const line = `${time(u.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(u.reason), 200)}`;
+        const line = `${time(u.createdAt, TimestampStyles.ShortDateShortTime)} ${truncate(italic(u.reason), 200)}`;
         return u.endedAt ? strikethrough(line) : line;
       })
       .join("\n");
