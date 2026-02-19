@@ -9,10 +9,11 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { getCurrency } from "./managers/currencyManager";
 import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
 
-const formatItemInList = ({ id, name, description, type }: Item) => {
+const formatItemInList = ({ id, name, description, type, perUserLimit }: Item) => {
   const lines = [];
   lines.push(`### ${name} [${id}] ${getTypeNameForList(type)}`);
   if (description) lines.push(description);
+  if (perUserLimit !== null) lines.push(`Limit na użytkownika: ${perUserLimit}`);
 
   return lines.join("\n");
 };
@@ -55,15 +56,23 @@ export const items = new Hashira({ name: "items" })
         command
           .setDescription("Utwórz nowy przedmiot")
           .addString("name", (name) => name.setDescription("Nazwa przedmiotu"))
-          .addString("description", (name) => name.setDescription("Opis przedmiotu"))
-          .addInteger("price", (name) =>
-            name
+          .addString("description", (description) =>
+            description.setDescription("Opis przedmiotu"),
+          )
+          .addInteger("limit", (limit) =>
+            limit
+              .setDescription("Limit na użytkownika (domyślnie nieskończony)")
+              .setRequired(false)
+              .setMinValue(1),
+          )
+          .addInteger("price", (price) =>
+            price
               .setDescription(
                 "Cena przedmiotu. Zostanie on automatycznie dodany do sklepu",
               )
               .setRequired(false),
           )
-          .handle(async ({ prisma }, { name, description, price }, itx) => {
+          .handle(async ({ prisma }, { name, description, limit, price }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -76,6 +85,7 @@ export const items = new Hashira({ name: "items" })
                   type: "item",
                   name,
                   description,
+                  perUserLimit: limit,
                 },
               });
 
@@ -126,6 +136,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "profileTitle",
+                perUserLimit: 1,
               },
             });
 
@@ -162,6 +173,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "badge",
+                perUserLimit: 1,
                 badge: {
                   create: {
                     image: new Uint8Array(await imageData.arrayBuffer()),
@@ -195,6 +207,7 @@ export const items = new Hashira({ name: "items" })
                 guildId: itx.guildId,
                 createdBy: itx.user.id,
                 type: "staticTintColor",
+                perUserLimit: 1,
                 tintColor: {
                   create: {
                     color,
@@ -218,14 +231,25 @@ export const items = new Hashira({ name: "items" })
           .addString("description", (name) =>
             name.setDescription("Nowy opis przedmiotu").setRequired(false),
           )
-          .handle(async ({ prisma }, { id, name, description }, itx) => {
+          .addInteger("limit", (limit) =>
+            limit
+              .setDescription("Nowy limit na użytkownika (0 = usuń limit)")
+              .setRequired(false)
+              .setMinValue(0),
+          )
+          .handle(async ({ prisma }, { id, name, description, limit }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            if (!name && !description) {
+            if (!name && !description && limit === null) {
               await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
               return;
             }
+
+            const updateData: Prisma.ItemUpdateInput = { editedAt: itx.createdAt };
+            if (name !== null) updateData.name = name;
+            if (description !== null) updateData.description = description;
+            if (limit !== null) updateData.perUserLimit = limit === 0 ? null : limit;
 
             const item = await prisma.$transaction(async (tx) => {
               const item = await getItem(tx, id, itx.guildId);
@@ -236,10 +260,7 @@ export const items = new Hashira({ name: "items" })
 
               return tx.item.update({
                 where: { id },
-                data: {
-                  name: name ?? item.name,
-                  description: description ?? item.description,
-                },
+                data: updateData,
               });
             });
             if (!item) return;

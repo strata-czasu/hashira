@@ -4,12 +4,18 @@ import {
   Hashira,
   PaginatedView,
 } from "@hashira/core";
-import { DatabasePaginator, type Prisma } from "@hashira/db";
+import {
+  DatabasePaginator,
+  type Item,
+  type Prisma,
+  type PrismaTransaction,
+} from "@hashira/db";
 import {
   type AutocompleteInteraction,
   bold,
   inlineCode,
   PermissionFlagsBits,
+  type User,
 } from "discord.js";
 import { base } from "../base";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -90,6 +96,48 @@ const autocompleteUserInventoryItem = async ({
       name: `${name} ${getTypeNameForList(type)} [${id}]`,
     })),
   );
+};
+
+/**
+ * Split users into under and over the item's perUserLimit
+ *
+ * Users having the exact amount specified on perUserLimit are considered over the limit.
+ *
+ * @return [users under the limit, users over the limit]
+ */
+const getUsersUnderAndOverLimit = async ({
+  prisma,
+  item,
+  users,
+}: {
+  prisma: PrismaTransaction;
+  item: Item;
+  users: User[];
+}): Promise<[User[], User[]]> => {
+  const { perUserLimit } = item;
+
+  // Treat null and 0 as unlimited
+  if (!perUserLimit) return [users, []];
+
+  const usersHavingItem = await prisma.inventoryItem.groupBy({
+    by: "userId",
+    where: {
+      deletedAt: null,
+      itemId: item.id,
+      userId: { in: users.map((user) => user.id) },
+    },
+    _count: true,
+  });
+  const perUserCounts = new Map(
+    usersHavingItem.map(({ userId, _count }) => [userId, _count]),
+  );
+  const underLimit = users.filter(
+    (user) => (perUserCounts.get(user.id) ?? 0) < perUserLimit,
+  );
+  const overLimit = users.filter(
+    (user) => (perUserCounts.get(user.id) ?? 0) >= perUserLimit,
+  );
+  return [underLimit, overLimit];
 };
 
 export const inventory = new Hashira({ name: "inventory" })
@@ -292,41 +340,64 @@ export const inventory = new Hashira({ name: "inventory" })
                 parseUserMentions(rawUsers),
               );
               const users = members.map((m) => m.user);
-
               await ensureUsersExist(prisma, users);
-              const item = await prisma.$transaction(async (tx) => {
-                const item = await getItem(tx, itemId, itx.guildId);
-                if (!item) {
-                  await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-                  return null;
-                }
 
-                await tx.inventoryItem.createMany({
-                  data: users.map((user) => ({
-                    itemId,
-                    userId: user.id,
-                  })),
-                });
-                return item;
-              });
+              const addedForUsers = await prisma.$transaction(
+                async (tx): Promise<[Item, User[], User[]] | null> => {
+                  const item = await getItem(tx, itemId, itx.guildId);
+                  if (!item) {
+                    await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                    return null;
+                  }
 
-              if (!item) return;
+                  const [underLimit, overLimit] = await getUsersUnderAndOverLimit({
+                    prisma: tx,
+                    item,
+                    users,
+                  });
+
+                  await tx.inventoryItem.createMany({
+                    data: underLimit.map((user) => ({
+                      itemId,
+                      userId: user.id,
+                    })),
+                  });
+
+                  return [item, underLimit, overLimit];
+                },
+              );
+              if (!addedForUsers) return;
+              const [item, underLimit, overLimit] = addedForUsers;
 
               economyLog.push("itemAddToInventory", itx.guild, {
                 moderator: itx.user,
-                users,
+                users: underLimit,
                 item,
                 quantity: 1,
               });
 
-              const formattedUsers =
-                users.length === 1
-                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
-                    bold(users.at(0)!.tag)
-                  : `${bold(users.length.toString())} ${pluralizers.dativeUsers(users.length)}`;
-              await itx.editReply(
-                `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${formattedUsers}`,
-              );
+              const parts: string[] = [];
+
+              if (underLimit.length > 0) {
+                const formattedUsers =
+                  underLimit.length === 1
+                    ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                      bold(underLimit.at(0)!.tag)
+                    : `${bold(underLimit.length.toString())} ${pluralizers.dativeUsers(underLimit.length)}`;
+                parts.push(
+                  `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${formattedUsers}`,
+                );
+              }
+
+              if (overLimit.length > 0)
+                parts.push(
+                  overLimit.length === 1
+                    ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                      `${overLimit.at(0)!.tag} ma już maksymalną ilość przedmiotu`
+                    : `${bold(overLimit.length.toString())} ${pluralizers.users(overLimit.length)} ma już maksymalną ilość przedmiotu: ${overLimit.map((user) => user.tag).join(", ")}`,
+                );
+
+              await itx.editReply(parts.join("\n"));
             },
           ),
       )
