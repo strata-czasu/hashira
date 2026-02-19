@@ -211,7 +211,7 @@ export const userRecord = new Hashira({ name: "user-record" })
         const opts = render(
           <Container>
             <TextDisplay>
-              <H3>Kartoteka ${user.tag}</H3>
+              <H3>Kartoteka {user.tag}</H3>
             </TextDisplay>
 
             <Field
