@@ -12,6 +12,7 @@ import {
 import { secondsToHours, sub } from "date-fns";
 import {
   bold,
+  channelMention,
   type Guild,
   type GuildMember,
   italic,
@@ -119,7 +120,7 @@ async function getMemberFields(
   if (channelRestrictions.length > 0) {
     const joinedRestrictions = channelRestrictions
       .map((cr) => {
-        const line = `${time(cr.createdAt, TimestampStyles.LongDateShortTime)} ${truncate(italic(cr.reason), 100)}`;
+        const line = `${time(cr.createdAt, TimestampStyles.LongDateShortTime)} ${channelMention(cr.channelId)} ${truncate(italic(cr.reason), 100)}`;
         return cr.deletedAt ? strikethrough(line) : line;
       })
       .join("\n");
