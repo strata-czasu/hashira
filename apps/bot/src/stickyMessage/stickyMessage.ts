@@ -10,10 +10,15 @@ import {
 } from "discord.js";
 import { noop } from "es-toolkit";
 import { base } from "../base";
+import {
+  createShareLink,
+  getShareLinkData,
+  parseShareId,
+  type ShareLinkData,
+  toMessageCreateOptions,
+} from "../util/discohook";
 import { discordTry } from "../util/discordTry";
-import { decodeJson, encodeJson } from "../util/embedBuilder";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { getShortenedUrl } from "../util/getShortenedUrl";
 
 export const stickyMessage = new Hashira({ name: "sticky-message" })
   .use(base)
@@ -29,57 +34,100 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               .setDescription("The channel to set the sticky message in")
               .setChannelType(ChannelType.GuildText),
           )
-          .addString("dataurl", (attachment) =>
-            attachment.setDescription("Data URL of the message to set"),
+          .addString("share-link", (attachment) =>
+            attachment.setDescription("Discohook share link or share ID"),
           )
-          .handle(async ({ prisma, stickyMessageCache }, { channel, dataurl }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            const url = new URL(dataurl);
-            const data = url.searchParams.get("data");
-            if (!data) return errorFollowUp(itx, "Invalid data URL");
-            const json = decodeJson(data);
-            if (!json) return errorFollowUp(itx, "Invalid JSON");
+          .handle(
+            async (
+              { prisma, stickyMessageCache },
+              { channel, "share-link": shareLink },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
 
-            const exists = await prisma.stickyMessage.findFirst({
-              where: { channelId: channel.id },
-            });
+              let shareId: string;
+              try {
+                shareId = parseShareId(shareLink);
+              } catch {
+                return errorFollowUp(itx, "Invalid Discohook share link");
+              }
 
-            if (exists) {
-              await discordTry(
-                () => channel.messages.delete(exists.lastMessageId),
-                [RESTJSONErrorCodes.UnknownMessage],
-                noop,
-              );
-            }
+              let shareData: ShareLinkData;
+              try {
+                const result = await getShareLinkData(shareId);
+                if (!result.success) {
+                  const errorMessage = result.issues
+                    .map((err) => err.message)
+                    .join(", ");
+                  throw new Error(`Invalid share link data: ${errorMessage}`);
+                }
 
-            const message = await channel.send(json as MessageCreateOptions);
+                shareData = result.output.data;
+              } catch (e) {
+                const message =
+                  e instanceof Error ? e.message : "Failed to fetch share link";
+                return errorFollowUp(itx, message);
+              }
 
-            await prisma.stickyMessage.upsert({
-              where: { channelId: channel.id },
-              create: {
-                channelId: channel.id,
-                guildId: itx.guildId,
-                enabled: true,
-                lastMessageId: message.id,
-                content: json as Prisma.InputJsonValue,
-              },
-              update: {
-                content: json as Prisma.InputJsonValue,
-                lastMessageId: message.id,
-              },
-            });
+              if (shareData.messages.length === 0) {
+                return errorFollowUp(
+                  itx,
+                  "Share link contains no messages. Please use a share link with at least one message.",
+                );
+              }
 
-            stickyMessageCache.invalidate(channel.id);
+              if (shareData.messages.length > 1) {
+                return errorFollowUp(
+                  itx,
+                  "Share link contains multiple messages. Please use a share link with only one message.",
+                );
+              }
 
-            await itx.reply(`Sticky message set in ${channel}`);
-          }),
+              // biome-ignore lint/style/noNonNullAssertion: we know that messages has at least one message because of the check above
+              const discohookMessage = shareData.messages[0]!;
+              const messageData = toMessageCreateOptions(discohookMessage.data);
+
+              const exists = await prisma.stickyMessage.findFirst({
+                where: { channelId: channel.id },
+              });
+
+              if (exists) {
+                await discordTry(
+                  () => channel.messages.delete(exists.lastMessageId),
+                  [RESTJSONErrorCodes.UnknownMessage],
+                  noop,
+                );
+              }
+
+              const message = await channel.send(messageData as MessageCreateOptions);
+
+              await prisma.stickyMessage.upsert({
+                where: { channelId: channel.id },
+                create: {
+                  channelId: channel.id,
+                  guildId: itx.guildId,
+                  enabled: true,
+                  lastMessageId: message.id,
+                  content: messageData as Prisma.InputJsonValue,
+                },
+                update: {
+                  content: messageData as Prisma.InputJsonValue,
+                  lastMessageId: message.id,
+                },
+              });
+
+              stickyMessageCache.invalidate(channel.id);
+
+              await itx.reply(`Sticky message set in ${channel}`);
+            },
+          ),
       )
-      .addCommand("edit-url", (command) =>
+      .addCommand("edit-link", (command) =>
         command
-          .setDescription("Get the data URL of a message for editing")
+          .setDescription("Get a Discohook share link for editing a sticky message")
           .addChannel("channel", (channel) =>
             channel
-              .setDescription("The channel to get the data URL from")
+              .setDescription("The channel to get the share link from")
               .setChannelType(ChannelType.GuildText),
           )
           .handle(async ({ prisma }, { channel }, itx) => {
@@ -91,10 +139,14 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
 
             if (!stickyMessage) return errorFollowUp(itx, "No sticky message found");
 
-            const content = encodeJson(stickyMessage.content);
-            const shortenedUrl = await getShortenedUrl(content);
-
-            await itx.reply({ content: shortenedUrl.shortUrl });
+            try {
+              const shareLink = await createShareLink(stickyMessage.content);
+              await itx.reply({ content: shareLink.url });
+            } catch (e) {
+              const message =
+                e instanceof Error ? e.message : "Failed to create share link";
+              return errorFollowUp(itx, message);
+            }
           }),
       )
       .addCommand("toggle", (command) =>
