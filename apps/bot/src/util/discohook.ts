@@ -1,3 +1,8 @@
+import type {
+  APIMessageTopLevelComponent,
+  APIEmbed as DiscordJsAPIEmbed,
+  MessageCreateOptions,
+} from "discord.js";
 import * as v from "valibot";
 
 const DISCOHOOK_API_URL = "https://discohook.app/api/v1" as const;
@@ -142,20 +147,17 @@ export async function createShareLink(
 }
 
 export function toMessageCreateOptions(messageData: DiscohookMessageData) {
-  const result: {
-    content?: string;
-    embeds?: typeof messageData.embeds;
-    components?: typeof messageData.components;
-  } = {};
+  const result: Partial<MessageCreateOptions> = {};
 
   if (messageData.content) {
     result.content = messageData.content;
   }
   if (messageData.embeds) {
-    result.embeds = messageData.embeds;
+    result.embeds = messageData.embeds as unknown as DiscordJsAPIEmbed[];
   }
   if (messageData.components) {
-    result.components = messageData.components;
+    result.components =
+      messageData.components as unknown as APIMessageTopLevelComponent[];
   }
 
   return result;
