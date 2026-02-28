@@ -13,9 +13,11 @@ import {
   InvalidStockError,
   OutOfStockError,
   ShopItemNotFoundError,
+  UserInventoryLimitExceededError,
   UserPurchaseLimitExceededError,
 } from "../economyError";
 import { getCurrency } from "./currencyManager";
+import { getItemCountInInventory } from "./inventoryService";
 import { getDefaultWallet } from "./walletManager";
 
 export type ShopItemWithDetails = ShopItem & { item: Item; currency: Currency };
@@ -264,15 +266,17 @@ type PurchaseShopItemOptions = {
  * Atomically purchase a shop item with stock and user limit validation.
  *
  * This function handles:
- * 1. Global stock limits (race-condition safe using conditional update)
+ * 1. Per-user inventory limits
  * 2. Per-user purchase limits
- * 3. Balance validation and deduction
- * 4. Inventory item creation
- * 5. Purchase tracking for limit enforcement
+ * 3. Global stock limits (race-condition safe using conditional update)
+ * 4. Balance validation and deduction
+ * 5. Inventory item creation
+ * 6. Purchase tracking for limit enforcement
  *
  * @throws {ShopItemNotFoundError} If the shop item doesn't exist or is deleted
- * @throws {OutOfStockError} If global stock is exhausted
+ * @throws {UserInventoryLimitExceededError} If user has reached the limit of this item in their inventory
  * @throws {UserPurchaseLimitExceededError} If user has reached their purchase limit
+ * @throws {OutOfStockError} If global stock is exhausted
  * @throws {InsufficientBalanceError} If user doesn't have enough balance
  * @throws {InvalidAmountError} If quantity is less than 1
  * @throws {RaceConditionError} If the purchase fails due to concurrent modification
@@ -289,7 +293,6 @@ export const purchaseShopItem = async ({
   }
 
   return await prisma.$transaction(async (tx) => {
-    // 1. Fetch shop item with details
     const shopItem = await getShopItemWithDetails({
       prisma: tx,
       shopItemId,
@@ -298,6 +301,23 @@ export const purchaseShopItem = async ({
 
     if (!shopItem) {
       throw new ShopItemNotFoundError();
+    }
+
+    // 1. Check per-user inventory limit
+    if (shopItem.item.perUserLimit !== null) {
+      const currentCountInInventory = await getItemCountInInventory({
+        prisma,
+        itemId: shopItem.itemId,
+        userId,
+      });
+
+      const remainingAllowed = shopItem.item.perUserLimit - currentCountInInventory;
+      if (quantity > remainingAllowed) {
+        throw new UserInventoryLimitExceededError(
+          shopItem.item.perUserLimit,
+          currentCountInInventory,
+        );
+      }
     }
 
     // 2. Check user purchase limit

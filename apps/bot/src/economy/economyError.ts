@@ -54,6 +54,17 @@ export class OutOfStockError extends EconomyError {
   }
 }
 
+export class UserInventoryLimitExceededError extends EconomyError {
+  public readonly limit: number;
+  public readonly currentQuantity: number;
+
+  constructor(limit: number, currentQuantity: number) {
+    super(`Max inventory limit exceeded for this item: ${currentQuantity}/${limit}`);
+    this.limit = limit;
+    this.currentQuantity = currentQuantity;
+  }
+}
+
 export class UserPurchaseLimitExceededError extends EconomyError {
   public readonly limit: number;
   public readonly currentQuantity: number;

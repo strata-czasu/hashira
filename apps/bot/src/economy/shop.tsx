@@ -26,6 +26,7 @@ import {
   InvalidStockError,
   OutOfStockError,
   ShopItemNotFoundError,
+  UserInventoryLimitExceededError,
   UserPurchaseLimitExceededError,
 } from "./economyError";
 import {
@@ -180,12 +181,16 @@ async function universalPurchaseShopItem({
   } catch (error) {
     if (error instanceof ShopItemNotFoundError) {
       await reply("Nie znaleziono przedmiotu w sklepie");
-    } else if (error instanceof OutOfStockError) {
-      await reply("Przedmiot jest wyprzedany");
+    } else if (error instanceof UserInventoryLimitExceededError) {
+      await reply(
+        `Przekroczono limit ilości tego przedmiotu w Twoim ekwipunku (${error.currentQuantity}/${error.limit})`,
+      );
     } else if (error instanceof UserPurchaseLimitExceededError) {
       await reply(
         `Osiągnięto limit zakupów tego przedmiotu (${error.currentQuantity}/${error.limit})`,
       );
+    } else if (error instanceof OutOfStockError) {
+      await reply("Przedmiot jest wyprzedany");
     } else if (error instanceof InsufficientBalanceError) {
       await reply("Nie masz wystarczająco środków");
     } else if (error instanceof InvalidAmountError) {
