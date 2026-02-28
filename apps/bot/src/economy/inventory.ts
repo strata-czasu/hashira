@@ -117,8 +117,7 @@ const getUsersUnderAndOverLimit = async ({
 }): Promise<[User[], User[]]> => {
   const { perUserLimit } = item;
 
-  // Treat null and 0 as unlimited
-  if (!perUserLimit) return [users, []];
+  if (perUserLimit === null) return [users, []];
 
   const usersHavingItem = await prisma.inventoryItem.groupBy({
     by: "userId",
