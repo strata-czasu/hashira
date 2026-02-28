@@ -306,7 +306,7 @@ export const purchaseShopItem = async ({
     // 1. Check per-user inventory limit
     if (shopItem.item.perUserLimit !== null) {
       const currentCountInInventory = await getItemCountInInventory({
-        prisma,
+        prisma: tx,
         itemId: shopItem.itemId,
         userId,
       });
