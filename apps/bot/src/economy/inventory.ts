@@ -23,6 +23,7 @@ import { errorFollowUp } from "../util/errorFollowUp";
 import { fetchMembers } from "../util/fetchMembers";
 import { parseUserMentions } from "../util/parseUsers";
 import { pluralizers } from "../util/pluralize";
+import { getItemCountInInventory } from "./managers/inventoryService";
 import {
   getInventoryItem,
   getInventoryItems,
@@ -264,6 +265,21 @@ export const inventory = new Hashira({ name: "inventory" })
                     if (!inventoryItem) {
                       await errorFollowUp(itx, `Nie posiadasz ${bold(item.name)}`);
                       return null;
+                    }
+
+                    if (item.perUserLimit !== null) {
+                      const targetUserCountInInventory = await getItemCountInInventory({
+                        prisma: tx,
+                        itemId,
+                        userId: targetUser.id,
+                      });
+                      if (targetUserCountInInventory >= item.perUserLimit) {
+                        await errorFollowUp(
+                          itx,
+                          `${bold(targetUser.tag)} posiada już maksymalną ilość ${bold(item.name)} (${targetUserCountInInventory}/${item.perUserLimit})`,
+                        );
+                        return null;
+                      }
                     }
 
                     await tx.inventoryItem.update({
