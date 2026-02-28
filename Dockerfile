@@ -1,4 +1,4 @@
-ARG BUN_VERSION=1.3.4
+ARG BUN_VERSION=1.3.10
 
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
@@ -30,7 +30,7 @@ COPY --link . .
 RUN bun prisma-generate
 
 # This ensures the production optimized build is used in Bun
-ENV NODE_ENV=production 
+ENV NODE_ENV=production
 
 USER bun
 CMD ["bun", "start:prod"]
