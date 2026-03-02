@@ -32,10 +32,26 @@ const checkIfCanFish = async (
   });
 
   const lastFishing = fishing?.timestamp ?? new Date(0);
-  const nextFishing = addMinutes(lastFishing, 60);
+  const nextFishing = addMinutes(lastFishing, fishingCooldownMinutes);
   const canFish = isAfter(new Date(), nextFishing);
 
   return [canFish, nextFishing];
+};
+
+const getReminderData = (
+  userId: string,
+  guildId: string,
+  channelId: string,
+  createdAt: Date,
+): [{ userId: string; guildId: string; text: string }, Date] => {
+  return [
+    {
+      userId: userId,
+      guildId: guildId,
+      text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(channelId, guildId)})`,
+    },
+    addMinutes(createdAt, fishingCooldownMinutes),
+  ];
 };
 
 type FishRoll = { id: number; name: string; amount: number };
@@ -46,6 +62,8 @@ const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108
 const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840518>";
 const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
 const xmasFish = "<:cho:1446663458501296191><:inka:1446663528285999254>";
+
+const fishingCooldownMinutes = 60;
 
 // Sorted by the average value
 const FISH_TABLE = [
@@ -128,10 +146,13 @@ export const fish = new Hashira({ name: "fish" })
 
         const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
+        const user = await prisma.user.findUnique({ where: { id: itx.user.id } });
+        const remindersEnabled = !!user?.fishReminderEnabled;
+
         const reminderButton = new ButtonBuilder()
           .setCustomId("fish_reminder")
-          .setLabel("Przypomnij mi za godzinę")
-          .setStyle(ButtonStyle.Secondary);
+          .setLabel(remindersEnabled ? "Wyłącz przypomnienia" : "Włącz przypomnienia")
+          .setStyle(remindersEnabled ? ButtonStyle.Secondary : ButtonStyle.Success);
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(reminderButton);
 
@@ -148,30 +169,41 @@ export const fish = new Hashira({ name: "fish" })
         );
 
         if (!clickInfo.interaction) {
+          if (remindersEnabled)
+            await messageQueue.push(
+              "reminder",
+              ...getReminderData(
+                itx.user.id,
+                itx.guildId,
+                itx.channelId,
+                itx.createdAt,
+              ),
+            );
+
           return await clickInfo.removeButton();
         }
 
+        const newValue = !(user?.fishReminderEnabled ?? false);
+        await prisma.user.update({
+          where: { id: itx.user.id },
+          data: { fishReminderEnabled: newValue },
+        });
+
         await Promise.all([
           clickInfo.interaction.reply({
-            content: "Przypomnę Ci o łowieniu za godzinę!",
+            content: newValue
+              ? "Włączono przypomnienia o łowieniu."
+              : "Wyłączono przypomnienia o łowieniu.",
             flags: "Ephemeral",
           }),
-          clickInfo.editButton((builder) =>
-            builder
-              .setDisabled(true)
-              .setLabel("Widzimy się za godzinę")
-              .setStyle(ButtonStyle.Success),
-          ),
-          messageQueue.push(
-            "reminder",
-            {
-              userId: itx.user.id,
-              guildId: itx.guildId,
-              text: `Możesz znowu łowić ryby! Udaj się nad wodę i spróbuj szczęścia! (${channelLink(itx.channelId, itx.guildId)})`,
-            },
-            addMinutes(itx.createdAt, 60),
-          ),
+          clickInfo.editButton((builder) => builder.setDisabled(true)),
         ]);
+
+        if (newValue)
+          await messageQueue.push(
+            "reminder",
+            ...getReminderData(itx.user.id, itx.guildId, itx.channelId, itx.createdAt),
+          );
 
         await sleep(secondsToMilliseconds(15));
 
