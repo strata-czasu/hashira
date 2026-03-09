@@ -1,18 +1,30 @@
 import { describe, expect, test } from "bun:test";
 import { MessageReferenceType } from "discord.js";
-import { getDmForwardMessageOptions } from "../src/dmForwarding";
+import {
+  type DmForwardMessage,
+  getDmForwardMessageOptions,
+} from "../src/dmForwarding";
+
+const createMockAttachments = (
+  ...urls: string[]
+): DmForwardMessage["attachments"] => ({
+  map: (callback) => urls.map((url) => callback({ url })),
+});
 
 describe("getDmForwardMessageOptions", () => {
   test("copies plain direct message content, embeds, and attachments", () => {
     const message = {
+      id: "message-id",
+      channelId: "dm-channel-id",
+      guildId: null,
       author: { tag: "user#1234" },
       content: "hello",
-      embeds: [{ description: "embed" }],
-      attachments: [{ url: "https://example.com/file.png" }],
+      embeds: [{ description: "embed" }] as DmForwardMessage["embeds"],
+      attachments: createMockAttachments("https://example.com/file.png"),
       reference: null,
-    } as const;
+    } satisfies DmForwardMessage;
 
-    expect(getDmForwardMessageOptions(message as never)).toEqual({
+    expect(getDmForwardMessageOptions(message)).toEqual({
       content: "**user#1234**: hello",
       embeds: [{ description: "embed" }],
       files: ["https://example.com/file.png"],
@@ -26,17 +38,17 @@ describe("getDmForwardMessageOptions", () => {
       guildId: null,
       author: { tag: "user#1234" },
       content: "forwarded comment",
-      embeds: [{ description: "embed" }],
-      attachments: [{ url: "https://example.com/file.png" }],
+      embeds: [{ description: "embed" }] as DmForwardMessage["embeds"],
+      attachments: createMockAttachments("https://example.com/file.png"),
       reference: {
         messageId: "source-message-id",
         channelId: "source-channel-id",
         guildId: undefined,
         type: MessageReferenceType.Forward,
       },
-    } as const;
+    } satisfies DmForwardMessage;
 
-    expect(getDmForwardMessageOptions(message as never)).toEqual({
+    expect(getDmForwardMessageOptions(message)).toEqual({
       content: "**user#1234**: forwarded comment",
       messageReference: {
         messageId: "message-id",

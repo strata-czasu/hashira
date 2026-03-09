@@ -3,6 +3,7 @@ import { TextChannelPaginator } from "@hashira/core/paginate";
 import {
   bold,
   type Message,
+  type MessageCreateOptions,
   MessageReferenceType,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
@@ -16,7 +17,19 @@ import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
-export const getDmForwardMessageOptions = (message: Message) => {
+export type DmForwardMessage = Pick<
+  Message,
+  "channelId" | "content" | "embeds" | "guildId" | "id" | "reference"
+> & {
+  author: Pick<Message["author"], "tag">;
+  attachments: {
+    map: <T>(callback: (attachment: { url: string }) => T) => T[];
+  };
+};
+
+export const getDmForwardMessageOptions = (
+  message: DmForwardMessage,
+): MessageCreateOptions => {
   const content = `${bold(message.author.tag)}: ${message.content}`;
 
   if (message.reference?.type === MessageReferenceType.Forward) {
