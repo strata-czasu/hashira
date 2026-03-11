@@ -18,6 +18,11 @@ export const sendDirectMessage = async (
       await user.send(message);
       return true;
     },
-    [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+    [
+      RESTJSONErrorCodes.CannotSendMessagesToThisUser,
+      // HACK: Discord is returning a new undocumented error code
+      //       which (probably) means the same thing as CannotSendMessagesToThisUser
+      50278 as RESTJSONErrorCodes,
+    ],
     async () => false,
   );
