@@ -44,36 +44,42 @@ Using VSCode Dev containers is the easiest way to setup the development environm
 
 6. Start the bot - `bun start`
 
-### Nix
+### devenv (Nix)
 
-1. Copy `.env.example` to `.env` and set the following variables:
+1. Install Nix and devenv:
+   - Install Nix: https://devenv.sh/getting-started/
+   - Install devenv (example):
+     - `nix-env --install --attr devenv -f https://github.com/NixOS/nixpkgs/tarball/nixpkgs-unstable`
+
+2. Copy `.env.example` to `.env` and set the following variables:
    - `BOT_TOKEN`
    - `BOT_CLIENT_ID`
    - `BOT_DEVELOPER_GUILD_IDS`
-   - `REDIS_URL=redis://localhost:6379`
-   - `DATABASE_URL=postgresql://username@localhost:5432/dev`
-   - `DATABASE_TEST_URL=postgresql://username@localhost:5432/test`
+   - `REDIS_URL=redis://127.0.0.1:6379`
+   - `DATABASE_URL=postgresql://hashira:hashira@127.0.0.1:5432/hashira`
+   - `DATABASE_TEST_URL=postgresql://hashira:hashira@127.0.0.1:5432/hashira_test`
    - `POSTGRES_*` vars can be removed - they are only used when initializing a DB via Docker
    - **Optionally** set vars from the "Optional settings" section if needed
 
-2. Activate the devShell
-   - Use `direnv allow` to automatically go into a devShell and load the `.env` file, or
-   - Activate the shell manually with `nix develop` and load the `.env` file manually (e.g. by sourcing it)
+3. Activate devenv
+   - Use `direnv allow` to automatically enter devenv and load `.env`, or
+   - Activate manually with `devenv shell`
+   - Custom profiles are configured by username/hostname in `devenv.nix` and are auto-activated by devenv.
 
-3. Install dependencies - `bun install`
+4. Install dependencies - `bun install`
 
-4. Start development databases - `start-database && start-redis`
+5. Start development databases (required for all developers) - `devenv up -d`
 
-5. Setup the database:
+6. Setup the database:
    - `bun prisma-generate` - generate the Prisma DB client
    - `bun prisma-migrate-deploy` - sync the schema
    - `bun seed` - insert required data
 
-6. Sync commands to discord - `bun reload-commands`
+7. Sync commands to discord - `bun reload-commands`
 
-7. Start the bot - `bun start`
+8. Start the bot - `bun start`
 
-8. When you're finished, stop development databases - `stop-database && stop-redis`
+9. When you're finished, stop development databases - `devenv processes down`
 
 ### Updating Bun
 

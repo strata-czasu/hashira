@@ -185,4 +185,5 @@ dist
 
 PG_DATA/
 REDIS_DATA/
+.devenv/
 *.js

@@ -1,0 +1,8 @@
+inputs:
+  nixpkgs:
+    url: github:nixos/nixpkgs/nixos-unstable
+  bun:
+    url: github:Daste745/nix-bun
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
