@@ -5,6 +5,7 @@ import {
   type Prisma,
   type Ultimatum,
 } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
 import { addSeconds } from "date-fns";
 import {
   type Guild,
@@ -155,7 +156,7 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
               (props, createdAt) =>
                 prisma.ultimatum.findMany({ ...props, where, orderBy: { createdAt } }),
               () => prisma.ultimatum.count({ where }),
-              { pageSize: 5 },
+              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
             );
 
             const formatUltimatum = ({ id, userId, expiresAt, reason }: Ultimatum) => {
