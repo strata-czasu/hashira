@@ -1,8 +1,6 @@
 import type { PrismaTransaction } from "@hashira/db";
 import { Prisma } from "@hashira/db";
 
-// Types
-
 export type DailyActivity = {
   userId: string;
   day: Date;
@@ -27,23 +25,6 @@ export type BonusChannelInfo = {
   multiplier: number;
 };
 
-// ─── Raw SQL queries ─────────────────────────────────────────────────────────
-
-/**
- * Get total capped points for a team, computed entirely in SQL.
- *
- * This does the same as getTeamActivity from Easter 2025
- * but adds daily-per-user capping and bonus channel weighting:
- *
- * 1. JOIN TeamMember → userTextActivity  (only from joinedAt, excluding disabled channels)
- * 2. LEFT JOIN bonus channels to get per-message weight  (1 or multiplier)
- * 3. GROUP BY userId, day  → sum weighted messages
- * 4. LEAST(sum, dailyCap) per user-day  → capped
- * 5. Re-group by userId  → per-user total
- *
- * Returns one row per user, ordered by total points descending.
- * This avoids pulling per-day rows into the application.
- */
 export const getTeamPointsByUser = async (
   prisma: PrismaTransaction,
   teamId: number,
@@ -53,9 +34,6 @@ export const getTeamPointsByUser = async (
   disabledChannelIds: string[],
   bonusChannels: BonusChannelInfo[],
 ): Promise<UserPoints[]> => {
-  // Build the disabled channels filter.
-  // NOT EXISTS is fast because the DB can do an anti-semi-join with an index scan,
-  // same approach as Easter 2025.
   const disabledFilter =
     disabledChannelIds.length > 0
       ? Prisma.sql`
@@ -68,9 +46,6 @@ export const getTeamPointsByUser = async (
           )`
       : Prisma.empty;
 
-  // For bonus channel weighting, we build a VALUES list and LEFT JOIN it.
-  // Each bonus channel entry maps (channelId, date) → multiplier.
-  // Messages not on a bonus channel get weight 1.
   let bonusJoin: Prisma.Sql;
   let weightExpr: Prisma.Sql;
 
@@ -126,10 +101,6 @@ export const getTeamPointsByUser = async (
   }));
 };
 
-/**
- * Get total points for a team (single number).
- * Wraps getTeamPointsByUser and sums across all users.
- */
 export const getTeamTotalPoints = async (
   prisma: PrismaTransaction,
   teamId: number,

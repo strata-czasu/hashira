@@ -277,7 +277,6 @@ export const easter2026 = new Hashira({ name: "easter2026" })
 
             const teams = await getTeamsWithFullConfig(prisma, itx.guildId);
 
-            // Aggregate all users across all teams
             const allUsers: {
               userId: string;
               totalPoints: number;
@@ -552,7 +551,6 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               return;
             }
 
-            // Delete team (cascades to TeamMember and Easter2026TeamConfig)
             await prisma.team.delete({ where: { id: config.teamId } });
 
             await itx.editReply({
@@ -602,7 +600,6 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               return;
             }
 
-            // Update roles
             await targetMember.roles.remove(
               result.previousTeam.easter2026TeamConfig.roleId,
               "Zmieniono drużynę",
