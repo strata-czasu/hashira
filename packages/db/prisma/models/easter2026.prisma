@@ -1,0 +1,60 @@
+model Easter2026TeamConfig {
+  id                  Int     @id @default(autoincrement())
+  teamId              Int     @unique
+  roleId              String  @unique
+  color               Int
+  statusChannelId     String
+  statusLastMessageId String?
+  captainUserId       String?
+
+  team        Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  captainUser User?             @relation("easter2026Captain", fields: [captainUserId], references: [id])
+  stages      Easter2026Stage[]
+}
+
+model Easter2026Config {
+  id                   Int      @id @default(autoincrement())
+  guildId              String   @unique
+  eventStartDate       DateTime
+  eventEndDate         DateTime
+  dailyMessageCap      Int      @default(1000)
+  autoAssignNewMembers Boolean  @default(true)
+
+  guild            Guild                       @relation(fields: [guildId], references: [id])
+  disabledChannels Easter2026DisabledChannel[]
+  bonusChannels    Easter2026BonusChannel[]
+}
+
+model Easter2026Stage {
+  id             Int       @id @default(autoincrement())
+  teamConfigId   Int
+  neededPoints   Int
+  linkedImageUrl String
+  completedAt    DateTime?
+
+  teamConfig Easter2026TeamConfig @relation(fields: [teamConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([teamConfigId, neededPoints])
+}
+
+model Easter2026DisabledChannel {
+  id        Int    @id @default(autoincrement())
+  configId  Int
+  channelId String
+
+  config Easter2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, channelId])
+}
+
+model Easter2026BonusChannel {
+  id         Int      @id @default(autoincrement())
+  configId   Int
+  channelId  String
+  date       DateTime @db.Date
+  multiplier Float
+
+  config Easter2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, date])
+}
