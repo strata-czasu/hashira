@@ -8,7 +8,6 @@ import type {
   JSONEncodable,
   MessageActionRowComponentBuilder,
   MessageActionRowComponentData,
-  MessageEditOptions,
   TopLevelComponentData,
 } from "discord.js";
 import {
@@ -17,7 +16,6 @@ import {
   ContainerBuilder,
   FileBuilder,
   MediaGalleryBuilder,
-  MessageFlags,
   SectionBuilder,
   SeparatorBuilder,
   TextDisplayBuilder,
@@ -42,9 +40,7 @@ type Files = (
   | AttachmentPayload
 )[];
 
-export function render(
-  element: JSXNode,
-): MessageEditOptions & { components: Components } {
+export function render(element: JSXNode) {
   // reconcile() is idempotent - already resolved nodes pass through unchanged
   const children = reconcile(element);
 
@@ -75,7 +71,7 @@ export function render(
   }
 
   return {
-    flags: MessageFlags.IsComponentsV2,
+    flags: "IsComponentsV2" as const,
     components,
     files,
   };
