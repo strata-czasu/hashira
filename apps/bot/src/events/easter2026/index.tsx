@@ -932,6 +932,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
 
     if (!isEventOpen(config, member)) return;
 
+    await ensureUserExists(prisma, member.id);
     const result = await joinRandomTeam(prisma, member.id, member.guild.id);
 
     if (!result.ok && result.reason !== "already_in_team") return;
