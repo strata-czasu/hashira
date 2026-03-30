@@ -4,7 +4,6 @@ import type {
   Team,
   TeamMember,
 } from "@hashira/db";
-import { sample } from "es-toolkit";
 
 export type TeamWithConfig = Team & {
   easter2026TeamConfig: Easter2026TeamConfig;
@@ -81,13 +80,14 @@ export const findMembershipForEaster2026 = async (
 
 export const pickLeastPopulatedTeam = (
   teams: TeamWithConfig[],
+  random: () => number,
 ): TeamWithConfig | undefined => {
   if (teams.length === 0) return undefined;
 
   const minCount = Math.min(...teams.map((t) => t._count.members));
   const candidates = teams.filter((t) => t._count.members === minCount);
 
-  return sample(candidates);
+  return candidates[Math.floor(random() * candidates.length)];
 };
 
 export const joinRandomTeam = async (
@@ -99,7 +99,7 @@ export const joinRandomTeam = async (
   if (existing) return { ok: false, team: existing.team, reason: "already_in_team" };
 
   const teams = await findEaster2026Teams(prisma, guildId);
-  const team = pickLeastPopulatedTeam(teams);
+  const team = pickLeastPopulatedTeam(teams, Math.random);
   if (!team) return { ok: false, reason: "no_teams" };
 
   const member = await prisma.teamMember.create({

@@ -1,8 +1,17 @@
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
+import { Effect, Random } from "effect";
 import {
   pickLeastPopulatedTeam,
   type TeamWithConfig,
 } from "../../src/events/easter2026/teamService";
+
+// biome-ignore lint/style/noNonNullAssertion: test code
+let random: () => number = null!;
+
+beforeEach(() => {
+  const randomGen = Random.make(42);
+  random = () => Effect.runSync(randomGen.next);
+});
 
 const createTestTeam = (
   id: number,
@@ -27,13 +36,13 @@ const createTestTeam = (
 
 describe("pickLeastPopulatedTeam", () => {
   it("should return undefined for empty array", () => {
-    const result = pickLeastPopulatedTeam([]);
+    const result = pickLeastPopulatedTeam([], random);
     expect(result).toBeUndefined();
   });
 
   it("should pick the single team when only one exists", () => {
     const teams = [createTestTeam(1, "Team A", 5)];
-    const result = pickLeastPopulatedTeam(teams);
+    const result = pickLeastPopulatedTeam(teams, random);
     expect(result?.id).toBe(1);
   });
 
@@ -43,7 +52,7 @@ describe("pickLeastPopulatedTeam", () => {
       createTestTeam(2, "Team B", 2),
       createTestTeam(3, "Team C", 7),
     ];
-    const result = pickLeastPopulatedTeam(teams);
+    const result = pickLeastPopulatedTeam(teams, random);
     expect(result?.id).toBe(2);
   });
 
@@ -52,7 +61,7 @@ describe("pickLeastPopulatedTeam", () => {
 
     const results = new Set<number>();
     for (let i = 0; i < 50; i++) {
-      const result = pickLeastPopulatedTeam(teams);
+      const result = pickLeastPopulatedTeam(teams, random);
       if (result) results.add(result.id);
     }
 
@@ -70,7 +79,7 @@ describe("pickLeastPopulatedTeam", () => {
 
     const results = new Set<number>();
     for (let i = 0; i < 50; i++) {
-      const result = pickLeastPopulatedTeam(teams);
+      const result = pickLeastPopulatedTeam(teams, random);
       if (result) results.add(result.id);
     }
 
