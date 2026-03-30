@@ -41,7 +41,7 @@ describe("JSX", () => {
           },
         ],
         "files": [],
-        "flags": 32768,
+        "flags": "IsComponentsV2",
       }
     `);
   });
@@ -77,7 +77,7 @@ describe("JSX", () => {
           },
         ],
         "files": [],
-        "flags": 32768,
+        "flags": "IsComponentsV2",
       }
     `);
   });
