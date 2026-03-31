@@ -21,7 +21,7 @@ import { errorFollowUp } from "./util/errorFollowUp";
 import { waitForButtonClick } from "./util/singleUseButton";
 import { weightedRandom } from "./util/weightedRandom";
 
-const checkIfCanFish = async (
+export const checkIfCanFish = async (
   prisma: ExtendedPrismaClient,
   userId: string,
   guildId: string,
@@ -38,7 +38,33 @@ const checkIfCanFish = async (
   return [canFish, nextFishing];
 };
 
-type FishRoll = { id: number; name: string; amount: number };
+export type ItemRoll = { id: number; name: string; amount: number };
+
+export type ItemTableEntry = {
+  readonly id: number;
+  readonly name: string;
+  readonly minAmount: number;
+  readonly maxAmount: number;
+  readonly weight: number;
+};
+
+export const getItemById = (
+  table: readonly ItemTableEntry[],
+  id: number,
+): ItemRoll | null => {
+  const item = table.find((entry) => entry.id === id);
+  if (!item) return null;
+
+  return {
+    id: item.id,
+    name: item.name,
+    amount: randomInt(item.minAmount, item.maxAmount + 1),
+  };
+};
+
+export const getRandomItem = <T extends readonly [ItemTableEntry, ...ItemTableEntry[]]>(
+  table: T,
+) => weightedRandom(table, (item) => item.weight);
 
 const lizardFish =
   "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
@@ -48,7 +74,7 @@ const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
 const xmasFish = "<:cho:1446663458501296191><:inka:1446663528285999254>";
 
 // Sorted by the average value
-const FISH_TABLE = [
+export const FISH_TABLE = [
   { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   { id: 12, name: lizardFish, minAmount: -30, maxAmount: -10, weight: 1 },
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
@@ -66,20 +92,6 @@ const FISH_TABLE = [
   { id: 13, name: "halibuta", minAmount: 270, maxAmount: 330, weight: 1 },
   { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
 ] as const;
-
-const getFishById = (id: number): FishRoll | null => {
-  const fish = FISH_TABLE.find((f) => f.id === id);
-  if (!fish) return null;
-
-  return {
-    id: fish.id,
-    name: fish.name,
-    amount: randomInt(fish.minAmount, fish.maxAmount + 1),
-  };
-};
-
-type Fish = (typeof FISH_TABLE)[number];
-const getRandomFish = () => weightedRandom<Fish>(FISH_TABLE, (fish) => fish.weight);
 
 export const fish = new Hashira({ name: "fish" })
   .use(base)
@@ -109,9 +121,9 @@ export const fish = new Hashira({ name: "fish" })
           return;
         }
 
-        const { id } = getRandomFish();
+        const { id } = getRandomItem(FISH_TABLE);
         // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
-        const { name, amount } = getFishById(id)!;
+        const { name, amount } = getItemById(FISH_TABLE, id)!;
 
         await addBalance({
           prisma,
@@ -205,7 +217,7 @@ export const fish = new Hashira({ name: "fish" })
 
             await ensureUserExists(prisma, user);
 
-            const fish = getFishById(fishId);
+            const fish = getItemById(FISH_TABLE, fishId);
 
             if (!fish) {
               return errorFollowUp(itx, "Błąd: Nie znaleziono ryby o tym ID");
