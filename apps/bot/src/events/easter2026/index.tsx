@@ -364,16 +364,6 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               return;
             }
 
-            const totalPoints = await getTeamTotalPoints(
-              prisma,
-              team.id,
-              config.eventStartDate,
-              config.eventEndDate,
-              config.dailyMessageCap,
-              disabledChannelIds,
-              bonusChannels,
-            );
-
             const topUsers = await getTeamPointsByUser(
               prisma,
               team.id,
@@ -383,6 +373,8 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               disabledChannelIds,
               bonusChannels,
             );
+
+            const totalPoints = topUsers.reduce((sum, u) => sum + u.totalPoints, 0);
 
             const element = buildTeamEmbed(team, totalPoints, topUsers);
             await itx.editReply(render(element));

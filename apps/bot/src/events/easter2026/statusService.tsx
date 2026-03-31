@@ -26,11 +26,7 @@ import {
 } from "discord.js";
 import { isNil } from "es-toolkit";
 import { discordTry } from "../../util/discordTry";
-import {
-  getTeamPointsByUser,
-  getTeamTotalPoints,
-  type UserPoints,
-} from "./pointsService";
+import { getTeamPointsByUser, type UserPoints } from "./pointsService";
 
 export type TeamWithFullConfig = Team & {
   easter2026TeamConfig: Easter2026TeamConfig & {
@@ -146,16 +142,6 @@ export const updateTeamStatusMessage = async (
   const channel = client.channels.cache.get(config.statusChannelId);
   if (!channel || !channel.isSendable()) return;
 
-  const totalPoints = await getTeamTotalPoints(
-    prisma,
-    team.id,
-    eventStart,
-    eventEnd,
-    dailyCap,
-    disabledChannelIds,
-    bonusChannels,
-  );
-
   const topUsers = await getTeamPointsByUser(
     prisma,
     team.id,
@@ -165,6 +151,8 @@ export const updateTeamStatusMessage = async (
     disabledChannelIds,
     bonusChannels,
   );
+
+  const totalPoints = topUsers.reduce((sum, u) => sum + u.totalPoints, 0);
 
   const element = buildTeamEmbed(team, totalPoints, topUsers);
   const messageData = render(element);
