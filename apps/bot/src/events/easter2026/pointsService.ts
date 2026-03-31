@@ -85,6 +85,7 @@ export const getTeamPointsByUser = async (
         AND uta."timestamp" >= tm."joinedAt"
         AND uta."timestamp" >= ${since}
         AND uta."timestamp" <= ${until}
+        AND uta."guildId" = (SELECT "guildId" FROM "Team" WHERE "id" = ${teamId})
       ${bonusJoin}
       WHERE
         tm."teamId" = ${teamId}
