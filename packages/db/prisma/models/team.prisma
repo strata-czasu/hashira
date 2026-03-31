@@ -1,0 +1,24 @@
+model Team {
+  id      Int    @id @default(autoincrement())
+  name    String
+  guildId String
+
+  members TeamMember[]
+  guild   Guild        @relation(fields: [guildId], references: [id])
+
+  easter2026TeamConfig Easter2026TeamConfig?
+
+  @@unique([name, guildId])
+}
+
+model TeamMember {
+  id       Int      @id @default(autoincrement())
+  teamId   Int
+  userId   String
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
