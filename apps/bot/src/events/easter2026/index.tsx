@@ -38,15 +38,22 @@ import {
   setCaptain,
 } from "./teamService";
 
+const getEventState = (
+  config: { eventStartDate: Date; eventEndDate: Date } | null,
+  member: GuildMember,
+) => {
+  if (member.permissions.has(PermissionFlagsBits.ModerateMembers)) return "open";
+  if (!config) return "not_configured";
+  const now = new Date();
+  if (isBefore(now, config.eventStartDate)) return "not_started";
+  if (isAfter(now, config.eventEndDate)) return "finished";
+  return "open";
+};
+
 const isEventOpen = (
   config: { eventStartDate: Date; eventEndDate: Date } | null,
   member: GuildMember,
-): boolean => {
-  if (member.permissions.has(PermissionFlagsBits.ModerateMembers)) return true;
-  if (!config) return false;
-  const now = new Date();
-  return isAfter(now, config.eventStartDate) && isBefore(now, config.eventEndDate);
-};
+): boolean => getEventState(config, member) === "open";
 
 const getEventConfig = (prisma: PrismaTransaction, guildId: string) =>
   prisma.easter2026Config.findUnique({
@@ -87,8 +94,15 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             if (!itx.inCachedGuild()) return;
 
             const config = await getEventConfig(prisma, itx.guildId);
-            if (!isEventOpen(config, itx.member)) {
-              await errorFollowUp(itx, "Event jeszcze się nie rozpoczął!");
+
+            const state = getEventState(config, itx.member);
+            if (state !== "open") {
+              const messages = {
+                not_configured: "Event nie jest jeszcze skonfigurowany!",
+                not_started: "Event jeszcze się nie rozpoczął!",
+                finished: "Event już się zakończył!",
+              };
+              await errorFollowUp(itx, messages[state]);
               return;
             }
 
@@ -663,7 +677,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
         command
           .setDescription("Dodaj nowy etap do eventu")
           .addNumber("punkty", (option) =>
-            option.setMinValue(0).setDescription("Liczba punktów do osiągnięcia"),
+            option.setMinValue(1).setDescription("Liczba punktów do osiągnięcia"),
           )
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .addString("obrazek", (option) => option.setDescription("Link do obrazka"))

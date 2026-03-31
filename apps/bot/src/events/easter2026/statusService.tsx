@@ -52,7 +52,7 @@ export const formatMilestoneProgress = (
   }
 
   const progress = (totalPoints / neededPoints) * 100;
-  const ending = Number.isNaN(progress) ? "" : ` (${progress.toFixed(1)}%)`;
+  const ending = Number.isFinite(progress) ? "" : ` (${progress.toFixed(1)}%)`;
 
   return `${totalPoints}/${bold(neededPoints.toString())} wiadomości${ending}`;
 };
