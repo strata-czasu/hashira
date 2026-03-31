@@ -41,10 +41,12 @@ export const myFeature = new Hashira({ name: "feature" })
 
 **Command Structure**: Commands use strongly-typed options:
 ```typescript
-.addUser("user", (option) => option.setDescription("...").setRequired(true))
+.addUser("user", (option) => option.setDescription("..."))
 .addInteger("amount", (option) => option.setMinValue(1))
 .handle(async (ctx, { user, amount }, itx) => { ... })
 ```
+Every option is required by default, contrary to discord.js, to make it optional use `.setRequired(false)`.
+
 
 **Error Handling**: Use `discordTry()` wrapper for Discord API calls that may fail:
 ```typescript
@@ -69,6 +71,26 @@ bun start
 # Reload Discord commands during development
 bun reload-commands
 ```
+
+### Running in host system of devcontainer
+If you are in a devcontainer, you should recognize that by checking if the current directory is `/workspaces/hashira`. If you are, you should just use `bun` or other tools directly instead of docker compose. 
+
+If you are not, you should recognize if you should start up the devcontainer by checking if the docker compose ps -a command shows the devcontainer containers. Otherwise, you should just use `bun` or other tools directly instead of docker compose.
+
+```bash
+# Check if devcontainer containers are setup at all
+docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compose.yml ps -a
+
+# Start devcontainer
+npx @devcontainers/cli up
+
+# Run commands inside of devcontainer instead of directly on host
+docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compose.yml exec -it -w /workspaces/hashira app <command>
+
+# To run tests
+docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compose.yml exec -it -w /workspaces/hashira app bun test
+```
+
 
 ### Database Operations
 - **Migrations**: `bun prisma-migrate-dev` (development) or `bun prisma-migrate-deploy` (production)
@@ -125,17 +147,10 @@ bun test apps/bot       # Bot-specific tests
 bun test packages/utils # Utility tests
 ```
 
-### Deployment Notes
-- **Production mode**: `bun start:prod` (runs migrations + seed + start)
-- **Environment**: Uses dev containers with PostgreSQL + Redis services
-- **Configuration**: Copy `.env.example` to `.env` and configure Discord bot tokens
-- **Monitoring**: Optional Sentry integration for error tracking
-
 ## Integration Points
 
 **Database**: Prisma ORM with PostgreSQL, shared client is accessible via `ctx.prisma`
 **Cache**: Redis for sessions, locks, and temporary data
-**External APIs**: OpenAI (AI features), Sentry (monitoring), Shlink (URL shortening)
 **Discord**: Custom Hashira framework wrapping discord.js with type safety
 **Task Queue**: Postgres-based message queue for delayed operations (mutes, reminders, etc.)
 
