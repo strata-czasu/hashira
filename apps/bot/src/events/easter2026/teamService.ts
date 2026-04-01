@@ -15,13 +15,19 @@ export type JoinResult =
   | { ok: false; reason: "already_in_team"; team: TeamWithConfig }
   | { ok: false; reason: "no_teams" };
 
-export type MoveResult =
-  | { ok: true; previousTeam: TeamWithConfig; newTeam: TeamWithConfig }
-  | { ok: false; reason: "not_in_team" | "same_team" | "target_not_found" };
-
 export type RemoveResult =
   | { ok: true; team: TeamWithConfig }
   | { ok: false; reason: "not_in_team" };
+
+export type MoveResult =
+  | {
+      ok: true;
+      previousTeam: TeamWithConfig | null;
+      team: TeamWithConfig;
+      member: TeamMember;
+    }
+  | { ok: false; reason: "already_in_team"; team: TeamWithConfig }
+  | { ok: false; reason: "team_not_found" };
 
 export const findEaster2026Teams = async (
   prisma: PrismaTransaction,
@@ -115,21 +121,28 @@ export const moveToTeam = async (
   targetTeamId: number,
   guildId: string,
 ): Promise<MoveResult> => {
-  const existing = await findMembershipForEaster2026(prisma, userId, guildId);
-  if (!existing) return { ok: false, reason: "not_in_team" };
-
-  if (existing.team.id === targetTeamId) return { ok: false, reason: "same_team" };
-
   const teams = await findEaster2026Teams(prisma, guildId);
   const targetTeam = teams.find((t) => t.id === targetTeamId);
-  if (!targetTeam) return { ok: false, reason: "target_not_found" };
 
-  await prisma.teamMember.update({
-    where: { id: existing.id },
-    data: { teamId: targetTeamId, joinedAt: new Date() },
+  if (!targetTeam) return { ok: false, reason: "team_not_found" };
+
+  const existing = await findMembershipForEaster2026(prisma, userId, guildId);
+
+  if (existing) {
+    if (existing.team.id === targetTeamId) {
+      return { ok: false, reason: "already_in_team", team: existing.team };
+    }
+
+    await prisma.teamMember.delete({
+      where: { teamId_userId: { teamId: existing.team.id, userId } },
+    });
+  }
+
+  const member = await prisma.teamMember.create({
+    data: { teamId: targetTeam.id, userId },
   });
 
-  return { ok: true, previousTeam: existing.team, newTeam: targetTeam };
+  return { ok: true, previousTeam: existing?.team ?? null, team: targetTeam, member };
 };
 
 export const removeFromTeam = async (

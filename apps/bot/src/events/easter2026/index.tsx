@@ -589,32 +589,41 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             const targetMember = await itx.guild.members.fetch(user.id);
             await ensureUserExists(prisma, targetMember);
 
-            const result = await moveToTeam(
-              prisma,
-              user.id,
-              targetConfig.teamId,
-              itx.guildId,
+            const result = await prisma.$transaction((tx) =>
+              moveToTeam(tx, user.id, targetConfig.teamId, itx.guildId),
             );
 
             if (!result.ok) {
               const messages = {
-                not_in_team: "Użytkownik nie jest w żadnej drużynie!",
-                same_team: "Użytkownik jest już w tej drużynie!",
-                target_not_found: "Docelowa drużyna nie istnieje!",
+                already_in_team: "Użytkownik jest już w tej drużynie!",
+                team_not_found: "Docelowa drużyna nie istnieje!",
               };
               await errorFollowUp(itx, messages[result.reason]);
               return;
             }
 
-            await targetMember.roles.remove(
-              result.previousTeam.easter2026TeamConfig.roleId,
-              "Zmieniono drużynę",
-            );
-            await targetMember.roles.add(targetConfig.roleId, "Zmieniono drużynę");
+            const actions = [];
 
-            await itx.editReply({
-              content: `Zmieniono drużynę ${bold(user.tag)} z ${bold(result.previousTeam.name)} na ${bold(targetConfig.team.name)}!`,
-            });
+            if (result.previousTeam) {
+              actions.push(
+                targetMember.roles.remove(
+                  result.previousTeam.easter2026TeamConfig.roleId,
+                  "Zmieniono drużynę",
+                ),
+              );
+            }
+
+            actions.push(
+              targetMember.roles.add(targetConfig.roleId, "Zmieniono drużynę"),
+            );
+
+            const message = result.previousTeam
+              ? `Zmieniono drużynę ${bold(user.tag)} z ${bold(result.previousTeam.name)} na ${bold(targetConfig.team.name)}!`
+              : `Przeniesiono ${bold(user.tag)} do drużyny ${bold(targetConfig.team.name)}!`;
+
+            actions.push(itx.editReply({ content: message }));
+
+            await Promise.all(actions);
           }),
       )
       .addCommand("wyrzuc-z-druzyny", (command) =>
