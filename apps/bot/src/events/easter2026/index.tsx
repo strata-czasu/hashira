@@ -13,6 +13,7 @@ import {
 import { isAfter, isBefore } from "date-fns";
 import {
   bold,
+  ChannelType,
   channelMention,
   type GuildMember,
   PermissionFlagsBits,
@@ -780,10 +781,25 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               return;
             }
 
-            const channels = rawChannels.split(",").map((c) => c.trim());
+            const channelIds = rawChannels.split(",").map((c) => c.trim());
+
+            const channels = await Promise.all(
+              channelIds.map((channelId) => itx.guild.channels.fetch(channelId)),
+            );
+
+            const unwrappedChannels = channels
+              .filter((c) => c !== null)
+              .flatMap((c) => {
+                if (c.type === ChannelType.GuildCategory)
+                  return c.children.cache.values().toArray();
+
+                return c;
+              });
+
+            const uniqueChannelIds = [...new Set(unwrappedChannels.map((c) => c.id))];
 
             const { count } = await prisma.easter2026DisabledChannel.createMany({
-              data: channels.map((channelId) => ({
+              data: uniqueChannelIds.map((channelId) => ({
                 configId: eventConfig.id,
                 channelId,
               })),
