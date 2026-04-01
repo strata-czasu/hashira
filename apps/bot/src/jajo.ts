@@ -39,8 +39,8 @@ const drapankaEgg = "<:drapanka:1488655716058136819>";
 const EGG_MESSAGES: Record<number, string> = {
   2: "Niesamowite, w koszyczku znaleziono {{name}}. Dostajesz {{balance}}.",
   1001: "Och, wypadło ci jajko z koszyczka? {{name}}. Zajączek skasował cię na {{balance}}.",
-  1005: "Tego jajkota {{name}} się tu nie spodziewałem! Dostajesz {{balance}}.",
-  1006: "O, {{name}}! Karaś zmienił się w jajko! Dostajesz {{balance}}.",
+  1005: "O, {{name}}! Karaś zmienił się w jajko! Dostajesz {{balance}}.",
+  1006: "Tego jajkota {{name}} się tu nie spodziewałem! Dostajesz {{balance}}.",
   1007: "Zajączek wielkanocny upuścił {{name}} podczas ucieczki! Dostajesz {{balance}}.",
 };
 
