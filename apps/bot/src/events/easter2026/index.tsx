@@ -686,7 +686,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
         command
           .setDescription("Dodaj nowy etap do eventu")
           .addNumber("punkty", (option) =>
-            option.setMinValue(1).setDescription("Liczba punktów do osiągnięcia"),
+            option.setMinValue(0).setDescription("Liczba punktów do osiągnięcia"),
           )
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .addString("obrazek", (option) => option.setDescription("Link do obrazka"))
