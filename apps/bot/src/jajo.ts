@@ -7,10 +7,11 @@ import {
   ButtonStyle,
   channelLink,
   PermissionFlagsBits,
+  RESTJSONErrorCodes,
   TimestampStyles,
   time,
 } from "discord.js";
-import { randomInt } from "es-toolkit";
+import { noop, randomInt } from "es-toolkit";
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
@@ -22,6 +23,7 @@ import {
   type ItemTableEntry,
 } from "./fish";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
+import { discordTry } from "./util/discordTry";
 import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { waitForButtonClick } from "./util/singleUseButton";
@@ -106,7 +108,11 @@ export const jajo = new Hashira({ name: "jajo" })
             content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await itx.deleteReply();
+          await discordTry(
+            () => itx.deleteReply(),
+            [RESTJSONErrorCodes.UnknownMessage],
+            noop,
+          );
           return;
         }
 
@@ -201,7 +207,11 @@ export const jajo = new Hashira({ name: "jajo" })
             content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await itx.deleteReply();
+          await discordTry(
+            () => itx.deleteReply(),
+            [RESTJSONErrorCodes.UnknownMessage],
+            noop,
+          );
           return;
         }
 
@@ -250,7 +260,11 @@ export const jajo = new Hashira({ name: "jajo" })
         );
 
         if (!clickInfo.interaction) {
-          await mockResponse.delete();
+          await discordTry(
+            () => mockResponse.delete(),
+            [RESTJSONErrorCodes.UnknownMessage],
+            noop,
+          );
           return await clickInfo.removeButton();
         }
 
@@ -278,7 +292,11 @@ export const jajo = new Hashira({ name: "jajo" })
 
         await sleep(secondsToMilliseconds(15));
 
-        await mockResponse.delete();
+        await discordTry(
+          () => mockResponse.delete(),
+          [RESTJSONErrorCodes.UnknownMessage],
+          noop,
+        );
         await clickInfo.removeButton();
       }),
   )
