@@ -67,7 +67,7 @@ export const getTeamPointsByUser = async (
     weightExpr = Prisma.sql`1`;
   }
 
-  const results = await prisma.$queryRaw<{ userId: string; totalPoints: number }[]>`
+  const results = await prisma.$queryRaw<{ userId: string; totalPoints: number | string }[]>`
     SELECT
       sub."userId",
       SUM(sub.capped_weighted) AS "totalPoints"
@@ -98,7 +98,7 @@ export const getTeamPointsByUser = async (
 
   return results.map((r) => ({
     userId: r.userId,
-    totalPoints: r.totalPoints,
+    totalPoints: Number(r.totalPoints),
   }));
 };
 
