@@ -12,10 +12,10 @@ import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { easter2026 } from "./events/easter2026";
 import { halloween2025 } from "./events/halloween2025";
+import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
-import { jajo } from "./jajo";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
@@ -71,7 +71,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(dmVoting)
   .use(ping)
   .use(massDM)
-  .use(jajo)
+  .use(fish)
   .use(giveaway)
   .use(ranking)
   .use(moderatorLeave)
