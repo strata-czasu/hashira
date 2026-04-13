@@ -6,6 +6,7 @@ import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
 import safeSendCode from "./util/safeSendCode";
+import { CannotSendMessagesToThisUserNoMutualGuids } from "./util/sendDirectMessage";
 
 export const massDM = new Hashira({ name: "massDM" })
   .use(base)
@@ -75,7 +76,10 @@ export const massDM = new Hashira({ name: "massDM" })
 
                     return { member, success: true } as const;
                   },
-                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  [
+                    RESTJSONErrorCodes.CannotSendMessagesToThisUser,
+                    CannotSendMessagesToThisUserNoMutualGuids,
+                  ],
                   () => ({ member, success: false }) as const,
                 );
               }),
