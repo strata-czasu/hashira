@@ -8,6 +8,8 @@ export const GUILD_IDS = {
   StrataCzasu: "211261411119202305",
   StrataCzasuSupportTeam: "1198978337150881812",
   Homik: "1110671571384803350",
+  ZlotyKatowickie: "756501767210008686",
+  ZlotyPoznan: "1087907503746076685",
 } as const;
 
 export const USER_IDS = {
