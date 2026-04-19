@@ -72,6 +72,7 @@ const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108
 const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840518>";
 const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
 const xmasFish = "<:cho:1446663458501296191><:inka:1446663528285999254>";
+const goldFish = "<:zlota:1495530142771187945><:rybka:1495530154015981568>";
 
 // Sorted by the average value
 export const FISH_TABLE = [
@@ -81,7 +82,7 @@ export const FISH_TABLE = [
   { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 35 },
   { id: 14, name: halloweenCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 15, name: xmasCarp, minAmount: 10, maxAmount: 90, weight: 0 },
-  { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 19 },
+  { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 18 },
   { id: 4, name: "dorsza", minAmount: 60, maxAmount: 90, weight: 15 },
   { id: 5, name: "pstrąga", minAmount: 80, maxAmount: 110, weight: 10 },
   { id: 6, name: "szczupaka :crown:", minAmount: 90, maxAmount: 110, weight: 10 },
@@ -90,6 +91,7 @@ export const FISH_TABLE = [
   { id: 16, name: xmasFish, minAmount: 120, maxAmount: 220, weight: 0 },
   { id: 11, name: catFish, minAmount: 200, maxAmount: 254, weight: 1 },
   { id: 13, name: "halibuta", minAmount: 270, maxAmount: 330, weight: 1 },
+  { id: 17, name: goldFish, minAmount: 430, maxAmount: 777, weight: 1 },
   { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
 ] as const;
 
