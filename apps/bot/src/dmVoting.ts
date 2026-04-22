@@ -426,7 +426,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               const eliglibleParticipants = poll.participants.filter(
                 (p) => p.messageId !== null,
               );
-              const votedPercentage = (totalVotes / eliglibleParticipants.length) * 100;
+              const votedPercentage =
+                eliglibleParticipants.length === 0
+                  ? 0
+                  : (totalVotes / eliglibleParticipants.length) * 100;
               embed.addFields([
                 {
                   name: `Odpowiedzi - ${totalVotes}/${eliglibleParticipants.length} (${votedPercentage.toFixed(1)}%)`,
