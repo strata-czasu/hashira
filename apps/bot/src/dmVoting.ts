@@ -35,6 +35,7 @@ import { hastebin } from "./util/hastebin";
 import { numberToEmoji } from "./util/numberToEmoji";
 import { parseUserMentions } from "./util/parseUsers";
 import { pluralizers } from "./util/pluralize";
+import { CannotSendMessagesToThisUserNoMutualGuids } from "./util/sendDirectMessage";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
 
@@ -579,7 +580,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                     });
                     return { member, messageId: message.id };
                   },
-                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  [
+                    RESTJSONErrorCodes.CannotSendMessagesToThisUser,
+                    CannotSendMessagesToThisUserNoMutualGuids,
+                  ],
                   () => ({ member, messageId: null }),
                 ),
               ),
@@ -712,7 +716,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                     });
                     return { member, messageId: message.id };
                   },
-                  [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+                  [
+                    RESTJSONErrorCodes.CannotSendMessagesToThisUser,
+                    CannotSendMessagesToThisUserNoMutualGuids,
+                  ],
                   () => ({ member, messageId: null }),
                 );
               }),
