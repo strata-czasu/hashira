@@ -55,16 +55,30 @@ export const getItemById = (
   const item = table.find((entry) => entry.id === id);
   if (!item) return null;
 
+  const amount = randomInt(item.minAmount, item.maxAmount + 1);
+  const name = id === 18 ? makeEel(item.minAmount, item.maxAmount, amount) : item.name;
+
   return {
     id: item.id,
-    name: item.name,
-    amount: randomInt(item.minAmount, item.maxAmount + 1),
+    name,
+    amount,
   };
 };
 
 export const getRandomItem = <T extends readonly [ItemTableEntry, ...ItemTableEntry[]]>(
   table: T,
 ) => weightedRandom(table, (item) => item.weight);
+
+const eelTail = "<:we:1496502297331503225>";
+const eelBody = "<:go:1496502347579265055>";
+const eelHead = "<:rz:1496502359197749268>";
+const makeEel = (minAmount: number, maxAmount: number, amount: number) => {
+  // Scale min-max to 1-10 based on the amount
+  const ratio = (amount - minAmount) / (maxAmount - minAmount);
+  const length = Math.floor(Math.max(1, Math.min(10, ratio * 10)));
+
+  return eelTail + eelBody.repeat(length) + eelHead;
+};
 
 const lizardFish =
   "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
@@ -73,13 +87,14 @@ const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840
 const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
 const xmasFish = "<:cho:1446663458501296191><:inka:1446663528285999254>";
 const goldFish = "<:zlota:1495530142771187945><:rybka:1495530154015981568>";
+const eel = eelTail + eelBody + eelHead;
 
 // Sorted by the average value
 export const FISH_TABLE = [
   { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   { id: 12, name: lizardFish, minAmount: -30, maxAmount: -10, weight: 1 },
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
-  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 35 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 34 },
   { id: 14, name: halloweenCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 15, name: xmasCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 18 },
@@ -90,6 +105,7 @@ export const FISH_TABLE = [
   { id: 8, name: "rekina", minAmount: 150, maxAmount: 180, weight: 2 },
   { id: 16, name: xmasFish, minAmount: 120, maxAmount: 220, weight: 0 },
   { id: 11, name: catFish, minAmount: 200, maxAmount: 254, weight: 1 },
+  { id: 18, name: eel, minAmount: 200, maxAmount: 300, weight: 1 },
   { id: 13, name: "halibuta", minAmount: 270, maxAmount: 330, weight: 1 },
   { id: 17, name: goldFish, minAmount: 430, maxAmount: 777, weight: 1 },
   { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
