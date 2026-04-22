@@ -689,6 +689,9 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               poll.participants
                 .filter(
                   (p) =>
+                    // Skip users which never received the poll
+                    p.messageId !== null &&
+                    // Skip users who have already voted
                     !poll.options
                       .flatMap((o) => o.votes)
                       .some((v) => v.userId === p.userId),
