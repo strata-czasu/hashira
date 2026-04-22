@@ -1017,7 +1017,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
         return;
       }
 
-      if (option.poll.finishedAt) {
+      if (option.poll.finishedAt || option.poll.deletedAt) {
         await itx.editReply("Głosowanie zostało zakończone.");
         return;
       }
