@@ -67,6 +67,16 @@ const targets: Target[] = [
     ],
   },
   {
+    relativePath: "devenv.nix",
+    replacements: [
+      {
+        description: "devenv Bun package",
+        pattern: /bun\."[^"]+"/g,
+        replacement: (version) => `bun."${version.base}"`,
+      },
+    ],
+  },
+  {
     relativePath: "package.json",
     replacements: [
       {

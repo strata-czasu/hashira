@@ -186,3 +186,7 @@ dist
 PG_DATA/
 REDIS_DATA/
 *.js
+
+# devenv
+.devenv/
+devenv.lock
