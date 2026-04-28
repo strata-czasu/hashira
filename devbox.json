@@ -1,0 +1,38 @@
+{
+  "packages": [
+    "bun@1.3.10",
+    "postgresql@17",
+    "redis@latest",
+    "openssl",
+    "fontconfig",
+    "git",
+    "gh",
+    "ripgrep"
+  ],
+  "env": {
+    "DATABASE_URL": "postgresql://hashira:pass@localhost:5432/hashira",
+    "DATABASE_TEST_URL": "postgresql://hashira:pass@localhost:5432/hashira_test",
+    "REDIS_URL": "redis://localhost:6379",
+    "PGHOST": "localhost",
+    "PGPORT": "5432",
+    "REDIS_PORT": "6379"
+  },
+  "shell": {
+    "init_hook": ["fc-cache -v ./fonts/now 2>/dev/null || true"],
+    "scripts": {
+      "setup-db": [
+        "if [ ! -d \"$PGDATA\" ]; then initdb --locale=C --encoding=UTF8; fi",
+        "devbox services up postgresql -b",
+        "sleep 3",
+        "psql postgres -c \"CREATE USER hashira WITH PASSWORD 'pass' CREATEDB;\" 2>/dev/null || true",
+        "psql postgres -c \"CREATE DATABASE hashira OWNER hashira;\" 2>/dev/null || true",
+        "psql postgres -c \"CREATE DATABASE hashira_test OWNER hashira;\" 2>/dev/null || true",
+        "devbox services stop postgresql"
+      ],
+      "install-deps": "bun install",
+      "dev": "bun run --cwd apps/bot start",
+      "start": "bun run --cwd apps/bot start",
+      "typecheck": "bun --workspaces typecheck"
+    }
+  }
+}

@@ -3,6 +3,7 @@
     "ms-vscode.vscode-typescript-next",
     "oven.bun-vscode",
     "biomejs.biome",
-    "Prisma.prisma"
+    "Prisma.prisma",
+    "jetify-com.devbox"
   ]
 }
