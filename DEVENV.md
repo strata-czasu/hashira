@@ -78,10 +78,17 @@ This starts PostgreSQL and Redis in the background.
 
 | File | Purpose |
 |------|---------|
-| `devenv.yaml` | Input declarations (`nixpkgs`, `nix-bun`) |
+| `devenv.yaml` | Input declarations (`nixpkgs`, `nix-bun`, plus a pinned `nixpkgs-prisma` for Prisma engines) |
 | `devenv.nix` | Full environment, services, packages, and shell hooks |
 | `devenv.lock` | Lock file for devenv inputs (generated, gitignored) |
 | `DEVENV.md` | This document |
+
+### Why the extra `nixpkgs-prisma` input?
+
+`prisma-engines` 6.16.2 needs a very specific Rust/Cargo version to compile:
+Too new (`nixos-unstable` at the time of writing) → lifetime errors in the `metrics` crate
+
+The `nixpkgs-prisma` input pins the exact same `nixpkgs` revision the `flake.lock` already uses, so Prisma engines build reliably while everything else stays on latest unstable.
 
 ---
 

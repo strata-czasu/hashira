@@ -2,13 +2,20 @@
 
 let
   bun = inputs.bun.packages.${pkgs.system};
+  pkgsPrisma = import inputs.nixpkgs-prisma {
+    inherit (pkgs) system;
+    overlays = import ./overlays.nix;
+  };
+  prismaEngines = pkgsPrisma.prisma-engines;
 in
 {
+  dotenv.disableHint = true;
+
   overlays = import ./overlays.nix;
 
   packages = with pkgs; [
     bun."1.3.10"
-    prisma-engines
+    prismaEngines
     postgresql_17
     openssl
     fontconfig
@@ -48,10 +55,10 @@ in
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
     PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
 
-    PRISMA_SCHEMA_ENGINE_BINARY = "${pkgs.prisma-engines}/bin/schema-engine";
-    PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines}/bin/query-engine";
-    PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines}/lib/libquery_engine.node";
-    PRISMA_FMT_BINARY = "${pkgs.prisma-engines}/bin/prisma-fmt";
+    PRISMA_SCHEMA_ENGINE_BINARY = "${prismaEngines}/bin/schema-engine";
+    PRISMA_QUERY_ENGINE_BINARY = "${prismaEngines}/bin/query-engine";
+    PRISMA_QUERY_ENGINE_LIBRARY = "${prismaEngines}/lib/libquery_engine.node";
+    PRISMA_FMT_BINARY = "${prismaEngines}/bin/prisma-fmt";
 
     REDIS_PORT = "6379";
   };
