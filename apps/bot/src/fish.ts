@@ -94,7 +94,7 @@ export const FISH_TABLE = [
   { id: 10, name: "wonsza żecznego", minAmount: -130, maxAmount: -70, weight: 1 },
   { id: 12, name: lizardFish, minAmount: -30, maxAmount: -10, weight: 1 },
   { id: 1, name: "buta", minAmount: 1, maxAmount: 1, weight: 1 },
-  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 349999999999999999999999 },
+  { id: 2, name: "karasia", minAmount: 30, maxAmount: 60, weight: 34 },
   { id: 14, name: halloweenCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 15, name: xmasCarp, minAmount: 10, maxAmount: 90, weight: 0 },
   { id: 3, name: "śledzia", minAmount: 50, maxAmount: 80, weight: 18 },
@@ -109,6 +109,7 @@ export const FISH_TABLE = [
   { id: 13, name: "halibuta", minAmount: 270, maxAmount: 330, weight: 1 },
   { id: 17, name: goldFish, minAmount: 430, maxAmount: 777, weight: 1 },
   { id: 9, name: "bombardiro crocodilo", minAmount: 900, maxAmount: 1100, weight: 1 },
+  { id: 19, name: "homar", minAmount: 1000, maxAmount: 1500, weight: 0 },
 ] as const;
 
 export const fish = new Hashira({ name: "fish" })
