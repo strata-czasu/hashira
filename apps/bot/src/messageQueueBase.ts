@@ -424,10 +424,10 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 moderatorLeaveManagerId,
               );
               if (leaveManager) {
-                await sendDirectMessage(
-                  leaveManager,
-                  `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.LongDateShortTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
-                );
+                await sendDirectMessage(leaveManager, {
+                  content: `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.LongDateShortTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
+                  flags: "SuppressNotifications",
+                });
               }
             }
           },
