@@ -350,11 +350,22 @@ export const inventory = new Hashira({ name: "inventory" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
-              const members = await fetchMembers(
-                itx.guild,
-                parseUserMentions(rawUsers),
-              );
+              const userIds = parseUserMentions(rawUsers);
+              if (userIds.length === 0) {
+                return await errorFollowUp(
+                  itx,
+                  "Nie podano żadnych użytkowników! Wspomnij użytkowników (np. @user) lub podaj ich ID.",
+                );
+              }
+
+              const members = await fetchMembers(itx.guild, userIds);
               const users = members.map((m) => m.user);
+              if (users.length === 0) {
+                return await errorFollowUp(
+                  itx,
+                  "Żaden z podanych użytkowników nie jest członkiem tego serwera!",
+                );
+              }
               await ensureUsersExist(prisma, users);
 
               const addedForUsers = await prisma.$transaction(
