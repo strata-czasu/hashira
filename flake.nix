@@ -30,7 +30,6 @@
             inherit system;
             pkgs = import inputs.nixpkgs {
               inherit system;
-              overlays = import ./overlays.nix;
             };
           }
         );
@@ -47,7 +46,7 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               bun."1.3.10"
-              prisma-engines
+              prisma-engines_7
               postgresql_17
               openssl
               postgres-dev-db.start-database
@@ -66,10 +65,6 @@
             shellHook = ''
               export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib"
               export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig";
-              export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
-              export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
-              export PRISMA_QUERY_ENGINE_LIBRARY="${pkgs.prisma-engines}/lib/libquery_engine.node"
-              export PRISMA_FMT_BINARY="${pkgs.prisma-engines}/bin/prisma-fmt"
 
               export PG_ROOT=$(git rev-parse --show-toplevel)
               export REDIS_DATA=$(git rev-parse --show-toplevel)/REDIS_DATA
