@@ -19,6 +19,7 @@ COPY --link packages/db/package.json packages/db/package.json
 COPY --link packages/env/package.json packages/env/package.json
 COPY --link packages/jsx/package.json packages/jsx/package.json
 COPY --link packages/paginate/package.json packages/paginate/package.json
+COPY --link packages/prisma-client/package.json packages/prisma-client/package.json
 COPY --link packages/utils/package.json packages/utils/package.json
 COPY --link packages/yotei/package.json packages/yotei/package.json
 COPY --link tooling/tsconfig/package.json tooling/tsconfig/package.json

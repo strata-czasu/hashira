@@ -1,5 +1,5 @@
 import { type Paginator, PaginatorOrder, toggleOrder } from "@hashira/paginate";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@hashira/prisma-client";
 
 type PaginateProps = {
   skip: number;

@@ -56,7 +56,7 @@ const ensureExecutor = (
   tx?: ExtendedPrismaClient | PrismaTransaction,
 ): ExtendedPrismaClient => {
   if (!tx) return prisma;
-  if ("$transaction" in tx) return tx;
+  if ("$transaction" in tx) return tx as ExtendedPrismaClient;
 
   return nestedTransaction(tx);
 };
