@@ -12,12 +12,11 @@ import {
   InvalidStockError,
   OutOfStockError,
   ShopItemNotFoundError,
-  UserInventoryLimitExceededError,
   UserPurchaseLimitExceededError,
 } from "../economyError";
 import { validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
-import { getItemCountInInventory } from "./inventoryService";
+import { reserveInventoryTotal } from "./inventoryService";
 import { debitWallet, getDefaultWallet } from "./walletManager";
 
 export type ShopItemWithDetails = ShopItem & { item: Item; currency: Currency };
@@ -237,25 +236,50 @@ export const getRemainingStock = (shopItem: ShopItem): number | null => {
   return Math.max(0, shopItem.globalStock - shopItem.soldCount);
 };
 
-type GetUserPurchaseCountOptions = {
+type ReservePurchaseTotalOptions = {
   prisma: PrismaTransaction;
   shopItemId: number;
   userId: string;
+  quantity: number;
+  limit: number | null;
 };
 
-/**
- * Get the total quantity a user has purchased of a specific shop item.
- */
-export const getUserPurchaseCount = async ({
+const reservePurchaseTotal = async ({
   prisma,
   shopItemId,
   userId,
-}: GetUserPurchaseCountOptions): Promise<number> => {
-  const purchase = await prisma.shopItemPurchase.findUnique({
-    where: { shopItemId_userId: { shopItemId, userId } },
+  quantity,
+  limit,
+}: ReservePurchaseTotalOptions): Promise<void> => {
+  if (limit === null) {
+    await prisma.shopItemPurchase.upsert({
+      where: { shopItemId_userId: { shopItemId, userId } },
+      create: { shopItemId, userId, quantity },
+      update: { quantity: { increment: quantity } },
+    });
+    return;
+  }
+
+  await prisma.shopItemPurchase.createMany({
+    data: [{ shopItemId, userId, quantity: 0 }],
+    skipDuplicates: true,
   });
 
-  return purchase?.quantity ?? 0;
+  const reserved = await prisma.shopItemPurchase.updateMany({
+    where: {
+      shopItemId,
+      userId,
+      quantity: { lte: limit - quantity },
+    },
+    data: { quantity: { increment: quantity } },
+  });
+
+  if (reserved.count === 0) {
+    const total = await prisma.shopItemPurchase.findUniqueOrThrow({
+      where: { shopItemId_userId: { shopItemId, userId } },
+    });
+    throw new UserPurchaseLimitExceededError(limit, total.quantity);
+  }
 };
 
 type PurchaseShopItemOptions = {
@@ -276,9 +300,6 @@ type PurchaseShopItemOptions = {
  * 4. Balance validation and deduction
  * 5. Inventory item creation
  * 6. Purchase tracking for limit enforcement
- *
- * TODO: Per-user inventory limits and purchase limits are not safe against concurrent purchases.
- * Consider implementing a locking mechanism or using database constraints to enforce these limits safely.
  *
  * @throws {ShopItemNotFoundError} If the shop item doesn't exist or is deleted
  * @throws {UserInventoryLimitExceededError} If user has reached the limit of this item in their inventory
@@ -310,39 +331,23 @@ export const purchaseShopItem = async ({
       throw new ShopItemNotFoundError();
     }
 
-    // 1. Check per-user inventory limit
-    if (shopItem.item.perUserLimit !== null) {
-      const currentCountInInventory = await getItemCountInInventory({
-        prisma: tx,
-        itemId: shopItem.itemId,
-        userId,
-      });
+    // 1. Reserve against the per-user inventory limit
+    await reserveInventoryTotal({
+      prisma: tx,
+      userId,
+      itemId: shopItem.itemId,
+      quantity,
+      limit: shopItem.item.perUserLimit,
+    });
 
-      const remainingAllowed = shopItem.item.perUserLimit - currentCountInInventory;
-      if (quantity > remainingAllowed) {
-        throw new UserInventoryLimitExceededError(
-          shopItem.item.perUserLimit,
-          currentCountInInventory,
-        );
-      }
-    }
-
-    // 2. Check user purchase limit
-    if (shopItem.userPurchaseLimit !== null) {
-      const currentPurchases = await getUserPurchaseCount({
-        prisma: tx,
-        shopItemId,
-        userId,
-      });
-
-      const remainingAllowed = shopItem.userPurchaseLimit - currentPurchases;
-      if (quantity > remainingAllowed) {
-        throw new UserPurchaseLimitExceededError(
-          shopItem.userPurchaseLimit,
-          currentPurchases,
-        );
-      }
-    }
+    // 2. Reserve against the per-user purchase limit
+    await reservePurchaseTotal({
+      prisma: tx,
+      shopItemId,
+      userId,
+      quantity,
+      limit: shopItem.userPurchaseLimit,
+    });
 
     // 3. Check and reserve global stock atomically
     if (shopItem.globalStock !== null) {
@@ -397,19 +402,6 @@ export const purchaseShopItem = async ({
     );
 
     await tx.inventoryItem.createMany({ data: inventoryItems });
-
-    // 6. Track user purchase for limit enforcement
-    await tx.shopItemPurchase.upsert({
-      where: { shopItemId_userId: { shopItemId, userId } },
-      create: {
-        shopItemId,
-        userId,
-        quantity,
-      },
-      update: {
-        quantity: { increment: quantity },
-      },
-    });
 
     return {
       shopItem,

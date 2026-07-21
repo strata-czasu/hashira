@@ -89,6 +89,9 @@ walletDatabaseTests("wallet debit concurrency", () => {
     await prisma.inventoryItem.deleteMany({
       where: { item: { guildId: { in: guildIds } } },
     });
+    await prisma.inventoryItemTotal.deleteMany({
+      where: { item: { guildId: { in: guildIds } } },
+    });
     await prisma.shopItem.deleteMany({
       where: { item: { guildId: { in: guildIds } } },
     });

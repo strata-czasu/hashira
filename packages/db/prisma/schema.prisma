@@ -137,6 +137,7 @@ model User {
   currencies                        Currency[]
   dailyPointsRedeems                DailyPointsRedeems[]
   inventoryItems                    InventoryItem[]
+  inventoryTotals                   InventoryItemTotal[]
   createdItems                      Item[]
   givenMutes                        Mute[]                             @relation("mute_moderatorIdTousers")
   receivedMutes                     Mute[]                             @relation("mute_userIdTousers")
