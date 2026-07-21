@@ -11,13 +11,13 @@ import { base } from "../../base";
 import {
   CurrencyTransferLimitExceededError,
   EconomyError,
-  InsufficientBalanceError,
   InvalidAmountError,
   SelfTransferError,
 } from "../../economy/economyError";
 import { getCurrency } from "../../economy/managers/currencyManager";
 import { addBalances } from "../../economy/managers/transferManager";
 import {
+  debitWallet,
   getDefaultWallet,
   getReceivedTransfers,
 } from "../../economy/managers/walletManager";
@@ -67,8 +67,6 @@ const transferTokensWithLimit = async ({
       currencySymbol: TOKENY_CURRENCY.symbol,
     });
 
-    if (fromWallet.balance < amount) throw new InsufficientBalanceError();
-
     // Check transfer limit for receiver
     const currentReceived = await getReceivedTransfers({
       prisma: nestedTransaction(tx),
@@ -92,20 +90,15 @@ const transferTokensWithLimit = async ({
     });
 
     // Perform the transfer
-    await tx.wallet.update({
-      where: { id: fromWallet.id },
-      data: {
-        balance: { decrement: amount },
-        transactions: {
-          create: {
-            relatedUserId: toUserId,
-            relatedWalletId: toWallet.id,
-            amount,
-            reason,
-            entryType: "debit",
-            transactionType: "transfer",
-          },
-        },
+    await debitWallet({
+      prisma: tx,
+      walletId: fromWallet.id,
+      amount,
+      transaction: {
+        relatedUserId: toUserId,
+        relatedWalletId: toWallet.id,
+        reason,
+        transactionType: "transfer",
       },
     });
 

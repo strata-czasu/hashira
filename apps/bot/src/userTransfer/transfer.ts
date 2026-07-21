@@ -156,7 +156,6 @@ const transferWallets: TransferOperation = async ({
       guildId: guild.id,
       currencySymbol: STRATA_CZASU_CURRENCY.symbol,
       amount: 0,
-      skipAmountCheck: true,
       reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
     });
   });

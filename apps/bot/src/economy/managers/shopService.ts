@@ -8,7 +8,6 @@ import type {
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import {
-  InsufficientBalanceError,
   InvalidAmountError,
   InvalidStockError,
   OutOfStockError,
@@ -18,9 +17,13 @@ import {
 } from "../economyError";
 import { getCurrency } from "./currencyManager";
 import { getItemCountInInventory } from "./inventoryService";
-import { getDefaultWallet } from "./walletManager";
+import { debitWallet, getDefaultWallet } from "./walletManager";
 
 export type ShopItemWithDetails = ShopItem & { item: Item; currency: Currency };
+
+const validatePrice = (price: number): void => {
+  if (!Number.isSafeInteger(price) || price < 0) throw new InvalidAmountError();
+};
 
 export type PurchaseResult = {
   shopItem: ShopItemWithDetails;
@@ -54,6 +57,8 @@ export const createShopItem = async ({
   globalStock = null,
   userPurchaseLimit = null,
 }: CreateShopItemOptions): Promise<ShopItemWithDetails> => {
+  validatePrice(price);
+
   const currency = await getCurrency({
     prisma,
     guildId,
@@ -112,6 +117,8 @@ export const updateShopItem = async ({
   globalStock,
   userPurchaseLimit,
 }: UpdateShopItemOptions): Promise<UpdateShopItemResult> => {
+  if (price != null) validatePrice(price);
+
   const existing = await prisma.shopItem.findFirst({
     where: {
       id: shopItemId,
@@ -263,7 +270,7 @@ type PurchaseShopItemOptions = {
 };
 
 /**
- * Atomically purchase a shop item with stock and user limit validation.
+ * Purchase a shop item with stock and user limit validation.
  *
  * This function handles:
  * 1. Per-user inventory limits
@@ -272,6 +279,9 @@ type PurchaseShopItemOptions = {
  * 4. Balance validation and deduction
  * 5. Inventory item creation
  * 6. Purchase tracking for limit enforcement
+ *
+ * TODO: Per-user inventory limits and purchase limits are not safe against concurrent purchases.
+ * Consider implementing a locking mechanism or using database constraints to enforce these limits safely.
  *
  * @throws {ShopItemNotFoundError} If the shop item doesn't exist or is deleted
  * @throws {UserInventoryLimitExceededError} If user has reached the limit of this item in their inventory
@@ -288,7 +298,7 @@ export const purchaseShopItem = async ({
   guildId,
   quantity = 1,
 }: PurchaseShopItemOptions): Promise<PurchaseResult> => {
-  if (quantity < 1) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1) {
     throw new InvalidAmountError();
   }
 
@@ -370,22 +380,13 @@ export const purchaseShopItem = async ({
       currencyId: shopItem.currencyId,
     });
 
-    if (wallet.balance < totalPrice) {
-      throw new InsufficientBalanceError();
-    }
-
-    await tx.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: { decrement: totalPrice },
-        transactions: {
-          create: {
-            amount: totalPrice,
-            reason: `Zakup: ${shopItem.item.name} x${quantity}`,
-            entryType: "debit",
-            transactionType: "add", // TODO: Consider adding 'purchase' transaction type
-          },
-        },
+    await debitWallet({
+      prisma: tx,
+      walletId: wallet.id,
+      amount: totalPrice,
+      transaction: {
+        reason: `Zakup: ${shopItem.item.name} x${quantity}`,
+        transactionType: "add" as const, // TODO: Consider adding 'purchase' transaction type
       },
     });
 

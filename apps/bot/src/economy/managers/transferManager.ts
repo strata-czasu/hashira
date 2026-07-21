@@ -1,13 +1,15 @@
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import {
-  InsufficientBalanceError,
-  InvalidAmountError,
-  SelfTransferError,
-} from "../economyError";
+import { InvalidAmountError, SelfTransferError } from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
 import { getCurrency } from "./currencyManager";
-import { getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
+import {
+  debitWallet,
+  getDefaultWallet,
+  getDefaultWallets,
+  getWallet,
+  validateDebitAmount,
+} from "./walletManager";
 
 type AddBalanceOptions = {
   prisma: ExtendedPrismaClient;
@@ -33,7 +35,7 @@ export const addBalance = async ({
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallet = await getWallet({
-      prisma,
+      prisma: nestedTransaction(tx),
       userId: toUserId,
       guildId,
       walletName,
@@ -115,7 +117,6 @@ type TransferBalanceOptions = {
   reason: string | null;
   fromWalletName?: string;
   toWalletName?: string;
-  skipAmountCheck?: boolean;
 } & GetCurrencyConditionOptions;
 
 export const transferBalance = async ({
@@ -127,26 +128,23 @@ export const transferBalance = async ({
   reason,
   fromWalletName,
   toWalletName,
-  skipAmountCheck = false,
   ...currencyOptions
 }: TransferBalanceOptions) => {
   return await prisma.$transaction(async (tx) => {
-    if (!skipAmountCheck && amount <= 0) throw new InvalidAmountError();
+    validateDebitAmount(amount);
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getWallet({
-      prisma,
+      prisma: nestedTransaction(tx),
       userId: fromUserId,
       guildId,
       walletName: fromWalletName,
       currencyId: currency.id,
     });
 
-    if (fromWallet.balance < amount) throw new InsufficientBalanceError();
-
     const toWallet = await getWallet({
-      prisma,
+      prisma: nestedTransaction(tx),
       userId: toUserId,
       guildId,
       walletName: toWalletName,
@@ -155,20 +153,15 @@ export const transferBalance = async ({
 
     if (fromWallet.id === toWallet.id) throw new SelfTransferError();
 
-    await tx.wallet.update({
-      where: { id: fromWallet.id },
-      data: {
-        balance: { decrement: amount },
-        transactions: {
-          create: {
-            relatedUserId: toUserId,
-            relatedWalletId: toWallet.id,
-            amount,
-            reason,
-            entryType: "debit",
-            transactionType: "transfer",
-          },
-        },
+    await debitWallet({
+      prisma: tx,
+      walletId: fromWallet.id,
+      amount,
+      transaction: {
+        relatedUserId: toUserId,
+        relatedWalletId: toWallet.id,
+        reason,
+        transactionType: "transfer",
       },
     });
 
@@ -198,7 +191,6 @@ type TransferBalancesOptions = {
   guildId: string;
   amount: number;
   reason: string | null;
-  skipAmountCheck?: boolean;
 } & GetCurrencyConditionOptions;
 
 export const transferBalances = async ({
@@ -208,11 +200,18 @@ export const transferBalances = async ({
   guildId,
   amount,
   reason,
-  skipAmountCheck = false,
   ...currencyOptions
 }: TransferBalancesOptions) => {
   return await prisma.$transaction(async (tx) => {
-    if (!skipAmountCheck && amount <= 0) throw new InvalidAmountError();
+    validateDebitAmount(amount);
+
+    const uniqueToUserIds = [...new Set(toUserIds)].filter(
+      (userId) => userId !== fromUserId,
+    );
+    if (uniqueToUserIds.length === 0) throw new InvalidAmountError();
+
+    const sum = uniqueToUserIds.length * amount;
+    validateDebitAmount(sum);
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
@@ -223,12 +222,6 @@ export const transferBalances = async ({
       currencySymbol: currency.symbol,
     });
 
-    const uniqueToUserIds = [...new Set(toUserIds)];
-
-    const sum = uniqueToUserIds.length * amount;
-
-    if (fromWallet.balance < sum) throw new InsufficientBalanceError();
-
     const wallets = await getDefaultWallets({
       prisma: nestedTransaction(tx),
       userIds: uniqueToUserIds,
@@ -236,20 +229,15 @@ export const transferBalances = async ({
       currencyId: currency.id,
     });
 
-    await tx.wallet.update({
-      where: { id: fromWallet.id },
-      data: {
-        balance: { decrement: sum },
-        transactions: {
-          create: {
-            relatedUserId: null,
-            relatedWalletId: null,
-            amount: sum,
-            reason,
-            entryType: "debit",
-            transactionType: "transfer",
-          },
-        },
+    await debitWallet({
+      prisma: tx,
+      walletId: fromWallet.id,
+      amount: sum,
+      transaction: {
+        relatedUserId: null,
+        relatedWalletId: null,
+        reason,
+        transactionType: "transfer",
       },
     });
 
