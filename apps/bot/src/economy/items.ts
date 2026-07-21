@@ -70,7 +70,8 @@ export const items = new Hashira({ name: "items" })
               .setDescription(
                 "Cena przedmiotu. Zostanie on automatycznie dodany do sklepu",
               )
-              .setRequired(false),
+              .setRequired(false)
+              .setMinValue(0),
           )
           .handle(async ({ prisma }, { name, description, limit, price }, itx) => {
             if (!itx.inCachedGuild()) return;

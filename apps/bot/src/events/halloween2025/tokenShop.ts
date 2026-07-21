@@ -273,7 +273,9 @@ export const tokenShop = new Hashira({ name: "token-shop" })
         command
           .setDescription("Wystaw przedmiot w sklepie z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
+          .addInteger("price", (price) =>
+            price.setDescription("Cena przedmiotu").setMinValue(0),
+          )
           .addInteger("global-stock", (stock) =>
             stock
               .setDescription("Globalny limit sztuk (puste = bez limitu)")
@@ -356,7 +358,10 @@ export const tokenShop = new Hashira({ name: "token-shop" })
           .setDescription("Zmień cenę i/lub limity przedmiotu w sklepie z tokenami")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu w sklepie"))
           .addInteger("price", (price) =>
-            price.setDescription("Nowa cena przedmiotu").setRequired(false),
+            price
+              .setDescription("Nowa cena przedmiotu")
+              .setRequired(false)
+              .setMinValue(0),
           )
           .addInteger("global-stock", (stock) =>
             stock
