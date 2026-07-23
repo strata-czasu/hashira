@@ -171,7 +171,10 @@ export const createBirthday2026Team = async (
 ) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
-    select: { id: true },
+    select: {
+      id: true,
+      economy: { select: { currencyId: true } },
+    },
   });
   if (!config) return { ok: false, reason: "config_not_found" } as const;
 
@@ -187,6 +190,17 @@ export const createBirthday2026Team = async (
             name: input.name,
           },
         },
+        ...(config.economy
+          ? {
+              wallet: {
+                create: {
+                  currencyId: config.economy.currencyId,
+                  balance: 0,
+                  permanentWeight: 0,
+                },
+              },
+            }
+          : {}),
       },
       include: { team: true },
     });

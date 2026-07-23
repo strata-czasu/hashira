@@ -19,6 +19,7 @@ import {
 } from "discord.js";
 import { Effect } from "effect";
 import { database } from "./db";
+import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
 import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
 import {
   PrismaCombatRepository,
@@ -90,6 +91,10 @@ type ModeratorLeaveEndData = {
 };
 type Halloween2025EndSpawnData = {
   spawnId: number;
+};
+
+type Birthday2026DigestData = {
+  batchId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -471,6 +476,21 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               member.user,
               "Hej, właśnie skończył się Twój urlop!",
             );
+          },
+        )
+        .addHandler(
+          "birthday2026Digest",
+          async (_, { batchId }: Birthday2026DigestData) => {
+            const result = await digestBirthday2026FeedBatch(prisma, {
+              batchId,
+              processedAt: new Date(),
+              reason: `Birthday 2026 digestion for feed batch ${batchId}`,
+            });
+            if (!result.ok && result.reason !== "batch_not_found") {
+              throw new Error(
+                `Failed to digest Birthday 2026 feed batch ${batchId}: ${result.reason}`,
+              );
+            }
           },
         )
         .addHandler(
