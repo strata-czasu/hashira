@@ -106,7 +106,10 @@ jobs:
       - run: bun install
       - name: Generate Prisma Client
         run: bun prisma-generate
+      - name: Prepare test database
+        run: bun prisma-migrate-deploy
+        env:
+          DATABASE_URL: ${{ env.DATABASE_TEST_URL }}
       - name: Run tests
         run: |
-          # NOTE: remember to one day fix tests for db, we're wasting resources not running them
           bun test

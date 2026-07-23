@@ -1,13 +1,65 @@
 import type { ExtendedPrismaClient, Prisma, PrismaTransaction } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
-import { WalletCreationError, WalletNotFoundError } from "../economyError";
-import type { GetCurrencyConditionOptions } from "../util";
+import {
+  InsufficientBalanceError,
+  WalletCreationError,
+  WalletNotFoundError,
+} from "../economyError";
+import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
 
 const getDefaultWalletName = (guildId: string) => {
   if (GUILD_IDS.StrataCzasu === guildId) return STRATA_CZASU_CURRENCY.defaultWalletName;
 
   return "Wallet";
+};
+
+type DebitTransaction = {
+  relatedUserId?: string | null;
+  relatedWalletId?: number | null;
+  reason: string | null;
+  transactionType: "add" | "transfer";
+};
+
+type DebitWalletOptions = {
+  prisma: PrismaTransaction;
+  walletId: number;
+  amount: number;
+  transaction: DebitTransaction;
+};
+
+/**
+ * Decrement a wallet only when it has enough balance and record the matching debit.
+ * The caller owns the transaction so a later failure rolls both writes back.
+ */
+export const debitWallet = async ({
+  prisma,
+  walletId,
+  amount,
+  transaction,
+}: DebitWalletOptions): Promise<void> => {
+  validateNonNegativeAmount(amount);
+
+  const result = await prisma.wallet.updateMany({
+    where: {
+      id: walletId,
+      balance: { gte: amount },
+    },
+    data: {
+      balance: { decrement: amount },
+    },
+  });
+
+  if (result.count === 0) throw new InsufficientBalanceError();
+
+  await prisma.transaction.create({
+    data: {
+      walletId,
+      amount,
+      entryType: "debit",
+      ...transaction,
+    },
+  });
 };
 
 type GetReceivedTransfersOptions = {
