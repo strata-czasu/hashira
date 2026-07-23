@@ -148,6 +148,10 @@ Avoid:
 
 **Outcome:** a staff-granted Pasza amount can be fed and becomes permanent weight exactly once.
 
+**Status:** complete. The private staff grant, atomic feed, persistent digestion,
+reconciliation status, and concurrency/idempotency tests are implemented; no
+player-facing earning or feeding command is enabled yet.
+
 Implement vertically:
 
 1. create or resolve the event-owned Pasza currency;

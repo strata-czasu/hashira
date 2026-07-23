@@ -175,6 +175,9 @@ model User {
   easter2026CaptainOf               Easter2026TeamConfig[]             @relation("easter2026Captain")
   birthday2026CaptainOf             Birthday2026TeamConfig[]           @relation("birthday2026Captain")
   birthday2026MemberStates          Birthday2026MemberState[]
+  birthday2026FeedBatches           Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
+  birthday2026PersonalTransactions  Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
+  createdBirthday2026Transactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
 
   @@map("users")
 }
