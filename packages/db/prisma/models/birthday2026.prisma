@@ -3,10 +3,10 @@ model Birthday2026Config {
   guildId             String   @unique
   eventStartAt        DateTime @db.Timestamp(6)
   eventEndAt          DateTime @db.Timestamp(6)
-  timezone            String   @default("Europe/Warsaw")
-  visible             Boolean  @default(false)
-  enabled             Boolean  @default(false)
-  registrationEnabled Boolean  @default(false)
+  timezone            String
+  visible             Boolean
+  enabled             Boolean
+  registrationEnabled Boolean
   createdAt           DateTime @default(now()) @db.Timestamp(6)
   updatedAt           DateTime @updatedAt @db.Timestamp(6)
 

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  Birthday2026TeamServiceError,
-  planBirthday2026TeamAssignments,
-} from "../../src/events/birthday2026/teamService";
+import { planBirthday2026TeamAssignments } from "../../src/events/birthday2026/teamService";
 
 describe("Birthday 2026 team allocation", () => {
   it("balances high estimates first and uses headcount to break score ties", () => {
@@ -46,15 +43,20 @@ describe("Birthday 2026 team allocation", () => {
 
   it("rejects invalid estimates and unknown fixed teams", () => {
     expect(() =>
-      planBirthday2026TeamAssignments([1], [{ userId: "a", activityEstimate: -1 }]),
-    ).toThrow(Birthday2026TeamServiceError);
+      planBirthday2026TeamAssignments(
+        [1],
+        [{ userId: "a", activityEstimate: -1 }],
+        () => 0,
+      ),
+    ).toThrow("Invalid activity estimate");
 
     expect(() =>
       planBirthday2026TeamAssignments(
         [1],
         [{ userId: "a", activityEstimate: 1, fixedTeamConfigId: 2 }],
+        () => 0,
       ),
-    ).toThrow(Birthday2026TeamServiceError);
+    ).toThrow("Unknown fixed team");
   });
 
   it("rejects duplicate members and duplicate team IDs", () => {
@@ -65,6 +67,7 @@ describe("Birthday 2026 team allocation", () => {
           { userId: "a", activityEstimate: 1 },
           { userId: "a", activityEstimate: 2 },
         ],
+        () => 0,
       ),
     ).toThrow("Duplicate Birthday 2026 member");
 
@@ -75,7 +78,11 @@ describe("Birthday 2026 team allocation", () => {
 
   it("rejects allocation without configured teams", () => {
     expect(() =>
-      planBirthday2026TeamAssignments([], [{ userId: "a", activityEstimate: 1 }]),
-    ).toThrow(Birthday2026TeamServiceError);
+      planBirthday2026TeamAssignments(
+        [],
+        [{ userId: "a", activityEstimate: 1 }],
+        () => 0,
+      ),
+    ).toThrow("without teams");
   });
 });

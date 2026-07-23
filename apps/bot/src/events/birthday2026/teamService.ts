@@ -5,9 +5,9 @@ import type {
   PrismaTransaction,
   Team,
 } from "@hashira/db";
-import { Prisma } from "@hashira/db";
 
-export type Birthday2026TeamServiceErrorCode =
+export type Birthday2026TeamErrorReason =
+  | "already_in_team"
   | "captain_already_assigned"
   | "captain_move_requires_replacement"
   | "captain_not_member"
@@ -15,17 +15,9 @@ export type Birthday2026TeamServiceErrorCode =
   | "invalid_activity_estimate"
   | "member_not_found"
   | "no_teams"
+  | "role_already_used"
+  | "team_already_exists"
   | "team_not_found";
-
-export class Birthday2026TeamServiceError extends Error {
-  constructor(
-    public readonly code: Birthday2026TeamServiceErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = "Birthday2026TeamServiceError";
-  }
-}
 
 export type Birthday2026TeamWithDetails = Birthday2026TeamConfig & {
   team: Team;
@@ -55,27 +47,10 @@ export type TeamAllocationPlan = {
   teams: TeamAllocationCandidate[];
 };
 
-const normalizeEstimate = (estimate: number): number => {
-  if (!Number.isFinite(estimate) || estimate < 0) {
-    throw new Birthday2026TeamServiceError(
-      "invalid_activity_estimate",
-      `Invalid activity estimate: ${estimate}`,
-    );
-  }
-  return estimate;
-};
-
 const pickLowestProjectedTeam = (
   teams: TeamAllocationCandidate[],
   random: () => number,
 ): TeamAllocationCandidate => {
-  if (teams.length === 0) {
-    throw new Birthday2026TeamServiceError(
-      "no_teams",
-      "Birthday 2026 has no configured teams",
-    );
-  }
-
   const minimumActivity = Math.min(...teams.map((team) => team.projectedActivity));
   const activityCandidates = teams.filter(
     (team) => team.projectedActivity === minimumActivity,
@@ -86,28 +61,36 @@ const pickLowestProjectedTeam = (
   const candidates = activityCandidates.filter(
     (team) => team.memberCount === minimumMembers,
   );
-  const index = Math.min(
-    Math.floor(random() * candidates.length),
-    candidates.length - 1,
-  );
-  const selected = candidates[index];
-  if (!selected) {
-    throw new Birthday2026TeamServiceError(
-      "no_teams",
-      "Birthday 2026 has no allocatable teams",
-    );
-  }
+  const selected =
+    candidates[
+      Math.min(Math.floor(random() * candidates.length), candidates.length - 1)
+    ];
+
+  if (!selected) throw new Error("Cannot allocate a member without a team");
   return selected;
 };
 
 export const planBirthday2026TeamAssignments = (
   teamConfigIds: number[],
   members: MemberAllocationCandidate[],
-  random: () => number = Math.random,
+  random: () => number,
 ): TeamAllocationPlan => {
-  const uniqueTeamIds = new Set(teamConfigIds);
-  if (uniqueTeamIds.size !== teamConfigIds.length) {
+  if (teamConfigIds.length === 0) {
+    throw new Error("Cannot plan Birthday 2026 assignments without teams");
+  }
+  if (new Set(teamConfigIds).size !== teamConfigIds.length) {
     throw new Error("Duplicate Birthday 2026 team configuration IDs");
+  }
+
+  const seenUsers = new Set<string>();
+  for (const member of members) {
+    if (seenUsers.has(member.userId)) {
+      throw new Error(`Duplicate Birthday 2026 member: ${member.userId}`);
+    }
+    if (!Number.isFinite(member.activityEstimate) || member.activityEstimate < 0) {
+      throw new Error(`Invalid activity estimate: ${member.activityEstimate}`);
+    }
+    seenUsers.add(member.userId);
   }
 
   const teams = teamConfigIds.map((teamConfigId) => ({
@@ -115,30 +98,9 @@ export const planBirthday2026TeamAssignments = (
     projectedActivity: 0,
     memberCount: 0,
   }));
-  if (teams.length === 0) {
-    throw new Birthday2026TeamServiceError(
-      "no_teams",
-      "Birthday 2026 has no configured teams",
-    );
-  }
-
-  const seenUsers = new Set<string>();
-  const normalizedMembers = members.map((member) => {
-    if (seenUsers.has(member.userId)) {
-      throw new Error(`Duplicate Birthday 2026 member: ${member.userId}`);
-    }
-    seenUsers.add(member.userId);
-    return {
-      ...member,
-      activityEstimate: normalizeEstimate(member.activityEstimate),
-    };
-  });
-
   const assignments: PlannedAssignment[] = [];
-  const assign = (
-    member: (typeof normalizedMembers)[number],
-    team: TeamAllocationCandidate,
-  ) => {
+
+  const assign = (member: MemberAllocationCandidate, team: TeamAllocationCandidate) => {
     team.projectedActivity += member.activityEstimate;
     team.memberCount += 1;
     assignments.push({
@@ -148,21 +110,18 @@ export const planBirthday2026TeamAssignments = (
     });
   };
 
-  for (const member of normalizedMembers) {
+  for (const member of members) {
     if (member.fixedTeamConfigId === undefined) continue;
     const team = teams.find(
       (candidate) => candidate.teamConfigId === member.fixedTeamConfigId,
     );
     if (!team) {
-      throw new Birthday2026TeamServiceError(
-        "team_not_found",
-        `Fixed team ${member.fixedTeamConfigId} is not configured`,
-      );
+      throw new Error(`Unknown fixed team: ${member.fixedTeamConfigId}`);
     }
     assign(member, team);
   }
 
-  const movableMembers = normalizedMembers
+  const movableMembers = members
     .filter((member) => member.fixedTeamConfigId === undefined)
     .sort(
       (a, b) =>
@@ -179,11 +138,11 @@ export const planBirthday2026TeamAssignments = (
   };
 };
 
-export const findBirthday2026Teams = async (
+export const findBirthday2026Teams = (
   prisma: PrismaTransaction,
   guildId: string,
-): Promise<Birthday2026TeamWithDetails[]> => {
-  const teams = await prisma.birthday2026TeamConfig.findMany({
+): Promise<Birthday2026TeamWithDetails[]> =>
+  prisma.birthday2026TeamConfig.findMany({
     where: { config: { guildId } },
     include: {
       team: true,
@@ -191,8 +150,6 @@ export const findBirthday2026Teams = async (
     },
     orderBy: { id: "asc" },
   });
-  return teams;
-};
 
 export const findBirthday2026Membership = (
   prisma: PrismaTransaction,
@@ -204,30 +161,46 @@ export const findBirthday2026Membership = (
     include: { teamConfig: { include: { team: true } } },
   });
 
-export type CreateBirthday2026TeamInput = {
-  guildId: string;
-  name: string;
-  roleId: string;
-  color: number;
-};
+export type CreateBirthday2026TeamResult =
+  | {
+      ok: true;
+      team: Birthday2026TeamConfig & { team: Team };
+    }
+  | {
+      ok: false;
+      reason: "config_not_found" | "role_already_used" | "team_already_exists";
+    };
 
 export const createBirthday2026Team = (
   prisma: ExtendedPrismaClient,
-  input: CreateBirthday2026TeamInput,
-) =>
+  input: {
+    guildId: string;
+    name: string;
+    roleId: string;
+    color: number;
+  },
+): Promise<CreateBirthday2026TeamResult> =>
   prisma.$transaction(async (tx) => {
     const config = await tx.birthday2026Config.findUnique({
       where: { guildId: input.guildId },
       select: { id: true },
     });
-    if (!config) {
-      throw new Birthday2026TeamServiceError(
-        "config_not_found",
-        `Birthday 2026 is not configured for guild ${input.guildId}`,
-      );
-    }
+    if (!config) return { ok: false, reason: "config_not_found" };
 
-    return tx.birthday2026TeamConfig.create({
+    const [existingRole, existingTeam] = await Promise.all([
+      tx.birthday2026TeamConfig.findUnique({
+        where: { roleId: input.roleId },
+        select: { id: true },
+      }),
+      tx.team.findFirst({
+        where: { guildId: input.guildId, name: input.name },
+        select: { id: true },
+      }),
+    ]);
+    if (existingRole) return { ok: false, reason: "role_already_used" };
+    if (existingTeam) return { ok: false, reason: "team_already_exists" };
+
+    const team = await tx.birthday2026TeamConfig.create({
       data: {
         roleId: input.roleId,
         color: input.color,
@@ -241,29 +214,38 @@ export const createBirthday2026Team = (
       },
       include: { team: true },
     });
+
+    return { ok: true, team };
   });
 
-export type AssignBirthday2026MemberInput = {
-  guildId: string;
-  teamConfigId: number;
-  userId: string;
-};
+export type AssignBirthday2026MemberResult =
+  | {
+      ok: true;
+      member: Birthday2026MemberState;
+      previousTeamConfigId: number | null;
+    }
+  | {
+      ok: false;
+      reason:
+        | "already_in_team"
+        | "captain_move_requires_replacement"
+        | "team_not_found";
+    };
 
 export const assignBirthday2026Member = (
   prisma: ExtendedPrismaClient,
-  input: AssignBirthday2026MemberInput,
-) =>
+  input: {
+    guildId: string;
+    teamConfigId: number;
+    userId: string;
+  },
+): Promise<AssignBirthday2026MemberResult> =>
   prisma.$transaction(async (tx) => {
     const teamConfig = await tx.birthday2026TeamConfig.findFirst({
       where: { id: input.teamConfigId, config: { guildId: input.guildId } },
       select: { configId: true },
     });
-    if (!teamConfig) {
-      throw new Birthday2026TeamServiceError(
-        "team_not_found",
-        `Birthday 2026 team ${input.teamConfigId} was not found`,
-      );
-    }
+    if (!teamConfig) return { ok: false, reason: "team_not_found" };
 
     const existing = await tx.birthday2026MemberState.findUnique({
       where: {
@@ -274,15 +256,11 @@ export const assignBirthday2026Member = (
       },
       include: { teamConfig: { select: { captainUserId: true } } },
     });
-    if (
-      existing &&
-      existing.teamConfigId !== input.teamConfigId &&
-      existing.teamConfig.captainUserId === input.userId
-    ) {
-      throw new Birthday2026TeamServiceError(
-        "captain_move_requires_replacement",
-        `Captain ${input.userId} must be replaced before changing teams`,
-      );
+    if (existing?.teamConfigId === input.teamConfigId) {
+      return { ok: false, reason: "already_in_team" };
+    }
+    if (existing?.teamConfig.captainUserId === input.userId) {
+      return { ok: false, reason: "captain_move_requires_replacement" };
     }
 
     const member = await tx.birthday2026MemberState.upsert({
@@ -301,49 +279,57 @@ export const assignBirthday2026Member = (
     });
 
     return {
+      ok: true,
       member,
       previousTeamConfigId: existing?.teamConfigId ?? null,
     };
   });
 
+export type RemoveBirthday2026MemberResult =
+  | { ok: true; member: Birthday2026MemberState }
+  | {
+      ok: false;
+      reason: "captain_move_requires_replacement" | "member_not_found";
+    };
+
 export const removeBirthday2026Member = async (
   prisma: PrismaTransaction,
   guildId: string,
   userId: string,
-): Promise<Birthday2026MemberState> => {
+): Promise<RemoveBirthday2026MemberResult> => {
   const member = await findBirthday2026Membership(prisma, guildId, userId);
-  if (!member) {
-    throw new Birthday2026TeamServiceError(
-      "member_not_found",
-      `User ${userId} is not a Birthday 2026 member`,
-    );
-  }
+  if (!member) return { ok: false, reason: "member_not_found" };
   if (member.teamConfig.captainUserId === userId) {
-    throw new Birthday2026TeamServiceError(
-      "captain_move_requires_replacement",
-      `Captain ${userId} must be replaced before leaving their team`,
-    );
+    return { ok: false, reason: "captain_move_requires_replacement" };
   }
-  return prisma.birthday2026MemberState.delete({ where: { id: member.id } });
+
+  return {
+    ok: true,
+    member: await prisma.birthday2026MemberState.delete({
+      where: { id: member.id },
+    }),
+  };
 };
+
+export type SetBirthday2026CaptainResult =
+  | { ok: true; team: Birthday2026TeamConfig }
+  | {
+      ok: false;
+      reason: "captain_already_assigned" | "captain_not_member" | "team_not_found";
+    };
 
 export const setBirthday2026Captain = (
   prisma: ExtendedPrismaClient,
   guildId: string,
   teamConfigId: number,
   userId: string | null,
-) =>
+): Promise<SetBirthday2026CaptainResult> =>
   prisma.$transaction(async (tx) => {
     const teamConfig = await tx.birthday2026TeamConfig.findFirst({
       where: { id: teamConfigId, config: { guildId } },
       select: { id: true, configId: true },
     });
-    if (!teamConfig) {
-      throw new Birthday2026TeamServiceError(
-        "team_not_found",
-        `Birthday 2026 team ${teamConfigId} was not found`,
-      );
-    }
+    if (!teamConfig) return { ok: false, reason: "team_not_found" };
 
     if (userId) {
       const membership = await tx.birthday2026MemberState.findUnique({
@@ -355,10 +341,7 @@ export const setBirthday2026Captain = (
         },
       });
       if (!membership || membership.teamConfigId !== teamConfig.id) {
-        throw new Birthday2026TeamServiceError(
-          "captain_not_member",
-          `Captain ${userId} must belong to team ${teamConfigId}`,
-        );
+        return { ok: false, reason: "captain_not_member" };
       }
 
       const existingCaptaincy = await tx.birthday2026TeamConfig.findFirst({
@@ -370,29 +353,36 @@ export const setBirthday2026Captain = (
         select: { id: true },
       });
       if (existingCaptaincy) {
-        throw new Birthday2026TeamServiceError(
-          "captain_already_assigned",
-          `Captain ${userId} already leads another Birthday 2026 team`,
-        );
+        return { ok: false, reason: "captain_already_assigned" };
       }
     }
 
-    return tx.birthday2026TeamConfig.update({
+    const team = await tx.birthday2026TeamConfig.update({
       where: { id: teamConfig.id },
       data: { captainUserId: userId },
     });
+    return { ok: true, team };
   });
 
-export type RebalanceBirthday2026MembersInput = {
-  guildId: string;
-  activityEstimates: ReadonlyMap<string, number>;
-  random?: () => number;
-};
+export type RebalanceBirthday2026MembersResult =
+  | { ok: true; plan: TeamAllocationPlan }
+  | {
+      ok: false;
+      reason:
+        | "captain_not_member"
+        | "config_not_found"
+        | "invalid_activity_estimate"
+        | "no_teams";
+    };
 
 export const rebalanceBirthday2026Members = (
   prisma: ExtendedPrismaClient,
-  input: RebalanceBirthday2026MembersInput,
-): Promise<TeamAllocationPlan> =>
+  input: {
+    guildId: string;
+    activityEstimates: ReadonlyMap<string, number>;
+    random: () => number;
+  },
+): Promise<RebalanceBirthday2026MembersResult> =>
   prisma.$transaction(async (tx) => {
     const config = await tx.birthday2026Config.findUnique({
       where: { guildId: input.guildId },
@@ -403,30 +393,35 @@ export const rebalanceBirthday2026Members = (
         },
       },
     });
-    if (!config) {
-      throw new Birthday2026TeamServiceError(
-        "config_not_found",
-        `Birthday 2026 is not configured for guild ${input.guildId}`,
-      );
+    if (!config) return { ok: false, reason: "config_not_found" };
+    if (config.teams.length === 0) return { ok: false, reason: "no_teams" };
+
+    const members: MemberAllocationCandidate[] = [];
+    for (const team of config.teams) {
+      for (const member of team.memberStates) {
+        const activityEstimate = input.activityEstimates.get(member.userId);
+        if (
+          activityEstimate === undefined ||
+          !Number.isFinite(activityEstimate) ||
+          activityEstimate < 0
+        ) {
+          return { ok: false, reason: "invalid_activity_estimate" };
+        }
+        members.push({
+          userId: member.userId,
+          activityEstimate,
+          ...(team.captainUserId === member.userId
+            ? { fixedTeamConfigId: team.id }
+            : {}),
+        });
+      }
     }
-
-    const members = config.teams.flatMap((team) =>
-      team.memberStates.map((member) => ({
-        userId: member.userId,
-        activityEstimate: input.activityEstimates.get(member.userId) ?? 0,
-        ...(team.captainUserId === member.userId ? { fixedTeamConfigId: team.id } : {}),
-      })),
-    );
-
     for (const team of config.teams) {
       if (
         team.captainUserId &&
         !team.memberStates.some((member) => member.userId === team.captainUserId)
       ) {
-        throw new Birthday2026TeamServiceError(
-          "captain_not_member",
-          `Captain ${team.captainUserId} does not belong to team ${team.id}`,
-        );
+        return { ok: false, reason: "captain_not_member" };
       }
     }
 
@@ -450,8 +445,5 @@ export const rebalanceBirthday2026Members = (
       ),
     );
 
-    return plan;
+    return { ok: true, plan };
   });
-
-export const isUniqueConstraintError = (error: unknown): boolean =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";

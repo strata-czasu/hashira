@@ -21,7 +21,7 @@ type EventWindow = Pick<
 
 export const getBirthday2026EventState = (
   config: EventWindow | null,
-  now = new Date(),
+  now: Date,
 ): Birthday2026EventState => {
   if (!config) return "not_configured";
   if (!config.visible) return "hidden";
@@ -33,7 +33,7 @@ export const getBirthday2026EventState = (
 
 export const getBirthday2026RegistrationState = (
   config: EventWindow | null,
-  now = new Date(),
+  now: Date,
 ): Birthday2026RegistrationState => {
   if (!config) return "not_configured";
   if (!config.visible) return "hidden";
