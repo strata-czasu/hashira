@@ -8,7 +8,7 @@ CREATE TABLE "InventoryItemTotal" (
 );
 
 -- AddForeignKey
-ALTER TABLE "InventoryItemTotal" ADD CONSTRAINT "inventoryItemTotal_userId_users_id_fk" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "InventoryItemTotal" ADD CONSTRAINT "InventoryItemTotal_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE "InventoryItemTotal" ADD CONSTRAINT "inventoryItemTotal_itemId_item_id_fk" FOREIGN KEY ("itemId") REFERENCES "item"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "InventoryItemTotal" ADD CONSTRAINT "InventoryItemTotal_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "item"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;

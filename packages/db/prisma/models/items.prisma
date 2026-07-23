@@ -111,8 +111,8 @@ model InventoryItemTotal {
   itemId   Int
   quantity Int    @default(0)
 
-  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItemTotal_userId_users_id_fk")
-  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItemTotal_itemId_item_id_fk")
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([userId, itemId])
 }
