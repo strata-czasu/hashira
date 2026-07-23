@@ -90,6 +90,7 @@ model Guild {
   halloweenMonsterSpawns Halloween2025MonsterSpawn[]
   teams                  Team[]
   easter2026Config       Easter2026Config?
+  birthday2026Config     Birthday2026Config?
 
   @@map("guild")
 }
@@ -172,6 +173,8 @@ model User {
   shopItemPurchases                 ShopItemPurchase[]
   teamMemberships                   TeamMember[]
   easter2026CaptainOf               Easter2026TeamConfig[]             @relation("easter2026Captain")
+  birthday2026CaptainOf             Birthday2026TeamConfig[]           @relation("birthday2026Captain")
+  birthday2026MemberStates          Birthday2026MemberState[]
 
   @@map("users")
 }

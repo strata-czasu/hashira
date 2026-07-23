@@ -1,0 +1,48 @@
+model Birthday2026Config {
+  id                  Int      @id @default(autoincrement())
+  guildId             String   @unique
+  eventStartAt        DateTime @db.Timestamp(6)
+  eventEndAt          DateTime @db.Timestamp(6)
+  timezone            String   @default("Europe/Warsaw")
+  visible             Boolean  @default(false)
+  enabled             Boolean  @default(false)
+  registrationEnabled Boolean  @default(false)
+  createdAt           DateTime @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime @updatedAt @db.Timestamp(6)
+
+  guild Guild                    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  teams Birthday2026TeamConfig[]
+}
+
+model Birthday2026TeamConfig {
+  id            Int     @id @default(autoincrement())
+  configId      Int
+  teamId        Int     @unique
+  roleId        String  @unique
+  color         Int
+  captainUserId String?
+
+  config       Birthday2026Config        @relation(fields: [configId], references: [id], onDelete: Cascade)
+  team         Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  captainUser  User?                     @relation("birthday2026Captain", fields: [captainUserId], references: [id])
+  memberStates Birthday2026MemberState[]
+
+  @@unique([id, configId])
+  @@unique([configId, captainUserId])
+  @@index([configId])
+}
+
+model Birthday2026MemberState {
+  id           Int      @id @default(autoincrement())
+  configId     Int
+  teamConfigId Int
+  userId       String
+  joinedAt     DateTime @default(now()) @db.Timestamp(6)
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, userId])
+  @@index([teamConfigId, configId])
+  @@index([userId])
+}
