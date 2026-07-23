@@ -15,15 +15,12 @@ import {
   UserInventoryLimitExceededError,
   UserPurchaseLimitExceededError,
 } from "../economyError";
+import { validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
 import { getItemCountInInventory } from "./inventoryService";
 import { debitWallet, getDefaultWallet } from "./walletManager";
 
 export type ShopItemWithDetails = ShopItem & { item: Item; currency: Currency };
-
-const validatePrice = (price: number): void => {
-  if (!Number.isSafeInteger(price) || price < 0) throw new InvalidAmountError();
-};
 
 export type PurchaseResult = {
   shopItem: ShopItemWithDetails;
@@ -57,7 +54,7 @@ export const createShopItem = async ({
   globalStock = null,
   userPurchaseLimit = null,
 }: CreateShopItemOptions): Promise<ShopItemWithDetails> => {
-  validatePrice(price);
+  validateNonNegativeAmount(price);
 
   const currency = await getCurrency({
     prisma,
@@ -117,7 +114,7 @@ export const updateShopItem = async ({
   globalStock,
   userPurchaseLimit,
 }: UpdateShopItemOptions): Promise<UpdateShopItemResult> => {
-  if (price != null) validatePrice(price);
+  if (price != null) validateNonNegativeAmount(price);
 
   const existing = await prisma.shopItem.findFirst({
     where: {

@@ -2,23 +2,16 @@ import type { ExtendedPrismaClient, Prisma, PrismaTransaction } from "@hashira/d
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import {
   InsufficientBalanceError,
-  InvalidAmountError,
   WalletCreationError,
   WalletNotFoundError,
 } from "../economyError";
-import type { GetCurrencyConditionOptions } from "../util";
+import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
 
 const getDefaultWalletName = (guildId: string) => {
   if (GUILD_IDS.StrataCzasu === guildId) return STRATA_CZASU_CURRENCY.defaultWalletName;
 
   return "Wallet";
-};
-
-export const validateDebitAmount = (amount: number): void => {
-  if (!Number.isSafeInteger(amount) || amount < 0) {
-    throw new InvalidAmountError();
-  }
 };
 
 type DebitTransaction = {
@@ -45,7 +38,7 @@ export const debitWallet = async ({
   amount,
   transaction,
 }: DebitWalletOptions): Promise<void> => {
-  validateDebitAmount(amount);
+  validateNonNegativeAmount(amount);
 
   const result = await prisma.wallet.updateMany({
     where: {

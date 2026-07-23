@@ -1,14 +1,13 @@
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { InvalidAmountError, SelfTransferError } from "../economyError";
-import type { GetCurrencyConditionOptions } from "../util";
+import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
 import {
   debitWallet,
   getDefaultWallet,
   getDefaultWallets,
   getWallet,
-  validateDebitAmount,
 } from "./walletManager";
 
 type AddBalanceOptions = {
@@ -131,7 +130,7 @@ export const transferBalance = async ({
   ...currencyOptions
 }: TransferBalanceOptions) => {
   return await prisma.$transaction(async (tx) => {
-    validateDebitAmount(amount);
+    validateNonNegativeAmount(amount);
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
@@ -203,7 +202,7 @@ export const transferBalances = async ({
   ...currencyOptions
 }: TransferBalancesOptions) => {
   return await prisma.$transaction(async (tx) => {
-    validateDebitAmount(amount);
+    validateNonNegativeAmount(amount);
 
     const uniqueToUserIds = [...new Set(toUserIds)].filter(
       (userId) => userId !== fromUserId,
@@ -211,7 +210,7 @@ export const transferBalances = async ({
     if (uniqueToUserIds.length === 0) throw new InvalidAmountError();
 
     const sum = uniqueToUserIds.length * amount;
-    validateDebitAmount(sum);
+    validateNonNegativeAmount(sum);
 
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 

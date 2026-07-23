@@ -1,9 +1,16 @@
 import type { Item, ItemType, PrismaTransaction } from "@hashira/db";
 import { bold, inlineCode } from "discord.js";
+import { InvalidAmountError } from "./economyError";
 
 export type GetCurrencyConditionOptions =
   | { currencySymbol: string }
   | { currencyId: number };
+
+export const validateNonNegativeAmount = (amount: number): void => {
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new InvalidAmountError();
+  }
+};
 
 export const getItem = (prisma: PrismaTransaction, id: number, guildId: string) =>
   prisma.item.findFirst({
