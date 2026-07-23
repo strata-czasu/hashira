@@ -11,12 +11,13 @@ model Item {
   type         ItemType @default(item)
   name         String
   description  String?
-  perUserLimit Int?  // null = unlimited
+  perUserLimit Int? // null = unlimited
 
-  guild           Guild             @relation(fields: [guildId], references: [id])
-  creator         User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
+  guild           Guild                @relation(fields: [guildId], references: [id])
+  creator         User                 @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "item_createdBy_users_id_fk")
   shopItem        ShopItem[]
   inventoryItem   InventoryItem[]
+  inventoryTotals InventoryItemTotal[]
   badge           Badge?
   tintColor       TintColor?
   profileSettings ProfileSettings[]
@@ -99,4 +100,19 @@ model InventoryItem {
   user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItem_userId_users_id_fk")
 
   @@map("inventoryItem")
+}
+
+// Counter of active InventoryItem copies per user and item. Guarded increments
+// serialize concurrent acquisitions and enforce Item.perUserLimit atomically.
+// The database rejects negative quantities via a CHECK constraint (not
+// expressible in Prisma schema syntax, added in the migration SQL).
+model InventoryItemTotal {
+  userId   String
+  itemId   Int
+  quantity Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([userId, itemId])
 }

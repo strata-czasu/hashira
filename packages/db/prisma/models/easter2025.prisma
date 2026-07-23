@@ -3,7 +3,7 @@ model Easter2025Team {
   name                String                 @unique
   roleId              String                 @unique
   statusChannelId     String
-  color           Int
+  color               Int
   statusLastMessageId String?
   teamMembers         Easter2025TeamMember[]
   stages              Easter2025Stage[]
@@ -28,5 +28,5 @@ model Easter2025Stage {
 }
 
 model Easter2025DisabledChannels {
-  channelId String   @id
+  channelId String @id
 }
