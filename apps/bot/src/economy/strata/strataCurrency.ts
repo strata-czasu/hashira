@@ -177,7 +177,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             option.setDescription("Użytkownicy, którym chcesz przekazać punkty"),
           )
           .addInteger("ilość", (option) =>
-            option.setDescription("Ilość punktów do przekazania"),
+            option.setDescription("Ilość punktów do przekazania").setMinValue(1),
           )
           .addString("powód", (option) =>
             option.setDescription("Powód przekazania punktów").setRequired(false),

@@ -386,7 +386,9 @@ export const shop = new Hashira({ name: "shop" })
         command
           .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .addInteger("price", (price) => price.setDescription("Cena przedmiotu"))
+          .addInteger("price", (price) =>
+            price.setDescription("Cena przedmiotu").setMinValue(0),
+          )
           .addInteger("global-stock", (stock) =>
             stock
               .setDescription("Globalny limit sztuk (puste = bez limitu)")
@@ -478,7 +480,10 @@ export const shop = new Hashira({ name: "shop" })
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
           .addInteger("price", (price) =>
-            price.setDescription("Nowa cena przedmiotu").setRequired(false),
+            price
+              .setDescription("Nowa cena przedmiotu")
+              .setRequired(false)
+              .setMinValue(0),
           )
           .addInteger("global-stock", (stock) =>
             stock
