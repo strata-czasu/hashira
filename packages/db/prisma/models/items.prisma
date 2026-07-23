@@ -115,5 +115,4 @@ model InventoryItemTotal {
   item Item @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "inventoryItemTotal_itemId_item_id_fk")
 
   @@id([userId, itemId])
-  @@map("inventoryItemTotal")
 }
