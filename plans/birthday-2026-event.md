@@ -4,6 +4,14 @@ Status: design draft and implementation handoff
 Created: 2026-07-19  
 Expected duration: approximately one week
 
+## Companion plans
+
+- [Implementation slices](birthday-2026-implementation-slices.md): incremental coding milestones, scope tiers, stop points, and fallbacks.
+- [Slice 0 decisions and measurement](birthday-2026-slice-0-decisions.md): adopted defaults, production evidence, calibrated budgets, and milestone method.
+- [Social and live ops](birthday-2026-social-live-ops.md): launch social mechanics, content rhythm, moderation, and daily health checks.
+
+This document remains the source of truth for mechanics and invariants. The implementation plan determines a safe coding order; it does not dictate when finished mechanics become available to players. The social/live-ops plan covers optional interaction and pre-event hype.
+
 ## Document conventions
 
 This design is intentionally split into three levels:
@@ -341,6 +349,25 @@ Use a mix of:
 - short and long encounter durations so the same availability pattern does not win everything.
 
 Do not use online presence as the only threshold input; Discord presence is unreliable and may be intentionally hidden.
+
+## Social layer
+
+The social layer should create conversation and shared stories without adding an unbounded second economy. The coding order does not require staggered player-facing availability; selected mechanics may all be available from the event start. The detailed proposal and content cadence live in the [social and live-ops plan](birthday-2026-social-live-ops.md).
+
+**Recommended launch mechanics:**
+
+- a preseason, staff-curated pig naming ballot for each team;
+- a first-meal roll call that recognizes each distinct feeder without multiplying their Pasza;
+- one daily team contract based on distinct members completing already-supported actions;
+- visible assist credit for threshold encounters;
+- a non-binding team pulse poll before the captain selects a permanent upgrade;
+- cosmetic postcards, stickers, or pig facts from selected encounters;
+- a daily barn newspaper that highlights participation, milestones, captain choices, and raid stories rather than only the leading score;
+- a score-neutral cooperative keepsake encounter after competitive scoring locks.
+
+Social rewards should normally be recognition, cosmetics, a small system-funded team batch, or a power-up chance. They must not enable direct Pasza transfers, public bounties on individuals, mandatory attendance streaks, or repeated personal targeting.
+
+Prefer derived progress where the underlying action is already persisted. Ballots, guestbook entries, daily contract assignment/completion, and collectible ownership need durable event records if included. All free-text identity or guestbook content must be reviewable, optional, and independently disableable.
 
 ## Captain and team power-ups
 
@@ -767,6 +794,17 @@ Definitions may be code-based initially. If admin configurability is needed, per
 - related wallet transaction;
 - unique source constraint.
 
+### Optional social records
+
+If the recommended social mechanics are accepted, persist only the state that cannot be derived safely:
+
+- a changeable team ballot with one current vote per member and a published lock time;
+- one configured daily team contract plus per-team completion/reward state;
+- cosmetic collectible ownership or unlock state;
+- optional moderated guestbook entries and public-display approval.
+
+First-meal roll calls, encounter assists, captain choices, and newspaper statistics should be derived from canonical feed, participation, power-up, and upgrade records rather than copied into a second counter when practical.
+
 ## Concurrency and recovery requirements
 
 - Personal and team wallet debits use conditional mutations that fail when the current balance is insufficient.
@@ -784,60 +822,37 @@ Definitions may be code-based initially. If admin configurability is needed, per
 
 Use database uniqueness and conditional state transitions as the authority. An in-process lock can improve user experience but must not be the only correctness mechanism.
 
-## Implementation phases
+## Implementation strategy
 
-### Phase 1: event foundation
+Implementation should follow the [implementation slices](birthday-2026-implementation-slices.md). These are coding milestones, not player-facing chapters:
 
-- Prisma models and migration.
-- Event configuration and team administration.
-- Pasza currency creation/ownership.
-- Personal economy-wallet and event-owned team-wallet services.
-- Joining and balancing.
-- Four dedicated pig status channels/messages and feed-button routing.
-- Basic status and ranking.
+1. settle blocking decisions and measure prior activity;
+2. build the event shell;
+3. prove one complete Pasza-to-weight path;
+4. complete earning, feeding, status, and rankings;
+5. implement settlement, results, and staff operations;
+6. add individual and team encounters;
+7. add captain choices and optional social polish;
+8. add raids only as stretch scope.
 
-### Phase 2: earning and feeding
+The first five items form the minimum shippable event. Feeding and permanent weight remain a complete competition even if encounters, captain mechanics, social extras, or raids are cut.
 
-- Idempotent activity awards.
-- Wallet display/history.
-- Feeding batches and scheduled digestion.
-- One-time rival feeding and home-channel shame announcement.
-- Permanent pig weight and visual milestones.
+Incomplete features should remain unreachable while being developed, but the plan does not assume gradual activation during the live event. Prefer finishing and rehearsing the selected scope before the common event launch.
 
-### Phase 3: encounters
+Calibration is continuous rather than a final phase:
 
-- Persistent spawn scheduler.
-- Button participation and expiration.
-- Quick grab, first-team threshold, and parallel threshold.
-- Atomic rewards and progress UI.
-- Force-spawn/admin diagnostics.
+- analyse Easter activity percentiles and hourly distribution before setting values;
+- simulate earnings, feeding, encounters, and theft before enabling their slices;
+- test team imbalance and late joins;
+- load-test popular encounter buttons;
+- test restarts, duplicate jobs, and reconciliation;
+- rehearse emergency pause and final settlement before the event starts.
 
-### Phase 4: captain and upgrades
-
-- Team power-up storage.
-- Captain activation and timed effects.
-- Permanent milestone upgrade selection.
-- Public/team action logs.
-
-### Phase 5: theft
-
-- Individual raid charges and victim selection.
-- Loss/protection caps.
-- Power-up interaction and optional coordinated raid.
-- Transaction and raid audit history.
-
-### Phase 6: calibration and launch readiness
-
-- Analyse Easter activity percentiles and hourly distribution.
-- Simulate one week of earnings, feeding, spawns, and theft.
-- Test team imbalance and late joins.
-- Load/concurrency tests for popular encounter buttons.
-- Restart and duplicate-job tests.
-- Staff runbook, emergency pause, and final settlement rehearsal.
-
-The optional asymmetric player should be a later phase or separate follow-up.
+The optional asymmetric player remains a later experiment and is not a dependency of the minimum event or any other implementation slice.
 
 ## Questions before solidifying the design
+
+The Must-ship decisions needed for Slices 1-4 are resolved in [Slice 0 decisions and measurement](birthday-2026-slice-0-decisions.md). The list below is retained as the wider design backlog; questions about raids, captain upgrades, encounter variety, and optional social mechanics do not block the event shell or core feeding competition.
 
 ### Blocking product questions
 
