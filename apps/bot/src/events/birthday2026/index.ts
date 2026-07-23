@@ -11,7 +11,6 @@ import { base } from "../../base";
 import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import {
-  Birthday2026ConfigValidationError,
   findBirthday2026Config,
   setBirthday2026FeatureState,
   upsertBirthday2026Config,
@@ -23,16 +22,16 @@ import {
 import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
 import {
   assignBirthday2026Member,
-  Birthday2026TeamServiceError,
+  type Birthday2026TeamErrorReason,
   createBirthday2026Team,
   findBirthday2026Membership,
   findBirthday2026Teams,
-  isUniqueConstraintError,
   removeBirthday2026Member,
   setBirthday2026Captain,
 } from "./teamService";
 
-const teamErrorMessages: Record<Birthday2026TeamServiceError["code"], string> = {
+const teamErrorMessages: Record<Birthday2026TeamErrorReason, string> = {
+  already_in_team: "Ten użytkownik jest już w tej drużynie.",
   captain_already_assigned: "Ten użytkownik jest już kapitanem innej drużyny.",
   captain_move_requires_replacement:
     "Najpierw wyznacz zastępstwo albo usuń kapitana tej drużyny.",
@@ -41,35 +40,15 @@ const teamErrorMessages: Record<Birthday2026TeamServiceError["code"], string> = 
   invalid_activity_estimate: "Nie udało się obliczyć aktywności uczestnika.",
   member_not_found: "Ten użytkownik nie należy do żadnej drużyny.",
   no_teams: "Event nie ma jeszcze skonfigurowanych drużyn.",
+  role_already_used: "Ta rola jest już używana przez drużynę eventową.",
+  team_already_exists: "Drużyna o tej nazwie już istnieje na serwerze.",
   team_not_found: "Nie znaleziono wskazanej drużyny.",
 };
 
-const replyWithBirthday2026Error = async (
+const replyWithTeamError = (
   itx: Parameters<typeof errorFollowUp>[0],
-  error: unknown,
-): Promise<boolean> => {
-  if (error instanceof Birthday2026TeamServiceError) {
-    await errorFollowUp(itx, teamErrorMessages[error.code]);
-    return true;
-  }
-  if (error instanceof Birthday2026ConfigValidationError) {
-    await errorFollowUp(
-      itx,
-      error.code === "invalid_timezone"
-        ? "Nieprawidłowa strefa czasowa."
-        : "Koniec eventu musi przypadać po jego rozpoczęciu.",
-    );
-    return true;
-  }
-  if (isUniqueConstraintError(error)) {
-    await errorFollowUp(
-      itx,
-      "Ta rola albo drużyna jest już używana przez event urodzinowy.",
-    );
-    return true;
-  }
-  return false;
-};
+  reason: Birthday2026TeamErrorReason,
+) => errorFollowUp(itx, teamErrorMessages[reason]);
 
 const findTeamByRole = async (
   prisma: Parameters<typeof findBirthday2026Teams>[0],
@@ -78,16 +57,6 @@ const findTeamByRole = async (
 ) => {
   const teams = await findBirthday2026Teams(prisma, guildId);
   return teams.find((team) => team.roleId === roleId) ?? null;
-};
-
-const requireBirthday2026Staff = async (
-  itx: Parameters<typeof errorFollowUp>[0],
-): Promise<boolean> => {
-  if (itx.memberPermissions?.has(PermissionFlagsBits.ModerateMembers)) {
-    return true;
-  }
-  await errorFollowUp(itx, "Ta komenda jest dostępna tylko dla administracji.");
-  return false;
 };
 
 export const birthday2026 = new Hashira({ name: "birthday2026" })
@@ -102,7 +71,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .setDescription("Pokaż stan konfiguracji eventu")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await requireBirthday2026Staff(itx))) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const config = await findBirthday2026Config(prisma, itx.guildId);
@@ -112,6 +80,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
 
             const teams = await findBirthday2026Teams(prisma, itx.guildId);
+            const now = new Date();
             const teamLines = teams.map(
               (team) =>
                 `${roleMention(team.roleId)} — ${team._count.memberStates} os. — kapitan: ${
@@ -123,8 +92,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             await itx.editReply({
               content: [
-                `${bold("Stan eventu:")} ${getBirthday2026EventState(config)}`,
-                `${bold("Zapisy:")} ${getBirthday2026RegistrationState(config)}`,
+                `${bold("Stan eventu:")} ${getBirthday2026EventState(config, now)}`,
+                `${bold("Zapisy:")} ${getBirthday2026RegistrationState(config, now)}`,
                 `${bold("Widoczny / aktywny:")} ${config.visible ? "tak" : "nie"} / ${
                   config.enabled ? "tak" : "nie"
                 }`,
@@ -147,18 +116,16 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             option.setDescription("Np. 2026-08-08T20:00:00+02:00"),
           )
           .addString("strefa", (option) =>
-            option
-              .setDescription("Strefa IANA; domyślnie Europe/Warsaw")
-              .setRequired(false),
+            option.setDescription("Strefa IANA, np. Europe/Warsaw"),
           )
           .addBoolean("widoczny", (option) =>
-            option.setDescription("Czy event jest widoczny").setRequired(false),
+            option.setDescription("Czy event jest widoczny"),
           )
           .addBoolean("aktywny", (option) =>
-            option.setDescription("Czy mechaniki są aktywne").setRequired(false),
+            option.setDescription("Czy mechaniki są aktywne"),
           )
           .addBoolean("zapisy", (option) =>
-            option.setDescription("Czy zapisy są otwarte").setRequired(false),
+            option.setDescription("Czy zapisy są otwarte"),
           )
           .handle(
             async (
@@ -174,7 +141,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
-              if (!(await requireBirthday2026Staff(itx))) return;
               await itx.deferReply({ flags: "Ephemeral" });
 
               const eventStartAt = parseBirthday2026Instant(rawStart);
@@ -187,25 +153,31 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 return;
               }
 
-              try {
-                const config = await upsertBirthday2026Config(prisma, {
-                  guildId: itx.guildId,
-                  eventStartAt,
-                  eventEndAt,
-                  ...(timezone ? { timezone } : {}),
-                  ...(visible !== null ? { visible } : {}),
-                  ...(enabled !== null ? { enabled } : {}),
-                  ...(registrationEnabled !== null ? { registrationEnabled } : {}),
-                });
-                await itx.editReply({
-                  content: `Skonfigurowano event: ${time(
-                    config.eventStartAt,
-                    TimestampStyles.LongDateTime,
-                  )} – ${time(config.eventEndAt, TimestampStyles.LongDateTime)}.`,
-                });
-              } catch (error) {
-                if (!(await replyWithBirthday2026Error(itx, error))) throw error;
+              const result = await upsertBirthday2026Config(prisma, {
+                guildId: itx.guildId,
+                eventStartAt,
+                eventEndAt,
+                timezone,
+                visible,
+                enabled,
+                registrationEnabled,
+              });
+              if (!result.ok) {
+                await errorFollowUp(
+                  itx,
+                  result.reason === "invalid_timezone"
+                    ? "Nieprawidłowa strefa czasowa."
+                    : "Koniec eventu musi przypadać po jego rozpoczęciu.",
+                );
+                return;
               }
+
+              await itx.editReply({
+                content: `Skonfigurowano event: ${time(
+                  result.config.eventStartAt,
+                  TimestampStyles.LongDateTime,
+                )} – ${time(result.config.eventEndAt, TimestampStyles.LongDateTime)}.`,
+              });
             },
           ),
       )
@@ -228,7 +200,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
-              if (!(await requireBirthday2026Staff(itx))) return;
               await itx.deferReply({ flags: "Ephemeral" });
 
               if (
@@ -269,7 +240,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .handle(
             async ({ prisma }, { nazwa: name, rola: role, kolor: rawColor }, itx) => {
               if (!itx.inCachedGuild()) return;
-              if (!(await requireBirthday2026Staff(itx))) return;
               await itx.deferReply({ flags: "Ephemeral" });
 
               const color = parseBirthday2026TeamColor(rawColor);
@@ -281,19 +251,20 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 return;
               }
 
-              try {
-                const team = await createBirthday2026Team(prisma, {
-                  guildId: itx.guildId,
-                  name,
-                  roleId: role.id,
-                  color,
-                });
-                await itx.editReply(
-                  `Dodano drużynę ${bold(team.team.name)} (${roleMention(role.id)}).`,
-                );
-              } catch (error) {
-                if (!(await replyWithBirthday2026Error(itx, error))) throw error;
+              const result = await createBirthday2026Team(prisma, {
+                guildId: itx.guildId,
+                name,
+                roleId: role.id,
+                color,
+              });
+              if (!result.ok) {
+                await replyWithTeamError(itx, result.reason);
+                return;
               }
+
+              await itx.editReply(
+                `Dodano drużynę ${bold(result.team.team.name)} (${roleMention(role.id)}).`,
+              );
             },
           ),
       )
@@ -304,7 +275,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .handle(async ({ prisma }, { user, druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await requireBirthday2026Staff(itx))) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const team = await findTeamByRole(prisma, itx.guildId, role.id);
@@ -321,14 +291,13 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               user.id,
             );
 
-            try {
-              await assignBirthday2026Member(prisma, {
-                guildId: itx.guildId,
-                teamConfigId: team.id,
-                userId: user.id,
-              });
-            } catch (error) {
-              if (!(await replyWithBirthday2026Error(itx, error))) throw error;
+            const result = await assignBirthday2026Member(prisma, {
+              guildId: itx.guildId,
+              teamConfigId: team.id,
+              userId: user.id,
+            });
+            if (!result.ok) {
+              await replyWithTeamError(itx, result.reason);
               return;
             }
 
@@ -352,7 +321,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addUser("user", (option) => option.setDescription("Użytkownik"))
           .handle(async ({ prisma }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await requireBirthday2026Staff(itx))) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const membership = await findBirthday2026Membership(
@@ -366,10 +334,9 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
             const targetMember = await itx.guild.members.fetch(user.id);
 
-            try {
-              await removeBirthday2026Member(prisma, itx.guildId, user.id);
-            } catch (error) {
-              if (!(await replyWithBirthday2026Error(itx, error))) throw error;
+            const result = await removeBirthday2026Member(prisma, itx.guildId, user.id);
+            if (!result.ok) {
+              await replyWithTeamError(itx, result.reason);
               return;
             }
 
@@ -389,7 +356,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .handle(async ({ prisma }, { user, druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await requireBirthday2026Staff(itx))) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const team = await findTeamByRole(prisma, itx.guildId, role.id);
@@ -398,14 +364,20 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            try {
-              await setBirthday2026Captain(prisma, itx.guildId, team.id, user.id);
-              await itx.editReply(
-                `${userMention(user.id)} jest kapitanem ${roleMention(team.roleId)}.`,
-              );
-            } catch (error) {
-              if (!(await replyWithBirthday2026Error(itx, error))) throw error;
+            const result = await setBirthday2026Captain(
+              prisma,
+              itx.guildId,
+              team.id,
+              user.id,
+            );
+            if (!result.ok) {
+              await replyWithTeamError(itx, result.reason);
+              return;
             }
+
+            await itx.editReply(
+              `${userMention(user.id)} jest kapitanem ${roleMention(team.roleId)}.`,
+            );
           }),
       )
       .addCommand("usun-kapitana", (command) =>
@@ -414,7 +386,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .handle(async ({ prisma }, { druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (!(await requireBirthday2026Staff(itx))) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
             const team = await findTeamByRole(prisma, itx.guildId, role.id);
@@ -423,7 +394,16 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            await setBirthday2026Captain(prisma, itx.guildId, team.id, null);
+            const result = await setBirthday2026Captain(
+              prisma,
+              itx.guildId,
+              team.id,
+              null,
+            );
+            if (!result.ok) {
+              await replyWithTeamError(itx, result.reason);
+              return;
+            }
             await itx.editReply(
               `Usunięto kapitana drużyny ${roleMention(team.roleId)}.`,
             );

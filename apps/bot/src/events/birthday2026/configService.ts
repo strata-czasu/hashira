@@ -1,33 +1,25 @@
-import type { Birthday2026Config, Prisma, PrismaTransaction } from "@hashira/db";
-
-export type Birthday2026ConfigValidationErrorCode =
-  | "invalid_event_window"
-  | "invalid_timezone";
-
-export class Birthday2026ConfigValidationError extends Error {
-  constructor(
-    public readonly code: Birthday2026ConfigValidationErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = "Birthday2026ConfigValidationError";
-  }
-}
+import type { Birthday2026Config, PrismaTransaction } from "@hashira/db";
 
 export type Birthday2026ConfigInput = {
   guildId: string;
   eventStartAt: Date;
   eventEndAt: Date;
-  timezone?: string;
-  visible?: boolean;
-  enabled?: boolean;
-  registrationEnabled?: boolean;
+  timezone: string;
+  visible: boolean;
+  enabled: boolean;
+  registrationEnabled: boolean;
 };
 
 export type Birthday2026FeatureState = Pick<
   Birthday2026Config,
   "enabled" | "registrationEnabled" | "visible"
 >;
+
+export type Birthday2026ConfigErrorReason = "invalid_event_window" | "invalid_timezone";
+
+export type Birthday2026ConfigResult =
+  | { ok: true; config: Birthday2026Config }
+  | { ok: false; reason: Birthday2026ConfigErrorReason };
 
 export const isValidTimeZone = (timezone: string): boolean => {
   try {
@@ -38,25 +30,22 @@ export const isValidTimeZone = (timezone: string): boolean => {
   }
 };
 
-export const validateBirthday2026Config = (input: Birthday2026ConfigInput): void => {
+export const validateBirthday2026Config = (
+  input: Birthday2026ConfigInput,
+): Birthday2026ConfigErrorReason | null => {
   if (
     !Number.isFinite(input.eventStartAt.getTime()) ||
     !Number.isFinite(input.eventEndAt.getTime()) ||
     input.eventEndAt <= input.eventStartAt
   ) {
-    throw new Birthday2026ConfigValidationError(
-      "invalid_event_window",
-      "Birthday 2026 must end after it starts",
-    );
+    return "invalid_event_window";
   }
 
-  const timezone = (input.timezone ?? "Europe/Warsaw").trim();
-  if (!timezone || !isValidTimeZone(timezone)) {
-    throw new Birthday2026ConfigValidationError(
-      "invalid_timezone",
-      `Invalid Birthday 2026 timezone: ${timezone || "(empty)"}`,
-    );
+  if (!input.timezone.trim() || !isValidTimeZone(input.timezone.trim())) {
+    return "invalid_timezone";
   }
+
+  return null;
 };
 
 export const findBirthday2026Config = (
@@ -68,35 +57,32 @@ export const findBirthday2026Config = (
 export const upsertBirthday2026Config = async (
   prisma: PrismaTransaction,
   input: Birthday2026ConfigInput,
-): Promise<Birthday2026Config> => {
-  validateBirthday2026Config(input);
-  const timezone = (input.timezone ?? "Europe/Warsaw").trim();
+): Promise<Birthday2026ConfigResult> => {
+  const reason = validateBirthday2026Config(input);
+  if (reason) return { ok: false, reason };
 
-  const update: Prisma.Birthday2026ConfigUncheckedUpdateInput = {
-    eventStartAt: input.eventStartAt,
-    eventEndAt: input.eventEndAt,
-    timezone,
-  };
-
-  if (input.visible !== undefined) update.visible = input.visible;
-  if (input.enabled !== undefined) update.enabled = input.enabled;
-  if (input.registrationEnabled !== undefined) {
-    update.registrationEnabled = input.registrationEnabled;
-  }
-
-  return prisma.birthday2026Config.upsert({
+  const config = await prisma.birthday2026Config.upsert({
     where: { guildId: input.guildId },
     create: {
       guildId: input.guildId,
       eventStartAt: input.eventStartAt,
       eventEndAt: input.eventEndAt,
-      timezone,
-      visible: input.visible ?? false,
-      enabled: input.enabled ?? false,
-      registrationEnabled: input.registrationEnabled ?? false,
+      timezone: input.timezone.trim(),
+      visible: input.visible,
+      enabled: input.enabled,
+      registrationEnabled: input.registrationEnabled,
     },
-    update,
+    update: {
+      eventStartAt: input.eventStartAt,
+      eventEndAt: input.eventEndAt,
+      timezone: input.timezone.trim(),
+      visible: input.visible,
+      enabled: input.enabled,
+      registrationEnabled: input.registrationEnabled,
+    },
   });
+
+  return { ok: true, config };
 };
 
 export const setBirthday2026FeatureState = (

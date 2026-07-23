@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-  Birthday2026ConfigValidationError,
   isValidTimeZone,
   validateBirthday2026Config,
 } from "../../src/events/birthday2026/configService";
@@ -10,18 +9,21 @@ const validInput = {
   eventStartAt: new Date("2026-08-01T18:00:00Z"),
   eventEndAt: new Date("2026-08-08T18:00:00Z"),
   timezone: "Europe/Warsaw",
+  visible: false,
+  enabled: false,
+  registrationEnabled: false,
 };
 
 describe("Birthday 2026 configuration validation", () => {
   it("accepts the adopted event window and timezone", () => {
-    expect(() => validateBirthday2026Config(validInput)).not.toThrow();
+    expect(validateBirthday2026Config(validInput)).toBeNull();
     expect(isValidTimeZone("Europe/Warsaw")).toBe(true);
   });
 
   it("rejects an invalid or empty timezone", () => {
     for (const timezone of ["", "   ", "Europe/Pigsty"]) {
-      expect(() => validateBirthday2026Config({ ...validInput, timezone })).toThrow(
-        Birthday2026ConfigValidationError,
+      expect(validateBirthday2026Config({ ...validInput, timezone })).toBe(
+        "invalid_timezone",
       );
     }
   });
@@ -34,13 +36,13 @@ describe("Birthday 2026 configuration validation", () => {
     ] as const;
 
     for (const [eventStartAt, eventEndAt] of invalidWindows) {
-      expect(() =>
+      expect(
         validateBirthday2026Config({
           ...validInput,
           eventStartAt,
           eventEndAt,
         }),
-      ).toThrow(Birthday2026ConfigValidationError);
+      ).toBe("invalid_event_window");
     }
   });
 });
