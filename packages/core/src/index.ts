@@ -5,6 +5,7 @@ import {
   type ChatInputCommandInteraction,
   Client,
   ContextMenuCommandBuilder,
+  type GatewayIntentBits,
   type Interaction,
   InteractionContextType,
   type MessageContextMenuCommandInteraction,
@@ -20,6 +21,7 @@ import {
 import { capitalize } from "es-toolkit";
 import { handleCustomEvent } from "./customEvents";
 import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
+import { filterDisabledIntents } from "./intents/util";
 import { Group, TopLevelSlashCommand } from "./slashCommands";
 import type {
   BaseDecorator,
@@ -43,6 +45,10 @@ const commandsInitBase = {};
 
 type HashiraOptions = {
   name: string;
+};
+
+type HashiraStartOptions = {
+  disabledIntents?: readonly GatewayIntentBits[];
 };
 
 type HashiraSlashCommandOptions =
@@ -493,12 +499,15 @@ class Hashira<
     }
   }
 
-  async start(token: string) {
-    const intents = [
-      ...new Set(
-        [...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]),
-      ),
-    ];
+  async start(token: string, options: HashiraStartOptions = {}) {
+    const intents = filterDisabledIntents(
+      [
+        ...new Set(
+          [...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]),
+        ),
+      ],
+      options.disabledIntents ?? [],
+    );
 
     const discordClient = new Client({
       intents,

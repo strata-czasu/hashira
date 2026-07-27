@@ -85,6 +85,8 @@ async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
   await createGuildSettings(ctx.prisma, guild.id);
   await registerGuildLoggers(ctx, guild);
 
+  if (!ctx.privilegedIntentsEnabled) return;
+
   try {
     await guild.members.fetch();
   } catch (e) {

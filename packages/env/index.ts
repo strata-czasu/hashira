@@ -13,6 +13,11 @@ const SpaceSeparatedArray = <
     v.array(matcher),
   );
 
+const BooleanString = v.pipe(
+  v.optional(v.union([v.literal("true"), v.literal("false")]), "false"),
+  v.transform((value) => value === "true"),
+);
+
 const Env = v.object({
   NODE_ENV: v.exactOptional(
     v.union([v.literal("development"), v.literal("production"), v.literal("test")]),
@@ -28,6 +33,7 @@ const Env = v.object({
   SHLINK_API_KEY: v.optional(v.string()),
   SHLINK_API_URL: v.optional(v.pipe(v.string(), v.url())),
   UNBELIEVABOAT_TOKEN: v.optional(v.string()),
+  BOT_PRIVILEGED_INTENTS_ENABLED: BooleanString,
 });
 
 export default v.parse(Env, process.env);

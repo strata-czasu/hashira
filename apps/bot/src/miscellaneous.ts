@@ -29,6 +29,7 @@ import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
+import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "./util/privilegedIntents";
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
   .use(base)
@@ -221,7 +222,10 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .addString("message", (message) => message.setDescription("ID wiadomości"))
           .addRole("role", (role) => role.setDescription("Rola"))
           .addString("emoji", (emoji) => emoji.setDescription("Emoji"))
-          .handle(async (_, { message: messageId, role, emoji: emojiName }, itx) => {
+          .handle(async (ctx, { message: messageId, role, emoji: emojiName }, itx) => {
+            if (!ctx.privilegedIntentsEnabled) {
+              return errorFollowUp(itx, PRIVILEGED_FEATURES_DISABLED_MESSAGE);
+            }
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
@@ -281,14 +285,17 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           .setDescription("Add balance to role")
           .addRole("role", (role) => role.setDescription("Role"))
           .addInteger("amount", (amount) => amount.setDescription("Amount"))
-          .handle(async ({ prisma }, { role, amount }, itx) => {
+          .handle(async (ctx, { role, amount }, itx) => {
+            if (!ctx.privilegedIntentsEnabled) {
+              return errorFollowUp(itx, PRIVILEGED_FEATURES_DISABLED_MESSAGE);
+            }
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const members = [...role.members.keys()];
 
             await addBalances({
-              prisma,
+              prisma: ctx.prisma,
               fromUserId: itx.user.id,
               guildId: itx.guildId,
               toUserIds: members,
@@ -331,7 +338,10 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
       .addCommand("count-guild-tags", (command) =>
         command
           .setDescription("Count most popular guild tags")
-          .handle(async (_, __, itx) => {
+          .handle(async ({ privilegedIntentsEnabled }, __, itx) => {
+            if (!privilegedIntentsEnabled) {
+              return errorFollowUp(itx, PRIVILEGED_FEATURES_DISABLED_MESSAGE);
+            }
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 

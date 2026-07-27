@@ -5,6 +5,7 @@ import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { pluralizers } from "./util/pluralize";
+import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "./util/privilegedIntents";
 import safeSendCode from "./util/safeSendCode";
 import { CannotSendMessagesToThisUserNoMutualGuids } from "./util/sendDirectMessage";
 
@@ -24,7 +25,11 @@ export const massDM = new Hashira({ name: "massDM" })
           .addString("tresc", (content) =>
             content.setDescription("Treść wiadomości").setRequired(true),
           )
-          .handle(async ({ strataCzasuLog }, { rola: role, tresc: content }, itx) => {
+          .handle(async (ctx, { rola: role, tresc: content }, itx) => {
+            if (!ctx.privilegedIntentsEnabled) {
+              return errorFollowUp(itx, PRIVILEGED_FEATURES_DISABLED_MESSAGE);
+            }
+            const { strataCzasuLog } = ctx;
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 

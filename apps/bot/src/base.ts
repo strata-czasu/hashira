@@ -16,6 +16,7 @@ export const base = new Hashira({ name: "base" })
   .use(messageQueueBase)
   .use(userActivityBase)
   .use(emojiCountingBase)
+  .const("privilegedIntentsEnabled", env.BOT_PRIVILEGED_INTENTS_ENABLED)
   .const("lock", new LockManager())
   .addExceptionHandler("default", (e, itx) => {
     if (env.SENTRY_DSN) {
