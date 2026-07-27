@@ -98,7 +98,7 @@ export const createGetLatestWarns = (prisma: ExtendedPrismaClient, guildId: stri
   };
 };
 
-export const createFetchMessage = (guild: Guild) => {
+export const createFetchMessage = (guild: Guild, enabled = true) => {
   return async function fetchMessage({
     channelId,
     messageId,
@@ -106,6 +106,10 @@ export const createFetchMessage = (guild: Guild) => {
     channelId: string;
     messageId: string;
   }) {
+    if (!enabled) {
+      return "Message fetching is temporarily unavailable.";
+    }
+
     const channel = await guild.channels.fetch(channelId);
     if (!channel || !channel.isTextBased()) {
       return "Channel not found or is not text-based.";

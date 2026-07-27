@@ -19,6 +19,7 @@ const getReminderKey = (userId: string, guildId: string) =>
 export const embedPermissions = new Hashira({ name: "embed-permissions" })
   .use(base)
   .handle("messageCreate", async (ctx, message) => {
+    if (!ctx.privilegedIntentsEnabled) return;
     if (message.author.bot || !message.inGuild()) return;
     if (message.embeds.length > 0 || message.attachments.size > 0) return;
 

@@ -33,7 +33,8 @@ const parseEmojis = (guildEmojiManager: GuildEmojiManager, content: string) => {
 
 export const emojiCounting = new Hashira({ name: "emoji-counting" })
   .use(base)
-  .handle("guildMessageCreate", async ({ emojiCountingQueue }, message) => {
+  .handle("guildMessageCreate", async (ctx, message) => {
+    if (!ctx.privilegedIntentsEnabled) return;
     if (message.author.bot) return;
 
     const matches = message.content.matchAll(EMOJI_REGEX);
@@ -42,7 +43,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
     const guildEmojis = parseEmojis(message.guild.emojis, message.content);
     if (guildEmojis.length === 0) return;
 
-    emojiCountingQueue.push(
+    ctx.emojiCountingQueue.push(
       message.channelId,
       guildEmojis.map((emoji) => ({
         userId: message.author.id,

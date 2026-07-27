@@ -18,7 +18,9 @@ const warnMissingAuditLogEntryTarget = (entry: GuildAuditLogsEntry) => {
 // Logging for Discord events
 export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
   .use(base)
-  .handle("messageDelete", async ({ messageLog: log }, message) => {
+  .handle("messageDelete", async (ctx, message) => {
+    if (!ctx.privilegedIntentsEnabled) return;
+    const log = ctx.messageLog;
     if (!message.inGuild()) return;
     if (!log.isRegistered(message.guild)) return;
     // NOTE: Deleting an uncached message can still trigger this event with unexpected
@@ -27,7 +29,9 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
 
     log.push("messageDelete", message.guild, { message });
   })
-  .handle("messageUpdate", async ({ messageLog: log }, oldMessage, newMessage) => {
+  .handle("messageUpdate", async (ctx, oldMessage, newMessage) => {
+    if (!ctx.privilegedIntentsEnabled) return;
+    const log = ctx.messageLog;
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
     if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild))
       return;

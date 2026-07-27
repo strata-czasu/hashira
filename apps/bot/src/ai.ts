@@ -93,7 +93,10 @@ export const ai = new Hashira({ name: "ai" })
   .const("ai", env.OPENAI_KEY ? new OpenAI({ apiKey: env.OPENAI_KEY }) : null)
   .handle(
     "messageCreate",
-    async ({ ai, prisma, messageQueue, moderationLog }, message) => {
+    async (
+      { ai, prisma, messageQueue, moderationLog, privilegedIntentsEnabled },
+      message,
+    ) => {
       if (!ai) return;
       if (message.author.bot) return;
       if (!message.inGuild()) return;
@@ -108,13 +111,14 @@ export const ai = new Hashira({ name: "ai" })
       const thread = await message.startThread({ name: "AI Command" });
 
       const reference = message.reference;
-      const repliedMessage = reference?.messageId
-        ? await discordTry(
-            () => message.channel.messages.fetch(reference.messageId as string),
-            [RESTJSONErrorCodes.UnknownMessage],
-            () => null,
-          )
-        : null;
+      const repliedMessage =
+        privilegedIntentsEnabled && reference?.messageId
+          ? await discordTry(
+              () => message.channel.messages.fetch(reference.messageId as string),
+              [RESTJSONErrorCodes.UnknownMessage],
+              () => null,
+            )
+          : null;
 
       const prompt = [
         "You are Biszkopt, an advanced AI moderation assistant for a Discord server. You identify as male.",
@@ -289,7 +293,7 @@ export const ai = new Hashira({ name: "ai" })
             {
               type: "function",
               function: {
-                function: createFetchMessage(message.guild),
+                function: createFetchMessage(message.guild, privilegedIntentsEnabled),
                 description: "Fetch a message by its ID and channel ID.",
                 parse: JSON.parse,
                 parameters: {

@@ -12,13 +12,14 @@ const resEmoji = "<a:peartotanczy:1410749447608205322>";
 export const pearto = new Hashira({ name: "pearto" })
   .use(base)
   .const("peartoCooldown", new Cooldown({ minutes: 1 }))
-  .handle("messageCreate", async ({ prisma, peartoCooldown }, message) => {
+  .handle("messageCreate", async (ctx, message) => {
+    if (!ctx.privilegedIntentsEnabled) return;
     if (
       message.channelId !== channelId ||
       message.author.bot ||
       !message.inGuild() ||
       message.content.trim() !== "🍐" ||
-      !peartoCooldown.ended(message.createdAt)
+      !ctx.peartoCooldown.ended(message.createdAt)
     )
       return;
 
@@ -26,7 +27,7 @@ export const pearto = new Hashira({ name: "pearto" })
     const startOfDayLocal = startOfDay(localDate);
     const startOfDayUTC = new Date(startOfDayLocal.getTime());
 
-    const todaysMessages = await prisma.userTextActivity.count({
+    const todaysMessages = await ctx.prisma.userTextActivity.count({
       where: {
         channelId,
         guildId,

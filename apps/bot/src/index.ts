@@ -2,6 +2,7 @@ import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
 import { PrismaInstrumentation } from "@prisma/instrumentation";
 import * as Sentry from "@sentry/bun";
+import { GatewayIntentBits } from "discord.js";
 import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
@@ -96,7 +97,11 @@ if (import.meta.main) {
         env.BOT_CLIENT_ID,
       );
     }
-    await bot.start(env.BOT_TOKEN);
+    await bot.start(env.BOT_TOKEN, {
+      disabledIntents: env.BOT_PRIVILEGED_INTENTS_ENABLED
+        ? []
+        : [GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent],
+    });
   } catch (e) {
     if (env.SENTRY_DSN) Sentry.captureException(e);
     console.error(e);

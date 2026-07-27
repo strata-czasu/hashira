@@ -35,6 +35,7 @@ import { hastebin } from "./util/hastebin";
 import { numberToEmoji } from "./util/numberToEmoji";
 import { parseUserMentions } from "./util/parseUsers";
 import { pluralizers } from "./util/pluralize";
+import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "./util/privilegedIntents";
 import { CannotSendMessagesToThisUserNoMutualGuids } from "./util/sendDirectMessage";
 
 type DMPollWithOptions = DmPoll & { options: DmPollOption[] };
@@ -485,7 +486,11 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
           .addRole("rola", (role) =>
             role.setDescription("Rola, w której użytkownicy mogą głosować"),
           )
-          .handle(async ({ prisma }, { id, rola: role }, itx) => {
+          .handle(async (ctx, { id, rola: role }, itx) => {
+            if (!ctx.privilegedIntentsEnabled) {
+              return errorFollowUp(itx, PRIVILEGED_FEATURES_DISABLED_MESSAGE);
+            }
+            const { prisma } = ctx;
             if (!itx.inCachedGuild()) return;
 
             const poll = await prisma.dmPoll.findFirst({
