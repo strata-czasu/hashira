@@ -4,7 +4,7 @@
 
 ## 1. Administrator i kontakt
 
-Administratorem danych osobowych przetwarzanych za pomocą bota Biszkopt („Bot”) jest osoba fizyczna prowadząca serwer Discord Strata Czasu, działająca w społeczności pod pseudonimem **defous** („Administrator”).
+Administratorem danych osobowych przetwarzanych za pomocą bota Biszkopt („Bot”) jest osoba prowadząca serwer Discord Strata Czasu, działająca pod nazwą użytkownika **defous** („Administrator”).
 
 Z Administratorem można skontaktować się:
 
