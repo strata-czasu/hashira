@@ -27,20 +27,34 @@ model Birthday2026EconomyConfig {
 }
 
 model Birthday2026TeamConfig {
-  id            Int     @id @default(autoincrement())
-  configId      Int
-  teamId        Int     @unique
-  roleId        String  @unique
-  color         Int
-  captainUserId String?
+  id       Int    @id @default(autoincrement())
+  configId Int
+  teamId   Int    @unique
+  roleId   String @unique
+  color    Int
 
   config       Birthday2026Config        @relation(fields: [configId], references: [id], onDelete: Cascade)
   team         Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  captainUser  User?                     @relation("birthday2026Captain", fields: [captainUserId], references: [id])
+  identity     Birthday2026TeamIdentity?
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
   @@unique([id, configId])
+  @@index([configId])
+}
+
+model Birthday2026TeamIdentity {
+  teamConfigId  Int    @id
+  configId      Int
+  tucznikUserId String
+  captainUserId String
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  tucznikUser User                   @relation("birthday2026Tucznik", fields: [tucznikUserId], references: [id], onDelete: Restrict)
+  captainUser User                   @relation("birthday2026Captain", fields: [captainUserId], references: [id], onDelete: Restrict)
+
+  @@unique([teamConfigId, configId])
+  @@unique([configId, tucznikUserId])
   @@unique([configId, captainUserId])
 }
 
