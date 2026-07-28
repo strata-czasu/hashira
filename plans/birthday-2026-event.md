@@ -24,9 +24,19 @@ Numbers in this document are illustrative until the Easter 2026 activity distrib
 
 ## Concept
 
-Four teams compete to raise the heaviest pig during the guild's Birthday 2026 event.
+Four teams compete to build the greatest fictional event weight for their
+`Tucznik`: a consenting support-team member who acts as the team's public mascot
+and begins the event as its captain.
 
-Members earn a virtual event currency called `Pasza`, feed it to their team's pig, participate in randomly spawned Discord encounters, earn temporary team power-ups, upgrade their pig operation, and steal limited amounts of feed from opponents.
+Members earn a virtual event currency called `Pasza`, feed it to their team's
+Tucznik persona, participate in randomly spawned Discord encounters, earn
+temporary team power-ups, upgrade their operation, and steal limited amounts of
+feed from opponents.
+
+The displayed weight is a team-owned game score. It is never a claim about the
+person's real body or weight. Human Tucznik participation, names, likenesses, and
+artwork require explicit opt-in; the visual fallback is a fictional avatar,
+silhouette, or pig-costume persona rather than an edited body.
 
 The intended core loop is:
 
@@ -35,7 +45,7 @@ Guild activity
     -> personal Pasza
     -> feeding and spawned encounters
     -> team power-ups, upgrades, and theft
-    -> permanent pig weight
+    -> permanent fictional Tucznik weight
     -> team and individual awards
 ```
 
@@ -53,10 +63,14 @@ Guild activity
 ## Agreed foundations
 
 - There are four user teams.
-- Each team has one captain; there is no deputy role.
+- Each team has one consenting human Tucznik who begins as captain; there is no
+  deputy role.
 - The event will probably last about one week.
 - `Pasza` should reuse the shared economy as a virtual event currency.
-- The pig's permanent weight is the main team score.
+- The Tucznik's permanent fictional event weight is the main team score.
+- Tucznik identity and captain authority are stored separately so an operational
+  captain replacement does not silently replace the team's mascot, artwork, or
+  history.
 - Teams can unlock upgrades.
 - Feed theft is part of the event, with safeguards and counterplay.
 - Random encounters spawn similarly to Halloween 2025 encounters.
@@ -65,8 +79,8 @@ Guild activity
 - Teams can earn temporary power-ups from encounters.
 - The captain activates team-earned power-ups on demand.
 - Captain decisions are reactive and can happen several times per day.
-- Each pig has a dedicated status channel with an interactive, periodically updated status message.
-- Every participant may spend Pasza to feed a rival pig exactly once during the event, causing a public message shaming them in their home team's channel.
+- Each Tucznik has a dedicated status channel with an interactive, periodically updated status message.
+- Every participant may spend Pasza to feed a rival Tucznik exactly once during the event, causing a public message shaming them in their home team's channel.
 - The special tryhard/saboteur player remains optional and must not become an unchecked kingmaker.
 
 ## Reuse from existing events
@@ -79,11 +93,11 @@ Reuse or adapt:
 - Team creation and Discord role mapping.
 - Joining and administrative team movement.
 - Status channels and periodically edited status messages.
-- Captain assignment.
+- Human Tucznik assignment and separate operational captain assignment.
 - Disabled activity channels.
 - Scheduled bonus channels.
 - Team and user rankings.
-- Milestone-linked pig artwork.
+- Milestone-linked Tucznik persona artwork approved by the represented person.
 
 Relevant implementation:
 
@@ -140,20 +154,21 @@ The existing economy `Wallet` cannot directly represent a team balance because i
 
 **Recommended:** add an event-owned `Birthday2026TeamWallet` and `Birthday2026TeamWalletTransaction`. The team wallet references the same Pasza `Currency`, but belongs one-to-one to `Birthday2026TeamConfig` rather than to a user.
 
-The team wallet represents Pasza currently held in the team's trough and waiting to become permanent pig weight:
+The team wallet represents Pasza currently held in the team's trough and waiting
+to become permanent fictional Tucznik weight:
 
 - feeding atomically debits the member's economy wallet, credits the team's wallet, and creates a contribution/feed-batch record;
 - team encounter rewards may credit a team's wallet while creating a matching system-owned feed batch;
-- digestion atomically debits the appropriate team-wallet amount and increments permanent pig weight;
+- digestion atomically debits the appropriate team-wallet amount and increments permanent fictional event weight;
 - theft debits exposed feed from a team wallet and credits its configured destination;
 - every team credit/debit receives an immutable team-wallet transaction entry and source reference;
-- permanent pig weight is stored separately and never decreases when team-wallet Pasza is spent, stolen, or digested.
+- permanent weight is stored separately as a team score and never decreases when team-wallet Pasza is spent, stolen, or digested.
 
 This keeps the shared economy for personal balances while providing a real team account without generalizing every existing wallet manager and command.
 
 Store the following additional state in Birthday-specific models:
 
-- permanent pig weight;
+- permanent fictional Tucznik weight;
 - team encounter progress;
 - captain-controlled power-ups;
 - team upgrades;
@@ -173,7 +188,7 @@ Theft becomes irrelevant if players can instantly turn all earned Pasza into unt
 |---|---|---|---|
 | Personal wallet | User | Earned, not yet fed Pasza | Partially stealable above a protected floor |
 | Team wallet/feed batch | User and team | Pasza placed in the team's trough, waiting to digest | A capped portion can be stolen |
-| Pig weight | Team | Fully digested, permanent score | Never stealable |
+| Tucznik weight | Team | Fully digested, permanent fictional score | Never stealable |
 
 Suggested flow:
 
@@ -303,7 +318,7 @@ This keeps a spawn useful after the first team finishes.
 
 Every team must supply a small number of distinct participants. Completion grants a server-wide reward, special artwork, or temporary event modifier.
 
-This gives the event cooperative moments without affecting which pig ultimately wins.
+This gives the event cooperative moments without affecting which Tucznik team ultimately wins.
 
 #### Prompt or puzzle
 
@@ -356,12 +371,12 @@ The social layer should create conversation and shared stories without adding an
 
 **Recommended launch mechanics:**
 
-- a preseason, staff-curated pig naming ballot for each team;
+- a preseason, staff- and subject-curated title/persona ballot for each human Tucznik;
 - a first-meal roll call that recognizes each distinct feeder without multiplying their Pasza;
 - one daily team contract based on distinct members completing already-supported actions;
 - visible assist credit for threshold encounters;
 - a non-binding team pulse poll before the captain selects a permanent upgrade;
-- cosmetic postcards, stickers, or pig facts from selected encounters;
+- cosmetic postcards, stickers, or absurd fictional Tucznik facts from selected encounters;
 - a daily barn newspaper that highlights participation, milestones, captain choices, and raid stories rather than only the leading score;
 - a score-neutral cooperative keepsake encounter after competitive scoring locks.
 
@@ -371,7 +386,8 @@ Prefer derived progress where the underlying action is already persisted. Ballot
 
 ## Captain and team power-ups
 
-There is one captain and no deputy.
+There is one captain and no deputy. The selected human Tucznik begins as that
+captain, but `tucznikUserId` and `captainUserId` remain distinct fields.
 
 Team members earn temporary power-ups from encounters and the captain chooses when to activate them.
 
@@ -399,13 +415,18 @@ Potential commands:
 
 Powers should be situational rather than unconditional permanent production multipliers. Activation and expiration should be visible in the public/team status log.
 
-If the captain becomes unavailable, staff can replace them through an admin command.
+If the captain becomes unavailable, staff can replace their operational authority
+through an admin command without changing the established Tucznik identity.
+Replacing the human Tucznik is a separate, rarer staff action that requires the
+replacement's explicit consent and approved presentation assets.
 
 ## Permanent upgrades
 
 Permanent upgrades are distinct from temporary power-ups.
 
-**Recommended:** the pig reaching configured weight milestones grants a small number of upgrade points. The captain selects the upgrade, unless the design later chooses a team vote.
+**Recommended:** the Tucznik persona reaching configured weight milestones grants
+a small number of upgrade points. The captain selects the upgrade, unless the
+design later chooses a team vote.
 
 Possible branches:
 
@@ -417,7 +438,10 @@ Possible branches:
 
 Avoid large permanent feed-production multipliers because they compound an early lead.
 
-Milestones should also reveal progressively larger, stranger, or more decorated pig artwork, adapting the Easter stage/status mechanism.
+Milestones should reveal progressively grander, stranger, or more decorated
+versions of the approved Tucznik persona, adapting the Easter stage/status
+mechanism. Prefer costume, feast, throne, armour, crown, or fictional
+transformation jokes over editing the person's body.
 
 ## Theft and raids
 
@@ -425,7 +449,7 @@ Theft must create interaction without enabling personal harassment or erasing pe
 
 ### Recommended safeguards
 
-- Permanent pig weight is never stealable.
+- Permanent Tucznik weight is never stealable.
 - The first portion of a user's loose feed is protected.
 - Only a configured fraction of a feed batch is exposed.
 - A user has a maximum loss over a rolling or daily window.
@@ -491,8 +515,8 @@ For an approximately seven-day event, a possible structure is:
 ### Opening
 
 - Join or assign teams.
-- Announce captains.
-- Let teams name their pigs if desired.
+- Reveal the four consenting human Tucznicy and announce that they begin as captains.
+- Let teams choose an approved title, costume/persona, motto, or emoji for their Tucznik if desired.
 - Explain feeding and encounters.
 - Consider a short theft-free grace period.
 
@@ -521,7 +545,7 @@ The rules must prevent hoarding Pasza until a protected final phase from becomin
 
 Primary winner:
 
-- team with the greatest permanent pig weight.
+- team whose Tucznik has the greatest permanent fictional event weight.
 
 Possible individual awards:
 
@@ -558,7 +582,8 @@ Admin commands should cover:
 - configure dates, timezone, channels, caps, and spawn schedule;
 - create/remove teams;
 - move/remove members;
-- appoint/replace captain;
+- appoint/replace the operational captain;
+- assign/replace the human Tucznik separately, with explicit consent and asset review;
 - configure stages/artwork;
 - enable/disable encounter definitions;
 - force-spawn and cancel an encounter;
@@ -568,17 +593,22 @@ Admin commands should cover:
 - force final settlement;
 - recalculate display state without duplicating rewards.
 
-## Pig status channels and feed buttons
+## Human Tucznik status channels and feed buttons
 
-Each pig has its own dedicated status channel, following the Easter team-status pattern. The bot maintains one canonical status message in each channel and recreates it if it is deleted.
+Each human Tucznik has a dedicated status channel, following the Easter
+team-status pattern. The bot maintains one canonical status message in each
+channel and recreates it if it is deleted.
 
-The four channels should be readable by all event participants so members can visit and interact with every pig. Ordinary posting permissions may remain team-specific or bot-only; the interactive status message itself is public to the event.
+The four channels should be readable by all event participants so members can
+visit and interact with every Tucznik persona. Ordinary posting permissions may
+remain team-specific or bot-only; the interactive status message itself is public
+to the event.
 
 Each canonical status message includes a `Nakarm tucznika` button. Clicking it opens an amount picker/modal or applies a clearly displayed fixed amount, depending on the final feeding UX.
 
-### Feeding your own pig
+### Feeding your own Tucznik
 
-When the clicked pig belongs to the member's team:
+When the clicked Tucznik belongs to the member's team:
 
 1. Validate event state and membership.
 2. Validate the member's personal Pasza balance.
@@ -590,18 +620,18 @@ The button and `/tucznik nakarm` command call the same service and enforce the s
 
 ### One-time foreign feeding and public shame
 
-Every member may intentionally feed a pig belonging to another team exactly once across the entire event.
+Every member may intentionally feed a Tucznik belonging to another team exactly once across the entire event.
 
-When a member clicks a rival pig's feed button:
+When a member clicks a rival Tucznik's feed button:
 
 1. Clearly show that the action feeds the rival and consumes the member's own Pasza.
 2. Require a configured fixed amount or an explicit confirmation so the betrayal is deliberate.
 3. Atomically debit the member, credit the rival team wallet, create a rival feed batch, and record the one-time action.
-4. Post a humorous shame message in the member's home pig/team channel, for example:
+4. Post a humorous shame message in the member's home Tucznik/team channel, for example:
 
    > HAŃBA! @User dokarmił tucznika drużyny @Rivals zamiast naszego. Zapamiętamy to przy podziale boczku.
 
-5. Optionally post a celebratory message in the rival pig's channel.
+5. Optionally post a celebratory message in the rival Tucznik's channel.
 6. Count the amount separately as `foreignFeed`; do not present it as a normal contribution to the member's home team.
 
 The uniqueness rule is one foreign feeding per member for the whole event, not once per rival team. Discord cannot disable the shared button for only one viewer, so repeated attempts are rejected ephemerally by the handler.
@@ -612,17 +642,18 @@ The shame is cosmetic: the member loses only the Pasza they knowingly donated an
 
 Each team status message should show at least:
 
-- pig name and current artwork;
-- permanent weight;
+- human Tucznik mention, approved title/persona, and current artwork;
+- permanent fictional event weight;
 - next milestone and progress;
-- captain;
+- captain, shown separately when operational authority has been reassigned;
 - number/summary of stored power-ups;
 - active timed effects;
 - current vulnerable trough amount, if public;
 - recent team actions;
 - top contributors.
 
-The message also contains the feed button and identifies whether the viewer is looking at their own or a rival pig through the interaction response.
+The message also contains the feed button and identifies whether the viewer is
+looking at their own or a rival Tucznik through the interaction response.
 
 The global status should show:
 
@@ -655,13 +686,24 @@ Names are illustrative.
 
 - generic `Team` relation;
 - Discord role;
-- dedicated pig status channel ID and canonical status message ID;
-- optional team discussion/log channel ID if it differs from the pig status channel;
+- dedicated Tucznik status channel ID and canonical status message ID;
+- optional team discussion/log channel ID if it differs from the Tucznik status channel;
+- consenting human Tucznik user ID;
 - captain user ID;
-- pig name, color, current weight;
+- approved Tucznik title/persona, color, and presentation asset references;
 - active upgrade levels;
 - stored power-up limit;
 - active effect timestamps.
+
+`tucznikUserId` identifies the public mascot and subject of the event fiction.
+`captainUserId` controls team decisions. They are equal at launch but must not be
+the same database field: captain replacement should preserve the Tucznik's status,
+artwork, feed history, and milestone story.
+
+The Tucznik user must be a member of the represented team and cannot represent a
+second Birthday team in the same event. The field may be empty during private
+setup, but all four teams need a consenting Tucznik before player-facing
+registration or status is enabled.
 
 Add a Birthday relation to the generic `Team` model rather than overloading `Easter2026TeamConfig`.
 
@@ -803,7 +845,12 @@ If the recommended social mechanics are accepted, persist only the state that ca
 - cosmetic collectible ownership or unlock state;
 - optional moderated guestbook entries and public-display approval.
 
-First-meal roll calls, encounter assists, captain choices, and newspaper statistics should be derived from canonical feed, participation, power-up, and upgrade records rather than copied into a second counter when practical.
+First-meal roll calls, encounter assists, captain choices, and newspaper
+statistics should be derived from canonical feed, participation, power-up, and
+upgrade records rather than copied into a second counter when practical.
+Feed history and permanent score remain attached to the team when staff explicitly
+replaces a Tucznik. The identity change itself receives an immutable audit entry;
+it does not rewrite earlier transactions or score.
 
 ## Concurrency and recovery requirements
 
@@ -835,7 +882,10 @@ Implementation should follow the [implementation slices](birthday-2026-implement
 7. add captain choices and optional social polish;
 8. add raids only as stretch scope.
 
-The first five items form the minimum shippable event. Feeding and permanent weight remain a complete competition even if encounters, captain mechanics, social extras, or raids are cut.
+The first five items form the minimum shippable event. Feeding the four human
+Tucznik personas and accumulating permanent fictional weight remain a complete
+competition even if encounters, captain mechanics, social extras, or raids are
+cut.
 
 Incomplete features should remain unreachable while being developed, but the plan does not assume gradual activation during the live event. Prefer finishing and rehearsing the selected scope before the common event launch.
 
@@ -901,13 +951,13 @@ The Must-ship decisions needed for Slices 1-4 are resolved in [Slice 0 decisions
 
 ### Event identity and rewards
 
-31. Are the four pig/team names predetermined, chosen by captains, or voted on by team members?
-32. What artwork is available, and how many pig evolution stages can be produced?
+31. Which four consenting support-team members will be the Tucznicy, and which approved titles/personas may their teams choose?
+32. What approved avatar, silhouette, costume, or illustrated assets are available for each person, and how many evolution stages can be produced?
 33. Are prizes purely Discord titles/roles/badges, or are existing economy rewards involved?
 34. Is the `Dziki Knur` asymmetric player wanted for launch, and has the intended user explicitly opted in?
 35. Should the event end with only a competitive result or also a guild-wide cooperative birthday milestone?
 36. Should the status-message feed button use a fixed amount, open an amount modal, or offer several buttons such as `10`, `50`, and `all`?
-37. How much Pasza does the one-time rival feeding consume, and should the shame announcement appear only in the member's home pig channel or in both teams' channels?
+37. How much Pasza does the one-time rival feeding consume, and should the shame announcement appear only in the member's home Tucznik channel or in both teams' channels?
 
 ## Recommended next design session
 

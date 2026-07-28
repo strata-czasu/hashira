@@ -37,11 +37,11 @@ If the schedule slips, cut from the bottom of that sequence.
 
 ### Must ship: complete feeding event
 
-- configuration, teams, captains, membership, and permissions;
+- configuration, teams, consenting human Tucznicy, captains, membership, and permissions;
 - Pasza currency and idempotent earning;
 - personal and team wallets;
-- feeding, digestion, permanent pig weight, and rankings;
-- status channels/messages and at least a graceful pig visual;
+- feeding, digestion, permanent fictional Tucznik weight, and rankings;
+- status channels/messages and at least a graceful approved persona or silhouette visual;
 - event start, cutoff, settlement, results, and staff controls.
 
 This is a full event, not a technical demo. Four teams can compete for a week and produce a defensible winner without encounters, power-ups, or raids.
@@ -114,7 +114,10 @@ Fallback:
 **Outcome:** staff can configure an invisible Birthday event, create teams, assign members and captains, and inspect its state.
 
 **Status:** complete. The schema, core event/team services, and private staff interface
-are implemented; no player-facing Birthday command is registered yet.
+are implemented; no player-facing Birthday command is registered yet. The later
+decision to make consenting support-team members the human Tucznicy adds a
+separate identity extension to Slice 3 rather than rewriting this completed
+foundation.
 
 Implement:
 
@@ -156,7 +159,7 @@ Implement vertically:
 
 1. create or resolve the event-owned Pasza currency;
 2. credit a participant wallet through an audited staff/test source;
-3. feed the participant's home pig;
+3. feed the participant's home team/Tucznik;
 4. atomically debit the personal wallet and credit the team wallet;
 5. create a feed batch;
 6. digest it through a persistent queued job;
@@ -190,14 +193,17 @@ Fallback:
 
 ## Slice 3: minimum playable event
 
-**Outcome:** members can earn Pasza from normal activity, feed their pig, see progress, and reach a final result.
+**Outcome:** members can earn Pasza from normal activity, feed their human
+Tucznik's fictional persona, see progress, and reach a final result.
 
 Implement:
 
 - idempotent qualifying activity awards;
 - daily caps and diminishing returns;
 - `/tucznik info`, balance/history, feed, status, and rankings;
-- canonical pig status messages and recovery after deletion;
+- separate `tucznikUserId` from `captainUserId`, with launch-time equality and staff-only replacement;
+- consent/asset-safe human Tucznik configuration and graceful persona fallback;
+- canonical Tucznik status messages and recovery after deletion;
 - feed-button routing through the same service as the command;
 - permanent artwork milestones;
 - registration/join UX if participation is opt-in;
@@ -208,7 +214,7 @@ Add breadth-focused social details that are cheap because the data already exist
 - first-meal roll call derived from feed records;
 - distinct contributor count;
 - milestone announcements;
-- captain and pig identity in status.
+- Tucznik identity and operational captain identity in status.
 
 Tests:
 
@@ -217,6 +223,10 @@ Tests:
 - command and button feeding enforce identical rules;
 - status reconciliation does not change score;
 - permissions work for participant, captain, staff, and non-participant.
+- a Tucznik must belong to the represented team and cannot represent two teams;
+- player-facing registration/status cannot open until every team has a consenting Tucznik;
+- captain replacement preserves Tucznik identity, artwork, and feed history;
+- Tucznik replacement is explicit, audited, and does not alter team score.
 
 Stop point:
 
@@ -224,7 +234,8 @@ Stop point:
 
 Fallback:
 
-- omit first-meal presentation and use static artwork; earning, feeding, and rankings remain intact.
+- omit first-meal presentation and use approved static persona/silhouette artwork;
+  earning, feeding, and rankings remain intact.
 
 ## Slice 4: event closure and operations
 
@@ -358,6 +369,7 @@ Tests:
 - repeated activation cannot double-spend inventory;
 - expiration reconciles after restart;
 - captain replacement does not lose or duplicate powers;
+- captain replacement does not silently replace the team's Tucznik persona;
 - a poll cannot block the configured default or captain decision;
 - an upgrade applies once.
 
@@ -375,7 +387,7 @@ Fallback:
 
 Choose only the highest-value items from the [social and live-ops plan](birthday-2026-social-live-ops.md):
 
-- curated pig naming ballot;
+- curated Tucznik title/persona ballot;
 - cosmetic barn collection;
 - daily barn newspaper;
 - guestbook or cooperative finale keepsake;

@@ -126,22 +126,48 @@ The owner accepted the defaults subject to the production-data review above.
 | Registration | Staff enables opt-in preseason registration; allow late join through the first event day | Adopted |
 | Team count | Four | Agreed |
 | Team balancing | Balance estimated recent activity first, headcount second | Adopted and data-supported |
-| Captain selection | Staff appoints one captain per team; captain changes remain staff-only | Adopted |
+| Human Tucznik identity | Four consenting support-team members are the public team mascots and begin as captains | Adopted after Slice 2 |
+| Captain selection | Staff appoints one captain per team; captain changes remain staff-only and do not implicitly replace the Tucznik | Adopted |
 | Core earning | Text active windows plus eligible voice duration | Adopted and calibrated |
 | Daily passive caps | 24 text plus 18 voice per event day | Adopted and calibrated |
 | Passive earning hours | 24/7 | Adopted and data-supported |
 | Encounter hours, if shipped | 12:00-02:59 Warsaw, weighted toward 18:00-00:59 | Data-supported default |
 | Direct transfers | No voluntary Pasza transfers | Adopted |
-| Feeding conversion | 1 digested Pasza = 1 permanent weight unit | Adopted |
+| Feeding conversion | 1 digested Pasza = 1 permanent fictional event-weight unit for the team Tucznik | Adopted |
 | Digestion delay | Four hours, configurable | Adopted |
 | End cutoff | Stop earning and feeding together; settle all accepted feed batches; unspent personal Pasza expires | Adopted |
 | Tie result | Declare co-winners rather than inventing a hidden tiebreak | Adopted |
 | Visibility | Exact team permanent/pending weight public; personal wallet private | Adopted for the non-raid event |
-| Minimum visual | One generic pig/emoji fallback plus team color and text progress | Adopted |
+| Minimum visual | Approved human Tucznik persona or a generic avatar/silhouette fallback plus team color and text progress | Adopted |
 | Milestones | Shared thresholds derived from projected registered-team activity | Adopted |
 | Initial delivery commitment | Slices 0-4 | Adopted |
 | Recommended target | Slices 0-6 | Adopted |
 | Explicit stretch | Slices 7-10; raids remain outside the first commitment | Adopted |
+
+## Human Tucznik identity
+
+Each team is represented by a consenting support-team member called its
+`Tucznik`. The person is the public mascot being fictionally fed and begins the
+event as team captain.
+
+The displayed weight is a team-owned game score, never a statement about the
+person's real body. Names, mentions, likenesses, titles, and artwork require the
+person's explicit approval. Prefer fictional avatars, silhouettes, costumes,
+feasts, thrones, armour, crowns, and exaggerated transformation themes over body
+editing or real-weight jokes.
+
+Persist `tucznikUserId` separately from `captainUserId`:
+
+- `tucznikUserId` owns the public identity, approved persona, artwork, and story;
+- `captainUserId` owns operational team choices and permissions;
+- they are equal when teams launch;
+- a Tucznik must be a member of the represented team and cannot represent two
+  Birthday teams;
+- all four teams require a consenting Tucznik before player-facing registration
+  or status opens;
+- replacing an unavailable captain preserves the established Tucznik;
+- replacing the Tucznik is a separate staff action requiring fresh consent and
+  approved assets.
 
 ## Event timing
 
@@ -171,7 +197,10 @@ Do not reset caps at Warsaw midnight. A 20:00 start and end would otherwise span
 
 This keeps consent and team identity while preventing repeated late roster changes.
 
-Captain assignment and replacement are staff-only during this event. A captain may request a replacement socially, but there is no direct player-to-player leadership transfer command in the committed scope.
+Tucznik assignment and captain assignment are staff-only during this event. A
+captain may request an operational replacement socially, but there is no direct
+player-to-player leadership transfer command in the committed scope and the
+replacement does not implicitly change the human Tucznik.
 
 ### Recommended balancing
 
@@ -365,16 +394,19 @@ Artwork must not block the event shell or core loop.
 Minimum acceptable presentation:
 
 - team color;
-- pig name;
-- a generic pig emoji or one reusable placeholder image;
-- permanent and pending weight;
+- human Tucznik mention and approved title/persona;
+- an approved avatar/illustration or one reusable silhouette, costume, or pig-emoji placeholder;
+- permanent fictional event weight and pending Pasza;
 - text milestone progress.
 
 Preferred target:
 
-- one base image plus three milestone variants reusable through color/copy, or four team-specific sets if assets are available.
+- one approved base persona plus three milestone variants per Tucznik, or a
+  reusable fictional costume template adapted through team color and copy.
 
-Missing artwork URL, failed media loading, or an incomplete set must fall back to the text/emoji status without breaking updates.
+Missing or withdrawn approval, a failed artwork URL, failed media loading, or an
+incomplete set must fall back to the text/emoji/silhouette status without
+breaking updates.
 
 ## First estimate scope
 
