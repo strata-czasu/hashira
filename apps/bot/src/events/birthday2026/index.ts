@@ -1,6 +1,7 @@
 import { Hashira } from "@hashira/core";
 import {
   bold,
+  channelMention,
   PermissionFlagsBits,
   roleMention,
   TimestampStyles,
@@ -35,6 +36,14 @@ import {
   setBirthday2026Captain,
   setBirthday2026Tucznik,
 } from "./teamService";
+import {
+  awardBirthday2026TextPasza,
+  configureBirthday2026TextEarning,
+  disableBirthday2026TextChannel,
+  enableBirthday2026TextChannel,
+  findBirthday2026DisabledTextChannels,
+  getBirthday2026TextEarningDiagnostics,
+} from "./textEarningService";
 
 const teamErrorMessages = {
   already_in_team: "Ten użytkownik jest już w tej drużynie.",
@@ -108,7 +117,11 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const teams = await findBirthday2026Teams(prisma, itx.guildId);
+            const [teams, disabledTextChannels, textDiagnostics] = await Promise.all([
+              findBirthday2026Teams(prisma, itx.guildId),
+              findBirthday2026DisabledTextChannels(prisma, itx.guildId),
+              getBirthday2026TextEarningDiagnostics(prisma, itx.guildId),
+            ]);
             const now = new Date();
             const configuredTucznicy = teams.filter(
               (team) => team.identity !== null,
@@ -138,6 +151,12 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `${bold("Start:")} ${time(config.eventStartAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Koniec:")} ${time(config.eventEndAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Strefa:")} ${config.timezone}`,
+                `${bold("Tekst:")} ${
+                  textDiagnostics
+                    ? `okno=${textDiagnostics.windowSeconds}s, limit=${textDiagnostics.dailyCap}/dzień, wyłączone kanały=${disabledTextChannels?.length ?? 0}`
+                    : "nie skonfigurowano"
+                }`,
+                `${bold("Naliczona Pasza tekstowa:")} ${textDiagnostics?.awardedTransactions ?? 0} — liczniki=${textDiagnostics?.counterTotal ?? 0}, dni użytkowników=${textDiagnostics?.dailyRows ?? 0}, spójne=${textDiagnostics?.reconciled ? "tak" : "NIE"}`,
                 `${bold("Tucznicy:")} ${configuredTucznicy}/4 — gotowość: ${tucznicyReady ? "tak" : "nie"}`,
                 `${bold("Drużyny:")}`,
                 teamLines.join("\n") || "brak",
@@ -311,6 +330,148 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               );
             },
           ),
+      )
+      .addCommand("tekst", (command) =>
+        command
+          .setDescription("Skonfiguruj automatyczne zdobywanie Paszy za tekst")
+          .addInteger("okno-minuty", (option) =>
+            option.setDescription("Długość okna aktywności").setMinValue(1),
+          )
+          .addInteger("limit-dzienny", (option) =>
+            option.setDescription("Maksymalna Pasza dziennie").setMinValue(1),
+          )
+          .handle(
+            async (
+              { prisma },
+              { "okno-minuty": windowMinutes, "limit-dzienny": dailyCap },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+
+              const result = await configureBirthday2026TextEarning(prisma, {
+                guildId: itx.guildId,
+                windowSeconds: windowMinutes * 60,
+                dailyCap,
+              });
+              if (!result.ok) {
+                const messages = {
+                  config_not_found:
+                    "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
+                  invalid_daily_cap:
+                    "Limit dzienny musi być dodatnią liczbą całkowitą.",
+                  invalid_window: "Okno aktywności musi być dodatnią liczbą minut.",
+                  text_earning_already_used:
+                    "Nie można zmienić reguł tekstowych po przyznaniu pierwszej Paszy.",
+                };
+                await errorFollowUp(itx, messages[result.reason]);
+                return;
+              }
+
+              await itx.editReply(
+                `Zdobywanie Paszy za tekst: okno ${windowMinutes} min, limit ${dailyCap} na dzień eventowy.`,
+              );
+            },
+          ),
+      )
+      .addCommand("wylacz-kanal-tekst", (command) =>
+        command
+          .setDescription("Wyklucz kanał ze zdobywania Paszy za tekst")
+          .addChannel("kanal", (option) =>
+            option.setDescription("Kanał do wykluczenia"),
+          )
+          .handle(async ({ prisma }, { kanal: channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await disableBirthday2026TextChannel(
+              prisma,
+              itx.guildId,
+              channel.id,
+            );
+            if (!result.ok) {
+              await errorFollowUp(
+                itx,
+                result.reason === "config_not_found"
+                  ? "Event urodzinowy nie jest jeszcze skonfigurowany."
+                  : result.reason === "text_earning_not_configured"
+                    ? "Najpierw skonfiguruj zdobywanie Paszy za tekst."
+                    : "Nieprawidłowy kanał.",
+              );
+              return;
+            }
+
+            await itx.editReply(
+              `${channelMention(result.channelId)} ${
+                result.changed ? "został wykluczony" : "był już wykluczony"
+              } ze zdobywania Paszy.`,
+            );
+          }),
+      )
+      .addCommand("wlacz-kanal-tekst", (command) =>
+        command
+          .setDescription("Przywróć zdobywanie Paszy na kanale")
+          .addChannel("kanal", (option) =>
+            option.setDescription("Kanał do przywrócenia"),
+          )
+          .handle(async ({ prisma }, { kanal: channel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await enableBirthday2026TextChannel(
+              prisma,
+              itx.guildId,
+              channel.id,
+            );
+            if (!result.ok) {
+              await errorFollowUp(
+                itx,
+                result.reason === "config_not_found"
+                  ? "Event urodzinowy nie jest jeszcze skonfigurowany."
+                  : result.reason === "text_earning_not_configured"
+                    ? "Najpierw skonfiguruj zdobywanie Paszy za tekst."
+                    : "Nieprawidłowy kanał.",
+              );
+              return;
+            }
+
+            await itx.editReply(
+              `${channelMention(result.channelId)} ${
+                result.changed ? "został przywrócony" : "nie był wykluczony"
+              }.`,
+            );
+          }),
+      )
+      .addCommand("wylaczone-kanaly-tekst", (command) =>
+        command
+          .setDescription("Pokaż kanały bez Paszy za tekst")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const channels = await findBirthday2026DisabledTextChannels(
+              prisma,
+              itx.guildId,
+            );
+            if (!channels) {
+              await errorFollowUp(
+                itx,
+                "Event urodzinowy nie jest jeszcze skonfigurowany.",
+              );
+              return;
+            }
+
+            await itx.editReply(
+              channels.length > 0
+                ? channels
+                    .map(
+                      (channel) =>
+                        `${channelMention(channel.channelId)} (${channel.channelId})`,
+                    )
+                    .join("\n")
+                : "Brak wykluczonych kanałów.",
+            );
+          }),
       )
       .addCommand("daj-pasze", (command) =>
         command
@@ -613,4 +774,14 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             );
           }),
       ),
-  );
+  )
+  .handle("guildMessageCreate", async ({ prisma }, message) => {
+    if (message.author.bot || message.system) return;
+
+    await awardBirthday2026TextPasza(prisma, {
+      guildId: message.guild.id,
+      userId: message.author.id,
+      channelId: message.channel.id,
+      occurredAt: message.createdAt,
+    });
+  });

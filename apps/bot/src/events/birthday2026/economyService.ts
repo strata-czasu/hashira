@@ -3,10 +3,10 @@ import type {
   ExtendedPrismaClient,
   PrismaTransaction,
 } from "@hashira/db";
-import { Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { addSeconds } from "date-fns";
 import { getDefaultWallet } from "../../economy/managers/walletManager";
+import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 
 export type Birthday2026EconomyErrorReason =
   | "config_not_found"
@@ -20,9 +20,6 @@ export type Birthday2026EconomyErrorReason =
   | "insufficient_balance"
   | "member_not_found"
   | "team_wallet_not_found";
-
-const isUniqueConstraintError = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
 const isPositiveAmount = (amount: number) => Number.isSafeInteger(amount) && amount > 0;
 
