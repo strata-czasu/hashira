@@ -12,7 +12,11 @@ The social layer should make members feel seen, give teams reasons to talk, and 
 
 - Reward distinct participants and coordination more often than speed or volume.
 - Give non-winners visible credit for assisting.
-- Keep cosmetic recognition separate from permanent pig weight.
+- Keep cosmetic recognition separate from permanent fictional Tucznik weight.
+- Use only consenting human Tucznicy and approved names, mentions, likenesses,
+  titles, and artwork.
+- Treat displayed weight as a team-owned game score, never as commentary on the
+  represented person's real body.
 - Use team-selected or bot-selected targets; avoid public bounties on individual members.
 - Prefer daily digests over a ping for every action.
 - Give asynchronous players a meaningful action in each 24-hour period.
@@ -23,9 +27,11 @@ The social layer should make members feel seen, give teams reasons to talk, and 
 
 These mechanics fit naturally around the core event and mostly reuse actions already being persisted. Their implementation priority is defined in the implementation-slices plan.
 
-### Team identity ballot
+### Human Tucznik persona ballot
 
-During registration, each team votes on a pig name from a staff-curated shortlist. Motto, crest, or emoji may use the same ballot pattern if moderation capacity allows.
+During registration, each team votes on a title, costume/persona, motto, crest,
+or emoji for its consenting human Tucznik from a staff- and subject-approved
+shortlist. The represented person may veto any option before it becomes public.
 
 Score impact: none.  
 Why it helps: creates team conversation before grinding starts.  
@@ -33,7 +39,8 @@ Guardrail: one changeable ballot per member, locked before scoring.
 
 ### First-meal roll call
 
-The first time a member feeds their own pig, their name is added to that day's or the event's feeder roll call.
+The first time a member feeds their own human Tucznik persona, their name is
+added to that day's or the event's feeder roll call.
 
 Score impact: only the Pasza actually fed.  
 Why it helps: recognizes breadth without inventing a multiplier.  
@@ -70,7 +77,9 @@ Guardrail: poll expiry and a default choice prevent blocking progress.
 
 ### Cosmetic barn collection
 
-Some encounters award postcards, stickers, recipe fragments, or absurd pig facts rather than Pasza. Team status shows set progress, and completed sets appear in the final recap.
+Some encounters award postcards, stickers, recipe fragments, or absurd fictional
+Tucznik facts rather than Pasza. Team status shows set progress, and completed
+sets appear in the final recap.
 
 Score impact: none.  
 Why it helps: encounters remain interesting without inflating the economy.  
@@ -144,7 +153,7 @@ The asymmetric player remains a separate experiment, not a normal implementation
 
 - unrestricted Pasza transfers or gifting;
 - member-authored public bounties;
-- stealing permanent pig weight;
+- stealing permanent fictional Tucznik weight;
 - rewards based on invite spam, mass mentions, or reaction farming;
 - mandatory streaks that punish missing a day;
 - live presence requirements as the only way to qualify;
@@ -155,7 +164,7 @@ The asymmetric player remains a separate experiment, not a normal implementation
 
 | Moment | Message purpose | Notification |
 |---|---|---|
-| Preseason reveal | silhouette, pig fact, or naming reminder | event channel; at most one daily ping |
+| Preseason reveal | approved silhouette, Tucznik teaser, or persona-ballot reminder | event channel; at most one daily ping |
 | Rules reveal | explain selected launch mechanics and score impact | one event-role ping |
 | Encounter | immediate participation opportunity | silent or opt-in encounter role |
 | Milestone | celebrate team progress and reveal art | no broad ping |
@@ -176,7 +185,7 @@ Recommended notification ceiling:
 The exact Polish copy can be written later. Hype happens around the event launch, not through staggered feature releases:
 
 1. Strange noises and silhouettes appear before registration.
-2. Teams discover and name their pig.
+2. Teams discover their consenting human Tucznik and choose an approved title/persona.
 3. A rules preview introduces the selected launch mechanics without revealing every encounter or artwork stage.
 4. The troughs open and the configured event begins with all finished mechanics available.
 5. Daily newspapers, milestones, and encounter copy keep the story alive during the week.
@@ -190,9 +199,9 @@ Do not tease a mechanic unless it is within the committed launch scope. A generi
 
 Prepare before registration:
 
-- four silhouettes and first-stage pig images;
-- naming shortlists and reserved default names;
-- captain introduction prompt;
+- four approved silhouettes/avatars and first-stage Tucznik persona images;
+- title/persona shortlists and reserved approved defaults;
+- human Tucznik/captain introduction prompt;
 - rules summary and notification-role copy;
 - opening, delay, pause, and cancellation messages.
 
@@ -207,12 +216,20 @@ Prepare before the event:
 - final cooperative artwork;
 - winner, tie, delayed-result, and recap templates.
 
-Dynamic copy should render correctly when a team has no captain, an encounter has no winner, a raid moves zero Pasza, or results are delayed.
+Dynamic copy should render correctly when a team has no captain, the operational
+captain differs from its Tucznik, an encounter has no winner, a raid moves zero
+Pasza, or results are delayed.
 
 ## Moderation and safety
 
 - Staff can disable guestbook entries, taunts, shame messages, and raid announcements independently from mechanics.
-- Free-text pig names, mottos, and guestbook entries follow normal guild rules and should be reviewable before appearing in canonical status.
+- Free-text Tucznik titles/personas, mottos, and guestbook entries follow normal
+  guild rules and require review by staff and the represented person before
+  appearing in canonical status.
+- A human Tucznik may withdraw permission for a likeness or joke without changing
+  team score; the status falls back to an approved text/avatar/silhouette form.
+- Avoid real-weight claims, body alteration, and humour that depends on
+  humiliating the represented person.
 - Shame and raid messages describe the game action, not a member's character or real-life traits.
 - Repeated targeting protections are enforced by the database, not by moderator judgment alone.
 - A member may opt out of public personal awards while their team contribution still counts.
