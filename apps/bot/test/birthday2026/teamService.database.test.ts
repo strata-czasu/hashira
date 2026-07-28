@@ -9,6 +9,7 @@ import {
   rebalanceBirthday2026Members,
   removeBirthday2026Member,
   setBirthday2026Captain,
+  setBirthday2026Tucznik,
 } from "../../src/events/birthday2026/teamService";
 
 const connectionString = process.env.DATABASE_TEST_URL;
@@ -200,6 +201,139 @@ databaseTests("Birthday 2026 team services", () => {
       ok: false,
       reason: "captain_move_requires_replacement",
     });
+  });
+
+  it("appoints a Tucznik as captain and preserves the identity across captain replacement", async () => {
+    if (!prisma) throw new Error("DATABASE_TEST_URL is required");
+    const fixture = await createFixture(4);
+    const tucznikUserId = requiredItem(fixture.users, 0, "Tucznik fixture user");
+    const replacementCaptainUserId = requiredItem(
+      fixture.users,
+      1,
+      "replacement captain fixture user",
+    );
+    const otherTeamUserId = requiredItem(fixture.users, 2, "other team fixture user");
+    const movableUserId = requiredItem(fixture.users, 3, "movable fixture user");
+    const first = await createTeam(
+      fixture.guildId,
+      `First ${fixture.suffix}`,
+      `first-role-${fixture.suffix}`,
+      0xff0000,
+    );
+    const second = await createTeam(
+      fixture.guildId,
+      `Second ${fixture.suffix}`,
+      `second-role-${fixture.suffix}`,
+      0x00ff00,
+    );
+
+    await Promise.all([
+      assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
+        teamConfigId: first.id,
+        userId: tucznikUserId,
+      }),
+      assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
+        teamConfigId: first.id,
+        userId: replacementCaptainUserId,
+      }),
+      assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
+        teamConfigId: second.id,
+        userId: otherTeamUserId,
+      }),
+      assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
+        teamConfigId: second.id,
+        userId: movableUserId,
+      }),
+    ]);
+
+    expect(
+      await setBirthday2026Tucznik(prisma, fixture.guildId, first.id, otherTeamUserId),
+    ).toEqual({ ok: false, reason: "tucznik_not_member" });
+
+    const appointment = await setBirthday2026Tucznik(
+      prisma,
+      fixture.guildId,
+      first.id,
+      tucznikUserId,
+    );
+    expect(appointment).toMatchObject({
+      ok: true,
+      identity: {
+        tucznikUserId,
+        captainUserId: tucznikUserId,
+      },
+    });
+
+    const captainReplacement = await setBirthday2026Captain(
+      prisma,
+      fixture.guildId,
+      first.id,
+      replacementCaptainUserId,
+    );
+    expect(captainReplacement).toMatchObject({
+      ok: true,
+      identity: {
+        tucznikUserId,
+        captainUserId: replacementCaptainUserId,
+      },
+    });
+
+    expect(
+      await assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
+        teamConfigId: second.id,
+        userId: tucznikUserId,
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "tucznik_move_requires_replacement",
+    });
+    expect(
+      await removeBirthday2026Member(prisma, fixture.guildId, tucznikUserId),
+    ).toEqual({
+      ok: false,
+      reason: "tucznik_move_requires_replacement",
+    });
+
+    const rebalance = await rebalanceBirthday2026Members(prisma, {
+      guildId: fixture.guildId,
+      activityEstimates: new Map(
+        fixture.users.map((userId, index) => [userId, 100 - index * 10]),
+      ),
+      random: () => 0,
+    });
+    if (!rebalance.ok) throw new Error(rebalance.reason);
+    expect(
+      rebalance.plan.assignments.find(
+        (assignment) => assignment.userId === tucznikUserId,
+      )?.teamConfigId,
+    ).toBe(first.id);
+    expect(
+      rebalance.plan.assignments.find(
+        (assignment) => assignment.userId === replacementCaptainUserId,
+      )?.teamConfigId,
+    ).toBe(first.id);
+
+    const cleared = await setBirthday2026Tucznik(
+      prisma,
+      fixture.guildId,
+      first.id,
+      null,
+    );
+    expect(cleared).toEqual({
+      ok: true,
+      team: expect.objectContaining({ id: first.id }),
+      identity: null,
+    });
+    expect(
+      await prisma.birthday2026TeamIdentity.findUnique({
+        where: { teamConfigId: first.id },
+      }),
+    ).toBeNull();
   });
 
   it("rebalances members atomically while pinning captains", async () => {
