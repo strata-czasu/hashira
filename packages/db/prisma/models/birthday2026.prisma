@@ -11,6 +11,7 @@ model Birthday2026Config {
 
   guild                Guild                             @relation(fields: [guildId], references: [id], onDelete: Cascade)
   economy              Birthday2026EconomyConfig?
+  textEarning          Birthday2026TextEarningConfig?
   teams                Birthday2026TeamConfig[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -23,6 +24,16 @@ model Birthday2026EconomyConfig {
 
   config   Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
   currency Currency           @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+}
+
+model Birthday2026TextEarningConfig {
+  configId      Int @id
+  windowSeconds Int
+  dailyCap      Int
+
+  config           Birthday2026Config                @relation(fields: [configId], references: [id], onDelete: Cascade)
+  disabledChannels Birthday2026DisabledTextChannel[]
+  dailyStates      Birthday2026DailyTextEarning[]
 }
 
 model Birthday2026TeamConfig {
@@ -69,6 +80,29 @@ model Birthday2026MemberState {
 
   @@unique([configId, userId])
   @@index([teamConfigId, configId])
+  @@index([userId])
+}
+
+model Birthday2026DisabledTextChannel {
+  id        Int    @id @default(autoincrement())
+  configId  Int
+  channelId String
+
+  config Birthday2026TextEarningConfig @relation(fields: [configId], references: [configId], onDelete: Cascade)
+
+  @@unique([configId, channelId])
+}
+
+model Birthday2026DailyTextEarning {
+  configId       Int
+  userId         String
+  eventDayIndex  Int
+  awardedWindows Int
+
+  config Birthday2026TextEarningConfig @relation(fields: [configId], references: [configId], onDelete: Cascade)
+  user   User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId, eventDayIndex])
   @@index([userId])
 }
 
@@ -136,6 +170,7 @@ model Birthday2026FeedBatch {
 enum Birthday2026PersonalTransactionSource {
   staffGrant
   feed
+  textActivity
 }
 
 enum Birthday2026TeamWalletTransactionSource {
