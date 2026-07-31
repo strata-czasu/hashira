@@ -18,13 +18,21 @@ type RangeState = RangeUnion<0, 32>;
 const MAX_SESSION_DURATION = { minutes: 15 } as const satisfies Duration;
 const MAX_SESSION_DURATION_SECONDS = durationToSeconds(MAX_SESSION_DURATION);
 
+type VoiceSessionPersistedHandler = (voiceSessionId: number) => Promise<void>;
+
 export class VoiceSessionManager {
   private redis: RedisClient;
   private prisma: ExtendedPrismaClient;
+  private onVoiceSessionPersisted: VoiceSessionPersistedHandler | undefined;
 
-  constructor(redis: RedisClient, prisma: ExtendedPrismaClient) {
+  constructor(
+    redis: RedisClient,
+    prisma: ExtendedPrismaClient,
+    onVoiceSessionPersisted?: VoiceSessionPersistedHandler,
+  ) {
     this.redis = redis;
     this.prisma = prisma;
+    this.onVoiceSessionPersisted = onVoiceSessionPersisted;
   }
 
   private getSessionKey(guildId: string, userId: string): string {
@@ -291,8 +299,12 @@ export class VoiceSessionManager {
     );
 
     await ensureUserExists(this.prisma, state.id);
-    await this.prisma.voiceSession.create({ data: voiceSessionRecord });
+    const voiceSession = await this.prisma.voiceSession.create({
+      data: voiceSessionRecord,
+      select: { id: true },
+    });
     await this.redis.del(key);
+    await this.onVoiceSessionPersisted?.(voiceSession.id);
   }
 
   async handleVoiceState(voiceState: VoiceState): Promise<[string] | []> {
@@ -338,8 +350,12 @@ export class VoiceSessionManager {
       );
 
       await ensureUserExists(this.prisma, userId);
-      await this.prisma.voiceSession.create({ data: voiceSession });
+      const persistedSession = await this.prisma.voiceSession.create({
+        data: voiceSession,
+        select: { id: true },
+      });
       await this.redis.del(key);
+      await this.onVoiceSessionPersisted?.(persistedSession.id);
     } catch (error) {
       console.error(`Failed to process orphaned session ${key}:`, error);
     }
