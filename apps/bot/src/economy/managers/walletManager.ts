@@ -98,68 +98,6 @@ export const getReceivedTransfers = async ({
   return result._sum.amount ?? 0;
 };
 
-type CreateDefaultWalletsOptions = {
-  prisma: PrismaTransaction;
-  currencyId: number;
-  guildId: string;
-  userIds: string[];
-};
-
-const createDefaultWallets = async ({
-  prisma,
-  currencyId,
-  guildId,
-  userIds,
-}: CreateDefaultWalletsOptions) => {
-  const values = userIds.map(
-    (userId) =>
-      ({
-        name: getDefaultWalletName(guildId),
-        userId,
-        guildId,
-        currencyId,
-        default: true,
-      }) satisfies Prisma.WalletCreateManyInput,
-  );
-
-  const returnedUserIds = await prisma.wallet.createManyAndReturn({ data: values });
-
-  const usersWithoutWallets = userIds.filter(
-    (userId) => !returnedUserIds.some((wallet) => wallet.userId === userId),
-  );
-
-  if (returnedUserIds.length !== userIds.length)
-    throw new WalletCreationError(usersWithoutWallets);
-
-  return returnedUserIds;
-};
-
-type CreateDefaultWalletOptions = {
-  prisma: PrismaTransaction;
-  currencyId: number;
-  guildId: string;
-  userId: string;
-};
-
-const createDefaultWallet = async ({
-  prisma,
-  currencyId,
-  guildId,
-  userId,
-}: CreateDefaultWalletOptions) => {
-  const walletName = getDefaultWalletName(guildId);
-
-  return await prisma.wallet.create({
-    data: {
-      name: walletName,
-      userId,
-      guildId,
-      currencyId,
-      default: true,
-    },
-  });
-};
-
 type GetDefaultWalletOptions = {
   prisma: ExtendedPrismaClient;
   userId: string;
@@ -173,7 +111,7 @@ export const getDefaultWallet = async ({
   ...currencyOptions
 }: GetDefaultWalletOptions) => {
   return await prisma.$transaction(async (tx) => {
-    const currency = await getCurrency({ prisma: prisma, guildId, ...currencyOptions });
+    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallet = await tx.wallet.findFirst({
       where: {
@@ -186,16 +124,25 @@ export const getDefaultWallet = async ({
 
     if (wallet) return wallet;
 
-    const [defaultWallet] = await createDefaultWallets({
-      prisma: tx,
-      currencyId: currency.id,
-      guildId,
-      userIds: [userId],
+    const name = getDefaultWalletName(guildId);
+    return await tx.wallet.upsert({
+      where: {
+        userId_name_guildId_currencyId: {
+          userId,
+          name,
+          guildId,
+          currencyId: currency.id,
+        },
+      },
+      create: {
+        name,
+        userId,
+        guildId,
+        currencyId: currency.id,
+        default: true,
+      },
+      update: { default: true },
     });
-
-    if (!defaultWallet) throw new WalletCreationError([userId]);
-
-    return defaultWallet;
   });
 };
 
@@ -213,33 +160,31 @@ export const getWallet = async ({
   walletName,
   ...currencyOptions
 }: GetWalletOptions) => {
+  if (!walletName) {
+    return await getDefaultWallet({
+      prisma,
+      userId,
+      guildId,
+      ...currencyOptions,
+    });
+  }
+
   return await prisma.$transaction(async (tx) => {
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
-    const walletCondition = walletName ? { name: walletName } : { default: true };
-
-    const wallet = await tx.wallet.findFirst({
+    const wallet = await tx.wallet.findUnique({
       where: {
-        userId,
-        guildId,
-        currencyId: currency.id,
-        ...walletCondition,
+        userId_name_guildId_currencyId: {
+          userId,
+          name: walletName,
+          guildId,
+          currencyId: currency.id,
+        },
       },
     });
 
     if (wallet) return wallet;
 
-    if (walletName) throw new WalletNotFoundError(walletName);
-
-    const defaultWallet = await createDefaultWallet({
-      prisma: tx,
-      currencyId: currency.id,
-      guildId,
-      userId: userId,
-    });
-
-    if (!defaultWallet) throw new WalletCreationError([userId]);
-
-    return defaultWallet;
+    throw new WalletNotFoundError(walletName);
   });
 };
 
@@ -256,32 +201,61 @@ export const getDefaultWallets = async ({
   ...currencyOptions
 }: GetDefaultWalletsOptions) => {
   return await prisma.$transaction(async (tx) => {
+    const uniqueUserIds = [...new Set(userIds)];
+    if (uniqueUserIds.length === 0) return [];
+
     const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallets = await tx.wallet.findMany({
       where: {
-        userId: { in: userIds },
+        userId: { in: uniqueUserIds },
         guildId,
         currencyId: currency.id,
         default: true,
       },
     });
+    const walletsByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet]));
 
-    if (wallets.length === userIds.length) return wallets;
-
-    const missingWallets = userIds.filter(
-      (userId) => !wallets.some((wallet) => wallet.userId === userId),
+    const missingUserIds = uniqueUserIds.filter(
+      (userId) => !walletsByUserId.has(userId),
     );
 
-    if (missingWallets.length === 0) return wallets;
+    if (missingUserIds.length > 0) {
+      const name = getDefaultWalletName(guildId);
+      const values = missingUserIds.map(
+        (userId) =>
+          ({
+            name,
+            userId,
+            guildId,
+            currencyId: currency.id,
+            default: true,
+          }) satisfies Prisma.WalletCreateManyInput,
+      );
+      await tx.wallet.createMany({ data: values, skipDuplicates: true });
 
-    const createdDefaultWallets = await createDefaultWallets({
-      prisma: tx,
-      currencyId: currency.id,
-      guildId,
-      userIds: missingWallets,
+      const createdWallets = await tx.wallet.findMany({
+        where: {
+          userId: { in: missingUserIds },
+          guildId,
+          currencyId: currency.id,
+          default: true,
+        },
+      });
+      for (const wallet of createdWallets) walletsByUserId.set(wallet.userId, wallet);
+    }
+
+    const usersWithoutWallets = uniqueUserIds.filter(
+      (userId) => !walletsByUserId.has(userId),
+    );
+    if (usersWithoutWallets.length > 0) {
+      throw new WalletCreationError(usersWithoutWallets);
+    }
+
+    return uniqueUserIds.map((userId) => {
+      const wallet = walletsByUserId.get(userId);
+      if (!wallet) throw new WalletCreationError([userId]);
+      return wallet;
     });
-
-    return [...wallets, ...createdDefaultWallets];
   });
 };
