@@ -8,10 +8,16 @@ import {
 import { purchaseShopItem } from "../../src/economy/managers/shopService";
 import {
   addBalance,
+  addBalances,
   transferBalance,
   transferBalances,
 } from "../../src/economy/managers/transferManager";
-import { debitWallet } from "../../src/economy/managers/walletManager";
+import {
+  debitWallet,
+  getDefaultWallet,
+  getDefaultWallets,
+  getWallet,
+} from "../../src/economy/managers/walletManager";
 
 const connectionString = process.env.DATABASE_TEST_URL;
 let prisma: PrismaClient;
@@ -73,7 +79,7 @@ const createWalletFixture = async (recipientCount: number, sourceBalance: number
 
 const walletDatabaseTests = describe.skipIf(!connectionString);
 
-walletDatabaseTests("wallet debit concurrency", () => {
+walletDatabaseTests("wallet concurrency", () => {
   beforeAll(() => {
     if (!connectionString) throw new Error("DATABASE_TEST_URL is required");
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
@@ -139,6 +145,111 @@ walletDatabaseTests("wallet debit concurrency", () => {
     expect(source.balance).toBe(20);
     expect(recipients.map((wallet) => wallet.balance).sort()).toEqual([0, 80]);
     expect(transactions).toHaveLength(2);
+  });
+
+  it("returns one default wallet from concurrent single-wallet lookups", async () => {
+    const fixture = await createWalletFixture(0, 0);
+    await prisma.wallet.delete({ where: { id: fixture.sourceWallet.id } });
+
+    const wallets = await Promise.all([
+      getDefaultWallet({
+        prisma,
+        userId: fixture.sourceUserId,
+        guildId: fixture.guildId,
+        currencyId: fixture.currency.id,
+      }),
+      getWallet({
+        prisma,
+        userId: fixture.sourceUserId,
+        guildId: fixture.guildId,
+        currencyId: fixture.currency.id,
+      }),
+    ]);
+
+    expect(wallets[0]?.id).toBe(wallets[1]?.id);
+    expect(
+      await prisma.wallet.count({
+        where: {
+          userId: fixture.sourceUserId,
+          guildId: fixture.guildId,
+          currencyId: fixture.currency.id,
+          default: true,
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it("preserves concurrent balance additions while creating one wallet", async () => {
+    const fixture = await createWalletFixture(1, 0);
+    const recipientUserId = getRequired(fixture.recipientUserIds[0]);
+    await prisma.wallet.delete({
+      where: { id: getRequired(fixture.recipientWallets[0]).id },
+    });
+
+    await Promise.all(
+      [10, 15].map((amount) =>
+        addBalance({
+          prisma,
+          toUserId: recipientUserId,
+          guildId: fixture.guildId,
+          currencyId: fixture.currency.id,
+          amount,
+          reason: "Concurrent wallet creation test",
+        }),
+      ),
+    );
+
+    const wallet = await prisma.wallet.findFirstOrThrow({
+      where: {
+        userId: recipientUserId,
+        guildId: fixture.guildId,
+        currencyId: fixture.currency.id,
+        default: true,
+      },
+    });
+    expect(wallet.balance).toBe(25);
+    expect(await prisma.transaction.count({ where: { walletId: wallet.id } })).toBe(2);
+  });
+
+  it("creates overlapping default-wallet batches exactly once", async () => {
+    const fixture = await createWalletFixture(2, 0);
+    await prisma.wallet.deleteMany({
+      where: { id: { in: fixture.recipientWallets.map((wallet) => wallet.id) } },
+    });
+    const firstRecipient = getRequired(fixture.recipientUserIds[0]);
+    const secondRecipient = getRequired(fixture.recipientUserIds[1]);
+
+    const [wallets] = await Promise.all([
+      getDefaultWallets({
+        prisma,
+        userIds: [firstRecipient, firstRecipient, secondRecipient],
+        guildId: fixture.guildId,
+        currencyId: fixture.currency.id,
+      }),
+      addBalances({
+        prisma,
+        toUserIds: [secondRecipient],
+        guildId: fixture.guildId,
+        currencyId: fixture.currency.id,
+        amount: 5,
+        reason: "Overlapping wallet batch test",
+      }),
+    ]);
+
+    expect(wallets).toHaveLength(2);
+    expect(new Set(wallets.map((wallet) => wallet.userId))).toEqual(
+      new Set([firstRecipient, secondRecipient]),
+    );
+    expect(
+      await prisma.wallet.count({
+        where: {
+          userId: { in: [firstRecipient, secondRecipient] },
+          guildId: fixture.guildId,
+          currencyId: fixture.currency.id,
+          default: true,
+        },
+      }),
+    ).toBe(2);
   });
 
   it("rolls the debit and its history entry back when a later write fails", async () => {
