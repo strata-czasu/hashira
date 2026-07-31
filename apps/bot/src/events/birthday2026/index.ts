@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+import { render } from "@hashira/jsx";
 import {
   bold,
   channelMention,
@@ -25,7 +26,21 @@ import {
   getBirthday2026EventState,
   getBirthday2026RegistrationState,
 } from "./eventState";
-import { parseBirthday2026Instant } from "./staffInput";
+import {
+  type Birthday2026PublicErrorReason,
+  type FeedBirthday2026PlayerResult,
+  feedBirthday2026Player,
+  getBirthday2026PlayerSnapshot,
+} from "./playerService";
+import {
+  BIRTHDAY_2026_FEED_ALL_CUSTOM_ID,
+  buildBirthday2026BalanceView,
+  buildBirthday2026FeedResultView,
+  buildBirthday2026InfoView,
+  buildBirthday2026RankingView,
+  buildBirthday2026StatusView,
+} from "./playerView";
+import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -80,6 +95,38 @@ const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
   team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
 };
 
+const publicErrorMessages: Record<Birthday2026PublicErrorReason, string> = {
+  economy_not_configured: "Ekonomia eventu nie jest jeszcze gotowa.",
+  event_not_available: "Event nie jest teraz dostępny.",
+  teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
+};
+
+type Birthday2026PlayerFeedErrorReason = Extract<
+  FeedBirthday2026PlayerResult,
+  { ok: false }
+>["reason"];
+
+const playerFeedErrorMessages: Record<Birthday2026PlayerFeedErrorReason, string> = {
+  ...economyErrorMessages,
+  event_not_available: "Event nie jest teraz dostępny.",
+  event_not_open: "Karmienie jest dostępne tylko podczas trwania eventu.",
+  teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
+};
+
+const getPlayerSnapshotOrReply = async (
+  prisma: Parameters<typeof getBirthday2026PlayerSnapshot>[0],
+  guildId: string,
+  userId: string,
+  now: Date,
+  itx: Parameters<typeof errorFollowUp>[0],
+) => {
+  const result = await getBirthday2026PlayerSnapshot(prisma, guildId, userId, now);
+  if (!result.ok) {
+    await errorFollowUp(itx, publicErrorMessages[result.reason]);
+    return null;
+  }
+  return result.snapshot;
+};
 const findTeamByRole = async (
   prisma: Parameters<typeof findBirthday2026Teams>[0],
   guildId: string,
@@ -91,6 +138,139 @@ const findTeamByRole = async (
 
 export const birthday2026 = new Hashira({ name: "birthday2026" })
   .use(base)
+  .group("tucznik", (group) =>
+    group
+      .setDescription("Nakarm Tucznika swojej drużyny")
+      .setDMPermission(false)
+      .addCommand("info", (command) =>
+        command
+          .setDescription("Pokaż zasady i czas trwania eventu")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const snapshot = await getPlayerSnapshotOrReply(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              itx,
+            );
+            if (!snapshot) return;
+
+            await itx.editReply(render(buildBirthday2026InfoView(snapshot)));
+          }),
+      )
+      .addCommand("saldo", (command) =>
+        command
+          .setDescription("Pokaż prywatne saldo i historię Paszy")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const snapshot = await getPlayerSnapshotOrReply(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              itx,
+            );
+            if (!snapshot) return;
+
+            await itx.editReply(render(buildBirthday2026BalanceView(snapshot)));
+          }),
+      )
+      .addCommand("nakarm", (command) =>
+        command
+          .setDescription("Przekaż Paszę Tucznikowi swojej drużyny")
+          .addInteger("ilosc", (option) =>
+            option.setDescription("Ilość Paszy").setMinValue(1),
+          )
+          .handle(async ({ prisma, messageQueue }, { ilosc: amount }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            await ensureUserExists(prisma, itx.user);
+
+            const result = await feedBirthday2026Player(prisma, {
+              guildId: itx.guildId,
+              userId: itx.user.id,
+              amount,
+              sourceKey: itx.id,
+              acceptedAt: itx.createdAt,
+              reason: "Birthday 2026 player feed",
+              scheduleDigestion: (tx, batch) =>
+                messageQueue.push(
+                  "birthday2026Digest",
+                  { batchId: batch.id },
+                  batch.digestAt,
+                  batch.id.toString(),
+                  tx,
+                ),
+            });
+            if (!result.ok) {
+              await errorFollowUp(itx, playerFeedErrorMessages[result.reason]);
+              return;
+            }
+
+            const snapshot = await getPlayerSnapshotOrReply(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              itx,
+            );
+            if (!snapshot) return;
+
+            await itx.editReply(
+              render(
+                buildBirthday2026FeedResultView(
+                  snapshot,
+                  result.batch.amount,
+                  result.batch.digestAt,
+                ),
+              ),
+            );
+          }),
+      )
+      .addCommand("status", (command) =>
+        command
+          .setDescription("Pokaż stan wszystkich Tuczników")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const snapshot = await getPlayerSnapshotOrReply(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              itx,
+            );
+            if (!snapshot) return;
+
+            await itx.editReply(render(buildBirthday2026StatusView(snapshot)));
+          }),
+      )
+      .addCommand("ranking", (command) =>
+        command
+          .setDescription("Pokaż ranking stałej wagi Tuczników")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const snapshot = await getPlayerSnapshotOrReply(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              itx,
+            );
+            if (!snapshot) return;
+
+            await itx.editReply(render(buildBirthday2026RankingView(snapshot)));
+          }),
+      ),
+  )
   .group("urodziny-admin", (group) =>
     group
       .setDescription("Prywatne zarządzanie eventem urodzinowym 2026")
@@ -160,10 +340,10 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         command
           .setDescription("Ustaw daty i prywatne flagi eventu")
           .addString("start", (option) =>
-            option.setDescription("Np. 2026-08-01T20:00:00+02:00"),
+            option.setDescription("Np. 2026-08-03T20:00:00+02:00"),
           )
           .addString("koniec", (option) =>
-            option.setDescription("Np. 2026-08-08T20:00:00+02:00"),
+            option.setDescription("Np. 2026-08-10T20:00:00+02:00"),
           )
           .addString("strefa", (option) =>
             option.setDescription("Strefa IANA, np. Europe/Warsaw"),
@@ -194,7 +374,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               if (!eventStartAt || !eventEndAt) {
                 await errorFollowUp(
                   itx,
-                  "Daty muszą być pełnymi znacznikami ISO z offsetem, np. 2026-08-01T20:00:00+02:00.",
+                  "Daty muszą być pełnymi znacznikami ISO z offsetem, np. 2026-08-03T20:00:00+02:00.",
                 );
                 return;
               }
@@ -781,4 +961,68 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       channelId: message.channel.id,
       occurredAt: message.createdAt,
     });
+  })
+  .handle("buttonInteractionCreate", async ({ prisma, messageQueue }, itx) => {
+    if (itx.customId !== BIRTHDAY_2026_FEED_ALL_CUSTOM_ID) return;
+    if (!itx.inCachedGuild()) return;
+
+    await itx.deferReply({ flags: "Ephemeral" });
+    await ensureUserExists(prisma, itx.user);
+
+    const before = await getPlayerSnapshotOrReply(
+      prisma,
+      itx.guildId,
+      itx.user.id,
+      itx.createdAt,
+      itx,
+    );
+    if (!before) return;
+    if (!before.membership) {
+      await errorFollowUp(itx, economyErrorMessages.member_not_found);
+      return;
+    }
+    if (before.balance <= 0) {
+      await errorFollowUp(itx, economyErrorMessages.insufficient_balance);
+      return;
+    }
+
+    const result = await feedBirthday2026Player(prisma, {
+      guildId: itx.guildId,
+      userId: itx.user.id,
+      amount: before.balance,
+      sourceKey: itx.id,
+      acceptedAt: itx.createdAt,
+      reason: "Birthday 2026 player feed",
+      scheduleDigestion: (tx, batch) =>
+        messageQueue.push(
+          "birthday2026Digest",
+          { batchId: batch.id },
+          batch.digestAt,
+          batch.id.toString(),
+          tx,
+        ),
+    });
+    if (!result.ok) {
+      await errorFollowUp(itx, playerFeedErrorMessages[result.reason]);
+      return;
+    }
+
+    const after = await getPlayerSnapshotOrReply(
+      prisma,
+      itx.guildId,
+      itx.user.id,
+      itx.createdAt,
+      itx,
+    );
+    if (!after) return;
+
+    await itx.editReply(
+      render(
+        buildBirthday2026FeedResultView(
+          after,
+          result.batch.amount,
+          result.batch.digestAt,
+        ),
+      ),
+    );
   });

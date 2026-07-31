@@ -2,10 +2,18 @@ import type { Birthday2026Config } from "@hashira/db";
 
 const MILLISECONDS_PER_EVENT_DAY = 24 * 60 * 60 * 1000;
 
+export type Birthday2026EventState =
+  | "not_configured"
+  | "hidden"
+  | "disabled"
+  | "not_started"
+  | "open"
+  | "finished";
+
 export const getBirthday2026EventState = (
   config: Birthday2026Config | null,
   now: Date,
-) => {
+): Birthday2026EventState => {
   if (!config) return "not_configured";
   if (!config.visible) return "hidden";
   if (!config.enabled) return "disabled";
