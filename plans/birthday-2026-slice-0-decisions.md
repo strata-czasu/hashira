@@ -121,8 +121,8 @@ The owner accepted the defaults subject to the production-data review above.
 |---|---|---|
 | Authoritative timezone | `Europe/Warsaw` | Adopted |
 | Duration | Seven consecutive 24-hour event days | Adopted |
-| Exact start | 1 August 2026 20:00 Warsaw / 18:00 UTC | Confirmed |
-| Exact end | 8 August 2026 20:00 Warsaw / 18:00 UTC | Derived from accepted seven-day duration |
+| Exact start | 3 August 2026 20:00 Warsaw / 18:00 UTC | Moved to the next Monday to leave time for the public player loop and launch rehearsal |
+| Exact end | 10 August 2026 20:00 Warsaw / 18:00 UTC | Derived from accepted seven-day duration |
 | Registration | Staff enables opt-in preseason registration; allow late join through the first event day | Adopted |
 | Team count | Four | Agreed |
 | Team balancing | Balance estimated recent activity first, headcount second | Adopted and data-supported |
@@ -173,8 +173,8 @@ Persist `tucznikUserId` separately from `captainUserId`:
 
 Recommended semantics:
 
-- `eventStartAt` is `2026-08-01T18:00:00Z`;
-- `eventEndAt` is `2026-08-08T18:00:00Z`;
+- `eventStartAt` is `2026-08-03T18:00:00Z`;
+- `eventEndAt` is `2026-08-10T18:00:00Z`;
 - `timezone` is stored as `Europe/Warsaw` for daily buckets and player-facing formatting;
 - `eventStartAt` is inclusive;
 - `eventEndAt` is exclusive;
@@ -190,8 +190,8 @@ Do not reset caps at Warsaw midnight. A 20:00 start and end would otherwise span
 
 - Members opt in before the event with `/tucznik dolacz`.
 - Staff opens registration through an explicit feature control when announcements are ready; no additional registration-start timestamp is required.
-- Registration closes at 1 August 2026 20:00 Warsaw for normal self-service assignment.
-- A late-join window remains available through 2 August 2026 20:00 Warsaw through staff approval or a separately configured flag.
+- Registration closes at 3 August 2026 20:00 Warsaw for normal self-service assignment.
+- A late-join window remains available through 4 August 2026 20:00 Warsaw through staff approval or a separately configured flag.
 - A late joiner starts with zero Pasza and receives no retroactive activity award.
 - After the late-join window, only staff can add or move a participant.
 
