@@ -196,6 +196,11 @@ Fallback:
 **Outcome:** members can earn Pasza from normal activity, feed their human
 Tucznik's fictional persona, see progress, and reach a final result.
 
+**Status:** in progress. Human Tucznik identity, idempotent text earning, public
+info, private balance/history, command and button feeding, team status, and
+rankings are implemented. Voice earning, opt-in registration, canonical status
+message recovery, and artwork milestones remain.
+
 Implement:
 
 - idempotent qualifying activity awards;

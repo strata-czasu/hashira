@@ -5,7 +5,18 @@ type EventWindow = Pick<
   "enabled" | "eventEndAt" | "eventStartAt" | "visible"
 >;
 
-export const getBirthday2026EventState = (config: EventWindow | null, now: Date) => {
+export type Birthday2026EventState =
+  | "not_configured"
+  | "hidden"
+  | "disabled"
+  | "not_started"
+  | "open"
+  | "finished";
+
+export const getBirthday2026EventState = (
+  config: EventWindow | null,
+  now: Date,
+): Birthday2026EventState => {
   if (!config) return "not_configured";
   if (!config.visible) return "hidden";
   if (!config.enabled) return "disabled";
