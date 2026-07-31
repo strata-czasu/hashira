@@ -1,4 +1,4 @@
-import type { ExtendedPrismaClient, Prisma, PrismaTransaction } from "@hashira/db";
+import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import {
   InsufficientBalanceError,
@@ -222,40 +222,39 @@ export const getDefaultWallets = async ({
 
     if (missingUserIds.length > 0) {
       const name = getDefaultWalletName(guildId);
-      const values = missingUserIds.map(
-        (userId) =>
-          ({
-            name,
-            userId,
-            guildId,
-            currencyId: currency.id,
-            default: true,
-          }) satisfies Prisma.WalletCreateManyInput,
-      );
-      await tx.wallet.createMany({ data: values, skipDuplicates: true });
 
-      const createdWallets = await tx.wallet.findMany({
-        where: {
-          userId: { in: missingUserIds },
+      await tx.wallet.createMany({
+        data: missingUserIds.map((userId) => ({
+          name,
+          userId,
           guildId,
           currencyId: currency.id,
           default: true,
-        },
+        })),
+        skipDuplicates: true,
       });
-      for (const wallet of createdWallets) walletsByUserId.set(wallet.userId, wallet);
+
+      const ensuredWallets = await tx.wallet.updateManyAndReturn({
+        where: {
+          userId: { in: missingUserIds },
+          name,
+          guildId,
+          currencyId: currency.id,
+        },
+        data: { default: true },
+      });
+
+      for (const wallet of ensuredWallets) walletsByUserId.set(wallet.userId, wallet);
     }
 
     const usersWithoutWallets = uniqueUserIds.filter(
       (userId) => !walletsByUserId.has(userId),
     );
+
     if (usersWithoutWallets.length > 0) {
       throw new WalletCreationError(usersWithoutWallets);
     }
 
-    return uniqueUserIds.map((userId) => {
-      const wallet = walletsByUserId.get(userId);
-      if (!wallet) throw new WalletCreationError([userId]);
-      return wallet;
-    });
+    return walletsByUserId.values().toArray();
   });
 };
