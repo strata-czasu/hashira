@@ -177,6 +177,7 @@ model User {
   birthday2026CaptainOf             Birthday2026TeamIdentity[]         @relation("birthday2026Captain")
   birthday2026MemberStates          Birthday2026MemberState[]
   birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
+  birthday2026DailyVoiceEarnings    Birthday2026DailyVoiceEarning[]
   birthday2026FeedBatches           Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
   birthday2026PersonalTransactions  Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
   createdBirthday2026Transactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
