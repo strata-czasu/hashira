@@ -132,7 +132,7 @@ databaseTests("Birthday 2026 team services", () => {
     });
     expect(joined.ok).toBe(true);
     if (!joined.ok) throw new Error(joined.reason);
-    expect(joined.previousTeamConfigId).toBeNull();
+    expect(joined.previousRoleId).toBeNull();
     expect(
       await assignBirthday2026Member(prisma, {
         guildId: fixture.guildId,
@@ -148,7 +148,7 @@ databaseTests("Birthday 2026 team services", () => {
     });
     expect(moved.ok).toBe(true);
     if (!moved.ok) throw new Error(moved.reason);
-    expect(moved.previousTeamConfigId).toBe(first.id);
+    expect(moved.previousRoleId).toBe(first.roleId);
     expect(
       (await findBirthday2026Membership(prisma, fixture.guildId, userId))?.teamConfigId,
     ).toBe(second.id);

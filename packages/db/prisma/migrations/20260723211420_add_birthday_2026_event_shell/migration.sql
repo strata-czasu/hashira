@@ -11,11 +11,7 @@ CREATE TABLE "Birthday2026Config" (
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL,
 
-    CONSTRAINT "Birthday2026Config_pkey" PRIMARY KEY ("id"),
-    -- Manually added: Prisma schema does not express this cross-column check.
-    CONSTRAINT "Birthday2026Config_event_window_valid" CHECK ("eventEndAt" > "eventStartAt"),
-    -- Manually added: reject empty or whitespace-only IANA timezone values.
-    CONSTRAINT "Birthday2026Config_timezone_nonempty" CHECK (length(trim("timezone")) > 0)
+    CONSTRAINT "Birthday2026Config_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -27,9 +23,7 @@ CREATE TABLE "Birthday2026TeamConfig" (
     "color" INTEGER NOT NULL,
     "captainUserId" TEXT,
 
-    CONSTRAINT "Birthday2026TeamConfig_pkey" PRIMARY KEY ("id"),
-    -- Manually added: constrain Discord colors to the 24-bit RGB range.
-    CONSTRAINT "Birthday2026TeamConfig_color_valid" CHECK ("color" BETWEEN 0 AND 16777215)
+    CONSTRAINT "Birthday2026TeamConfig_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -51,9 +45,6 @@ CREATE UNIQUE INDEX "Birthday2026TeamConfig_teamId_key" ON "Birthday2026TeamConf
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Birthday2026TeamConfig_roleId_key" ON "Birthday2026TeamConfig"("roleId");
-
--- CreateIndex
-CREATE INDEX "Birthday2026TeamConfig_configId_idx" ON "Birthday2026TeamConfig"("configId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Birthday2026TeamConfig_id_configId_key" ON "Birthday2026TeamConfig"("id", "configId");

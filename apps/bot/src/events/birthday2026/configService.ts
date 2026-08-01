@@ -10,18 +10,7 @@ export type Birthday2026ConfigInput = {
   registrationEnabled: boolean;
 };
 
-export type Birthday2026FeatureState = Pick<
-  Birthday2026Config,
-  "enabled" | "registrationEnabled" | "visible"
->;
-
-export type Birthday2026ConfigErrorReason = "invalid_event_window" | "invalid_timezone";
-
-export type Birthday2026ConfigResult =
-  | { ok: true; config: Birthday2026Config }
-  | { ok: false; reason: Birthday2026ConfigErrorReason };
-
-export const isValidTimeZone = (timezone: string): boolean => {
+export const isValidTimeZone = (timezone: string) => {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
     return true;
@@ -30,9 +19,7 @@ export const isValidTimeZone = (timezone: string): boolean => {
   }
 };
 
-export const validateBirthday2026Config = (
-  input: Birthday2026ConfigInput,
-): Birthday2026ConfigErrorReason | null => {
+export const validateBirthday2026Config = (input: Birthday2026ConfigInput) => {
   if (
     !Number.isFinite(input.eventStartAt.getTime()) ||
     !Number.isFinite(input.eventEndAt.getTime()) ||
@@ -48,48 +35,37 @@ export const validateBirthday2026Config = (
   return null;
 };
 
-export const findBirthday2026Config = (
-  prisma: PrismaTransaction,
-  guildId: string,
-): Promise<Birthday2026Config | null> =>
+export const findBirthday2026Config = (prisma: PrismaTransaction, guildId: string) =>
   prisma.birthday2026Config.findUnique({ where: { guildId } });
 
 export const upsertBirthday2026Config = async (
   prisma: PrismaTransaction,
   input: Birthday2026ConfigInput,
-): Promise<Birthday2026ConfigResult> => {
+) => {
   const reason = validateBirthday2026Config(input);
-  if (reason) return { ok: false, reason };
+  if (reason) return { ok: false, reason } as const;
+
+  const { guildId, ...data } = {
+    ...input,
+    timezone: input.timezone.trim(),
+  };
 
   const config = await prisma.birthday2026Config.upsert({
-    where: { guildId: input.guildId },
-    create: {
-      guildId: input.guildId,
-      eventStartAt: input.eventStartAt,
-      eventEndAt: input.eventEndAt,
-      timezone: input.timezone.trim(),
-      visible: input.visible,
-      enabled: input.enabled,
-      registrationEnabled: input.registrationEnabled,
-    },
-    update: {
-      eventStartAt: input.eventStartAt,
-      eventEndAt: input.eventEndAt,
-      timezone: input.timezone.trim(),
-      visible: input.visible,
-      enabled: input.enabled,
-      registrationEnabled: input.registrationEnabled,
-    },
+    where: { guildId },
+    create: { guildId, ...data },
+    update: data,
   });
 
-  return { ok: true, config };
+  return { ok: true, config } as const;
 };
 
 export const setBirthday2026FeatureState = (
   prisma: PrismaTransaction,
   guildId: string,
-  state: Partial<Birthday2026FeatureState>,
-): Promise<Birthday2026Config> =>
+  state: Partial<
+    Pick<Birthday2026Config, "enabled" | "registrationEnabled" | "visible">
+  >,
+) =>
   prisma.birthday2026Config.update({
     where: { guildId },
     data: state,

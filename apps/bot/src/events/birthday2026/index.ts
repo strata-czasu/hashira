@@ -22,15 +22,13 @@ import {
 import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
 import {
   assignBirthday2026Member,
-  type Birthday2026TeamErrorReason,
   createBirthday2026Team,
-  findBirthday2026Membership,
   findBirthday2026Teams,
   removeBirthday2026Member,
   setBirthday2026Captain,
 } from "./teamService";
 
-const teamErrorMessages: Record<Birthday2026TeamErrorReason, string> = {
+const teamErrorMessages = {
   already_in_team: "Ten użytkownik jest już w tej drużynie.",
   captain_already_assigned: "Ten użytkownik jest już kapitanem innej drużyny.",
   captain_move_requires_replacement:
@@ -47,7 +45,7 @@ const teamErrorMessages: Record<Birthday2026TeamErrorReason, string> = {
 
 const replyWithTeamError = (
   itx: Parameters<typeof errorFollowUp>[0],
-  reason: Birthday2026TeamErrorReason,
+  reason: keyof typeof teamErrorMessages,
 ) => errorFollowUp(itx, teamErrorMessages[reason]);
 
 const findTeamByRole = async (
@@ -285,23 +283,18 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             const targetMember = await itx.guild.members.fetch(user.id);
             await ensureUserExists(prisma, targetMember);
-            const previousMembership = await findBirthday2026Membership(
-              prisma,
-              itx.guildId,
-              user.id,
-            );
-
             const result = await assignBirthday2026Member(prisma, {
               guildId: itx.guildId,
               teamConfigId: team.id,
               userId: user.id,
             });
+
             if (!result.ok) {
               await replyWithTeamError(itx, result.reason);
               return;
             }
 
-            const previousRoleId = previousMembership?.teamConfig.roleId;
+            const { previousRoleId } = result;
             if (previousRoleId && previousRoleId !== team.roleId) {
               await targetMember.roles.remove(
                 previousRoleId,
@@ -323,15 +316,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
-            const membership = await findBirthday2026Membership(
-              prisma,
-              itx.guildId,
-              user.id,
-            );
-            if (!membership) {
-              await errorFollowUp(itx, "Ten użytkownik nie należy do drużyny.");
-              return;
-            }
             const targetMember = await itx.guild.members.fetch(user.id);
 
             const result = await removeBirthday2026Member(prisma, itx.guildId, user.id);
@@ -341,7 +325,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
 
             await targetMember.roles.remove(
-              membership.teamConfig.roleId,
+              result.member.teamConfig.roleId,
               "Usunięcie z Birthday 2026",
             );
             await itx.editReply(
