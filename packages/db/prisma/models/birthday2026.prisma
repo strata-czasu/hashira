@@ -6,7 +6,6 @@ model Birthday2026Config {
   timezone            String
   visible             Boolean
   enabled             Boolean
-  registrationEnabled Boolean
   createdAt           DateTime @default(now()) @db.Timestamp(6)
   updatedAt           DateTime @updatedAt @db.Timestamp(6)
 
@@ -29,7 +28,6 @@ model Birthday2026TeamConfig {
 
   @@unique([id, configId])
   @@unique([configId, captainUserId])
-  @@index([configId])
 }
 
 model Birthday2026MemberState {

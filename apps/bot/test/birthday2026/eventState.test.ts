@@ -12,7 +12,6 @@ const config = {
   enabled: true,
   eventStartAt: start,
   eventEndAt: end,
-  registrationEnabled: true,
   visible: true,
 };
 
@@ -36,11 +35,15 @@ describe("Birthday 2026 event state", () => {
     expect(getBirthday2026EventState(config, end)).toBe("finished");
   });
 
-  it("closes public registration at event start even if the flag remains enabled", () => {
+  it("keeps public registration open through the event", () => {
     expect(
       getBirthday2026RegistrationState(config, new Date(start.getTime() - 1)),
     ).toBe("open");
-    expect(getBirthday2026RegistrationState(config, start)).toBe("closed");
+    expect(getBirthday2026RegistrationState(config, start)).toBe("open");
+    expect(getBirthday2026RegistrationState(config, new Date(end.getTime() - 1))).toBe(
+      "open",
+    );
+    expect(getBirthday2026RegistrationState(config, end)).toBe("closed");
   });
 
   it("calculates seven event days from the 20:00-anchored event window", () => {
