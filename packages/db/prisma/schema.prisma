@@ -182,6 +182,8 @@ model User {
   changedBirthday2026Tucznicy        Birthday2026TucznikChange[]       @relation("birthday2026TucznikChangedBy")
   birthday2026Settlements            Birthday2026Settlement[]
   birthday2026IndividualResults      Birthday2026IndividualResult[]
+  birthday2026EncounterEntries       Birthday2026EncounterEntry[]
+  birthday2026EncounterWins          Birthday2026EncounterWinner[]
   birthday2026Registrations         Birthday2026Registration[]
   birthday2026MemberStates          Birthday2026MemberState[]
   birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
