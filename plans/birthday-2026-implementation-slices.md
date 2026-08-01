@@ -248,6 +248,14 @@ Fallback:
 
 **Outcome:** the minimum event can safely start, run, pause, finish, and publish reproducible results.
 
+**Status:** complete. The event has one runtime switch: pausing it stops earning,
+feeding, and later mechanics together. Final settlement locks event inputs,
+force-digests pending batches, expires unspent personal Pasza, cancels obsolete
+jobs, snapshots deterministic team and individual results, and is safe to repeat.
+Staff diagnostics, recovery instructions, adjustment auditing, and public result
+regeneration are documented in
+[birthday-2026-operations-runbook.md](birthday-2026-operations-runbook.md).
+
 Implement:
 
 - one event-wide pause control shared by earning, feeding, and later mechanics;

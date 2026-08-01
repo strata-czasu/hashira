@@ -5,6 +5,7 @@ import type {
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { getDefaultWallet } from "../../economy/managers/walletManager";
+import { lockBirthday2026Config } from "./configService";
 import { getBirthday2026EventDayIndex, getBirthday2026EventState } from "./eventState";
 
 export type ConfigureBirthday2026VoiceEarningResult =
@@ -213,6 +214,10 @@ export const awardBirthday2026VoicePasza = async (
   const sourceKey = `voice-session:${voiceSession.id}`;
 
   return prisma.$transaction(async (tx) => {
+    const state = await lockBirthday2026Config(tx, config.id);
+    if (!state.enabled || state.settlement) {
+      return { ok: false, reason: "event_not_open" };
+    }
     await tx.birthday2026DailyVoiceEarning.createMany({
       data: {
         configId: config.id,

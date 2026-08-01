@@ -32,6 +32,7 @@ export const registerBirthday2026Participant = async (
       where: { id: configRecord.id },
       include: {
         rosterFinalization: true,
+        settlement: true,
         textEarning: true,
         voiceEarning: true,
         teams: {
@@ -43,7 +44,7 @@ export const registerBirthday2026Participant = async (
     if (!config.visible) {
       return { ok: false, reason: "event_not_available" } as const;
     }
-    if (getBirthday2026RegistrationState(config, now) !== "open") {
+    if (config.settlement || getBirthday2026RegistrationState(config, now) !== "open") {
       return { ok: false, reason: "registration_closed" } as const;
     }
     if (
@@ -134,6 +135,7 @@ export const withdrawBirthday2026Registration = async (
     const config = await tx.birthday2026Config.findUniqueOrThrow({
       where: { id: configRecord.id },
       include: {
+        settlement: true,
         teams: {
           select: {
             memberStates: { where: { userId }, select: { id: true } },
@@ -144,7 +146,7 @@ export const withdrawBirthday2026Registration = async (
     if (!config.visible) {
       return { ok: false, reason: "event_not_available" } as const;
     }
-    if (getBirthday2026RegistrationState(config, now) !== "open") {
+    if (config.settlement || getBirthday2026RegistrationState(config, now) !== "open") {
       return { ok: false, reason: "registration_closed" } as const;
     }
     if (config.teams.some((team) => team.memberStates.length > 0)) {

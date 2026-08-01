@@ -50,6 +50,11 @@ import {
   registerBirthday2026Participant,
   withdrawBirthday2026Registration,
 } from "./registrationService";
+import {
+  getBirthday2026Results,
+  getBirthday2026SettlementDiagnostics,
+  settleBirthday2026Event,
+} from "./settlementService";
 import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
 import {
   configureBirthday2026Artwork,
@@ -108,6 +113,8 @@ const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
   currency_conflict: "Nazwa albo symbol waluty są już używane na tym serwerze.",
   economy_already_configured: "Ekonomia jest już skonfigurowana z innymi wartościami.",
   economy_not_configured: "Najpierw skonfiguruj ekonomię eventu.",
+  event_not_open: "Karmienie jest dostępne tylko podczas trwania eventu.",
+  event_settled: "Event został już rozliczony.",
   insufficient_balance: "Użytkownik nie ma wystarczającej ilości Paszy.",
   invalid_amount: "Ilość musi być dodatnią liczbą całkowitą.",
   invalid_currency: "Nazwa i symbol waluty nie mogą być puste.",
@@ -422,6 +429,39 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             await itx.editReply(render(buildBirthday2026RankingView(snapshot)));
           }),
+      )
+      .addCommand("wyniki", (command) =>
+        command
+          .setDescription("Pokaż ostateczne wyniki eventu")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const settlement = await getBirthday2026Results(prisma, itx.guildId);
+            if (!settlement) {
+              await itx.editReply("Event nie został jeszcze ostatecznie rozliczony.");
+              return;
+            }
+            const teamLines = settlement.teamResults.map(
+              (result) =>
+                `${result.rank}. ${roleMention(result.teamConfig.roleId)} — ${result.permanentWeight.toLocaleString("pl-PL")} stałej wagi — ${result.contributorCount} karmiących`,
+            );
+            const awardLines = settlement.individualResults.map(
+              (result) =>
+                `Najwięcej przekazanej Paszy: ${userMention(result.userId)} — ${result.amount.toLocaleString("pl-PL")}`,
+            );
+            await itx.editReply({
+              content: [
+                `${bold("Ostateczne wyniki Birthday 2026")}`,
+                ...teamLines,
+                ...(awardLines.length > 0
+                  ? ["", bold("Wyróżnienia indywidualne"), ...awardLines]
+                  : []),
+                "",
+                "Remisy rozstrzyga liczba karmiących, a następnie kolejność utworzenia drużyn.",
+              ].join("\n"),
+            });
+          }),
       ),
   )
   .group("urodziny-admin", (group) =>
@@ -442,6 +482,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
+            const now = new Date();
             const [
               teams,
               disabledTextChannels,
@@ -449,6 +490,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               voiceDiagnostics,
               registrationCount,
               rosterFinalization,
+              settlementDiagnostics,
             ] = await Promise.all([
               findBirthday2026Teams(prisma, itx.guildId),
               findBirthday2026DisabledTextChannels(prisma, itx.guildId),
@@ -460,8 +502,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               prisma.birthday2026RosterFinalization.findUnique({
                 where: { configId: config.id },
               }),
+              getBirthday2026SettlementDiagnostics(prisma, itx.guildId, now),
             ]);
-            const now = new Date();
             const configuredTucznicy = teams.filter(
               (team) => team.identity !== null,
             ).length;
@@ -500,6 +542,14 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `${bold("Widoczny / aktywny:")} ${config.visible ? "tak" : "nie"} / ${
                   config.enabled ? "tak" : "nie"
                 }`,
+                `${bold("Rozliczenie:")} ${
+                  settlementDiagnostics?.settledAt
+                    ? time(
+                        settlementDiagnostics.settledAt,
+                        TimestampStyles.ShortDateTime,
+                      )
+                    : "nie wykonano"
+                } — oczekujące batche=${settlementDiagnostics?.pendingBatchCount ?? 0}, Pasza=${settlementDiagnostics?.pendingPasza ?? 0}, przeterminowane=${settlementDiagnostics?.overdueBatchCount ?? 0}, bez zadania=${settlementDiagnostics?.missingTaskCount ?? 0}`,
                 `${bold("Start:")} ${time(config.eventStartAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Koniec:")} ${time(config.eventEndAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Strefa:")} ${config.timezone}`,
@@ -619,12 +669,22 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const config = await setBirthday2026FeatureState(prisma, itx.guildId, {
+            const result = await setBirthday2026FeatureState(prisma, itx.guildId, {
               ...(visible !== null ? { visible } : {}),
               ...(enabled !== null ? { enabled } : {}),
             });
+            if (!result.ok) {
+              await errorFollowUp(
+                itx,
+                {
+                  config_not_found: "Event nie jest skonfigurowany.",
+                  event_settled: "Nie można wznowić rozliczonego eventu.",
+                }[result.reason],
+              );
+              return;
+            }
             await itx.editReply({
-              content: `Flagi zapisane: widoczny=${config.visible}, aktywny=${config.enabled}.`,
+              content: `Flagi zapisane: widoczny=${result.config.visible}, aktywny=${result.config.enabled}.`,
             });
           }),
       )
@@ -1168,6 +1228,53 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   )
                   .join("\n") || "Brak drużyn.",
             });
+          }),
+      )
+      .addCommand("rozlicz", (command) =>
+        command
+          .setDescription("Zablokuj wynik i rozlicz event")
+          .addBoolean("potwierdz", (option) =>
+            option.setDescription("Potwierdzam ostateczne rozliczenie"),
+          )
+          .handle(async ({ prisma }, { potwierdz: confirmed }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            if (!confirmed) {
+              await errorFollowUp(itx, "Rozliczenie wymaga potwierdzenia.");
+              return;
+            }
+            await ensureUserExists(prisma, itx.user);
+
+            const result = await settleBirthday2026Event(prisma, {
+              guildId: itx.guildId,
+              settledAt: itx.createdAt,
+              settledByUserId: itx.user.id,
+            });
+            if (!result.ok) {
+              const messages = {
+                config_not_found: "Event nie jest skonfigurowany.",
+                economy_not_configured: "Ekonomia eventu nie jest skonfigurowana.",
+                event_open:
+                  "Event nadal trwa. Poczekaj do końca albo najpierw wyłącz go flagą `aktywny`.",
+                personal_wallet_balance_mismatch:
+                  "Saldo osobiste zmieniło się podczas rozliczenia. Spróbuj ponownie.",
+                team_wallet_balance_mismatch:
+                  "Koryto nie zgadza się z oczekującymi batchami. Sprawdź `status-ekonomii`.",
+                teams_not_ready: "Drużyny i ich portfele nie są gotowe.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+
+            await Promise.all(
+              result.settlement.teamResults.map((team) =>
+                updateBirthday2026Status(itx.client, prisma, team.teamConfigId),
+              ),
+            );
+            const winner = result.settlement.teamResults.at(0);
+            await itx.editReply(
+              `${result.created ? "Rozliczono" : "Event był już rozliczony"}. Zwycięzca: ${winner ? roleMention(winner.teamConfig.roleId) : "brak"}. Przetrawiono ${result.settlement.digestedPendingPasza} oczekującej Paszy, wygaszono ${result.settlement.discardedPersonalPasza} niewykorzystanej Paszy.`,
+            );
           }),
       )
       .addCommand("dodaj-druzyne", (command) =>
