@@ -9,7 +9,9 @@ Recent activity queries: [birthday-2026-recent-analysis](birthday-2026-recent-an
 
 The decisions and calibrated defaults are sufficient to begin Slice 1. Economic values remain configurable, but handlers must not invent missing rules.
 
-The Easter exports establish event behavior. The recent 28-day exports validate the passive caps and define the team-projection and milestone method to apply when registration closes.
+The Easter exports establish event behavior. The recent 28-day exports validate the
+passive caps and define the team-projection and milestone method to apply to the
+pre-launch roster.
 
 ## Repository findings
 
@@ -123,7 +125,7 @@ The owner accepted the defaults subject to the production-data review above.
 | Duration | Seven consecutive 24-hour event days | Adopted |
 | Exact start | 1 August 2026 20:00 Warsaw / 18:00 UTC | Confirmed |
 | Exact end | 8 August 2026 20:00 Warsaw / 18:00 UTC | Derived from accepted seven-day duration |
-| Registration | Staff enables opt-in preseason registration; allow late join through the first event day | Adopted |
+| Registration | Opt-in registration remains open through the event; post-launch joiners are assigned immediately | Adopted |
 | Team count | Four | Agreed |
 | Team balancing | Balance estimated recent activity first, headcount second | Adopted and data-supported |
 | Captain selection | Staff appoints one captain per team; captain changes remain staff-only | Adopted |
@@ -162,14 +164,19 @@ Do not reset caps at Warsaw midnight. A 20:00 start and end would otherwise span
 
 ### Recommended registration
 
-- Members opt in before the event with `/tucznik dolacz`.
-- Staff opens registration through an explicit feature control when announcements are ready; no additional registration-start timestamp is required.
-- Registration closes at 1 August 2026 20:00 Warsaw for normal self-service assignment.
-- A late-join window remains available through 2 August 2026 20:00 Warsaw through staff approval or a separately configured flag.
-- A late joiner starts with zero Pasza and receives no retroactive activity award.
-- After the late-join window, only staff can add or move a participant.
+- Members opt in before or during the event with `/tucznik dolacz`.
+- Registration is available whenever the event is visible and has not ended. It has
+  no separate feature flag or closing operation.
+- Staff performs the initial activity-balanced assignment before launch while
+  registration remains open.
+- Anyone joining after that assignment is immediately placed on the team with the
+  lowest projected activity, then lowest headcount. Existing assignments do not
+  move.
+- A post-launch joiner starts with zero Pasza and receives no retroactive event
+  award.
 
-This keeps consent and team identity while preventing repeated late roster changes.
+This keeps consent and team identity without making a missed launch deadline exclude
+someone from the event.
 
 Captain assignment and replacement are staff-only during this event. A captain may request a replacement socially, but there is no direct player-to-player leadership transfer command in the committed scope.
 
@@ -185,7 +192,8 @@ For every opted-in participant:
 4. break ties using current headcount, then random choice;
 5. place captains first and include their estimates in team totals.
 
-Recommended lookback: the most recent 28 complete Warsaw days before registration closes.
+Recommended lookback: the 28 days ending at the configured event start. The same
+fixed window is used when assigning later joiners.
 
 Recommended projection:
 
@@ -283,11 +291,12 @@ The most recent week averaged 23.41 Pasza per earner. Simple registration scenar
 | 463 | 2,700 |
 | 725 | 4,240 |
 
-Do not hard-code milestones from these scenarios. Calculate them after the real registration roster is activity-balanced.
+Do not hard-code milestones from these scenarios. Calculate them after the
+pre-launch registration roster is activity-balanced.
 
 ## Team projection and milestones
 
-After registration closes:
+During pre-launch roster assignment:
 
 1. calculate the recency-weighted estimate for every registered member;
 2. perform the activity-balanced assignment;
@@ -417,4 +426,6 @@ The recent exports contain:
 
 Slice 0 is complete. Slice 1 may begin.
 
-Absolute milestone values are intentionally calculated after registration closes from the adopted formula. This is an operational configuration step, not unresolved product design.
+Absolute milestone values are intentionally calculated from the pre-launch roster
+using the adopted formula. Later joins do not recalculate them. This is an
+operational configuration step, not unresolved product design.

@@ -2,18 +2,24 @@
 
 Status: recommended delivery plan  
 Parent design: [birthday-2026-event.md](birthday-2026-event.md)  
-Goal: build the event in small, mergeable vertical slices while keeping a coherent version ready if optional mechanics do not fit the schedule
+Goal: build the event in small, mergeable vertical slices that compose into one coherent release
 
 ## What these slices are
 
-These are coding milestones, not player-facing event phases. All mechanics selected for Birthday 2026 may be enabled together when the event starts.
+These are coding milestones, not player-facing event phases or independently
+switchable modules. The released stack runs every selected mechanic under the same
+event-wide `enabled` state.
+
+A slice can be dropped before release as a scope decision. Once it remains in the
+release stack, it must be configured and operate as part of the whole event; runtime
+fallbacks must not silently turn it into a smaller variant.
 
 Each slice should:
 
 - leave the bot buildable and existing features unaffected;
 - include the persistence, service, Discord interface, and tests needed for one usable path;
 - be safe to merge without unfinished buttons or commands becoming publicly usable;
-- have an explicit stop point and a smaller fallback;
+- identify any pre-release scope cut explicitly, without adding runtime feature flags;
 - avoid depending on a later optional slice.
 
 The delivery order prioritizes a complete event over maximum scope:
@@ -107,7 +113,8 @@ Fallback:
 
 **Outcome:** staff can configure an invisible Birthday event, create teams, assign members and captains, and inspect its state.
 
-**Status:** in progress. Prisma schema and migration complete; core services are next.
+**Status:** complete. The schema, core event/team services, and private staff interface
+are implemented; no player-facing Birthday command is registered yet.
 
 Implement:
 
@@ -221,7 +228,7 @@ Fallback:
 
 Implement:
 
-- independent pause controls for earning and feeding;
+- one event-wide pause control shared by earning, feeding, and later mechanics;
 - cutoff behavior for unspent Pasza and undigested batches;
 - idempotent final settlement;
 - atomic final score lock;
@@ -278,11 +285,13 @@ Tests:
 
 Stop point:
 
-- the event now has moment-to-moment activity; all encounter code can still be disabled without affecting feeding.
+- the event now has a persisted moment-to-moment encounter loop governed by the
+  same event-wide state as earning and feeding.
 
-Fallback:
+Recovery:
 
-- disable new spawns and let the feeding event continue.
+- cancel a broken active encounter, pause the whole event if necessary, repair the
+  configuration or Discord delivery, and then resume the event-wide state.
 
 ## Slice 6: team encounter and daily contract
 
@@ -394,7 +403,7 @@ Implement:
 - protected floors, loss caps, grace, cooldown, and anti-repeat targeting;
 - conditional source debit and atomic destination credit;
 - result history and staff audit view;
-- independent raid disable control.
+- event-wide activation and pause behavior shared with every other mechanic.
 
 Do not implement coordinated raids in this slice.
 
@@ -405,15 +414,16 @@ Tests:
 - the same member cannot exceed loss or targeting caps;
 - failed raids consume the configured charge exactly once;
 - every transfer is explainable from audit history;
-- disabling raids does not affect earning, feeding, or encounters.
+- pausing the event stops raids, earning, feeding, and encounters together.
 
 Stop point:
 
-- a conservative, testable adversarial mechanic that can still be cut entirely before launch.
+- a conservative, testable adversarial mechanic included in the complete release.
 
-Fallback:
+Pre-release scope cut:
 
-- leave raids disabled and keep any raid-specific powers out of the reward pool.
+- if raids are removed before launch, drop the raid slice and its dependent design
+  promises rather than shipping dormant configuration or a runtime raid flag.
 
 ## Slice 10: advanced stretch mechanics
 
@@ -449,7 +459,7 @@ Estimate and track the project against **Minimum shippable** first. Treat every 
 - retries and concurrent interactions are tested;
 - staff can inspect and reconcile the new state;
 - incomplete UI is unreachable;
-- the feature can be disabled without corrupting earlier slices;
+- the slice can be dropped before release without corrupting earlier slices;
 - documentation states the next safe stop point;
 - no later optional mechanic is required for the slice to make sense.
 
