@@ -38,6 +38,7 @@ const eventStateLabels: Record<Birthday2026PlayerSnapshot["eventState"], string>
 
 const historySourceLabels: Record<Birthday2026PlayerHistoryEntry["source"], string> = {
   feed: "karmienie",
+  settlement: "wygaśnięcie po rozliczeniu",
   staffGrant: "korekta administracji",
   textActivity: "aktywność tekstowa",
   voiceActivity: "aktywność głosowa",

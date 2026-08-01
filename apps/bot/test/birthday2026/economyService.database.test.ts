@@ -47,8 +47,8 @@ const createFixture = async (digestionDelaySeconds: number) => {
     eventStartAt: new Date("2026-08-01T18:00:00Z"),
     eventEndAt: new Date("2026-08-08T18:00:00Z"),
     timezone: "Europe/Warsaw",
-    visible: false,
-    enabled: false,
+    visible: true,
+    enabled: true,
     registrationEnabled: false,
   });
   if (!configResult.ok) throw new Error(configResult.reason);

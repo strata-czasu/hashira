@@ -42,6 +42,25 @@ export const validateBirthday2026Config = (input: Birthday2026ConfigInput) => {
 export const findBirthday2026Config = (prisma: PrismaTransaction, guildId: string) =>
   prisma.birthday2026Config.findUnique({ where: { guildId } });
 
+export const lockBirthday2026Config = async (
+  prisma: PrismaTransaction,
+  configId: number,
+) => {
+  await prisma.$queryRaw`
+    SELECT "id"
+    FROM "Birthday2026Config"
+    WHERE "id" = ${configId}
+    FOR UPDATE
+  `;
+  return prisma.birthday2026Config.findUniqueOrThrow({
+    where: { id: configId },
+    select: {
+      enabled: true,
+      settlement: { select: { configId: true } },
+    },
+  });
+};
+
 export const upsertBirthday2026Config = async (
   prisma: ExtendedPrismaClient,
   input: Birthday2026ConfigInput,
@@ -79,6 +98,15 @@ export const setBirthday2026FeatureState = async (
   >,
 ) =>
   prisma.$transaction(async (tx) => {
+    const configRecord = await tx.birthday2026Config.findUnique({
+      where: { guildId },
+      select: { id: true },
+    });
+    if (!configRecord) return { ok: false, reason: "config_not_found" } as const;
+    const current = await lockBirthday2026Config(tx, configRecord.id);
+    if (current.settlement && state.enabled) {
+      return { ok: false, reason: "event_settled" } as const;
+    }
     if (state.registrationEnabled) {
       const finalization = await tx.birthday2026RosterFinalization.findFirst({
         where: { config: { guildId } },

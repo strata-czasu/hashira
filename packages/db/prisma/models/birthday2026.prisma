@@ -17,6 +17,7 @@ model Birthday2026Config {
   teams                Birthday2026TeamConfig[]
   registrations        Birthday2026Registration[]
   rosterFinalization   Birthday2026RosterFinalization?
+  settlement           Birthday2026Settlement?
   milestones           Birthday2026Milestone[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -65,6 +66,7 @@ model Birthday2026TeamConfig {
   milestones   Birthday2026TeamMilestone[]
   statusMessage Birthday2026StatusMessage?
   tucznikChanges Birthday2026TucznikChange[]
+  settlementResults Birthday2026SettlementTeam[]
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
@@ -177,6 +179,51 @@ model Birthday2026TucznikChange {
   @@index([previousUserId])
   @@index([nextUserId])
   @@index([changedByUserId])
+}
+
+model Birthday2026Settlement {
+  configId                Int      @id
+  cutoffAt                DateTime @db.Timestamp(6)
+  settledAt               DateTime @db.Timestamp(6)
+  settledByUserId         String
+  digestedPendingPasza    Int
+  discardedPersonalPasza  Int
+
+  config            Birthday2026Config             @relation(fields: [configId], references: [id], onDelete: Cascade)
+  settledBy         User                           @relation(fields: [settledByUserId], references: [id], onDelete: Restrict)
+  teamResults       Birthday2026SettlementTeam[]
+  individualResults Birthday2026IndividualResult[]
+
+  @@index([settledByUserId])
+}
+
+model Birthday2026SettlementTeam {
+  configId         Int
+  teamConfigId     Int
+  rank             Int
+  permanentWeight  Int
+  contributedPasza Int
+  contributorCount Int
+
+  settlement Birthday2026Settlement @relation(fields: [configId], references: [configId], onDelete: Cascade)
+  teamConfig Birthday2026TeamConfig  @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@id([configId, teamConfigId])
+  @@unique([configId, rank])
+  @@index([teamConfigId, configId])
+}
+
+model Birthday2026IndividualResult {
+  configId Int
+  category Birthday2026IndividualResultCategory
+  userId   String
+  amount   Int
+
+  settlement Birthday2026Settlement @relation(fields: [configId], references: [configId], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([configId, category, userId])
+  @@index([userId])
 }
 
 model Birthday2026MemberState {
@@ -317,6 +364,11 @@ enum Birthday2026PersonalTransactionSource {
   feed
   textActivity
   voiceActivity
+  settlement
+}
+
+enum Birthday2026IndividualResultCategory {
+  topContributor
 }
 
 enum Birthday2026TeamWalletTransactionSource {
