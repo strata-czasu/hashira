@@ -1,9 +1,10 @@
 import { type ExtractContext, Hashira } from "@hashira/core";
-import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
+import type { ExtendedPrismaClient } from "@hashira/db";
 import { DiscordAPIError, type Guild } from "discord.js";
 import { base } from "./base";
 import type { Logger, LogMessageType } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
+import { isUniqueConstraintError } from "./util/isUniqueConstraintError";
 
 type BaseContext = ExtractContext<typeof base>;
 const ALLOWED_GUILDS: string[] = Object.values(GUILD_IDS);
@@ -14,8 +15,7 @@ async function createGuildSettings(prisma: ExtendedPrismaClient, guildId: string
       data: { id: guildId, guildSettings: { create: {} } },
     });
   } catch (e) {
-    // P2002: Unique constraint
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return;
+    if (isUniqueConstraintError(e)) return;
     throw e;
   }
 }

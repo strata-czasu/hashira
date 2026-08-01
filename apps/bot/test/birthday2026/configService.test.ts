@@ -11,7 +11,6 @@ const validInput = {
   timezone: "Europe/Warsaw",
   visible: false,
   enabled: false,
-  registrationEnabled: false,
 };
 
 describe("Birthday 2026 configuration validation", () => {
