@@ -183,6 +183,7 @@ export const createBirthday2026Team = async (
     select: {
       id: true,
       economy: { select: { currencyId: true } },
+      powerupConfig: { select: { configId: true } },
     },
   });
   if (!config) return { ok: false, reason: "config_not_found" } as const;
@@ -207,6 +208,13 @@ export const createBirthday2026Team = async (
                   balance: 0,
                   permanentWeight: 0,
                 },
+              },
+            }
+          : {}),
+        ...(config.powerupConfig
+          ? {
+              powerupState: {
+                create: { inventory: 0 },
               },
             }
           : {}),

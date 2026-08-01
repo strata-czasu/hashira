@@ -372,6 +372,23 @@ export const feedBirthday2026Pig = async (
       if (!state.enabled) {
         return { ok: false, reason: "event_not_open" };
       }
+      const [powerupConfig, activeTurbo] = await Promise.all([
+        tx.birthday2026PowerupConfig.findUnique({
+          where: { configId: config.id },
+        }),
+        tx.birthday2026PowerupActivation.findFirst({
+          where: {
+            teamConfigId: membership.teamConfigId,
+            activatedAt: { lte: input.acceptedAt },
+            expiresAt: { gt: input.acceptedAt },
+          },
+          select: { id: true },
+        }),
+      ]);
+      const digestionSeconds =
+        powerupConfig && activeTurbo
+          ? Math.min(digestionDelaySeconds, powerupConfig.turboDigestionSeconds)
+          : digestionDelaySeconds;
       const wallet = await getDefaultWallet({
         prisma: nestedTransaction(tx),
         guildId: input.guildId,
@@ -408,7 +425,8 @@ export const feedBirthday2026Pig = async (
           amount: input.amount,
           remainingAmount: input.amount,
           sourceKey: input.sourceKey,
-          digestAt: addSeconds(input.acceptedAt, digestionDelaySeconds),
+          digestAt: addSeconds(input.acceptedAt, digestionSeconds),
+          createdAt: input.acceptedAt,
         },
       });
       const updatedTeamWallet = await tx.birthday2026TeamWallet.update({
