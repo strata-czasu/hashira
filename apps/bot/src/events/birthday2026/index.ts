@@ -60,6 +60,12 @@ import {
   getBirthday2026PowerupStatus,
 } from "./powerupService";
 import {
+  configureBirthday2026Raids,
+  getBirthday2026RaidAudit,
+  getBirthday2026RaidStatus,
+  raidBirthday2026Team,
+} from "./raidService";
+import {
   finalizeBirthday2026Registration,
   findBirthday2026RoleAssignments,
   registerBirthday2026Participant,
@@ -558,9 +564,82 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             await itx.editReply({
               content: [
                 `${bold(`Gazeta z obory — dzień ${newspaper.day}`)}`,
-                `Nakarmiono: ${newspaper.totalFed} Paszy; wydarzenia: ${newspaper.encounters}; kamienie milowe: ${newspaper.milestones}; użyte turbo: ${newspaper.activations}.`,
+                `Nakarmiono: ${newspaper.totalFed} Paszy; wydarzenia: ${newspaper.encounters}; kamienie milowe: ${newspaper.milestones}; użyte turbo: ${newspaper.activations}; rajdy: ${newspaper.raids} (${newspaper.raidLoot} Paszy).`,
                 `Czołówka: ${newspaper.teams.map((team) => `${roleMention(team.roleId)} ${team.permanentWeight}`).join(" · ") || "brak"}`,
                 `Karmiący dnia: ${newspaper.topFeeders.map((entry) => `${userMention(entry.userId)} (${entry.amount})`).join(", ") || "brak"}`,
+              ].join("\n"),
+            });
+          }),
+      )
+      .addCommand("rajd", (command) =>
+        command
+          .setDescription("Spróbuj wykraść oczekującą Paszę jako kapitan")
+          .addRole("cel", (option) => option.setDescription("Wroga drużyna"))
+          .handle(async ({ prisma }, { cel }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+            const result = await raidBirthday2026Team(prisma, {
+              guildId: itx.guildId,
+              captainUserId: itx.user.id,
+              targetRoleId: cel.id,
+              sourceKey: itx.id,
+              attemptedAt: itx.createdAt,
+            });
+            if (!result.ok) {
+              await errorFollowUp(
+                itx,
+                {
+                  captain_required: "Tylko kapitan może rozpocząć rajd.",
+                  config_not_found: "Event nie jest skonfigurowany.",
+                  cooldown: "Drużyna musi jeszcze odczekać przed kolejnym rajdem.",
+                  economy_not_configured: "Ekonomia drużyn nie jest gotowa.",
+                  event_not_open: "Rajdy działają tylko podczas eventu.",
+                  event_settled: "Event został już rozliczony.",
+                  invalid_source_key: "Nieprawidłowy identyfikator rajdu.",
+                  member_not_found: "Nie należysz do drużyny eventowej.",
+                  no_charges: "Drużyna nie ma już ładunków rajdu.",
+                  own_team: "Nie można najechać własnej drużyny.",
+                  raids_not_configured: "Rajdy nie są skonfigurowane.",
+                  target_not_found: "Wybrana rola nie jest drużyną eventową.",
+                }[result.reason],
+              );
+              return;
+            }
+            if (!result.attempt.transfer) {
+              await itx.editReply(
+                `Rajd na ${roleMention(cel.id)} nie znalazł bezpiecznej Paszy do przejęcia. Ładunek został zużyty.`,
+              );
+              return;
+            }
+            await itx.editReply(
+              `Rajd na ${roleMention(cel.id)} przejął ${result.attempt.transfer.amount} Paszy od ${userMention(result.attempt.transfer.victimUserId)}.`,
+            );
+          }),
+      )
+      .addCommand("rajdy", (command) =>
+        command
+          .setDescription("Pokaż ładunki i historię rajdów drużyny")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const status = await getBirthday2026RaidStatus(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+            );
+            if (!status) {
+              await errorFollowUp(itx, "Nie należysz do drużyny eventowej.");
+              return;
+            }
+            const config = status.teamConfig.config.raidConfig;
+            const remaining = Math.max(0, config.chargesPerTeam - status.attemptCount);
+            await itx.editReply({
+              content: [
+                `Rajdy ${roleMention(status.teamConfig.roleId)}: ładunki=${remaining}.`,
+                ...status.attempts.map(
+                  (attempt) =>
+                    `${time(attempt.attemptedAt, TimestampStyles.ShortDateTime)} → ${roleMention(attempt.targetTeam.roleId)}: ${attempt.transfer ? `${attempt.transfer.amount} Paszy` : "bez łupu"}`,
+                ),
               ].join("\n"),
             });
           }),
@@ -689,19 +768,10 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addBoolean("widoczny", (option) =>
             option.setDescription("Czy event jest widoczny"),
           )
-          .addBoolean("aktywny", (option) =>
-            option.setDescription("Czy mechaniki są aktywne"),
-          )
           .handle(
             async (
               { prisma },
-              {
-                start: rawStart,
-                koniec: rawEnd,
-                strefa: timezone,
-                widoczny: visible,
-                aktywny: enabled,
-              },
+              { start: rawStart, koniec: rawEnd, strefa: timezone, widoczny: visible },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
@@ -723,7 +793,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 eventEndAt,
                 timezone,
                 visible,
-                enabled,
+                enabled: false,
               });
               if (!result.ok) {
                 const messages = {
@@ -738,10 +808,10 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               }
 
               await itx.editReply({
-                content: `Skonfigurowano event: ${time(
+                content: `Skonfigurowano wyłączony event: ${time(
                   result.config.eventStartAt,
                   TimestampStyles.LongDateTime,
-                )} – ${time(result.config.eventEndAt, TimestampStyles.LongDateTime)}.`,
+                )} – ${time(result.config.eventEndAt, TimestampStyles.LongDateTime)}. Po przygotowaniu całego eventu uruchom go komendą \`flagi aktywny:true\`.`,
               });
             },
           ),
@@ -780,6 +850,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 itx,
                 {
                   config_not_found: "Event nie jest skonfigurowany.",
+                  event_not_ready:
+                    "Event nie jest kompletnie skonfigurowany albo brakuje początkowego przydziału drużyn.",
                   event_settled: "Nie można wznowić rozliczonego eventu.",
                 }[result.reason],
               );
@@ -1014,6 +1086,90 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               await itx.editReply("Skonfigurowano kapitańskie turbo.");
             },
           ),
+      )
+      .addCommand("rajdy-konfiguruj", (command) =>
+        command
+          .setDescription("Skonfiguruj bezpieczne rajdy kapitanów")
+          .addInteger("ladunki", (option) =>
+            option.setDescription("Ładunki na drużynę").setMinValue(1),
+          )
+          .addInteger("maks-lup", (option) =>
+            option.setDescription("Maksymalny pojedynczy łup").setMinValue(1),
+          )
+          .addInteger("chronione", (option) =>
+            option.setDescription("Chronione minimum w korycie").setMinValue(0),
+          )
+          .addInteger("odstep-minuty", (option) =>
+            option.setDescription("Odstęp między rajdami").setMinValue(0),
+          )
+          .addInteger("ochrona-minuty", (option) =>
+            option.setDescription("Ochrona świeżej Paszy").setMinValue(0),
+          )
+          .addInteger("limit-straty", (option) =>
+            option.setDescription("Limit straty jednej osoby").setMinValue(1),
+          )
+          .addInteger("limit-celu", (option) =>
+            option.setDescription("Limit trafień tej samej osoby").setMinValue(1),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                ladunki: chargesPerTeam,
+                "maks-lup": maxSteal,
+                chronione: protectedFloor,
+                "odstep-minuty": cooldownMinutes,
+                "ochrona-minuty": graceMinutes,
+                "limit-straty": perUserLossCap,
+                "limit-celu": repeatTargetCap,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+              const result = await configureBirthday2026Raids(prisma, {
+                guildId: itx.guildId,
+                chargesPerTeam,
+                maxSteal,
+                protectedFloor,
+                cooldownSeconds: cooldownMinutes * 60,
+                graceSeconds: graceMinutes * 60,
+                perUserLossCap,
+                repeatTargetCap,
+              });
+              if (!result.ok) {
+                await errorFollowUp(
+                  itx,
+                  {
+                    config_not_found: "Najpierw skonfiguruj event.",
+                    event_settled: "Event został już rozliczony.",
+                    invalid_config: "Wartości rajdów są nieprawidłowe.",
+                    raids_already_used: "Nie można zmienić zasad po pierwszym rajdzie.",
+                  }[result.reason],
+                );
+                return;
+              }
+              await itx.editReply("Skonfigurowano rajdy kapitanów.");
+            },
+          ),
+      )
+      .addCommand("rajdy-audyt", (command) =>
+        command
+          .setDescription("Pokaż ostatnie audytowalne próby rajdów")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const attempts = await getBirthday2026RaidAudit(prisma, itx.guildId);
+            await itx.editReply({
+              content:
+                attempts
+                  .map(
+                    (attempt) =>
+                      `#${attempt.id} ${roleMention(attempt.attackerTeam.roleId)} → ${roleMention(attempt.targetTeam.roleId)}; kapitan=${userMention(attempt.captainUserId)}; ${attempt.transfer ? `${attempt.transfer.amount} od ${userMention(attempt.transfer.victimUserId)}` : "bez łupu"}`,
+                  )
+                  .join("\n") || "Brak prób rajdów.",
+            });
+          }),
       )
       .addCommand("wydarzenia", (command) =>
         command

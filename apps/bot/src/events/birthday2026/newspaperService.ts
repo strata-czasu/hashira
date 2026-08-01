@@ -37,7 +37,7 @@ export const getBirthday2026Newspaper = async (
   const dayEnd = new Date(
     Math.min(dayStart.getTime() + 86_400_000, config.eventEndAt.getTime()),
   );
-  const [feeds, encounters, activations, milestones] = await Promise.all([
+  const [feeds, encounters, activations, milestones, raids] = await Promise.all([
     prisma.birthday2026FeedBatch.groupBy({
       by: ["userId"],
       where: { configId: config.id, createdAt: { gte: dayStart, lt: dayEnd } },
@@ -55,6 +55,10 @@ export const getBirthday2026Newspaper = async (
         completedAt: { gte: dayStart, lt: dayEnd },
       },
     }),
+    prisma.birthday2026RaidAttempt.findMany({
+      where: { configId: config.id, attemptedAt: { gte: dayStart, lt: dayEnd } },
+      select: { transfer: { select: { amount: true } } },
+    }),
   ]);
   const topFeed = Math.max(0, ...feeds.map((feed) => feed._sum.amount ?? 0));
 
@@ -63,6 +67,8 @@ export const getBirthday2026Newspaper = async (
     encounters,
     activations,
     milestones,
+    raids: raids.length,
+    raidLoot: raids.reduce((total, raid) => total + (raid.transfer?.amount ?? 0), 0),
     totalFed: feeds.reduce((total, feed) => total + (feed._sum.amount ?? 0), 0),
     topFeeders: feeds
       .filter((feed) => (feed._sum.amount ?? 0) === topFeed && topFeed > 0)
