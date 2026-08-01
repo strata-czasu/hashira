@@ -18,6 +18,8 @@ model Birthday2026Config {
   registrations        Birthday2026Registration[]
   rosterFinalization   Birthday2026RosterFinalization?
   settlement           Birthday2026Settlement?
+  encounterConfig      Birthday2026EncounterConfig?
+  encounters           Birthday2026Encounter[]
   milestones           Birthday2026Milestone[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -67,6 +69,8 @@ model Birthday2026TeamConfig {
   statusMessage Birthday2026StatusMessage?
   tucznikChanges Birthday2026TucznikChange[]
   settlementResults Birthday2026SettlementTeam[]
+  encounterEntries Birthday2026EncounterEntry[]
+  encounterCompletions Birthday2026TeamEncounterCompletion[]
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
@@ -226,6 +230,94 @@ model Birthday2026IndividualResult {
   @@index([userId])
 }
 
+model Birthday2026EncounterConfig {
+  configId             Int    @id
+  channelId            String
+  responseWindowSeconds Int
+  spawnIntervalSeconds Int
+  individualReward     Int
+  winCap               Int
+  teamThreshold        Int
+  teamReward           Int
+
+  config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+}
+
+model Birthday2026Encounter {
+  id          Int                       @id @default(autoincrement())
+  configId    Int
+  kind        Birthday2026EncounterKind
+  sourceKey   String
+  startsAt    DateTime                  @db.Timestamp(6)
+  expiresAt   DateTime                  @db.Timestamp(6)
+  resolvedAt  DateTime?                 @db.Timestamp(6)
+  cancelledAt DateTime?                 @db.Timestamp(6)
+
+  config          Birthday2026Config                    @relation(fields: [configId], references: [id], onDelete: Cascade)
+  message         Birthday2026EncounterMessage?
+  entries         Birthday2026EncounterEntry[]
+  winner          Birthday2026EncounterWinner?
+  teamCompletions Birthday2026TeamEncounterCompletion[]
+
+  @@unique([configId, sourceKey])
+  @@index([configId, kind, expiresAt])
+}
+
+model Birthday2026EncounterMessage {
+  encounterId Int    @id
+  channelId   String
+  messageId   String
+
+  encounter Birthday2026Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, messageId])
+}
+
+model Birthday2026EncounterEntry {
+  encounterId Int
+  teamConfigId Int
+  configId     Int
+  userId       String
+  enteredAt    DateTime @db.Timestamp(6)
+
+  encounter Birthday2026Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([encounterId, userId])
+  @@index([teamConfigId, configId])
+  @@index([userId])
+}
+
+model Birthday2026EncounterWinner {
+  encounterId  Int      @id
+  configId     Int
+  userId       String
+  transactionId Int     @unique
+  reward       Int
+  wonAt        DateTime @db.Timestamp(6)
+
+  encounter   Birthday2026Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  transaction Transaction           @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([configId, userId])
+}
+
+model Birthday2026TeamEncounterCompletion {
+  encounterId  Int
+  teamConfigId Int
+  configId     Int
+  reward       Int
+  completedAt  DateTime @db.Timestamp(6)
+
+  encounter  Birthday2026Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@id([encounterId, teamConfigId])
+  @@index([teamConfigId, configId])
+}
+
 model Birthday2026MemberState {
   id           Int      @id @default(autoincrement())
   configId     Int
@@ -365,10 +457,16 @@ enum Birthday2026PersonalTransactionSource {
   textActivity
   voiceActivity
   settlement
+  encounter
 }
 
 enum Birthday2026IndividualResultCategory {
   topContributor
+}
+
+enum Birthday2026EncounterKind {
+  quickGrab
+  teamThreshold
 }
 
 enum Birthday2026TeamWalletTransactionSource {

@@ -20,6 +20,11 @@ import {
 import { Effect } from "effect";
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
+import {
+  finishBirthday2026Encounter,
+  reconcileBirthday2026EncounterMessage,
+  spawnBirthday2026Encounter,
+} from "./events/birthday2026/encounterService";
 import { reconcileBirthday2026StatusMessage } from "./events/birthday2026/statusService";
 import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
 import {
@@ -96,6 +101,10 @@ type Halloween2025EndSpawnData = {
 
 type Birthday2026DigestData = {
   batchId: number;
+};
+
+type Birthday2026EncounterData = {
+  encounterId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -507,6 +516,54 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                   `Failed to update Birthday 2026 status after batch ${batchId}: ${status.reason}`,
                 );
               }
+            }
+          },
+        )
+        .addHandler(
+          "birthday2026EncounterExpire",
+          async ({ client }, { encounterId }: Birthday2026EncounterData) => {
+            const now = new Date();
+            await finishBirthday2026Encounter(prisma, encounterId, now);
+            await reconcileBirthday2026EncounterMessage(
+              client,
+              prisma,
+              encounterId,
+              now,
+            );
+          },
+        )
+        .addHandler(
+          "birthday2026EncounterSpawn",
+          async ({ client }, { encounterId }: Birthday2026EncounterData) => {
+            const previous = await prisma.birthday2026Encounter.findUnique({
+              where: { id: encounterId },
+              select: { kind: true, config: { select: { guildId: true } } },
+            });
+            if (!previous) return;
+            const startsAt = new Date();
+            const result = await spawnBirthday2026Encounter(prisma, {
+              guildId: previous.config.guildId,
+              kind: previous.kind === "quickGrab" ? "teamThreshold" : "quickGrab",
+              sourceKey: `scheduled:${encounterId}`,
+              startsAt,
+              scheduleJob: (tx, type, nextEncounterId, handleAfter) =>
+                tx.task
+                  .create({
+                    data: {
+                      identifier: `${type}:${nextEncounterId}`,
+                      handleAfter,
+                      data: { type, data: { encounterId: nextEncounterId } },
+                    },
+                  })
+                  .then(() => undefined),
+            });
+            if (result.ok) {
+              await reconcileBirthday2026EncounterMessage(
+                client,
+                prisma,
+                result.encounter.id,
+                startsAt,
+              );
             }
           },
         )

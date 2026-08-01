@@ -55,6 +55,7 @@ model Transaction {
   birthday2026PersonalTransaction   Birthday2026PersonalTransaction?
   birthday2026TeamWalletTransaction Birthday2026TeamWalletTransaction?
   birthday2026FeedBatch             Birthday2026FeedBatch?
+  birthday2026EncounterWinner       Birthday2026EncounterWinner?
 
   @@map("transaction")
 }
