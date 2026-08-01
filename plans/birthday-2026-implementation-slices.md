@@ -448,6 +448,13 @@ Fallback:
 
 **Outcome:** one limited raid command moves an auditable, bounded amount of vulnerable Pasza exactly once.
 
+**Status:** complete. Captains receive a fixed configured number of attempts and
+can target an enemy team. The bot selects a whole eligible pending feed batch,
+preserves protected floors and per-person caps, moves it atomically between team
+wallets, and records paired ledger entries plus an immutable audit result. Failed
+eligible attempts consume one charge; retries do not. Raids follow the same
+event-wide activation state as every other mechanic.
+
 Implement:
 
 - raid charges;
@@ -479,6 +486,12 @@ Pre-release scope cut:
   promises rather than shipping dormant configuration or a runtime raid flag.
 
 ## Slice 10: advanced stretch mechanics
+
+**Status:** complete by scope decision. No advanced mechanic was selected. The
+individual raid has been implemented and tested, but has not yet accumulated the
+production simulation and moderation evidence required by this slice. Coordinated
+raids, response windows, counterattacks, puzzle encounters, extra upgrade trees,
+and `Dziki Knur` are therefore intentionally omitted as separate future slices.
 
 Consider only after the previous slices are stable and simulated:
 
