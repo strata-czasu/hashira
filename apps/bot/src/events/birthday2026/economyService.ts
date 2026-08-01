@@ -306,6 +306,7 @@ export type FeedBirthday2026PigResult =
       batch: Birthday2026FeedBatch;
       personalBalance: number;
       teamBalance: number;
+      teamConfigId: number;
     }
   | {
       ok: false;
@@ -320,7 +321,7 @@ const findFeedResult = async (
   const batch = await prisma.birthday2026FeedBatch.findUnique({
     where: { configId_sourceKey: { configId, sourceKey } },
     include: {
-      wallet: { select: { balance: true } },
+      wallet: { select: { balance: true, teamConfigId: true } },
       personalTransaction: {
         include: { wallet: { select: { balance: true } } },
       },
@@ -334,6 +335,7 @@ const findFeedResult = async (
     batch,
     personalBalance: batch.personalTransaction.wallet.balance,
     teamBalance: batch.wallet.balance,
+    teamConfigId: batch.wallet.teamConfigId,
   };
 };
 
@@ -465,6 +467,7 @@ export const feedBirthday2026Pig = async (
         batch,
         personalBalance: updatedPersonalWallet.balance,
         teamBalance: updatedTeamWallet.balance,
+        teamConfigId: membership.teamConfigId,
       };
     });
   } catch (error) {
@@ -484,6 +487,7 @@ export type DigestBirthday2026FeedBatchResult =
       amount: number;
       permanentWeight: number;
       teamBalance: number;
+      teamConfigId: number;
     }
   | {
       ok: false;
@@ -512,6 +516,7 @@ export const digestBirthday2026FeedBatch = async (
           amount: batch.amount,
           permanentWeight: batch.wallet.permanentWeight,
           teamBalance: batch.wallet.balance,
+          teamConfigId: batch.wallet.teamConfigId,
         };
       }
       if (input.processedAt < batch.digestAt) {
@@ -532,6 +537,7 @@ export const digestBirthday2026FeedBatch = async (
           amount: batch.amount,
           permanentWeight: currentWallet.permanentWeight,
           teamBalance: currentWallet.balance,
+          teamConfigId: currentWallet.teamConfigId,
         };
       }
 
@@ -568,6 +574,7 @@ export const digestBirthday2026FeedBatch = async (
         amount: batch.remainingAmount,
         permanentWeight: wallet.permanentWeight,
         teamBalance: wallet.balance,
+        teamConfigId: wallet.teamConfigId,
       };
     });
   } catch (error) {

@@ -120,6 +120,7 @@ export const findBirthday2026Teams = (prisma: PrismaTransaction, guildId: string
     include: {
       team: true,
       identity: true,
+      persona: true,
       _count: { select: { memberStates: true } },
     },
     orderBy: { id: "asc" },
@@ -317,20 +318,14 @@ export const setBirthday2026Captain = async (
       if (!membership || membership.teamConfigId !== teamConfig.id) {
         return { ok: false, reason: "captain_not_member" } as const;
       }
+      if (!teamConfig.identity) {
+        return { ok: false, reason: "tucznik_not_configured" } as const;
+      }
 
-      const identity = teamConfig.identity
-        ? await tx.birthday2026TeamIdentity.update({
-            where: { teamConfigId: teamConfig.id },
-            data: { captainUserId: userId },
-          })
-        : await tx.birthday2026TeamIdentity.create({
-            data: {
-              teamConfigId: teamConfig.id,
-              configId: teamConfig.configId,
-              tucznikUserId: userId,
-              captainUserId: userId,
-            },
-          });
+      const identity = await tx.birthday2026TeamIdentity.update({
+        where: { teamConfigId: teamConfig.id },
+        data: { captainUserId: userId },
+      });
       const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({
         where: { id: teamConfig.id },
       });
@@ -349,11 +344,16 @@ export const setBirthday2026Tucznik = (
   guildId: string,
   teamConfigId: number,
   userId: string | null,
+  changedByUserId: string,
 ) =>
   prisma.$transaction(async (tx) => {
     const teamConfig = await tx.birthday2026TeamConfig.findFirst({
       where: { id: teamConfigId, config: { guildId } },
-      select: { id: true, configId: true },
+      select: {
+        id: true,
+        configId: true,
+        identity: { select: { tucznikUserId: true } },
+      },
     });
     if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
 
@@ -396,6 +396,18 @@ export const setBirthday2026Tucznik = (
       }
     }
 
+    const identityChanged = teamConfig.identity?.tucznikUserId !== userId;
+    if (identityChanged) {
+      await Promise.all([
+        tx.birthday2026TeamPersona.deleteMany({
+          where: { teamConfigId: teamConfig.id },
+        }),
+        tx.birthday2026TeamArtwork.deleteMany({
+          where: { teamConfigId: teamConfig.id },
+        }),
+      ]);
+    }
+
     let identity: Birthday2026TeamIdentity | null = null;
     if (userId) {
       identity = await tx.birthday2026TeamIdentity.upsert({
@@ -414,6 +426,17 @@ export const setBirthday2026Tucznik = (
     } else {
       await tx.birthday2026TeamIdentity.deleteMany({
         where: { teamConfigId: teamConfig.id },
+      });
+    }
+    if (identityChanged) {
+      await tx.birthday2026TucznikChange.create({
+        data: {
+          teamConfigId: teamConfig.id,
+          configId: teamConfig.configId,
+          previousUserId: teamConfig.identity?.tucznikUserId ?? null,
+          nextUserId: userId,
+          changedByUserId,
+        },
       });
     }
     const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({

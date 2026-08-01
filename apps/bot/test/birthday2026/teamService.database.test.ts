@@ -3,6 +3,11 @@ import { PrismaClient } from "@hashira/prisma-client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
+  configureBirthday2026Artwork,
+  configureBirthday2026Milestones,
+  configureBirthday2026Persona,
+} from "../../src/events/birthday2026/statusService";
+import {
   assignBirthday2026Member,
   createBirthday2026Team,
   findBirthday2026Membership,
@@ -181,8 +186,15 @@ databaseTests("Birthday 2026 team services", () => {
       userId: captainUserId,
     });
     expect(
-      (await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId))
-        .ok,
+      (
+        await setBirthday2026Tucznik(
+          prisma,
+          fixture.guildId,
+          first.id,
+          captainUserId,
+          captainUserId,
+        )
+      ).ok,
     ).toBe(true);
 
     expect(
@@ -251,13 +263,20 @@ databaseTests("Birthday 2026 team services", () => {
     ]);
 
     expect(
-      await setBirthday2026Tucznik(prisma, fixture.guildId, first.id, otherTeamUserId),
+      await setBirthday2026Tucznik(
+        prisma,
+        fixture.guildId,
+        first.id,
+        otherTeamUserId,
+        tucznikUserId,
+      ),
     ).toEqual({ ok: false, reason: "tucznik_not_member" });
 
     const appointment = await setBirthday2026Tucznik(
       prisma,
       fixture.guildId,
       first.id,
+      tucznikUserId,
       tucznikUserId,
     );
     expect(appointment).toMatchObject({
@@ -267,6 +286,29 @@ databaseTests("Birthday 2026 team services", () => {
         captainUserId: tucznikUserId,
       },
     });
+
+    const milestones = await configureBirthday2026Milestones(
+      prisma,
+      fixture.guildId,
+      [10, 20, 30, 40],
+    );
+    if (!milestones.ok) throw new Error(milestones.reason);
+    const persona = await configureBirthday2026Persona(prisma, {
+      guildId: fixture.guildId,
+      teamConfigId: first.id,
+      title: "Kapitan Koryta",
+      fallbackEmoji: "🐗",
+      configuredByUserId: tucznikUserId,
+      consentedAt: new Date("2026-08-01T18:00:00Z"),
+    });
+    if (!persona.ok) throw new Error(persona.reason);
+    const artwork = await configureBirthday2026Artwork(prisma, {
+      guildId: fixture.guildId,
+      teamConfigId: first.id,
+      milestonePosition: 0,
+      imageUrl: "https://example.com/tucznik.png",
+    });
+    if (!artwork.ok) throw new Error(artwork.reason);
 
     const captainReplacement = await setBirthday2026Captain(
       prisma,
@@ -281,6 +323,16 @@ databaseTests("Birthday 2026 team services", () => {
         captainUserId: replacementCaptainUserId,
       },
     });
+    expect(
+      await prisma.birthday2026TeamPersona.findUnique({
+        where: { teamConfigId: first.id },
+      }),
+    ).not.toBeNull();
+    expect(
+      await prisma.birthday2026TeamArtwork.count({
+        where: { teamConfigId: first.id },
+      }),
+    ).toBe(1);
 
     expect(
       await assignBirthday2026Member(prisma, {
@@ -323,6 +375,7 @@ databaseTests("Birthday 2026 team services", () => {
       fixture.guildId,
       first.id,
       null,
+      tucznikUserId,
     );
     expect(cleared).toEqual({
       ok: true,
@@ -334,6 +387,38 @@ databaseTests("Birthday 2026 team services", () => {
         where: { teamConfigId: first.id },
       }),
     ).toBeNull();
+    expect(
+      await prisma.birthday2026TeamPersona.findUnique({
+        where: { teamConfigId: first.id },
+      }),
+    ).toBeNull();
+    expect(
+      await prisma.birthday2026TeamArtwork.count({
+        where: { teamConfigId: first.id },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.birthday2026TucznikChange.findMany({
+        where: { teamConfigId: first.id },
+        orderBy: { id: "asc" },
+        select: {
+          previousUserId: true,
+          nextUserId: true,
+          changedByUserId: true,
+        },
+      }),
+    ).toEqual([
+      {
+        previousUserId: null,
+        nextUserId: tucznikUserId,
+        changedByUserId: tucznikUserId,
+      },
+      {
+        previousUserId: tucznikUserId,
+        nextUserId: null,
+        changedByUserId: tucznikUserId,
+      },
+    ]);
   });
 
   it("rebalances members atomically while pinning captains", async () => {
@@ -361,10 +446,11 @@ databaseTests("Birthday 2026 team services", () => {
         }),
       ),
     );
-    const captainResult = await setBirthday2026Captain(
+    const captainResult = await setBirthday2026Tucznik(
       prisma,
       fixture.guildId,
       captainTeam.id,
+      captainUserId,
       captainUserId,
     );
     if (!captainResult.ok) throw new Error(captainResult.reason);

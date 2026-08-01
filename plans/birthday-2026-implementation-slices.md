@@ -196,11 +196,12 @@ Fallback:
 **Outcome:** members can earn Pasza from normal activity, feed their human
 Tucznik's fictional persona, see progress, and reach a final result.
 
-**Status:** in progress. Human Tucznik identity, idempotent text and voice
-earning, public info, private balance/history, command and button feeding, team
-status, rankings, opt-in registration, activity-balanced roster finalization,
-and Discord role synchronization are implemented. Canonical status message
-recovery and artwork milestones remain.
+**Status:** complete. Human Tucznik identity, consented persona and artwork,
+idempotent text and voice earning, public info, private balance/history, command
+and button feeding, canonical team status recovery, milestones, rankings, opt-in
+registration, activity-balanced roster finalization, and Discord role
+synchronization are implemented. The first-meal presentation is intentionally
+omitted under the documented fallback; distinct contributor counts remain.
 
 Implement:
 
