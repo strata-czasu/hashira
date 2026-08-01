@@ -107,7 +107,8 @@ Fallback:
 
 **Outcome:** staff can configure an invisible Birthday event, create teams, assign members and captains, and inspect its state.
 
-**Status:** in progress. Prisma schema and migration complete; core services are next.
+**Status:** complete. The schema, core event/team services, and private staff interface
+are implemented; no player-facing Birthday command is registered yet.
 
 Implement:
 
