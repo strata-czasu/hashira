@@ -96,12 +96,20 @@ export const buildBirthday2026InfoView = (
             <Bold>Twoja drużyna:</Bold> {roleMention(team.roleId)} — Tucznik:{" "}
             {userMention(team.tucznikUserId)}
           </>
+        ) : snapshot.registered ? (
+          "Jesteś zapisany. Drużynę otrzymasz przy początkowym przydziale."
         ) : (
           "Nie należysz jeszcze do drużyny eventowej."
         )}
       </TextDisplay>
       <Separator divider />
       <TextDisplay>
+        {snapshot.registrationState === "open" && !snapshot.registered ? (
+          <>
+            Użyj <InlineCode>/tucznik dolacz</InlineCode>, aby zapisać się do eventu.
+            <Br />
+          </>
+        ) : null}
         Zdobywaj Paszę za aktywność, a następnie użyj{" "}
         <InlineCode>/tucznik nakarm</InlineCode>, aby przekazać ją Tucznikowi swojej
         drużyny. Pasza trafia najpierw do koryta, a po trawieniu zwiększa stałą wagę

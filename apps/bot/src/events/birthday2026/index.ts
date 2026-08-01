@@ -3,6 +3,7 @@ import { render } from "@hashira/jsx";
 import {
   bold,
   channelMention,
+  type Guild,
   PermissionFlagsBits,
   roleMention,
   TimestampStyles,
@@ -42,6 +43,12 @@ import {
   buildBirthday2026RankingView,
   buildBirthday2026StatusView,
 } from "./playerView";
+import {
+  finalizeBirthday2026Registration,
+  findBirthday2026RoleAssignments,
+  registerBirthday2026Participant,
+  withdrawBirthday2026Registration,
+} from "./registrationService";
 import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
 import {
   assignBirthday2026Member,
@@ -125,6 +132,23 @@ const playerFeedErrorMessages: Record<Birthday2026PlayerFeedErrorReason, string>
   teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
 };
 
+const registrationErrorMessages = {
+  already_assigned: "Jesteś już przypisany do drużyny eventowej.",
+  already_registered: "Jesteś już zapisany do eventu.",
+  event_not_available: "Event nie jest teraz dostępny.",
+  not_registered: "Nie jesteś zapisany do eventu.",
+  registration_closed: "Event już się zakończył.",
+  teams_not_ready: "Wszystkie drużyny muszą najpierw mieć swoich Tuczników.",
+};
+
+const finalizationErrorMessages = {
+  already_finalized: "Drużyny zostały już przydzielone.",
+  config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
+  earning_not_configured: "Najpierw skonfiguruj zdobywanie Paszy za tekst i głos.",
+  event_enabled: "Wyłącz event przed przydzieleniem drużyn.",
+  teams_not_ready: "Skonfiguruj dokładnie cztery drużyny i ich Tuczników.",
+};
+
 const getPlayerSnapshotOrReply = async (
   prisma: Parameters<typeof getBirthday2026PlayerSnapshot>[0],
   guildId: string,
@@ -149,12 +173,102 @@ const findTeamByRole = async (
   return teams.find((team) => team.roleId === roleId) ?? null;
 };
 
+const syncBirthday2026Roles = async (
+  prisma: Parameters<typeof findBirthday2026RoleAssignments>[0],
+  guild: Guild,
+) => {
+  const { assignments, roleIds } = await findBirthday2026RoleAssignments(
+    prisma,
+    guild.id,
+  );
+  const results = await Promise.allSettled(
+    assignments.map(async (assignment) => {
+      const member = await guild.members.fetch(assignment.userId);
+      const oldRoles = roleIds.filter(
+        (roleId) => roleId !== assignment.roleId && member.roles.cache.has(roleId),
+      );
+      if (oldRoles.length > 0) {
+        await member.roles.remove(oldRoles, "Synchronizacja Birthday 2026");
+      }
+      if (!member.roles.cache.has(assignment.roleId)) {
+        await member.roles.add(assignment.roleId, "Synchronizacja Birthday 2026");
+      }
+    }),
+  );
+  return {
+    failed: results.filter((result) => result.status === "rejected").length,
+    total: assignments.length,
+  };
+};
+
 export const birthday2026 = new Hashira({ name: "birthday2026" })
   .use(base)
   .group("tucznik", (group) =>
     group
       .setDescription("Nakarm Tucznika swojej drużyny")
       .setDMPermission(false)
+      .addCommand("dolacz", (command) =>
+        command
+          .setDescription("Zapisz się do eventu urodzinowego")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            await ensureUserExists(prisma, itx.user);
+
+            const result = await registerBirthday2026Participant(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+              Math.random,
+            );
+            if (!result.ok) {
+              await errorFollowUp(itx, registrationErrorMessages[result.reason]);
+              return;
+            }
+            if (!result.assigned) {
+              await itx.editReply(
+                "Zapisano Cię do eventu. Drużynę otrzymasz przy początkowym przydziale.",
+              );
+              return;
+            }
+
+            let roleAssigned = true;
+            try {
+              await itx.member.roles.add(result.roleId);
+            } catch (error) {
+              roleAssigned = false;
+              console.warn("Failed to assign Birthday 2026 team role", error);
+            }
+            await itx.editReply(
+              `Dołączasz do ${roleMention(result.roleId)}.${
+                roleAssigned
+                  ? " Rola została nadana."
+                  : " Nie udało się nadać roli; administracja może uruchomić synchronizację."
+              }`,
+            );
+          }),
+      )
+      .addCommand("zrezygnuj", (command) =>
+        command
+          .setDescription("Wycofaj zapis przed przydzieleniem drużyny")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await withdrawBirthday2026Registration(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+            );
+            if (!result.ok) {
+              await errorFollowUp(itx, registrationErrorMessages[result.reason]);
+              return;
+            }
+            await itx.editReply("Wycofano Twój zapis do eventu.");
+          }),
+      )
       .addCommand("info", (command) =>
         command
           .setDescription("Pokaż zasady i czas trwania eventu")
@@ -302,13 +416,25 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const [teams, disabledTextChannels, textDiagnostics, voiceDiagnostics] =
-              await Promise.all([
-                findBirthday2026Teams(prisma, itx.guildId),
-                findBirthday2026DisabledTextChannels(prisma, itx.guildId),
-                getBirthday2026TextEarningDiagnostics(prisma, itx.guildId),
-                getBirthday2026VoiceEarningDiagnostics(prisma, itx.guildId),
-              ]);
+            const [
+              teams,
+              disabledTextChannels,
+              textDiagnostics,
+              voiceDiagnostics,
+              registrationCount,
+              rosterFinalization,
+            ] = await Promise.all([
+              findBirthday2026Teams(prisma, itx.guildId),
+              findBirthday2026DisabledTextChannels(prisma, itx.guildId),
+              getBirthday2026TextEarningDiagnostics(prisma, itx.guildId),
+              getBirthday2026VoiceEarningDiagnostics(prisma, itx.guildId),
+              prisma.birthday2026Registration.count({
+                where: { configId: config.id },
+              }),
+              prisma.birthday2026RosterFinalization.findUnique({
+                where: { configId: config.id },
+              }),
+            ]);
             const now = new Date();
             const configuredTucznicy = teams.filter(
               (team) => team.identity !== null,
@@ -332,6 +458,14 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               content: [
                 `${bold("Stan eventu:")} ${getBirthday2026EventState(config, now)}`,
                 `${bold("Zapisy:")} ${getBirthday2026RegistrationState(config, now)}`,
+                `${bold("Zapisani / przydział:")} ${registrationCount} / ${
+                  rosterFinalization
+                    ? time(
+                        rosterFinalization.finalizedAt,
+                        TimestampStyles.ShortDateTime,
+                      )
+                    : "nie wykonano"
+                }`,
                 `${bold("Widoczny / aktywny:")} ${config.visible ? "tak" : "nie"} / ${
                   config.enabled ? "tak" : "nie"
                 }`,
@@ -409,12 +543,14 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 enabled,
               });
               if (!result.ok) {
-                await errorFollowUp(
-                  itx,
-                  result.reason === "invalid_timezone"
-                    ? "Nieprawidłowa strefa czasowa."
-                    : "Koniec eventu musi przypadać po jego rozpoczęciu.",
-                );
+                const messages = {
+                  invalid_event_window:
+                    "Koniec eventu musi przypadać po jego rozpoczęciu.",
+                  invalid_timezone: "Nieprawidłowa strefa czasowa.",
+                  roster_finalized:
+                    "Nie można zmienić konfiguracji po przydzieleniu drużyn.",
+                };
+                await errorFollowUp(itx, messages[result.reason]);
                 return;
               }
 
@@ -459,6 +595,56 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             await itx.editReply({
               content: `Flagi zapisane: widoczny=${config.visible}, aktywny=${config.enabled}.`,
             });
+          }),
+      )
+      .addCommand("przydziel-zapisy", (command) =>
+        command
+          .setDescription("Wykonaj początkowy przydział zapisanych")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await finalizeBirthday2026Registration(
+              prisma,
+              itx.guildId,
+              Math.random,
+            );
+            if (!result.ok) {
+              await errorFollowUp(itx, finalizationErrorMessages[result.reason]);
+              return;
+            }
+
+            const roleSync = await syncBirthday2026Roles(prisma, itx.guild);
+            const teamLines = result.teams.map(
+              (team) =>
+                `${roleMention(team.roleId)} — ${team.memberCount} os. — prognoza ${team.projectedActivity.toFixed(1)}`,
+            );
+            await itx.editReply({
+              content: [
+                `Przydzielono ${result.assignments.length} uczestników.`,
+                ...teamLines,
+                `Role: ${roleSync.total - roleSync.failed}/${roleSync.total} zsynchronizowano${
+                  roleSync.failed > 0
+                    ? "; uruchom `synchronizuj-role`, aby ponowić błędy"
+                    : ""
+                }.`,
+              ].join("\n"),
+            });
+          }),
+      )
+      .addCommand("synchronizuj-role", (command) =>
+        command
+          .setDescription("Zsynchronizuj role Discord z przydziałem drużyn")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await syncBirthday2026Roles(prisma, itx.guild);
+            await itx.editReply(
+              `Role: ${result.total - result.failed}/${result.total} zsynchronizowano${
+                result.failed > 0 ? `, błędy: ${result.failed}` : ""
+              }.`,
+            );
           }),
       )
       .addCommand("ekonomia", (command) =>
