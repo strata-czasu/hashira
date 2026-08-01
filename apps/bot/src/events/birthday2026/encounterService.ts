@@ -8,6 +8,7 @@ import { discordTry } from "../../util/discordTry";
 import { lockBirthday2026Config } from "./configService";
 import { buildBirthday2026EncounterView } from "./encounterView";
 import { getBirthday2026EventState } from "./eventState";
+import { awardBirthday2026Powerup } from "./powerupService";
 
 const isPositiveInteger = (value: number) => Number.isSafeInteger(value) && value > 0;
 
@@ -172,7 +173,9 @@ export const enterBirthday2026Encounter = (
     const encounter = await tx.birthday2026Encounter.findUnique({
       where: { id: input.encounterId },
       include: {
-        config: { include: { economy: true, encounterConfig: true } },
+        config: {
+          include: { economy: true, encounterConfig: true, powerupConfig: true },
+        },
       },
     });
     if (!encounter) return { ok: false, reason: "encounter_not_found" } as const;
@@ -185,7 +188,11 @@ export const enterBirthday2026Encounter = (
     ) {
       return { ok: false, reason: "encounter_not_open" } as const;
     }
-    if (!encounter.config.economy || !encounter.config.encounterConfig) {
+    if (
+      !encounter.config.economy ||
+      !encounter.config.encounterConfig ||
+      !encounter.config.powerupConfig
+    ) {
       return { ok: false, reason: "encounters_not_configured" } as const;
     }
 
@@ -324,6 +331,7 @@ export const enterBirthday2026Encounter = (
           },
         },
       });
+      await awardBirthday2026Powerup(tx, membership.teamConfigId, encounter.configId);
     }
     return {
       ok: true,

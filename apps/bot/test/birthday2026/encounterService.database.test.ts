@@ -4,16 +4,28 @@ import { PrismaClient } from "@hashira/prisma-client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { Client } from "discord.js";
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
-import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
+import {
+  feedBirthday2026Pig,
+  grantBirthday2026Pasza,
+  setupBirthday2026Economy,
+} from "../../src/events/birthday2026/economyService";
 import {
   configureBirthday2026Encounters,
   enterBirthday2026Encounter,
   reconcileBirthday2026EncounterMessage,
   spawnBirthday2026Encounter,
 } from "../../src/events/birthday2026/encounterService";
+import { getBirthday2026Newspaper } from "../../src/events/birthday2026/newspaperService";
+import {
+  activateBirthday2026Turbo,
+  configureBirthday2026Powerups,
+  getBirthday2026PowerupStatus,
+} from "../../src/events/birthday2026/powerupService";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
+  setBirthday2026Captain,
+  setBirthday2026Tucznik,
 } from "../../src/events/birthday2026/teamService";
 
 const connectionString = process.env.DATABASE_TEST_URL;
@@ -47,6 +59,11 @@ databaseTests("Birthday 2026 encounters", () => {
   afterAll(async () => {
     if (!prisma) return;
     await prisma.task.deleteMany({ where: { id: { in: taskIds } } });
+    await prisma.birthday2026TeamWalletTransaction.deleteMany({
+      where: {
+        wallet: { teamConfig: { config: { guildId: { in: guildIds } } } },
+      },
+    });
     await prisma.birthday2026Config.deleteMany({
       where: { guildId: { in: guildIds } },
     });
@@ -126,6 +143,27 @@ databaseTests("Birthday 2026 encounters", () => {
       teamReward: 7,
     });
     if (!encounterConfig.ok) throw new Error(encounterConfig.reason);
+    const powerupConfig = await configureBirthday2026Powerups(prisma, {
+      guildId,
+      maxInventory: 1,
+      effectDurationSeconds: 600,
+      turboDigestionSeconds: 0,
+    });
+    if (!powerupConfig.ok) throw new Error(powerupConfig.reason);
+    for (const [teamConfigId, captainUserId] of [
+      [first.team.id, members[0]],
+      [second.team.id, members[2]],
+    ] as const) {
+      if (!captainUserId) throw new Error("Missing captain fixture");
+      const identity = await setBirthday2026Tucznik(
+        prisma,
+        guildId,
+        teamConfigId,
+        captainUserId,
+        actorUserId,
+      );
+      if (!identity.ok) throw new Error(identity.reason);
+    }
     const quick = await spawnBirthday2026Encounter(prisma, {
       guildId,
       kind: "quickGrab",
@@ -197,6 +235,13 @@ databaseTests("Birthday 2026 encounters", () => {
       }),
     ).toEqual([{ permanentWeight: 7 }, { permanentWeight: 7 }]);
     expect(
+      await prisma.birthday2026TeamPowerupState.findMany({
+        where: { teamConfigId: { in: [first.team.id, second.team.id] } },
+        orderBy: { teamConfigId: "asc" },
+        select: { inventory: true },
+      }),
+    ).toEqual([{ inventory: 1 }, { inventory: 1 }]);
+    expect(
       await enterBirthday2026Encounter(prisma, {
         encounterId: teamEncounter.encounter.id,
         guildId,
@@ -256,5 +301,87 @@ databaseTests("Birthday 2026 encounters", () => {
         })
       ).messageId,
     ).not.toBe(firstMessage.messageId);
+
+    const firstCaptain = members[0];
+    const replacementCaptain = members[1];
+    if (!firstCaptain || !replacementCaptain) {
+      throw new Error("Missing power-up fixture member");
+    }
+    expect(
+      await activateBirthday2026Turbo(prisma, {
+        guildId,
+        teamConfigId: first.team.id,
+        captainUserId: replacementCaptain,
+        activatedAt: new Date("2026-08-02T20:00:00Z"),
+      }),
+    ).toEqual({ ok: false, reason: "captain_required" });
+    const activation = await activateBirthday2026Turbo(prisma, {
+      guildId,
+      teamConfigId: first.team.id,
+      captainUserId: firstCaptain,
+      activatedAt: new Date("2026-08-02T20:00:00Z"),
+    });
+    if (!activation.ok) throw new Error(activation.reason);
+    expect(
+      await activateBirthday2026Turbo(prisma, {
+        guildId,
+        teamConfigId: first.team.id,
+        captainUserId: firstCaptain,
+        activatedAt: new Date("2026-08-02T20:00:01Z"),
+      }),
+    ).toEqual({ ok: false, reason: "powerup_active" });
+    const replacement = await setBirthday2026Captain(
+      prisma,
+      guildId,
+      first.team.id,
+      replacementCaptain,
+    );
+    if (!replacement.ok) throw new Error(replacement.reason);
+    expect(
+      await prisma.birthday2026PowerupActivation.count({
+        where: { teamConfigId: first.team.id },
+      }),
+    ).toBe(1);
+
+    const grant = await grantBirthday2026Pasza(prisma, {
+      guildId,
+      userId: firstCaptain,
+      amount: 10,
+      sourceKey: `powerup-grant-${suffix}`,
+      createdByUserId: actorUserId,
+      reason: "Power-up fixture",
+    });
+    if (!grant.ok) throw new Error(grant.reason);
+    const turboFeedAt = new Date("2026-08-02T20:00:02Z");
+    const turboFeed = await feedBirthday2026Pig(prisma, {
+      guildId,
+      userId: firstCaptain,
+      amount: 10,
+      sourceKey: `powerup-feed-${suffix}`,
+      acceptedAt: turboFeedAt,
+      reason: "Power-up fixture",
+      scheduleDigestion: async () => {},
+    });
+    if (!turboFeed.ok) throw new Error(turboFeed.reason);
+    expect(turboFeed.batch.digestAt).toEqual(turboFeedAt);
+    expect(
+      (
+        await getBirthday2026PowerupStatus(
+          prisma,
+          guildId,
+          replacementCaptain,
+          new Date("2026-08-02T20:11:00Z"),
+        )
+      )?.teamConfig.powerupActivations,
+    ).toHaveLength(0);
+    expect(
+      await getBirthday2026Newspaper(prisma, guildId, new Date("2026-08-02T20:11:00Z")),
+    ).toMatchObject({
+      day: 2,
+      encounters: 2,
+      activations: 1,
+      totalFed: 10,
+      topFeeders: [{ userId: firstCaptain, amount: 10 }],
+    });
   });
 });

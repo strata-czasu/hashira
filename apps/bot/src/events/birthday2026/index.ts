@@ -39,6 +39,7 @@ import {
   getBirthday2026EventState,
   getBirthday2026RegistrationState,
 } from "./eventState";
+import { getBirthday2026Newspaper } from "./newspaperService";
 import {
   type Birthday2026PublicErrorReason,
   type FeedBirthday2026PlayerResult,
@@ -53,6 +54,11 @@ import {
   buildBirthday2026RankingView,
   buildBirthday2026StatusView,
 } from "./playerView";
+import {
+  activateBirthday2026Turbo,
+  configureBirthday2026Powerups,
+  getBirthday2026PowerupStatus,
+} from "./powerupService";
 import {
   finalizeBirthday2026Registration,
   findBirthday2026RoleAssignments,
@@ -471,6 +477,93 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               ].join("\n"),
             });
           }),
+      )
+      .addCommand("moce", (command) =>
+        command
+          .setDescription("Pokaż zapas i aktywną moc drużyny")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const status = await getBirthday2026PowerupStatus(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+            );
+            if (!status) {
+              await errorFollowUp(itx, "Nie należysz do drużyny eventowej.");
+              return;
+            }
+            const active = status.teamConfig.powerupActivations.at(0);
+            await itx.editReply(
+              `Turbo drużyny ${roleMention(status.teamConfig.roleId)}: zapas=${status.teamConfig.powerupState.inventory}, aktywne=${active ? `do ${time(active.expiresAt, TimestampStyles.RelativeTime)}` : "nie"}.`,
+            );
+          }),
+      )
+      .addCommand("turbo", (command) =>
+        command
+          .setDescription("Aktywuj turbo trawienie jako kapitan")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const status = await getBirthday2026PowerupStatus(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+            );
+            if (!status) {
+              await errorFollowUp(itx, "Nie należysz do drużyny eventowej.");
+              return;
+            }
+            const result = await activateBirthday2026Turbo(prisma, {
+              guildId: itx.guildId,
+              teamConfigId: status.teamConfig.id,
+              captainUserId: itx.user.id,
+              activatedAt: itx.createdAt,
+            });
+            if (!result.ok) {
+              const messages = {
+                captain_required: "Tylko kapitan może aktywować moc.",
+                event_not_open: "Turbo jest dostępne tylko podczas trwania eventu.",
+                event_settled: "Event został już rozliczony.",
+                inventory_empty: "Drużyna nie ma ładunku turbo.",
+                powerup_active: "Turbo tej drużyny jest już aktywne.",
+                powerups_not_configured: "Moce nie są skonfigurowane.",
+                team_not_found: "Nie znaleziono drużyny.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            await itx.editReply(
+              `Turbo aktywne do ${time(result.activation.expiresAt, TimestampStyles.RelativeTime)}.`,
+            );
+          }),
+      )
+      .addCommand("gazeta", (command) =>
+        command
+          .setDescription("Pokaż dzienny biuletyn z obory")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+            const newspaper = await getBirthday2026Newspaper(
+              prisma,
+              itx.guildId,
+              itx.createdAt,
+            );
+            if (!newspaper) {
+              await errorFollowUp(itx, "Event nie jest skonfigurowany.");
+              return;
+            }
+            await itx.editReply({
+              content: [
+                `${bold(`Gazeta z obory — dzień ${newspaper.day}`)}`,
+                `Nakarmiono: ${newspaper.totalFed} Paszy; wydarzenia: ${newspaper.encounters}; kamienie milowe: ${newspaper.milestones}; użyte turbo: ${newspaper.activations}.`,
+                `Czołówka: ${newspaper.teams.map((team) => `${roleMention(team.roleId)} ${team.permanentWeight}`).join(" · ") || "brak"}`,
+                `Karmiący dnia: ${newspaper.topFeeders.map((entry) => `${userMention(entry.userId)} (${entry.amount})`).join(", ") || "brak"}`,
+              ].join("\n"),
+            });
+          }),
       ),
   )
   .group("urodziny-admin", (group) =>
@@ -874,6 +967,51 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               await itx.editReply(
                 `Zdobywanie Paszy za głos: jednostka ${unitMinutes} min, limit ${dailyCap} na dzień eventowy.`,
               );
+            },
+          ),
+      )
+      .addCommand("moce-konfiguruj", (command) =>
+        command
+          .setDescription("Skonfiguruj kapitańskie turbo")
+          .addInteger("zapas", (option) =>
+            option.setDescription("Maksymalny zapas ładunków").setMinValue(1),
+          )
+          .addInteger("czas-minuty", (option) =>
+            option.setDescription("Czas działania turbo").setMinValue(1),
+          )
+          .addInteger("trawienie-sekundy", (option) =>
+            option.setDescription("Trawienie podczas turbo").setMinValue(0),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                zapas: maxInventory,
+                "czas-minuty": effectDurationMinutes,
+                "trawienie-sekundy": turboDigestionSeconds,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+              const result = await configureBirthday2026Powerups(prisma, {
+                guildId: itx.guildId,
+                maxInventory,
+                effectDurationSeconds: effectDurationMinutes * 60,
+                turboDigestionSeconds,
+              });
+              if (!result.ok) {
+                await errorFollowUp(
+                  itx,
+                  {
+                    config_not_found: "Najpierw skonfiguruj event.",
+                    event_settled: "Event został już rozliczony.",
+                    invalid_config: "Wartości mocy są nieprawidłowe.",
+                  }[result.reason],
+                );
+                return;
+              }
+              await itx.editReply("Skonfigurowano kapitańskie turbo.");
             },
           ),
       )
