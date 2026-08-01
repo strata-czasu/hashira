@@ -34,6 +34,8 @@ const snapshot: Birthday2026PlayerSnapshot = {
       source: "textActivity",
     },
   ],
+  registered: false,
+  registrationState: "closed",
   membership: {
     joinedAt: new Date("2026-08-02T18:00:00Z"),
     teamConfigId: 1,

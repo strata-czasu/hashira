@@ -1,6 +1,10 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { type FeedBirthday2026PigResult, feedBirthday2026Pig } from "./economyService";
-import { type Birthday2026EventState, getBirthday2026EventState } from "./eventState";
+import {
+  type Birthday2026EventState,
+  getBirthday2026EventState,
+  getBirthday2026RegistrationState,
+} from "./eventState";
 
 export type Birthday2026PublicErrorReason =
   | "economy_not_configured"
@@ -35,6 +39,8 @@ export type Birthday2026PlayerSnapshot = {
   eventStartAt: Date;
   eventState: Birthday2026EventState;
   history: Birthday2026PlayerHistoryEntry[];
+  registered: boolean;
+  registrationState: ReturnType<typeof getBirthday2026RegistrationState>;
   membership: {
     joinedAt: Date;
     teamConfigId: number;
@@ -66,6 +72,7 @@ export const getBirthday2026PlayerSnapshot = async (
     where: { guildId },
     include: {
       economy: { include: { currency: true } },
+      registrations: { where: { userId }, select: { userId: true } },
       teams: {
         include: {
           identity: true,
@@ -164,6 +171,8 @@ export const getBirthday2026PlayerSnapshot = async (
         reason: entry.transaction.reason,
         source: entry.source,
       })),
+      registered: config.registrations.length > 0,
+      registrationState: getBirthday2026RegistrationState(config, now),
       membership: membership ?? null,
       teams,
       timezone: config.timezone,

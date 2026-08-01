@@ -198,8 +198,9 @@ Tucznik's fictional persona, see progress, and reach a final result.
 
 **Status:** in progress. Human Tucznik identity, idempotent text and voice
 earning, public info, private balance/history, command and button feeding, team
-status, and rankings are implemented. Opt-in registration, canonical status
-message recovery, and artwork milestones remain.
+status, rankings, opt-in registration, activity-balanced roster finalization,
+and Discord role synchronization are implemented. Canonical status message
+recovery and artwork milestones remain.
 
 Implement:
 

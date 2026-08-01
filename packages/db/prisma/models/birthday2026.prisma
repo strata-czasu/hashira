@@ -15,6 +15,8 @@ model Birthday2026Config {
   textEarning          Birthday2026TextEarningConfig?
   voiceEarning         Birthday2026VoiceEarningConfig?
   teams                Birthday2026TeamConfig[]
+  registrations        Birthday2026Registration[]
+  rosterFinalization   Birthday2026RosterFinalization?
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
 }
@@ -92,6 +94,27 @@ model Birthday2026MemberState {
   @@unique([configId, userId])
   @@index([teamConfigId, configId])
   @@index([userId])
+}
+
+model Birthday2026Registration {
+  configId     Int
+  userId       String
+  registeredAt DateTime @default(now()) @db.Timestamp(6)
+
+  config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId])
+  @@index([userId])
+}
+
+model Birthday2026RosterFinalization {
+  configId        Int      @id
+  analysisStartAt DateTime @db.Timestamp(6)
+  analysisEndAt   DateTime @db.Timestamp(6)
+  finalizedAt     DateTime @default(now()) @db.Timestamp(6)
+
+  config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
 }
 
 model Birthday2026DisabledTextChannel {
