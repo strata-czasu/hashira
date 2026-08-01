@@ -21,6 +21,7 @@ import { Effect } from "effect";
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
 import { awardBirthday2026VoicePasza } from "./events/birthday2026/voiceEarningService";
+import { reconcileBirthday2026StatusMessage } from "./events/birthday2026/statusService";
 import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
 import {
   PrismaCombatRepository,
@@ -485,7 +486,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         )
         .addHandler(
           "birthday2026Digest",
-          async (_, { batchId }: Birthday2026DigestData) => {
+          async ({ client }, { batchId }: Birthday2026DigestData) => {
             const result = await digestBirthday2026FeedBatch(prisma, {
               batchId,
               processedAt: new Date(),
@@ -495,6 +496,22 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               throw new Error(
                 `Failed to digest Birthday 2026 feed batch ${batchId}: ${result.reason}`,
               );
+            }
+            if (result.ok) {
+              const status = await reconcileBirthday2026StatusMessage(
+                client,
+                prisma,
+                result.teamConfigId,
+              );
+              if (
+                !status.ok &&
+                status.reason !== "status_not_configured" &&
+                status.reason !== "status_not_ready"
+              ) {
+                console.warn(
+                  `Failed to update Birthday 2026 status after batch ${batchId}: ${status.reason}`,
+                );
+              }
             }
           },
         )

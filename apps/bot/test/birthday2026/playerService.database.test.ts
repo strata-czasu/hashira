@@ -10,6 +10,7 @@ import {
   feedBirthday2026Player,
   getBirthday2026PlayerSnapshot,
 } from "../../src/events/birthday2026/playerService";
+import { configureBirthday2026Persona } from "../../src/events/birthday2026/statusService";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -120,6 +121,15 @@ const createFixture = async () => {
       { captainUserId, tucznikUserId },
     );
     if (!identity.ok) throw new Error(identity.reason);
+    const persona = await configureBirthday2026Persona(prisma, {
+      guildId,
+      teamConfigId: teamResult.team.id,
+      title: `Persona ${index + 1}`,
+      fallbackEmoji: "🐗",
+      configuredByUserId: actorUserId,
+      consentedAt: new Date("2026-08-01T18:00:00Z"),
+    });
+    if (!persona.ok) throw new Error(persona.reason);
   }
 
   const playerTeam = teams[0];
