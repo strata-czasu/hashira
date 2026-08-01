@@ -3,10 +3,6 @@ import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 import { getBirthday2026RegistrationState } from "./eventState";
 import { planBirthday2026TeamAssignments } from "./teamService";
 
-const hasReadyTucznicy = (teams: { identity: unknown; persona: unknown }[]) =>
-  teams.length === 4 &&
-  teams.every((team) => team.identity !== null && team.persona !== null);
-
 export const registerBirthday2026Participant = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
@@ -33,7 +29,10 @@ export const registerBirthday2026Participant = async (
   if (getBirthday2026RegistrationState(config, now) !== "open") {
     return { ok: false, reason: "registration_closed" } as const;
   }
-  if (!hasReadyTucznicy(config.teams)) {
+  if (
+    config.teams.length !== 4 ||
+    config.teams.some((team) => !team.identity || !team.persona)
+  ) {
     return { ok: false, reason: "teams_not_ready" } as const;
   }
   if (config.teams.some((team) => team.memberStates.length > 0)) {
@@ -198,7 +197,10 @@ export const finalizeBirthday2026Registration = async (
         return { ok: false, reason: "registration_open" } as const;
       }
       if (config.enabled) return { ok: false, reason: "event_enabled" } as const;
-      if (!hasReadyTucznicy(config.teams)) {
+      if (
+        config.teams.length !== 4 ||
+        config.teams.some((team) => !team.identity || !team.persona)
+      ) {
         return { ok: false, reason: "teams_not_ready" } as const;
       }
       if (!config.textEarning || !config.voiceEarning) {

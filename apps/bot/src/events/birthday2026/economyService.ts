@@ -159,14 +159,6 @@ export const setupBirthday2026Economy = (
     };
   });
 
-type PersonalTransactionResult = {
-  amount: number;
-  userId: string;
-  walletId: number;
-  walletBalance: number;
-  transactionId: number;
-};
-
 const findPersonalTransaction = async (
   prisma: PrismaTransaction,
   input: {
@@ -174,7 +166,7 @@ const findPersonalTransaction = async (
     source: "feed" | "staffGrant";
     sourceKey: string;
   },
-): Promise<PersonalTransactionResult | null> => {
+) => {
   const reference = await prisma.birthday2026PersonalTransaction.findUnique({
     where: {
       configId_source_sourceKey: input,

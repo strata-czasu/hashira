@@ -59,18 +59,6 @@ export type GetBirthday2026PlayerSnapshotResult =
   | { ok: true; snapshot: Birthday2026PlayerSnapshot }
   | { ok: false; reason: Birthday2026PublicErrorReason };
 
-const hasReadyTeams = (
-  teams: {
-    identity: unknown;
-    persona: unknown;
-    wallet: unknown;
-  }[],
-) =>
-  teams.length === 4 &&
-  teams.every(
-    (team) => team.identity !== null && team.persona !== null && team.wallet !== null,
-  );
-
 export const getBirthday2026PlayerSnapshot = async (
   prisma: PrismaTransaction,
   guildId: string,
@@ -102,7 +90,10 @@ export const getBirthday2026PlayerSnapshot = async (
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" };
   }
-  if (!hasReadyTeams(config.teams)) {
+  if (
+    config.teams.length !== 4 ||
+    config.teams.some((team) => !team.identity || !team.persona || !team.wallet)
+  ) {
     return { ok: false, reason: "teams_not_ready" };
   }
 
@@ -222,7 +213,10 @@ export const feedBirthday2026Player = async (
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" };
   }
-  if (!hasReadyTeams(config.teams)) {
+  if (
+    config.teams.length !== 4 ||
+    config.teams.some((team) => !team.identity || !team.persona || !team.wallet)
+  ) {
     return { ok: false, reason: "teams_not_ready" };
   }
   if (getBirthday2026EventState(config, input.acceptedAt) !== "open") {

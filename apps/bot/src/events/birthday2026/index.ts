@@ -1597,7 +1597,13 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 : "Brak wykluczonych kanałów.",
             );
           }),
-      )
+      ),
+  )
+  .group("urodziny-ops", (group) =>
+    group
+      .setDescription("Bieżąca obsługa eventu urodzinowego 2026")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .setDMPermission(false)
       .addCommand("daj-pasze", (command) =>
         command
           .setDescription("Przyznaj uczestnikowi audytowaną Paszę")

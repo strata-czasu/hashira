@@ -1,5 +1,4 @@
 import type {
-  Birthday2026DisabledTextChannel,
   Birthday2026TextEarningConfig,
   ExtendedPrismaClient,
   PrismaTransaction,
@@ -170,7 +169,7 @@ export const enableBirthday2026TextChannel = async (
 export const findBirthday2026DisabledTextChannels = async (
   prisma: PrismaTransaction,
   guildId: string,
-): Promise<Birthday2026DisabledTextChannel[] | null> => {
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
     select: { textEarning: { select: { configId: true } } },
@@ -183,19 +182,10 @@ export const findBirthday2026DisabledTextChannels = async (
   });
 };
 
-export type Birthday2026TextEarningDiagnostics = {
-  windowSeconds: number;
-  dailyCap: number;
-  awardedTransactions: number;
-  counterTotal: number;
-  dailyRows: number;
-  reconciled: boolean;
-};
-
 export const getBirthday2026TextEarningDiagnostics = async (
   prisma: PrismaTransaction,
   guildId: string,
-): Promise<Birthday2026TextEarningDiagnostics | null> => {
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
     select: {
@@ -372,21 +362,14 @@ export const awardBirthday2026TextPasza = async (
       if (!state.enabled || state.settlement) {
         return { ok: false, reason: "event_not_open" } as const;
       }
-      await tx.birthday2026DailyTextEarning.upsert({
-        where: {
-          configId_userId_eventDayIndex: {
-            configId: config.id,
-            userId: input.userId,
-            eventDayIndex,
-          },
-        },
-        create: {
+      await tx.birthday2026DailyTextEarning.createMany({
+        data: {
           configId: config.id,
           userId: input.userId,
           eventDayIndex,
           awardedWindows: 0,
         },
-        update: { awardedWindows: { increment: 0 } },
+        skipDuplicates: true,
       });
 
       const counterUpdate = await tx.birthday2026DailyTextEarning.updateMany({

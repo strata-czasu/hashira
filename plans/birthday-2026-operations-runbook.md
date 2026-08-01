@@ -15,10 +15,10 @@
 
 - Pause the whole event with `/urodziny-admin flagi aktywny:false`. Earning,
   feeding, encounters, captain actions, and raids must all observe this switch.
-- Inspect `/urodziny-admin status-ekonomii` and `/urodziny-admin stan`. A pending
+- Inspect `/urodziny-ops status-ekonomii` and `/urodziny-admin stan`. A pending
   batch without a task or a wallet/batch mismatch must be resolved before final
   settlement. Re-running a due digestion is safe and idempotent.
-- Use `/urodziny-admin daj-pasze` only for a documented correction. Its required
+- Use `/urodziny-ops daj-pasze` only for a documented correction. Its required
   reason, actor, Discord interaction ID, and ledger entry form the adjustment audit
   trail. Never edit balances or weight directly.
 
@@ -27,7 +27,7 @@
 1. Wait until the configured end. For an early emergency close, first set
    `aktywny:false`.
 2. Run `/urodziny-admin stan` and confirm economy reconciliation.
-3. Run `/urodziny-admin rozlicz potwierdz:true` once. Repeating it is safe.
+3. Run `/urodziny-ops rozlicz potwierdz:true` once. Repeating it is safe.
 
 Settlement atomically disables all inputs, force-digests pending feed batches,
 expires unspent personal Pasza with ledger debits, cancels obsolete digestion jobs,

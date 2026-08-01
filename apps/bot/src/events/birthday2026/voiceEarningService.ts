@@ -73,20 +73,10 @@ export const configureBirthday2026VoiceEarning = async (
   });
 };
 
-export type Birthday2026VoiceEarningDiagnostics = {
-  awardedPasza: number;
-  awardedTransactions: number;
-  counterTotal: number;
-  dailyCap: number;
-  dailyRows: number;
-  reconciled: boolean;
-  unitSeconds: number;
-};
-
 export const getBirthday2026VoiceEarningDiagnostics = async (
   prisma: PrismaTransaction,
   guildId: string,
-): Promise<Birthday2026VoiceEarningDiagnostics | null> => {
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
     select: { id: true, voiceEarning: true },
@@ -228,21 +218,14 @@ export const awardBirthday2026VoicePasza = async (
     if (!state.enabled || state.settlement) {
       return { ok: false, reason: "event_not_open" };
     }
-    await tx.birthday2026DailyVoiceEarning.upsert({
-      where: {
-        configId_userId_eventDayIndex: {
-          configId: config.id,
-          userId: voiceSession.userId,
-          eventDayIndex,
-        },
-      },
-      create: {
+    await tx.birthday2026DailyVoiceEarning.createMany({
+      data: {
         configId: config.id,
         userId: voiceSession.userId,
         eventDayIndex,
         awardedUnits: 0,
       },
-      update: { awardedUnits: { increment: 0 } },
+      skipDuplicates: true,
     });
 
     let awardedUnits = 0;
