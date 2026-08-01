@@ -27,6 +27,15 @@ import {
   setupBirthday2026Economy,
 } from "./economyService";
 import {
+  cancelBirthday2026Encounter,
+  configureBirthday2026Encounters,
+  enterBirthday2026Encounter,
+  inspectBirthday2026Encounters,
+  reconcileBirthday2026EncounterMessage,
+  spawnBirthday2026Encounter,
+} from "./encounterService";
+import { BIRTHDAY_2026_ENCOUNTER_CUSTOM_ID } from "./encounterView";
+import {
   getBirthday2026EventState,
   getBirthday2026RegistrationState,
 } from "./eventState";
@@ -868,6 +877,172 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             },
           ),
       )
+      .addCommand("wydarzenia", (command) =>
+        command
+          .setDescription("Skonfiguruj szybkie wydarzenia")
+          .addChannel("kanal", (option) => option.setDescription("Kanał wydarzeń"))
+          .addInteger("okno-sekundy", (option) =>
+            option.setDescription("Czas na udział").setMinValue(1),
+          )
+          .addInteger("odstep-minuty", (option) =>
+            option.setDescription("Przerwa między wydarzeniami").setMinValue(1),
+          )
+          .addInteger("nagroda", (option) =>
+            option.setDescription("Pasza za szybkie kliknięcie").setMinValue(1),
+          )
+          .addInteger("limit-wygranych", (option) =>
+            option.setDescription("Limit wygranych na osobę").setMinValue(1),
+          )
+          .addInteger("prog-druzyny", (option) =>
+            option.setDescription("Liczba różnych osób w drużynie").setMinValue(1),
+          )
+          .addInteger("nagroda-druzyny", (option) =>
+            option.setDescription("Stała waga za próg drużynowy").setMinValue(1),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                kanal,
+                "okno-sekundy": responseWindowSeconds,
+                "odstep-minuty": spawnIntervalMinutes,
+                nagroda: individualReward,
+                "limit-wygranych": winCap,
+                "prog-druzyny": teamThreshold,
+                "nagroda-druzyny": teamReward,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+              const result = await configureBirthday2026Encounters(prisma, {
+                guildId: itx.guildId,
+                channelId: kanal.id,
+                responseWindowSeconds,
+                spawnIntervalSeconds: spawnIntervalMinutes * 60,
+                individualReward,
+                winCap,
+                teamThreshold,
+                teamReward,
+              });
+              if (!result.ok) {
+                await errorFollowUp(
+                  itx,
+                  {
+                    config_not_found: "Najpierw skonfiguruj event.",
+                    event_settled: "Event został już rozliczony.",
+                    invalid_config: "Wszystkie wartości muszą być dodatnie.",
+                  }[result.reason],
+                );
+                return;
+              }
+              await itx.editReply("Skonfigurowano szybkie wydarzenia.");
+            },
+          ),
+      )
+      .addCommand("wymus-wydarzenie", (command) =>
+        command
+          .setDescription("Uruchom wydarzenie natychmiast")
+          .addString("rodzaj", (option) =>
+            option
+              .setDescription("Rodzaj wydarzenia")
+              .addChoices(
+                { name: "Szybkie kliknięcie", value: "quickGrab" },
+                { name: "Próg drużynowy", value: "teamThreshold" },
+              ),
+          )
+          .handle(async ({ prisma, messageQueue }, { rodzaj: kind }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const result = await spawnBirthday2026Encounter(prisma, {
+              guildId: itx.guildId,
+              kind: kind === "quickGrab" ? "quickGrab" : "teamThreshold",
+              sourceKey: itx.id,
+              startsAt: itx.createdAt,
+              scheduleJob: (tx, type, encounterId, handleAfter) =>
+                messageQueue.push(
+                  type,
+                  { encounterId },
+                  handleAfter,
+                  `${type}:${encounterId}`,
+                  tx,
+                ),
+            });
+            if (!result.ok) {
+              const messages = {
+                config_not_found: "Event nie jest skonfigurowany.",
+                encounter_active: "Inne wydarzenie nadal trwa.",
+                encounters_not_configured: "Najpierw skonfiguruj wydarzenia.",
+                event_not_open: "Event nie jest teraz aktywny.",
+                event_settled: "Event został już rozliczony.",
+                invalid_source_key: "Brak identyfikatora wydarzenia.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            const message = await reconcileBirthday2026EncounterMessage(
+              itx.client,
+              prisma,
+              result.encounter.id,
+              itx.createdAt,
+            );
+            if (!message.ok) {
+              await errorFollowUp(itx, "Nie udało się wysłać wiadomości wydarzenia.");
+              return;
+            }
+            await itx.editReply(`Uruchomiono wydarzenie #${result.encounter.id}.`);
+          }),
+      )
+      .addCommand("anuluj-wydarzenie", (command) =>
+        command
+          .setDescription("Anuluj aktywne wydarzenie")
+          .addInteger("id", (option) =>
+            option.setDescription("Identyfikator wydarzenia").setMinValue(1),
+          )
+          .handle(async ({ prisma }, { id }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const result = await cancelBirthday2026Encounter(
+              prisma,
+              itx.guildId,
+              id,
+              itx.createdAt,
+            );
+            if (result.count === 0) {
+              await errorFollowUp(
+                itx,
+                "Wydarzenie nie istnieje albo już się skończyło.",
+              );
+              return;
+            }
+            await reconcileBirthday2026EncounterMessage(
+              itx.client,
+              prisma,
+              id,
+              itx.createdAt,
+            );
+            await itx.editReply(`Anulowano wydarzenie #${id}.`);
+          }),
+      )
+      .addCommand("wydarzenia-stan", (command) =>
+        command
+          .setDescription("Pokaż ostatnie wydarzenia")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const encounters = await inspectBirthday2026Encounters(prisma, itx.guildId);
+            await itx.editReply(
+              encounters.length > 0
+                ? encounters
+                    .map(
+                      (encounter) =>
+                        `#${encounter.id} ${encounter.kind} — wejścia=${encounter._count.entries}, zwycięzca=${encounter.winner ? userMention(encounter.winner.userId) : "brak"}, drużyny=${encounter.teamCompletions.length}, wiadomość=${encounter.message ? "tak" : "nie"}`,
+                    )
+                    .join("\n")
+                : "Brak wydarzeń.",
+            );
+          }),
+      )
       .addCommand("progi", (command) =>
         command
           .setDescription("Ustaw cztery wspólne progi wagi")
@@ -1491,6 +1666,50 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
     });
   })
   .handle("buttonInteractionCreate", async ({ prisma, messageQueue }, itx) => {
+    if (itx.customId.startsWith(`${BIRTHDAY_2026_ENCOUNTER_CUSTOM_ID}:`)) {
+      if (!itx.inCachedGuild()) return;
+      const encounterId = Number(itx.customId.split(":").at(1));
+      if (!Number.isSafeInteger(encounterId) || encounterId <= 0) return;
+      await itx.deferReply({ flags: "Ephemeral" });
+      await ensureUserExists(prisma, itx.user);
+      const result = await enterBirthday2026Encounter(prisma, {
+        encounterId,
+        guildId: itx.guildId,
+        userId: itx.user.id,
+        enteredAt: itx.createdAt,
+      });
+      if (!result.ok) {
+        const messages = {
+          already_entered: "Twój udział jest już zapisany.",
+          encounter_not_found: "Nie znaleziono wydarzenia.",
+          encounter_not_open: "To wydarzenie już się zakończyło.",
+          encounters_not_configured: "Wydarzenia nie są skonfigurowane.",
+          event_settled: "Event został już rozliczony.",
+          member_not_found: "Nie należysz do drużyny eventowej.",
+          team_wallet_not_found: "Drużyna nie ma portfela eventowego.",
+          win_cap_reached: "Osiągnąłeś limit zwycięstw.",
+        };
+        await errorFollowUp(itx, messages[result.reason]);
+        return;
+      }
+      await reconcileBirthday2026EncounterMessage(
+        itx.client,
+        prisma,
+        encounterId,
+        itx.createdAt,
+      );
+      if (result.status === "completed") {
+        await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
+      }
+      const replies = {
+        already_completed: "Twój udział zapisano; drużyna już odebrała nagrodę.",
+        completed: `Próg osiągnięty! Drużyna zdobywa ${result.reward} stałej wagi.`,
+        progress: `Udział zapisany: ${result.progress}/${result.threshold}.`,
+        won: `Wygrywasz ${result.reward} Paszy! Saldo: ${result.walletBalance}.`,
+      };
+      await itx.editReply(replies[result.status]);
+      return;
+    }
     if (itx.customId !== BIRTHDAY_2026_FEED_ALL_CUSTOM_ID) return;
     if (!itx.inCachedGuild()) return;
 

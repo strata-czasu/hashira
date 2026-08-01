@@ -288,6 +288,10 @@ Fallback:
 
 **Outcome:** one persisted quick encounter can spawn, accept participation, resolve, reward, expire, and schedule the next spawn.
 
+**Status:** complete. A persisted quick-grab encounter has a strict per-person win
+cap, atomic winner and reward, durable expiration/next-spawn jobs, recoverable
+Discord message, and staff force-spawn, cancel, and inspection commands.
+
 Implement only the framework required for one encounter:
 
 - persisted definition or code definition;
@@ -326,6 +330,12 @@ Recovery:
 ## Slice 6: team encounter and daily contract
 
 **Outcome:** distinct teammates have a reason to coordinate, including asynchronously.
+
+**Status:** complete under the documented fallback. The team-threshold encounter
+counts each member once, lets every team complete in parallel, applies a bounded
+audited weight reward once, and shows live progress. A generic daily-contract
+engine is intentionally omitted; the persisted team threshold provides the same
+coordination loop without another quest abstraction.
 
 Implement:
 
