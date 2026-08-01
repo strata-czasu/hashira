@@ -20,6 +20,8 @@ model Birthday2026Config {
   settlement           Birthday2026Settlement?
   encounterConfig      Birthday2026EncounterConfig?
   encounters           Birthday2026Encounter[]
+  powerupConfig        Birthday2026PowerupConfig?
+  powerupActivations   Birthday2026PowerupActivation[]
   milestones           Birthday2026Milestone[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -71,6 +73,8 @@ model Birthday2026TeamConfig {
   settlementResults Birthday2026SettlementTeam[]
   encounterEntries Birthday2026EncounterEntry[]
   encounterCompletions Birthday2026TeamEncounterCompletion[]
+  powerupState Birthday2026TeamPowerupState?
+  powerupActivations Birthday2026PowerupActivation[]
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
@@ -316,6 +320,41 @@ model Birthday2026TeamEncounterCompletion {
 
   @@id([encounterId, teamConfigId])
   @@index([teamConfigId, configId])
+}
+
+model Birthday2026PowerupConfig {
+  configId               Int @id
+  maxInventory           Int
+  effectDurationSeconds  Int
+  turboDigestionSeconds  Int
+
+  config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+}
+
+model Birthday2026TeamPowerupState {
+  teamConfigId Int @id
+  configId     Int
+  inventory    Int
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@unique([teamConfigId, configId])
+}
+
+model Birthday2026PowerupActivation {
+  id            Int      @id @default(autoincrement())
+  teamConfigId  Int
+  configId      Int
+  captainUserId String
+  activatedAt   DateTime @db.Timestamp(6)
+  expiresAt     DateTime @db.Timestamp(6)
+
+  config     Birthday2026Config     @relation(fields: [configId], references: [id], onDelete: Cascade)
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  captain   User                   @relation(fields: [captainUserId], references: [id], onDelete: Restrict)
+
+  @@index([teamConfigId, expiresAt])
+  @@index([captainUserId])
 }
 
 model Birthday2026MemberState {

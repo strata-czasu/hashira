@@ -371,6 +371,12 @@ Fallback:
 
 **Outcome:** a team can earn one useful power-up, the captain can activate it once, and its effect expires safely.
 
+**Status:** complete. Parallel team encounters earn capped turbo-digestion
+charges. Only the current captain can spend one, duplicate activation cannot
+double-spend it, and immutable activation windows make expiration restart-safe.
+Inventory and activation history remain attached to the team across captain
+replacement without changing the Tucznik persona.
+
 Implement:
 
 - capped team power-up inventory;
@@ -409,6 +415,12 @@ Fallback:
 ## Slice 8: social polish
 
 **Outcome:** existing actions create a richer story without changing the core economy.
+
+**Status:** complete under the curated fallback. `/tucznik gazeta` derives a daily,
+score-neutral recap from canonical feeding, encounter, milestone, power-up, and
+team-weight records. Existing approved personas and artwork provide the visual
+identity; ballots, guestbook free text, and a separate cosmetic inventory are
+intentionally omitted.
 
 Choose only the highest-value items from the [social and live-ops plan](birthday-2026-social-live-ops.md):
 
