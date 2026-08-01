@@ -21,6 +21,8 @@ model Birthday2026Config {
   encounters           Birthday2026Encounter[]
   powerupConfig        Birthday2026PowerupConfig?
   powerupActivations   Birthday2026PowerupActivation[]
+  raidConfig           Birthday2026RaidConfig?
+  raidAttempts         Birthday2026RaidAttempt[]
   milestones           Birthday2026Milestone[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -74,6 +76,8 @@ model Birthday2026TeamConfig {
   encounterCompletions Birthday2026TeamEncounterCompletion[]
   powerupState Birthday2026TeamPowerupState?
   powerupActivations Birthday2026PowerupActivation[]
+  raidAttemptsAsAttacker Birthday2026RaidAttempt[] @relation("birthday2026RaidAttackerTeam")
+  raidAttemptsAsTarget Birthday2026RaidAttempt[] @relation("birthday2026RaidTargetTeam")
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
@@ -356,6 +360,61 @@ model Birthday2026PowerupActivation {
   @@index([captainUserId])
 }
 
+model Birthday2026RaidConfig {
+  configId         Int @id
+  chargesPerTeam   Int
+  maxSteal         Int
+  protectedFloor  Int
+  cooldownSeconds Int
+  graceSeconds    Int
+  perUserLossCap  Int
+  repeatTargetCap Int
+
+  config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+}
+
+model Birthday2026RaidAttempt {
+  id                   Int                        @id @default(autoincrement())
+  configId             Int
+  attackerTeamConfigId Int
+  targetTeamConfigId   Int
+  captainUserId        String
+  sourceKey            String
+  outcome              Birthday2026RaidOutcome
+  attemptedAt          DateTime                   @db.Timestamp(6)
+
+  config       Birthday2026Config     @relation(fields: [configId], references: [id], onDelete: Cascade)
+  attackerTeam Birthday2026TeamConfig @relation("birthday2026RaidAttackerTeam", fields: [attackerTeamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  targetTeam   Birthday2026TeamConfig @relation("birthday2026RaidTargetTeam", fields: [targetTeamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  captain      User                   @relation("birthday2026RaidCaptain", fields: [captainUserId], references: [id], onDelete: Restrict)
+  transfer     Birthday2026RaidTransfer?
+
+  @@unique([configId, sourceKey])
+  @@index([attackerTeamConfigId, attemptedAt])
+  @@index([targetTeamConfigId, attemptedAt])
+  @@index([captainUserId])
+}
+
+model Birthday2026RaidTransfer {
+  attemptId           Int @id
+  sourceWalletId      Int
+  destinationWalletId Int
+  feedBatchId         Int
+  victimUserId        String
+  amount              Int
+
+  attempt           Birthday2026RaidAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  sourceWallet      Birthday2026TeamWallet  @relation("birthday2026RaidSourceWallet", fields: [sourceWalletId], references: [id], onDelete: Restrict)
+  destinationWallet Birthday2026TeamWallet  @relation("birthday2026RaidDestinationWallet", fields: [destinationWalletId], references: [id], onDelete: Restrict)
+  feedBatch         Birthday2026FeedBatch   @relation(fields: [feedBatchId], references: [id], onDelete: Restrict)
+  victim            User                    @relation("birthday2026RaidVictim", fields: [victimUserId], references: [id], onDelete: Restrict)
+
+  @@index([victimUserId])
+  @@index([sourceWalletId])
+  @@index([destinationWalletId])
+  @@index([feedBatchId])
+}
+
 model Birthday2026MemberState {
   id           Int      @id @default(autoincrement())
   configId     Int
@@ -441,6 +500,8 @@ model Birthday2026TeamWallet {
   currency     Currency                            @relation(fields: [currencyId], references: [id], onDelete: Restrict)
   transactions Birthday2026TeamWalletTransaction[]
   feedBatches  Birthday2026FeedBatch[]
+  raidTransfersOut Birthday2026RaidTransfer[] @relation("birthday2026RaidSourceWallet")
+  raidTransfersIn Birthday2026RaidTransfer[] @relation("birthday2026RaidDestinationWallet")
 
   @@index([currencyId])
 }
@@ -483,6 +544,7 @@ model Birthday2026FeedBatch {
   user                User                                @relation("birthday2026FeedOwner", fields: [userId], references: [id], onDelete: Cascade)
   personalTransaction Transaction                         @relation(fields: [personalTransactionId], references: [id], onDelete: Restrict)
   teamTransactions    Birthday2026TeamWalletTransaction[]
+  raidTransfers       Birthday2026RaidTransfer[]
 
   @@unique([configId, sourceKey])
   @@index([walletId, digestedAt, digestAt])
@@ -507,9 +569,15 @@ enum Birthday2026EncounterKind {
   teamThreshold
 }
 
+enum Birthday2026RaidOutcome {
+  success
+  noEligibleBatch
+}
+
 enum Birthday2026TeamWalletTransactionSource {
   feed
   digestion
+  raid
 }
 
 model Birthday2026PersonalTransaction {
