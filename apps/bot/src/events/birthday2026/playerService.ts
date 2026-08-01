@@ -56,11 +56,14 @@ export type GetBirthday2026PlayerSnapshotResult =
 const hasReadyTeams = (
   teams: {
     identity: unknown;
+    persona: unknown;
     wallet: unknown;
   }[],
 ) =>
   teams.length === 4 &&
-  teams.every((team) => team.identity !== null && team.wallet !== null);
+  teams.every(
+    (team) => team.identity !== null && team.persona !== null && team.wallet !== null,
+  );
 
 export const getBirthday2026PlayerSnapshot = async (
   prisma: PrismaTransaction,
@@ -76,6 +79,7 @@ export const getBirthday2026PlayerSnapshot = async (
       teams: {
         include: {
           identity: true,
+          persona: true,
           memberStates: {
             where: { userId },
             select: { joinedAt: true },
@@ -200,6 +204,7 @@ export const feedBirthday2026Player = async (
       teams: {
         select: {
           identity: { select: { teamConfigId: true } },
+          persona: { select: { teamConfigId: true } },
           wallet: { select: { id: true } },
         },
       },

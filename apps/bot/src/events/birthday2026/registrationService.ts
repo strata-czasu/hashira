@@ -3,8 +3,9 @@ import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 import { getBirthday2026RegistrationState } from "./eventState";
 import { planBirthday2026TeamAssignments } from "./teamService";
 
-const hasReadyTucznicy = (teams: { identity: unknown }[]) =>
-  teams.length === 4 && teams.every((team) => team.identity !== null);
+const hasReadyTucznicy = (teams: { identity: unknown; persona: unknown }[]) =>
+  teams.length === 4 &&
+  teams.every((team) => team.identity !== null && team.persona !== null);
 
 export const registerBirthday2026Participant = async (
   prisma: ExtendedPrismaClient,
@@ -19,6 +20,7 @@ export const registerBirthday2026Participant = async (
       teams: {
         select: {
           identity: { select: { teamConfigId: true } },
+          persona: { select: { teamConfigId: true } },
           memberStates: { where: { userId }, select: { id: true } },
         },
       },
@@ -183,7 +185,7 @@ export const finalizeBirthday2026Registration = async (
           textEarning: true,
           voiceEarning: true,
           teams: {
-            include: { identity: true, memberStates: true },
+            include: { identity: true, persona: true, memberStates: true },
             orderBy: { id: "asc" },
           },
         },
