@@ -40,7 +40,7 @@ import {
   buildBirthday2026RankingView,
   buildBirthday2026StatusView,
 } from "./playerView";
-import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
+import { parseBirthday2026Instant } from "./staffInput";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
