@@ -1,34 +1,17 @@
 import { ConfirmationDialog, Hashira } from "@hashira/core";
 import { addDays, addMonths, addWeeks, addYears } from "date-fns";
 import {
-  type ColorResolvable,
   inlineCode,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   type RoleColorsResolvable,
-  resolveColor,
   time,
 } from "discord.js";
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-
-const preprocessColor = (color: string): `#${string}` => {
-  if (color.startsWith("#")) {
-    return color as `#${string}`;
-  }
-  return `#${color}`;
-};
-
-const getColor = (rawColor: ColorResolvable | string) => {
-  const color = typeof rawColor === "string" ? preprocessColor(rawColor) : rawColor;
-  try {
-    return resolveColor(color);
-  } catch (_) {
-    return null;
-  }
-};
+import { getColor } from "../util/getColor";
 
 const readExpiration = (expiration: string): Date | null => {
   const now = new Date();

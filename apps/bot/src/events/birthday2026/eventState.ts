@@ -1,5 +1,7 @@
 import type { Birthday2026Config } from "@hashira/db";
 
+const MILLISECONDS_PER_EVENT_DAY = 24 * 60 * 60 * 1000;
+
 type EventWindow = Pick<
   Birthday2026Config,
   "enabled" | "eventEndAt" | "eventStartAt" | "visible"
@@ -29,5 +31,7 @@ export const getBirthday2026EventDayIndex = (
   at: Date,
 ) => {
   if (at < config.eventStartAt || at >= config.eventEndAt) return null;
-  return Math.floor((at.getTime() - config.eventStartAt.getTime()) / 86_400_000);
+  return Math.floor(
+    (at.getTime() - config.eventStartAt.getTime()) / MILLISECONDS_PER_EVENT_DAY,
+  );
 };

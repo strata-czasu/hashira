@@ -10,16 +10,13 @@ import {
 import { base } from "../../base";
 import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
-import {
-  findBirthday2026Config,
-  setBirthday2026FeatureState,
-  upsertBirthday2026Config,
-} from "./configService";
+import { getColor } from "../../util/getColor";
+import { findBirthday2026Config, upsertBirthday2026Config } from "./configService";
 import {
   getBirthday2026EventState,
   getBirthday2026RegistrationState,
 } from "./eventState";
-import { parseBirthday2026Instant, parseBirthday2026TeamColor } from "./staffInput";
+import { parseBirthday2026Instant } from "./staffInput";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -42,11 +39,6 @@ const teamErrorMessages = {
   team_already_exists: "Drużyna o tej nazwie już istnieje na serwerze.",
   team_not_found: "Nie znaleziono wskazanej drużyny.",
 };
-
-const replyWithTeamError = (
-  itx: Parameters<typeof errorFollowUp>[0],
-  reason: keyof typeof teamErrorMessages,
-) => errorFollowUp(itx, teamErrorMessages[reason]);
 
 const findTeamByRole = async (
   prisma: Parameters<typeof findBirthday2026Teams>[0],
@@ -151,7 +143,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 guildId: itx.guildId,
                 eventStartAt,
                 eventEndAt,
-                timezone,
+                timezone: timezone.trim(),
                 visible,
                 enabled,
               });
@@ -199,9 +191,12 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const config = await setBirthday2026FeatureState(prisma, itx.guildId, {
-              ...(visible !== null ? { visible } : {}),
-              ...(enabled !== null ? { enabled } : {}),
+            const config = await prisma.birthday2026Config.update({
+              where: { guildId: itx.guildId },
+              data: {
+                ...(visible !== null ? { visible } : {}),
+                ...(enabled !== null ? { enabled } : {}),
+              },
             });
             await itx.editReply({
               content: `Flagi zapisane: widoczny=${config.visible}, aktywny=${config.enabled}.`,
@@ -221,7 +216,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply({ flags: "Ephemeral" });
 
-              const color = parseBirthday2026TeamColor(rawColor);
+              const color = getColor(rawColor.trim());
               if (color === null) {
                 await errorFollowUp(
                   itx,
@@ -237,7 +232,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 color,
               });
               if (!result.ok) {
-                await replyWithTeamError(itx, result.reason);
+                await errorFollowUp(itx, teamErrorMessages[result.reason]);
                 return;
               }
 
@@ -271,7 +266,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             });
 
             if (!result.ok) {
-              await replyWithTeamError(itx, result.reason);
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
 
@@ -301,7 +296,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             const result = await removeBirthday2026Member(prisma, itx.guildId, user.id);
             if (!result.ok) {
-              await replyWithTeamError(itx, result.reason);
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
 
@@ -336,7 +331,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               user.id,
             );
             if (!result.ok) {
-              await replyWithTeamError(itx, result.reason);
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
 
@@ -366,7 +361,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               null,
             );
             if (!result.ok) {
-              await replyWithTeamError(itx, result.reason);
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
             await itx.editReply(

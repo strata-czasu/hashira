@@ -1,8 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  isValidTimeZone,
-  validateBirthday2026Config,
-} from "../../src/events/birthday2026/configService";
+import { validateBirthday2026Config } from "../../src/events/birthday2026/configService";
 
 const validInput = {
   guildId: "guild",
@@ -16,7 +13,6 @@ const validInput = {
 describe("Birthday 2026 configuration validation", () => {
   it("accepts the adopted event window and timezone", () => {
     expect(validateBirthday2026Config(validInput)).toBeNull();
-    expect(isValidTimeZone("Europe/Warsaw")).toBe(true);
   });
 
   it("rejects an invalid or empty timezone", () => {

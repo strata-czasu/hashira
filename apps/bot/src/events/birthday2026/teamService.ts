@@ -19,10 +19,15 @@ type PlannedAssignment = {
   activityEstimate: number;
 };
 
+type AllocationState = {
+  teams: TeamAllocationCandidate[];
+  assignments: PlannedAssignment[];
+};
+
 const pickLowestProjectedTeam = (
   teams: TeamAllocationCandidate[],
   random: () => number,
-): TeamAllocationCandidate => {
+): number => {
   const minimumActivity = Math.min(...teams.map((team) => team.projectedActivity));
   const activityCandidates = teams.filter(
     (team) => team.projectedActivity === minimumActivity,
@@ -39,7 +44,36 @@ const pickLowestProjectedTeam = (
     ];
 
   if (!selected) throw new Error("Cannot allocate a member without a team");
-  return selected;
+  return selected.teamConfigId;
+};
+
+const assignMember = (
+  state: AllocationState,
+  member: MemberAllocationCandidate,
+  teamConfigId: number,
+): AllocationState => {
+  const team = state.teams.find((candidate) => candidate.teamConfigId === teamConfigId);
+  if (!team) throw new Error(`Unknown team: ${teamConfigId}`);
+
+  return {
+    assignments: [
+      ...state.assignments,
+      {
+        userId: member.userId,
+        teamConfigId,
+        activityEstimate: member.activityEstimate,
+      },
+    ],
+    teams: state.teams.map((candidate) =>
+      candidate.teamConfigId === teamConfigId
+        ? {
+            ...candidate,
+            projectedActivity: candidate.projectedActivity + member.activityEstimate,
+            memberCount: candidate.memberCount + 1,
+          }
+        : candidate,
+    ),
+  };
 };
 
 export const planBirthday2026TeamAssignments = (
@@ -65,34 +99,6 @@ export const planBirthday2026TeamAssignments = (
     seenUsers.add(member.userId);
   }
 
-  const teams = teamConfigIds.map((teamConfigId) => ({
-    teamConfigId,
-    projectedActivity: 0,
-    memberCount: 0,
-  }));
-  const assignments: PlannedAssignment[] = [];
-
-  const assign = (member: MemberAllocationCandidate, team: TeamAllocationCandidate) => {
-    team.projectedActivity += member.activityEstimate;
-    team.memberCount += 1;
-    assignments.push({
-      userId: member.userId,
-      teamConfigId: team.teamConfigId,
-      activityEstimate: member.activityEstimate,
-    });
-  };
-
-  for (const member of members) {
-    if (member.fixedTeamConfigId === undefined) continue;
-    const team = teams.find(
-      (candidate) => candidate.teamConfigId === member.fixedTeamConfigId,
-    );
-    if (!team) {
-      throw new Error(`Unknown fixed team: ${member.fixedTeamConfigId}`);
-    }
-    assign(member, team);
-  }
-
   const movableMembers = members
     .filter((member) => member.fixedTeamConfigId === undefined)
     .sort(
@@ -100,13 +106,34 @@ export const planBirthday2026TeamAssignments = (
         b.activityEstimate - a.activityEstimate || a.userId.localeCompare(b.userId),
     );
 
-  for (const member of movableMembers) {
-    assign(member, pickLowestProjectedTeam(teams, random));
-  }
+  const initialState: AllocationState = {
+    assignments: [],
+    teams: teamConfigIds.map((teamConfigId) => ({
+      teamConfigId,
+      projectedActivity: 0,
+      memberCount: 0,
+    })),
+  };
+
+  const stateAfterFixedMembers = members
+    .filter((member) => member.fixedTeamConfigId !== undefined)
+    .reduce((state, member) => {
+      if (member.fixedTeamConfigId === undefined) return state;
+      if (!state.teams.some((team) => team.teamConfigId === member.fixedTeamConfigId)) {
+        throw new Error(`Unknown fixed team: ${member.fixedTeamConfigId}`);
+      }
+      return assignMember(state, member, member.fixedTeamConfigId);
+    }, initialState);
+
+  const finalState = movableMembers.reduce(
+    (state, member) =>
+      assignMember(state, member, pickLowestProjectedTeam(state.teams, random)),
+    stateAfterFixedMembers,
+  );
 
   return {
-    assignments,
-    teams: [...teams].sort((a, b) => a.teamConfigId - b.teamConfigId),
+    assignments: finalState.assignments,
+    teams: finalState.teams.toSorted((a, b) => a.teamConfigId - b.teamConfigId),
   };
 };
 
