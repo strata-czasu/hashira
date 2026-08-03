@@ -18,7 +18,11 @@ import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import { getColor } from "../../util/getColor";
 import { parseChannelMentions } from "../../util/parseChannels";
-import { findBirthday2026Config, upsertBirthday2026Config } from "./configService";
+import {
+  findBirthday2026Config,
+  setBirthday2026FeatureState,
+  upsertBirthday2026Config,
+} from "./configService";
 import {
   type Birthday2026EconomyErrorReason,
   feedBirthday2026Pig,
@@ -481,7 +485,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               }),
               getBirthday2026SettlementDiagnostics(prisma, itx.guildId, now),
             ]);
-            const now = new Date();
             const configuredTucznicy = teams.filter((team) =>
               Boolean(team.identity?.tucznikUserId),
             ).length;
