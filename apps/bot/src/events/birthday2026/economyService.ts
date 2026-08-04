@@ -1,12 +1,12 @@
-import {
-  type Birthday2026FeedBatch,
-  type ExtendedPrismaClient,
-  isUniqueConstraintError,
-  type PrismaTransaction,
+import type {
+  Birthday2026FeedBatch,
+  ExtendedPrismaClient,
+  PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { addSeconds } from "date-fns";
 import { InsufficientBalanceError } from "../../economy/economyError";
+import { addBalance } from "../../economy/managers/transferManager";
 import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
 
 export type Birthday2026EconomyErrorReason =
@@ -224,59 +224,38 @@ export const grantBirthday2026Pasza = async (
   });
   if (!membership) return { ok: false, reason: "member_not_found" };
 
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const wallet = await getDefaultWallet({
-        prisma: nestedTransaction(tx),
-        guildId: input.guildId,
-        userId: input.userId,
-        currencyId,
-      });
-      const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: input.amount } },
-      });
-      const transaction = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          relatedUserId: input.createdByUserId,
-          amount: input.amount,
-          reason: input.reason,
-          transactionType: "add",
-          entryType: "credit",
-        },
-      });
-      await tx.birthday2026PersonalTransaction.create({
-        data: {
-          configId: config.id,
-          userId: input.userId,
-          transactionId: transaction.id,
-          source: "staffGrant",
-          sourceKey: input.sourceKey,
-          createdByUserId: input.createdByUserId,
-        },
-      });
+  return prisma.$transaction(async (tx) => {
+    const { transaction, wallet } = await addBalance({
+      prisma: nestedTransaction(tx),
+      fromUserId: input.createdByUserId,
+      toUserId: input.userId,
+      guildId: input.guildId,
+      amount: input.amount,
+      reason: input.reason,
+      currencyId,
+    });
 
-      return {
-        ok: true,
-        created: true,
-        amount: input.amount,
+    await tx.birthday2026PersonalTransaction.create({
+      data: {
+        configId: config.id,
         userId: input.userId,
-        walletId: wallet.id,
-        walletBalance: updatedWallet.balance,
         transactionId: transaction.id,
-      };
+        source: "staffGrant",
+        sourceKey: input.sourceKey,
+        createdByUserId: input.createdByUserId,
+      },
     });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) throw error;
-    const duplicate = await findPersonalTransaction(prisma, {
-      configId: config.id,
-      source: "staffGrant",
-      sourceKey: input.sourceKey,
-    });
-    if (!duplicate) throw error;
-    return { ok: true, created: false, ...duplicate };
-  }
+
+    return {
+      ok: true,
+      created: true,
+      amount: input.amount,
+      userId: input.userId,
+      walletId: wallet.id,
+      walletBalance: wallet.balance,
+      transactionId: transaction.id,
+    };
+  });
 };
 
 type ScheduleDigestion = (
@@ -377,6 +356,7 @@ export const feedBirthday2026Pig = async (
         userId: input.userId,
         currencyId,
       });
+
       const personalTransaction = await debitWallet({
         prisma: tx,
         walletId: wallet.id,
@@ -386,6 +366,7 @@ export const feedBirthday2026Pig = async (
           transactionType: "transfer",
         },
       });
+
       await tx.birthday2026PersonalTransaction.create({
         data: {
           configId: config.id,
@@ -442,14 +423,9 @@ export const feedBirthday2026Pig = async (
     if (error instanceof InsufficientBalanceError) {
       return { ok: false, reason: "insufficient_balance" };
     }
-    if (!isUniqueConstraintError(error)) throw error;
-    const existing = await findFeedResult(prisma, config.id, input.sourceKey);
-    if (!existing) throw error;
-    return existing;
+    throw error;
   }
 };
-
-class TeamWalletInvariantError extends Error {}
 
 export type DigestBirthday2026FeedBatchResult =
   | {
@@ -471,86 +447,79 @@ export const digestBirthday2026FeedBatch = async (
     processedAt: Date;
     reason: string;
   },
-): Promise<DigestBirthday2026FeedBatchResult> => {
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const batch = await tx.birthday2026FeedBatch.findUnique({
-        where: { id: input.batchId },
-        include: { wallet: true },
-      });
-      if (!batch) return { ok: false, reason: "batch_not_found" };
-      if (batch.digestedAt) {
-        return {
-          ok: true,
-          digested: false,
-          amount: batch.amount,
-          permanentWeight: batch.wallet.permanentWeight,
-          teamBalance: batch.wallet.balance,
-        };
-      }
-      if (input.processedAt < batch.digestAt) {
-        return { ok: false, reason: "not_due" };
-      }
+): Promise<DigestBirthday2026FeedBatchResult> =>
+  prisma.$transaction(async (tx) => {
+    const batch = await tx.birthday2026FeedBatch.findUnique({
+      where: { id: input.batchId },
+      include: { wallet: true },
+    });
 
-      const claim = await tx.birthday2026FeedBatch.updateMany({
-        where: { id: batch.id, digestedAt: null },
-        data: { digestedAt: input.processedAt, remainingAmount: 0 },
-      });
-      if (claim.count === 0) {
-        const currentWallet = await tx.birthday2026TeamWallet.findUniqueOrThrow({
-          where: { id: batch.walletId },
-        });
-        return {
-          ok: true,
-          digested: false,
-          amount: batch.amount,
-          permanentWeight: currentWallet.permanentWeight,
-          teamBalance: currentWallet.balance,
-        };
-      }
+    if (!batch) return { ok: false, reason: "batch_not_found" };
 
-      const walletUpdate = await tx.birthday2026TeamWallet.updateMany({
-        where: {
-          id: batch.walletId,
-          balance: { gte: batch.remainingAmount },
-        },
-        data: {
-          balance: { decrement: batch.remainingAmount },
-          permanentWeight: { increment: batch.remainingAmount },
-        },
-      });
-      if (walletUpdate.count === 0) throw new TeamWalletInvariantError();
+    if (batch.digestedAt) {
+      return {
+        ok: true,
+        digested: false,
+        amount: batch.amount,
+        permanentWeight: batch.wallet.permanentWeight,
+        teamBalance: batch.wallet.balance,
+      };
+    }
 
-      await tx.birthday2026TeamWalletTransaction.create({
-        data: {
-          walletId: batch.walletId,
-          feedBatchId: batch.id,
-          source: "digestion",
-          entryType: "debit",
-          amount: batch.remainingAmount,
-          reason: input.reason,
-          sourceKey: batch.sourceKey,
-        },
-      });
-      const wallet = await tx.birthday2026TeamWallet.findUniqueOrThrow({
+    if (input.processedAt < batch.digestAt) {
+      return { ok: false, reason: "not_due" };
+    }
+
+    if (batch.wallet.balance < batch.remainingAmount) {
+      return { ok: false, reason: "team_wallet_balance_mismatch" };
+    }
+
+    const claim = await tx.birthday2026FeedBatch.updateMany({
+      where: { id: batch.id, digestedAt: null },
+      data: { digestedAt: input.processedAt, remainingAmount: 0 },
+    });
+
+    if (claim.count === 0) {
+      const currentWallet = await tx.birthday2026TeamWallet.findUniqueOrThrow({
         where: { id: batch.walletId },
       });
 
       return {
         ok: true,
-        digested: true,
-        amount: batch.remainingAmount,
-        permanentWeight: wallet.permanentWeight,
-        teamBalance: wallet.balance,
+        digested: false,
+        amount: batch.amount,
+        permanentWeight: currentWallet.permanentWeight,
+        teamBalance: currentWallet.balance,
       };
-    });
-  } catch (error) {
-    if (error instanceof TeamWalletInvariantError) {
-      return { ok: false, reason: "team_wallet_balance_mismatch" };
     }
-    throw error;
-  }
-};
+
+    const wallet = await tx.birthday2026TeamWallet.update({
+      where: { id: batch.walletId },
+      data: {
+        balance: { decrement: batch.remainingAmount },
+        permanentWeight: { increment: batch.remainingAmount },
+      },
+    });
+
+    await tx.birthday2026TeamWalletTransaction.create({
+      data: {
+        walletId: batch.walletId,
+        feedBatchId: batch.id,
+        source: "digestion",
+        entryType: "debit",
+        amount: batch.remainingAmount,
+        reason: input.reason,
+        sourceKey: batch.sourceKey,
+      },
+    });
+    return {
+      ok: true,
+      digested: true,
+      amount: batch.remainingAmount,
+      permanentWeight: wallet.permanentWeight,
+      teamBalance: wallet.balance,
+    };
+  });
 
 export type Birthday2026TeamEconomyStatus = {
   teamConfigId: number;
