@@ -1,11 +1,11 @@
-import type {
-  Birthday2026TextEarningConfig,
-  ExtendedPrismaClient,
-  PrismaTransaction,
+import {
+  type Birthday2026TextEarningConfig,
+  type ExtendedPrismaClient,
+  isUniqueConstraintError,
+  type PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { getDefaultWallet } from "../../economy/managers/walletManager";
-import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 import { getBirthday2026EventDayIndex, getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026TextEarningErrorReason =
