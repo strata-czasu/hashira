@@ -27,24 +27,35 @@ import { parseBirthday2026Instant } from "./staffInput";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
+  createBirthday2026TeamIdentity,
   findBirthday2026Teams,
   removeBirthday2026Member,
   setBirthday2026Captain,
+  setBirthday2026Tucznik,
 } from "./teamService";
 
 const teamErrorMessages = {
   already_in_team: "Ten użytkownik jest już w tej drużynie.",
   captain_already_assigned: "Ten użytkownik jest już kapitanem innej drużyny.",
   captain_move_requires_replacement:
-    "Najpierw wyznacz zastępstwo albo usuń kapitana tej drużyny.",
+    "Najpierw wyznacz zastępstwo kapitana tej drużyny.",
   captain_not_member: "Kapitan musi należeć do wskazanej drużyny.",
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
+  identity_already_assigned:
+    "Tucznik albo kapitan jest już przypisany do innej drużyny.",
+  identity_already_configured:
+    "Tucznik i kapitan tej drużyny są już ustawieni. Zmieniaj ich osobno.",
+  identity_not_configured: "Najpierw ustaw Tucznika i kapitana tej drużyny razem.",
   invalid_activity_estimate: "Nie udało się obliczyć aktywności uczestnika.",
   member_not_found: "Ten użytkownik nie należy do żadnej drużyny.",
   no_teams: "Event nie ma jeszcze skonfigurowanych drużyn.",
   role_already_used: "Ta rola jest już używana przez drużynę eventową.",
   team_already_exists: "Drużyna o tej nazwie już istnieje na serwerze.",
   team_not_found: "Nie znaleziono wskazanej drużyny.",
+  tucznik_already_assigned: "Ten użytkownik jest już Tucznikiem innej drużyny.",
+  tucznik_move_requires_replacement:
+    "Najpierw wyznacz innego Tucznika dla tej drużyny.",
+  tucznik_not_member: "Tucznik musi należeć do wskazanej drużyny.",
 };
 
 const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
@@ -90,11 +101,20 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             const teams = await findBirthday2026Teams(prisma, itx.guildId);
             const now = new Date();
+            const configuredTucznicy = teams.filter((team) =>
+              Boolean(team.identity?.tucznikUserId),
+            ).length;
+            const tucznicyReady =
+              teams.length > 0 && configuredTucznicy === teams.length;
             const teamLines = teams.map(
               (team) =>
-                `${roleMention(team.roleId)} — ${team._count.memberStates} os. — kapitan: ${
-                  team.captainUserId
-                    ? userMention(team.captainUserId)
+                `${roleMention(team.roleId)} — ${team._count.memberStates} os. — Tucznik: ${
+                  team.identity?.tucznikUserId
+                    ? userMention(team.identity.tucznikUserId)
+                    : "nie wyznaczono"
+                } — kapitan: ${
+                  team.identity?.captainUserId
+                    ? userMention(team.identity.captainUserId)
                     : "nie wyznaczono"
                 }`,
             );
@@ -109,6 +129,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `${bold("Start:")} ${time(config.eventStartAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Koniec:")} ${time(config.eventEndAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Strefa:")} ${config.timezone}`,
+                `${bold("Tucznicy:")} ${configuredTucznicy}/${teams.length} — gotowość: ${tucznicyReady ? "tak" : "nie"}`,
                 `${bold("Drużyny:")}`,
                 teamLines.join("\n") || "brak",
               ].join("\n"),
@@ -481,6 +502,43 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             );
           }),
       )
+      .addCommand("tozsamosc", (command) =>
+        command
+          .setDescription("Ustaw Tucznika i kapitana drużyny")
+          .addUser("tucznik", (option) => option.setDescription("Tucznik"))
+          .addUser("kapitan", (option) => option.setDescription("Kapitan"))
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .handle(async ({ prisma }, { tucznik, kapitan, druzyna: role }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const team = await findTeamByRole(prisma, itx.guildId, role.id);
+
+            if (!team) {
+              await errorFollowUp(itx, "Ta rola nie jest drużyną tego eventu.");
+              return;
+            }
+
+            const result = await createBirthday2026TeamIdentity(
+              prisma,
+              itx.guildId,
+              team.id,
+              {
+                captainUserId: kapitan.id,
+                tucznikUserId: tucznik.id,
+              },
+            );
+
+            if (!result.ok) {
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
+              return;
+            }
+
+            await itx.editReply(
+              `${userMention(tucznik.id)} jest Tucznikiem, a ${userMention(kapitan.id)} kapitanem ${roleMention(team.roleId)}.`,
+            );
+          }),
+      )
       .addCommand("kapitan", (command) =>
         command
           .setDescription("Wyznacz albo zastąp kapitana drużyny")
@@ -512,11 +570,12 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             );
           }),
       )
-      .addCommand("usun-kapitana", (command) =>
+      .addCommand("tucznik", (command) =>
         command
-          .setDescription("Usuń obecnego kapitana drużyny")
+          .setDescription("Wyznacz albo zastąp Tucznika")
+          .addUser("user", (option) => option.setDescription("Nowy Tucznik"))
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
-          .handle(async ({ prisma }, { druzyna: role }, itx) => {
+          .handle(async ({ prisma }, { user, druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
@@ -526,18 +585,19 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const result = await setBirthday2026Captain(
+            const result = await setBirthday2026Tucznik(
               prisma,
               itx.guildId,
               team.id,
-              null,
+              user.id,
             );
             if (!result.ok) {
               await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
+
             await itx.editReply(
-              `Usunięto kapitana drużyny ${roleMention(team.roleId)}.`,
+              `${userMention(user.id)} jest Tucznikiem ${roleMention(team.roleId)}.`,
             );
           }),
       ),
