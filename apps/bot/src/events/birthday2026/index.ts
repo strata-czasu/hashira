@@ -353,33 +353,37 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("wylacz-kanal-tekst", (command) =>
         command
           .setDescription("Wyklucz kanał ze zdobywania Paszy za tekst")
-          .addChannel("kanal", (option) =>
-            option.setDescription("Kanał do wykluczenia"),
+          .addString("kanaly", (option) =>
+            option.setDescription("Kanały do wykluczenia"),
           )
-          .handle(async ({ prisma }, { kanal: channel }, itx) => {
+          .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
-            const result = await disableBirthday2026TextChannel(
+            const channelIds = parseChannelMentions(rawChannels);
+            if (channelIds.length === 0) {
+              await errorFollowUp(itx, "Podaj co najmniej jeden kanał.");
+              return;
+            }
+
+            const result = await disableBirthday2026TextChannels(
               prisma,
               itx.guildId,
-              channel.id,
+              channelIds,
             );
             if (!result.ok) {
               await errorFollowUp(
                 itx,
                 result.reason === "config_not_found"
                   ? "Event urodzinowy nie jest jeszcze skonfigurowany."
-                  : result.reason === "text_earning_not_configured"
-                    ? "Najpierw skonfiguruj zdobywanie Paszy za tekst."
-                    : "Nieprawidłowy kanał.",
+                  : "Najpierw skonfiguruj zdobywanie Paszy za tekst.",
               );
               return;
             }
 
             await itx.editReply(
-              `${channelMention(result.channelId)} ${
-                result.changed ? "został wykluczony" : "był już wykluczony"
+              `${result.channelIds.map(channelMention).join(", ")} ${
+                result.changed ? "zostały wykluczone" : "były już wykluczone"
               } ze zdobywania Paszy.`,
             );
           }),
@@ -387,33 +391,37 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("wlacz-kanal-tekst", (command) =>
         command
           .setDescription("Przywróć zdobywanie Paszy na kanale")
-          .addChannel("kanal", (option) =>
-            option.setDescription("Kanał do przywrócenia"),
+          .addString("kanaly", (option) =>
+            option.setDescription("Kanały do przywrócenia"),
           )
-          .handle(async ({ prisma }, { kanal: channel }, itx) => {
+          .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
-            const result = await enableBirthday2026TextChannel(
+            const channelIds = parseChannelMentions(rawChannels);
+            if (channelIds.length === 0) {
+              await errorFollowUp(itx, "Podaj co najmniej jeden kanał.");
+              return;
+            }
+
+            const result = await enableBirthday2026TextChannels(
               prisma,
               itx.guildId,
-              channel.id,
+              channelIds,
             );
             if (!result.ok) {
               await errorFollowUp(
                 itx,
                 result.reason === "config_not_found"
                   ? "Event urodzinowy nie jest jeszcze skonfigurowany."
-                  : result.reason === "text_earning_not_configured"
-                    ? "Najpierw skonfiguruj zdobywanie Paszy za tekst."
-                    : "Nieprawidłowy kanał.",
+                  : "Najpierw skonfiguruj zdobywanie Paszy za tekst.",
               );
               return;
             }
 
             await itx.editReply(
-              `${channelMention(result.channelId)} ${
-                result.changed ? "został przywrócony" : "nie był wykluczony"
+              `${result.channelIds.map(channelMention).join(", ")} ${
+                result.changed ? "zostały przywrócone" : "nie były wykluczone"
               }.`,
             );
           }),

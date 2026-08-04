@@ -5,7 +5,7 @@ import {
   type PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { getDefaultWallet } from "../../economy/managers/walletManager";
+import { addBalance } from "../../economy/managers/transferManager";
 import { getBirthday2026EventDayIndex, getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026TextEarningErrorReason =
@@ -15,7 +15,6 @@ export type Birthday2026TextEarningErrorReason =
   | "disabled_channel"
   | "economy_not_configured"
   | "event_not_open"
-  | "invalid_channel"
   | "invalid_daily_cap"
   | "invalid_occurred_at"
   | "invalid_window"
@@ -70,99 +69,78 @@ export const configureBirthday2026TextEarning = async (
       return { ok: false, reason: "text_earning_already_used" };
     }
 
-    return {
-      ok: true,
-      config: await tx.birthday2026TextEarningConfig.upsert({
-        where: { configId: config.id },
-        create: {
-          configId: config.id,
-          windowSeconds: input.windowSeconds,
-          dailyCap: input.dailyCap,
-        },
-        update: {
-          windowSeconds: input.windowSeconds,
-          dailyCap: input.dailyCap,
-        },
-      }),
-    };
+    const textEarning = await tx.birthday2026TextEarningConfig.upsert({
+      where: { configId: config.id },
+      create: {
+        configId: config.id,
+        windowSeconds: input.windowSeconds,
+        dailyCap: input.dailyCap,
+      },
+      update: {
+        windowSeconds: input.windowSeconds,
+        dailyCap: input.dailyCap,
+      },
+    });
+
+    return { ok: true, config: textEarning };
   });
 };
 
-export type Birthday2026DisabledTextChannelResult =
-  | {
-      ok: true;
-      changed: boolean;
-      channelId: string;
-    }
-  | {
-      ok: false;
-      reason: "config_not_found" | "invalid_channel" | "text_earning_not_configured";
-    };
-
-const normalizeChannelId = (channelId: string) => {
-  const normalized = channelId.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-export const disableBirthday2026TextChannel = async (
+export const disableBirthday2026TextChannels = async (
   prisma: PrismaTransaction,
   guildId: string,
-  channelId: string,
-): Promise<Birthday2026DisabledTextChannelResult> => {
-  const normalizedChannelId = normalizeChannelId(channelId);
-  if (!normalizedChannelId) return { ok: false, reason: "invalid_channel" };
-
+  channelIds: string[],
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
     select: { textEarning: { select: { configId: true } } },
   });
-  if (!config) return { ok: false, reason: "config_not_found" };
+  if (!config) return { ok: false, reason: "config_not_found" } as const;
   if (!config.textEarning) {
-    return { ok: false, reason: "text_earning_not_configured" };
+    return { ok: false, reason: "text_earning_not_configured" } as const;
   }
+  const configId = config.textEarning.configId;
 
   const result = await prisma.birthday2026DisabledTextChannel.createMany({
-    data: {
-      configId: config.textEarning.configId,
-      channelId: normalizedChannelId,
-    },
+    data: channelIds.map((channelId) => ({
+      configId,
+      channelId,
+    })),
     skipDuplicates: true,
   });
   return {
     ok: true,
     changed: result.count > 0,
-    channelId: normalizedChannelId,
-  };
+    channelIds,
+  } as const;
 };
 
-export const enableBirthday2026TextChannel = async (
+export const enableBirthday2026TextChannels = async (
   prisma: PrismaTransaction,
   guildId: string,
-  channelId: string,
-): Promise<Birthday2026DisabledTextChannelResult> => {
-  const normalizedChannelId = normalizeChannelId(channelId);
-  if (!normalizedChannelId) return { ok: false, reason: "invalid_channel" };
-
+  channelIds: string[],
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
     select: { textEarning: { select: { configId: true } } },
   });
-  if (!config) return { ok: false, reason: "config_not_found" };
+  if (!config) return { ok: false, reason: "config_not_found" } as const;
   if (!config.textEarning) {
-    return { ok: false, reason: "text_earning_not_configured" };
+    return { ok: false, reason: "text_earning_not_configured" } as const;
   }
+  const configId = config.textEarning.configId;
 
   const result = await prisma.birthday2026DisabledTextChannel.deleteMany({
     where: {
-      configId: config.textEarning.configId,
-      channelId: normalizedChannelId,
+      configId,
+      channelId: { in: channelIds },
     },
   });
   return {
     ok: true,
     changed: result.count > 0,
-    channelId: normalizedChannelId,
-  };
+    channelIds,
+  } as const;
 };
 
 export const findBirthday2026DisabledTextChannels = async (
@@ -224,8 +202,13 @@ type TextAwardDetails = {
   walletBalance: number;
 };
 
+type Birthday2026TextAwardedResult = {
+  ok: true;
+  status: "awarded" | "duplicate";
+} & TextAwardDetails;
+
 export type AwardBirthday2026TextPaszaResult =
-  | ({ ok: true; status: "awarded" | "duplicate" } & TextAwardDetails)
+  | Birthday2026TextAwardedResult
   | { ok: false; reason: Birthday2026TextEarningErrorReason };
 
 const findExistingTextAward = async (
@@ -237,7 +220,7 @@ const findExistingTextAward = async (
     eventDayIndex: number;
     windowIndex: number;
   },
-): Promise<Extract<AwardBirthday2026TextPaszaResult, { ok: true }> | null> => {
+): Promise<Birthday2026TextAwardedResult | null> => {
   const reference = await prisma.birthday2026PersonalTransaction.findUnique({
     where: {
       configId_source_sourceKey: {
@@ -288,8 +271,6 @@ export const awardBirthday2026TextPasza = async (
   if (!Number.isFinite(input.occurredAt.getTime())) {
     return { ok: false, reason: "invalid_occurred_at" };
   }
-  const channelId = normalizeChannelId(input.channelId);
-  if (!channelId) return { ok: false, reason: "invalid_channel" };
 
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
@@ -298,7 +279,7 @@ export const awardBirthday2026TextPasza = async (
       textEarning: {
         include: {
           disabledChannels: {
-            where: { channelId },
+            where: { channelId: input.channelId },
             select: { id: true },
           },
         },
@@ -378,25 +359,13 @@ export const awardBirthday2026TextPasza = async (
       });
       if (counterUpdate.count === 0) return null;
 
-      const wallet = await getDefaultWallet({
+      const { transaction, wallet } = await addBalance({
         prisma: nestedTransaction(tx),
         guildId: input.guildId,
-        userId: input.userId,
+        toUserId: input.userId,
+        amount: 1,
+        reason: `Birthday 2026 text activity: day ${eventDayIndex}, window ${windowIndex}`,
         currencyId,
-      });
-      const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: 1 } },
-      });
-      const transaction = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount: 1,
-          reason: `Birthday 2026 text activity: day ${eventDayIndex}, window ${windowIndex}`,
-          transactionType: "add",
-          entryType: "credit",
-          createdAt: input.occurredAt,
-        },
       });
       await tx.birthday2026PersonalTransaction.create({
         data: {
@@ -425,8 +394,8 @@ export const awardBirthday2026TextPasza = async (
         windowIndex,
         dailyAwardedWindows: dailyState.awardedWindows,
         transactionId: transaction.id,
-        walletBalance: updatedWallet.balance,
-      } satisfies AwardBirthday2026TextPaszaResult;
+        walletBalance: wallet.balance,
+      } satisfies Birthday2026TextAwardedResult;
     });
 
     return result ?? { ok: false, reason: "daily_cap_reached" };

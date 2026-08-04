@@ -10,8 +10,8 @@ import {
 import {
   awardBirthday2026TextPasza,
   configureBirthday2026TextEarning,
-  disableBirthday2026TextChannel,
-  enableBirthday2026TextChannel,
+  disableBirthday2026TextChannels,
+  enableBirthday2026TextChannels,
   findBirthday2026DisabledTextChannels,
   getBirthday2026TextEarningDiagnostics,
 } from "../../src/events/birthday2026/textEarningService";
@@ -67,6 +67,15 @@ const createFixture = async (dailyCap = 24, windowSeconds = 300) => {
     userId: memberUserId,
   });
   if (!assignment.ok) throw new Error(assignment.reason);
+  await prisma.birthday2026MemberState.update({
+    where: {
+      configId_userId: {
+        configId: configResult.config.id,
+        userId: memberUserId,
+      },
+    },
+    data: { joinedAt: new Date("2026-08-01T18:00:00Z") },
+  });
 
   const economy = await setupBirthday2026Economy(prisma, {
     guildId,
@@ -144,28 +153,40 @@ databaseTests("Birthday 2026 text earning", () => {
     });
 
     expect(
-      await disableBirthday2026TextChannel(prisma, fixture.guildId, "disabled-channel"),
+      await disableBirthday2026TextChannels(prisma, fixture.guildId, [
+        "disabled-channel",
+        "another-disabled-channel",
+      ]),
     ).toEqual({
       ok: true,
       changed: true,
-      channelId: "disabled-channel",
+      channelIds: ["disabled-channel", "another-disabled-channel"],
     });
     expect(
-      await disableBirthday2026TextChannel(prisma, fixture.guildId, "disabled-channel"),
+      await disableBirthday2026TextChannels(prisma, fixture.guildId, [
+        "disabled-channel",
+        "another-disabled-channel",
+      ]),
     ).toEqual({
       ok: true,
       changed: false,
-      channelId: "disabled-channel",
+      channelIds: ["disabled-channel", "another-disabled-channel"],
     });
     expect(await findBirthday2026DisabledTextChannels(prisma, fixture.guildId)).toEqual(
-      [expect.objectContaining({ channelId: "disabled-channel" })],
+      expect.arrayContaining([
+        expect.objectContaining({ channelId: "disabled-channel" }),
+        expect.objectContaining({ channelId: "another-disabled-channel" }),
+      ]),
     );
     expect(
-      await enableBirthday2026TextChannel(prisma, fixture.guildId, "disabled-channel"),
+      await enableBirthday2026TextChannels(prisma, fixture.guildId, [
+        "disabled-channel",
+        "another-disabled-channel",
+      ]),
     ).toEqual({
       ok: true,
       changed: true,
-      channelId: "disabled-channel",
+      channelIds: ["disabled-channel", "another-disabled-channel"],
     });
     expect(await findBirthday2026DisabledTextChannels(prisma, fixture.guildId)).toEqual(
       [],
@@ -361,12 +382,12 @@ databaseTests("Birthday 2026 text earning", () => {
       }),
     ).toEqual({ ok: false, reason: "member_not_found" });
 
-    await disableBirthday2026TextChannel(prisma, fixture.guildId, input.channelId);
+    await disableBirthday2026TextChannels(prisma, fixture.guildId, [input.channelId]);
     expect(await awardBirthday2026TextPasza(prisma, input)).toEqual({
       ok: false,
       reason: "disabled_channel",
     });
-    await enableBirthday2026TextChannel(prisma, fixture.guildId, input.channelId);
+    await enableBirthday2026TextChannels(prisma, fixture.guildId, [input.channelId]);
 
     await prisma.birthday2026MemberState.update({
       where: {
