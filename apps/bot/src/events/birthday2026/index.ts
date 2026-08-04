@@ -549,7 +549,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               user.id,
             );
             if (!result.ok) {
-              await replyWithTeamError(itx, result.reason);
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
             }
 
