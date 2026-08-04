@@ -1,13 +1,13 @@
-import type {
-  Birthday2026FeedBatch,
-  ExtendedPrismaClient,
-  PrismaTransaction,
+import {
+  type Birthday2026FeedBatch,
+  type ExtendedPrismaClient,
+  isUniqueConstraintError,
+  type PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { addSeconds } from "date-fns";
 import { InsufficientBalanceError } from "../../economy/economyError";
 import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
-import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 
 export type Birthday2026EconomyErrorReason =
   | "config_not_found"
