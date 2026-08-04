@@ -328,13 +328,8 @@ export const feedBirthday2026Pig = async (
 ): Promise<FeedBirthday2026PigResult> => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
-    select: {
-      id: true,
-      enabled: true,
-      eventEndAt: true,
-      eventStartAt: true,
+    include: {
       settlement: { select: { configId: true } },
-      visible: true,
       economy: {
         select: {
           currencyId: true,
