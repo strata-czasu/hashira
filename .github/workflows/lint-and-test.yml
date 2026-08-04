@@ -41,7 +41,7 @@ jobs:
       - name: Check Formatting
         run: bunx biome format .
 
-  # Type and migration checks run on the top PR; tests also cover the bottom PR.
+  # Type checks run on the top PR; migrations and tests also cover the bottom PR.
   types:
     if: >-
       ${{ github.event_name != 'pull_request' ||
@@ -64,6 +64,8 @@ jobs:
     if: >-
       ${{ github.event_name != 'pull_request' ||
       github.event.pull_request.stack == null ||
+      github.event.pull_request.stack.base.ref ==
+      github.event.pull_request.base.ref ||
       github.event.pull_request.stack.position ==
       github.event.pull_request.stack.size }}
     runs-on: ubuntu-latest
