@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import type { ExtendedPrismaClient } from "@hashira/db";
-import { PrismaClient } from "@hashira/prisma-client";
+import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   UserInventoryLimitExceededError,

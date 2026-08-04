@@ -1,3 +1,0 @@
-[install]
-# We would want to use the isolated modules in the future, but it causes type resolution errors now.
-linker = "hoisted"
