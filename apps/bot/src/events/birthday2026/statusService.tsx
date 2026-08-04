@@ -1,6 +1,9 @@
 /** @jsxImportSource @hashira/jsx */
-import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
-import { isUniqueConstraintError } from "@hashira/db";
+import {
+  type ExtendedPrismaClient,
+  isUniqueConstraintError,
+  type PrismaTransaction,
+} from "@hashira/db";
 import {
   Bold,
   Br,
