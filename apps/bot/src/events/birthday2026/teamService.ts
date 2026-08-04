@@ -1,5 +1,4 @@
 import {
-  type Birthday2026TeamIdentity,
   type ExtendedPrismaClient,
   isUniqueConstraintError,
   type PrismaTransaction,
@@ -315,6 +314,78 @@ export const removeBirthday2026Member = async (
   return { ok: true, member } as const;
 };
 
+export const createBirthday2026TeamIdentity = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  teamConfigId: number,
+  input: {
+    captainUserId: string;
+    tucznikUserId: string;
+  },
+) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const teamConfig = await tx.birthday2026TeamConfig.findFirst({
+        where: { id: teamConfigId, config: { guildId } },
+        select: {
+          id: true,
+          configId: true,
+          identity: { select: { teamConfigId: true } },
+        },
+      });
+
+      if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
+
+      if (teamConfig.identity) {
+        return { ok: false, reason: "identity_already_configured" } as const;
+      }
+
+      const [captainMembership, tucznikMembership] = await Promise.all([
+        tx.birthday2026MemberState.findUnique({
+          where: {
+            configId_userId: {
+              configId: teamConfig.configId,
+              userId: input.captainUserId,
+            },
+          },
+        }),
+        tx.birthday2026MemberState.findUnique({
+          where: {
+            configId_userId: {
+              configId: teamConfig.configId,
+              userId: input.tucznikUserId,
+            },
+          },
+        }),
+      ]);
+
+      if (!captainMembership || captainMembership.teamConfigId !== teamConfig.id) {
+        return { ok: false, reason: "captain_not_member" } as const;
+      }
+
+      if (!tucznikMembership || tucznikMembership.teamConfigId !== teamConfig.id) {
+        return { ok: false, reason: "tucznik_not_member" } as const;
+      }
+
+      const identity = await tx.birthday2026TeamIdentity.create({
+        data: {
+          teamConfigId: teamConfig.id,
+          configId: teamConfig.configId,
+          tucznikUserId: input.tucznikUserId,
+          captainUserId: input.captainUserId,
+        },
+      });
+
+      return { ok: true, identity } as const;
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      return { ok: false, reason: "identity_already_assigned" } as const;
+    }
+    throw error;
+  }
+};
+
 export const setBirthday2026Captain = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
@@ -344,24 +415,15 @@ export const setBirthday2026Captain = async (
       if (!membership || membership.teamConfigId !== teamConfig.id) {
         return { ok: false, reason: "captain_not_member" } as const;
       }
+      if (!teamConfig.identity) {
+        return { ok: false, reason: "identity_not_configured" } as const;
+      }
 
-      const identity = teamConfig.identity
-        ? await tx.birthday2026TeamIdentity.update({
-            where: { teamConfigId: teamConfig.id },
-            data: { captainUserId: userId },
-          })
-        : await tx.birthday2026TeamIdentity.create({
-            data: {
-              teamConfigId: teamConfig.id,
-              configId: teamConfig.configId,
-              tucznikUserId: userId,
-              captainUserId: userId,
-            },
-          });
-      const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({
-        where: { id: teamConfig.id },
+      const identity = await tx.birthday2026TeamIdentity.update({
+        where: { teamConfigId: teamConfig.id },
+        data: { captainUserId: userId },
       });
-      return { ok: true, team, identity } as const;
+      return { ok: true, identity } as const;
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -375,16 +437,19 @@ export const setBirthday2026Tucznik = (
   prisma: ExtendedPrismaClient,
   guildId: string,
   teamConfigId: number,
-  userId: string | null,
+  userId: string,
 ) =>
-  prisma.$transaction(async (tx) => {
-    const teamConfig = await tx.birthday2026TeamConfig.findFirst({
-      where: { id: teamConfigId, config: { guildId } },
-      select: { id: true, configId: true },
-    });
-    if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
-
-    if (userId) {
+  prisma
+    .$transaction(async (tx) => {
+      const teamConfig = await tx.birthday2026TeamConfig.findFirst({
+        where: { id: teamConfigId, config: { guildId } },
+        select: {
+          id: true,
+          configId: true,
+          identity: { select: { teamConfigId: true } },
+        },
+      });
+      if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
       const membership = await tx.birthday2026MemberState.findUnique({
         where: {
           configId_userId: {
@@ -396,58 +461,22 @@ export const setBirthday2026Tucznik = (
       if (!membership || membership.teamConfigId !== teamConfig.id) {
         return { ok: false, reason: "tucznik_not_member" } as const;
       }
+      if (!teamConfig.identity) {
+        return { ok: false, reason: "identity_not_configured" } as const;
+      }
 
-      const [existingTucznik, existingCaptaincy] = await Promise.all([
-        tx.birthday2026TeamIdentity.findFirst({
-          where: {
-            configId: teamConfig.configId,
-            tucznikUserId: userId,
-            teamConfigId: { not: teamConfig.id },
-          },
-          select: { teamConfigId: true },
-        }),
-        tx.birthday2026TeamIdentity.findFirst({
-          where: {
-            configId: teamConfig.configId,
-            captainUserId: userId,
-            teamConfigId: { not: teamConfig.id },
-          },
-          select: { teamConfigId: true },
-        }),
-      ]);
-      if (existingTucznik) {
+      const identity = await tx.birthday2026TeamIdentity.update({
+        where: { teamConfigId: teamConfig.id },
+        data: { tucznikUserId: userId },
+      });
+      return { ok: true, identity } as const;
+    })
+    .catch((error) => {
+      if (isUniqueConstraintError(error)) {
         return { ok: false, reason: "tucznik_already_assigned" } as const;
       }
-      if (existingCaptaincy) {
-        return { ok: false, reason: "captain_already_assigned" } as const;
-      }
-    }
-
-    let identity: Birthday2026TeamIdentity | null = null;
-    if (userId) {
-      identity = await tx.birthday2026TeamIdentity.upsert({
-        where: { teamConfigId: teamConfig.id },
-        create: {
-          teamConfigId: teamConfig.id,
-          configId: teamConfig.configId,
-          tucznikUserId: userId,
-          captainUserId: userId,
-        },
-        update: {
-          tucznikUserId: userId,
-          captainUserId: userId,
-        },
-      });
-    } else {
-      await tx.birthday2026TeamIdentity.deleteMany({
-        where: { teamConfigId: teamConfig.id },
-      });
-    }
-    const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({
-      where: { id: teamConfig.id },
+      throw error;
     });
-    return { ok: true, team, identity } as const;
-  });
 
 export const rebalanceBirthday2026Members = (
   prisma: ExtendedPrismaClient,

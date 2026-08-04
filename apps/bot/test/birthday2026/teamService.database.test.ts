@@ -5,6 +5,7 @@ import { upsertBirthday2026Config } from "../../src/events/birthday2026/configSe
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
+  createBirthday2026TeamIdentity,
   findBirthday2026Membership,
   rebalanceBirthday2026Members,
   removeBirthday2026Member,
@@ -158,6 +159,7 @@ databaseTests("Birthday 2026 team services", () => {
     if (!prisma) throw new Error("DATABASE_TEST_URL is required");
     const fixture = await createFixture(2);
     const captainUserId = requiredItem(fixture.users, 0, "captain fixture user");
+    const tucznikUserId = requiredItem(fixture.users, 1, "Tucznik fixture user");
     const first = await createTeam(
       fixture.guildId,
       `First ${fixture.suffix}`,
@@ -180,6 +182,20 @@ databaseTests("Birthday 2026 team services", () => {
       teamConfigId: first.id,
       userId: captainUserId,
     });
+    await assignBirthday2026Member(prisma, {
+      guildId: fixture.guildId,
+      teamConfigId: first.id,
+      userId: tucznikUserId,
+    });
+    expect(
+      await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId),
+    ).toEqual({ ok: false, reason: "identity_not_configured" });
+    expect(
+      await createBirthday2026TeamIdentity(prisma, fixture.guildId, first.id, {
+        captainUserId,
+        tucznikUserId,
+      }),
+    ).toMatchObject({ ok: true });
     expect(
       (await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId))
         .ok,
@@ -203,17 +219,22 @@ databaseTests("Birthday 2026 team services", () => {
     });
   });
 
-  it("appoints a Tucznik as captain and preserves the identity across captain replacement", async () => {
+  it("assigns and replaces the required identities independently", async () => {
     if (!prisma) throw new Error("DATABASE_TEST_URL is required");
-    const fixture = await createFixture(4);
+    const fixture = await createFixture(5);
     const tucznikUserId = requiredItem(fixture.users, 0, "Tucznik fixture user");
     const replacementCaptainUserId = requiredItem(
       fixture.users,
       1,
       "replacement captain fixture user",
     );
-    const otherTeamUserId = requiredItem(fixture.users, 2, "other team fixture user");
-    const movableUserId = requiredItem(fixture.users, 3, "movable fixture user");
+    const replacementTucznikUserId = requiredItem(
+      fixture.users,
+      2,
+      "replacement Tucznik fixture user",
+    );
+    const otherTeamUserId = requiredItem(fixture.users, 3, "other team fixture user");
+    const movableUserId = requiredItem(fixture.users, 4, "movable fixture user");
     const first = await createTeam(
       fixture.guildId,
       `First ${fixture.suffix}`,
@@ -240,6 +261,11 @@ databaseTests("Birthday 2026 team services", () => {
       }),
       assignBirthday2026Member(prisma, {
         guildId: fixture.guildId,
+        teamConfigId: first.id,
+        userId: replacementTucznikUserId,
+      }),
+      assignBirthday2026Member(prisma, {
+        guildId: fixture.guildId,
         teamConfigId: second.id,
         userId: otherTeamUserId,
       }),
@@ -254,31 +280,51 @@ databaseTests("Birthday 2026 team services", () => {
       await setBirthday2026Tucznik(prisma, fixture.guildId, first.id, otherTeamUserId),
     ).toEqual({ ok: false, reason: "tucznik_not_member" });
 
-    const appointment = await setBirthday2026Tucznik(
+    const appointment = await createBirthday2026TeamIdentity(
       prisma,
       fixture.guildId,
       first.id,
-      tucznikUserId,
+      { captainUserId: replacementCaptainUserId, tucznikUserId },
     );
     expect(appointment).toMatchObject({
       ok: true,
       identity: {
         tucznikUserId,
-        captainUserId: tucznikUserId,
+        captainUserId: replacementCaptainUserId,
       },
     });
+    expect(
+      await createBirthday2026TeamIdentity(prisma, fixture.guildId, first.id, {
+        captainUserId: replacementTucznikUserId,
+        tucznikUserId,
+      }),
+    ).toEqual({ ok: false, reason: "identity_already_configured" });
 
     const captainReplacement = await setBirthday2026Captain(
       prisma,
       fixture.guildId,
       first.id,
-      replacementCaptainUserId,
+      replacementTucznikUserId,
     );
     expect(captainReplacement).toMatchObject({
       ok: true,
       identity: {
         tucznikUserId,
-        captainUserId: replacementCaptainUserId,
+        captainUserId: replacementTucznikUserId,
+      },
+    });
+
+    const tucznikReplacement = await setBirthday2026Tucznik(
+      prisma,
+      fixture.guildId,
+      first.id,
+      replacementCaptainUserId,
+    );
+    expect(tucznikReplacement).toMatchObject({
+      ok: true,
+      identity: {
+        tucznikUserId: replacementCaptainUserId,
+        captainUserId: replacementTucznikUserId,
       },
     });
 
@@ -286,14 +332,14 @@ databaseTests("Birthday 2026 team services", () => {
       await assignBirthday2026Member(prisma, {
         guildId: fixture.guildId,
         teamConfigId: second.id,
-        userId: tucznikUserId,
+        userId: replacementCaptainUserId,
       }),
     ).toEqual({
       ok: false,
       reason: "tucznik_move_requires_replacement",
     });
     expect(
-      await removeBirthday2026Member(prisma, fixture.guildId, tucznikUserId),
+      await removeBirthday2026Member(prisma, fixture.guildId, replacementCaptainUserId),
     ).toEqual({
       ok: false,
       reason: "tucznik_move_requires_replacement",
@@ -309,7 +355,7 @@ databaseTests("Birthday 2026 team services", () => {
     if (!rebalance.ok) throw new Error(rebalance.reason);
     expect(
       rebalance.plan.assignments.find(
-        (assignment) => assignment.userId === tucznikUserId,
+        (assignment) => assignment.userId === replacementTucznikUserId,
       )?.teamConfigId,
     ).toBe(first.id);
     expect(
@@ -318,22 +364,14 @@ databaseTests("Birthday 2026 team services", () => {
       )?.teamConfigId,
     ).toBe(first.id);
 
-    const cleared = await setBirthday2026Tucznik(
-      prisma,
-      fixture.guildId,
-      first.id,
-      null,
-    );
-    expect(cleared).toEqual({
-      ok: true,
-      team: expect.objectContaining({ id: first.id }),
-      identity: null,
-    });
     expect(
       await prisma.birthday2026TeamIdentity.findUnique({
         where: { teamConfigId: first.id },
       }),
-    ).toBeNull();
+    ).toMatchObject({
+      tucznikUserId: replacementCaptainUserId,
+      captainUserId: replacementTucznikUserId,
+    });
   });
 
   it("rebalances members atomically while pinning captains", async () => {
@@ -351,6 +389,7 @@ databaseTests("Birthday 2026 team services", () => {
     );
     const captainTeam = requiredItem(teams, 0, "captain team");
     const captainUserId = requiredItem(fixture.users, 0, "captain fixture user");
+    const tucznikUserId = requiredItem(fixture.users, 1, "Tucznik fixture user");
 
     await Promise.all(
       fixture.users.map((userId) =>
@@ -361,13 +400,13 @@ databaseTests("Birthday 2026 team services", () => {
         }),
       ),
     );
-    const captainResult = await setBirthday2026Captain(
+    const identityResult = await createBirthday2026TeamIdentity(
       prisma,
       fixture.guildId,
       captainTeam.id,
-      captainUserId,
+      { captainUserId, tucznikUserId },
     );
-    if (!captainResult.ok) throw new Error(captainResult.reason);
+    if (!identityResult.ok) throw new Error(identityResult.reason);
 
     expect(
       await rebalanceBirthday2026Members(prisma, {
