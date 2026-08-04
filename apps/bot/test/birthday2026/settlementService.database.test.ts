@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import type { PrismaTransaction } from "@hashira/db";
-import { PrismaClient } from "@hashira/prisma-client";
+import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   setBirthday2026FeatureState,
