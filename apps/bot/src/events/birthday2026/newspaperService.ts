@@ -8,10 +8,7 @@ export const getBirthday2026Newspaper = async (
 ) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId },
-    select: {
-      id: true,
-      eventStartAt: true,
-      eventEndAt: true,
+    include: {
       teams: {
         select: {
           id: true,
