@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/prisma-client";
+import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
