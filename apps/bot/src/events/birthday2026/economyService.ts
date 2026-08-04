@@ -3,33 +3,22 @@ import type {
   ExtendedPrismaClient,
   PrismaTransaction,
 } from "@hashira/db";
-import { Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { addSeconds } from "date-fns";
-import { getDefaultWallet } from "../../economy/managers/walletManager";
+import { InsufficientBalanceError } from "../../economy/economyError";
+import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
+import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
 
 export type Birthday2026EconomyErrorReason =
   | "config_not_found"
   | "currency_conflict"
   | "economy_not_configured"
   | "economy_already_configured"
-  | "invalid_amount"
   | "invalid_currency"
   | "invalid_digestion_delay"
-  | "invalid_source_key"
   | "insufficient_balance"
   | "member_not_found"
   | "team_wallet_not_found";
-
-const isUniqueConstraintError = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-
-const isPositiveAmount = (amount: number) => Number.isSafeInteger(amount) && amount > 0;
-
-const normalizeSourceKey = (sourceKey: string) => {
-  const normalized = sourceKey.trim();
-  return normalized.length > 0 ? normalized : null;
-};
 
 export type SetupBirthday2026EconomyResult =
   | {
@@ -59,9 +48,7 @@ export const setupBirthday2026Economy = (
   },
 ): Promise<SetupBirthday2026EconomyResult> =>
   prisma.$transaction(async (tx) => {
-    const currencyName = input.currencyName.trim();
-    const currencySymbol = input.currencySymbol.trim();
-    if (!currencyName || !currencySymbol) {
+    if (!input.currencyName || !input.currencySymbol) {
       return { ok: false, reason: "invalid_currency" };
     }
     if (
@@ -82,8 +69,8 @@ export const setupBirthday2026Economy = (
     const configuredEconomy = config.economy;
     if (configuredEconomy) {
       if (
-        configuredEconomy.currency.name !== currencyName ||
-        configuredEconomy.currency.symbol !== currencySymbol ||
+        configuredEconomy.currency.name !== input.currencyName ||
+        configuredEconomy.currency.symbol !== input.currencySymbol ||
         configuredEconomy.digestionDelaySeconds !== input.digestionDelaySeconds
       ) {
         return { ok: false, reason: "economy_already_configured" };
@@ -112,12 +99,13 @@ export const setupBirthday2026Economy = (
     const currencies = await tx.currency.findMany({
       where: {
         guildId: input.guildId,
-        OR: [{ name: currencyName }, { symbol: currencySymbol }],
+        OR: [{ name: input.currencyName }, { symbol: input.currencySymbol }],
       },
     });
     const matchingCurrency = currencies.find(
       (currency) =>
-        currency.name === currencyName && currency.symbol === currencySymbol,
+        currency.name === input.currencyName &&
+        currency.symbol === input.currencySymbol,
     );
     if (currencies.length > 0 && !matchingCurrency) {
       return { ok: false, reason: "currency_conflict" };
@@ -128,8 +116,8 @@ export const setupBirthday2026Economy = (
       (await tx.currency.create({
         data: {
           guildId: input.guildId,
-          name: currencyName,
-          symbol: currencySymbol,
+          name: input.currencyName,
+          symbol: input.currencySymbol,
           createdBy: input.createdByUserId,
         },
       }));
@@ -210,12 +198,6 @@ export const grantBirthday2026Pasza = async (
     reason: string;
   },
 ): Promise<GrantBirthday2026PaszaResult> => {
-  if (!isPositiveAmount(input.amount)) {
-    return { ok: false, reason: "invalid_amount" };
-  }
-  const sourceKey = normalizeSourceKey(input.sourceKey);
-  if (!sourceKey) return { ok: false, reason: "invalid_source_key" };
-
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
     select: {
@@ -232,7 +214,7 @@ export const grantBirthday2026Pasza = async (
   const existing = await findPersonalTransaction(prisma, {
     configId: config.id,
     source: "staffGrant",
-    sourceKey,
+    sourceKey: input.sourceKey,
   });
   if (existing) return { ok: true, created: false, ...existing };
 
@@ -270,7 +252,7 @@ export const grantBirthday2026Pasza = async (
           userId: input.userId,
           transactionId: transaction.id,
           source: "staffGrant",
-          sourceKey,
+          sourceKey: input.sourceKey,
           createdByUserId: input.createdByUserId,
         },
       });
@@ -290,7 +272,7 @@ export const grantBirthday2026Pasza = async (
     const duplicate = await findPersonalTransaction(prisma, {
       configId: config.id,
       source: "staffGrant",
-      sourceKey,
+      sourceKey: input.sourceKey,
     });
     if (!duplicate) throw error;
     return { ok: true, created: false, ...duplicate };
@@ -352,12 +334,6 @@ export const feedBirthday2026Pig = async (
     scheduleDigestion: ScheduleDigestion;
   },
 ): Promise<FeedBirthday2026PigResult> => {
-  if (!isPositiveAmount(input.amount)) {
-    return { ok: false, reason: "invalid_amount" };
-  }
-  const sourceKey = normalizeSourceKey(input.sourceKey);
-  if (!sourceKey) return { ok: false, reason: "invalid_source_key" };
-
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
     select: {
@@ -376,7 +352,7 @@ export const feedBirthday2026Pig = async (
   }
   const { currencyId, digestionDelaySeconds } = config.economy;
 
-  const duplicate = await findFeedResult(prisma, config.id, sourceKey);
+  const duplicate = await findFeedResult(prisma, config.id, input.sourceKey);
   if (duplicate) return duplicate;
 
   const membership = await prisma.birthday2026MemberState.findUnique({
@@ -401,21 +377,13 @@ export const feedBirthday2026Pig = async (
         userId: input.userId,
         currencyId,
       });
-      const debit = await tx.wallet.updateMany({
-        where: { id: wallet.id, balance: { gte: input.amount } },
-        data: { balance: { decrement: input.amount } },
-      });
-      if (debit.count === 0) {
-        return { ok: false, reason: "insufficient_balance" };
-      }
-
-      const personalTransaction = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount: input.amount,
+      const personalTransaction = await debitWallet({
+        prisma: tx,
+        walletId: wallet.id,
+        amount: input.amount,
+        transaction: {
           reason: input.reason,
           transactionType: "transfer",
-          entryType: "debit",
         },
       });
       await tx.birthday2026PersonalTransaction.create({
@@ -424,7 +392,7 @@ export const feedBirthday2026Pig = async (
           userId: input.userId,
           transactionId: personalTransaction.id,
           source: "feed",
-          sourceKey,
+          sourceKey: input.sourceKey,
         },
       });
 
@@ -436,7 +404,7 @@ export const feedBirthday2026Pig = async (
           personalTransactionId: personalTransaction.id,
           amount: input.amount,
           remainingAmount: input.amount,
-          sourceKey,
+          sourceKey: input.sourceKey,
           digestAt: addSeconds(input.acceptedAt, digestionDelaySeconds),
         },
       });
@@ -453,7 +421,7 @@ export const feedBirthday2026Pig = async (
           entryType: "credit",
           amount: input.amount,
           reason: input.reason,
-          sourceKey,
+          sourceKey: input.sourceKey,
         },
       });
       await input.scheduleDigestion(tx, batch);
@@ -471,8 +439,11 @@ export const feedBirthday2026Pig = async (
       };
     });
   } catch (error) {
+    if (error instanceof InsufficientBalanceError) {
+      return { ok: false, reason: "insufficient_balance" };
+    }
     if (!isUniqueConstraintError(error)) throw error;
-    const existing = await findFeedResult(prisma, config.id, sourceKey);
+    const existing = await findFeedResult(prisma, config.id, input.sourceKey);
     if (!existing) throw error;
     return existing;
   }

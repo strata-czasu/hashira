@@ -47,29 +47,17 @@ const teamErrorMessages = {
   team_not_found: "Nie znaleziono wskazanej drużyny.",
 };
 
-const replyWithTeamError = (
-  itx: Parameters<typeof errorFollowUp>[0],
-  reason: keyof typeof teamErrorMessages,
-) => errorFollowUp(itx, teamErrorMessages[reason]);
-
 const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
   currency_conflict: "Nazwa albo symbol waluty są już używane na tym serwerze.",
   economy_already_configured: "Ekonomia jest już skonfigurowana z innymi wartościami.",
   economy_not_configured: "Najpierw skonfiguruj ekonomię eventu.",
   insufficient_balance: "Użytkownik nie ma wystarczającej ilości Paszy.",
-  invalid_amount: "Ilość musi być dodatnią liczbą całkowitą.",
   invalid_currency: "Nazwa i symbol waluty nie mogą być puste.",
   invalid_digestion_delay: "Czas trawienia musi być nieujemną liczbą sekund.",
-  invalid_source_key: "Klucz źródła nie może być pusty.",
   member_not_found: "Ten użytkownik nie należy do eventu.",
   team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
 };
-
-const replyWithEconomyError = (
-  itx: Parameters<typeof errorFollowUp>[0],
-  reason: Birthday2026EconomyErrorReason,
-) => errorFollowUp(itx, economyErrorMessages[reason]);
 
 const findTeamByRole = async (
   prisma: Parameters<typeof findBirthday2026Teams>[0],
@@ -268,7 +256,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 createdByUserId: itx.user.id,
               });
               if (!result.ok) {
-                await replyWithEconomyError(itx, result.reason);
+                await errorFollowUp(itx, economyErrorMessages[result.reason]);
                 return;
               }
 
@@ -308,7 +296,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               reason,
             });
             if (!result.ok) {
-              await replyWithEconomyError(itx, result.reason);
+              await errorFollowUp(itx, economyErrorMessages[result.reason]);
               return;
             }
 
@@ -353,7 +341,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   ),
               });
               if (!result.ok) {
-                await replyWithEconomyError(itx, result.reason);
+                await errorFollowUp(itx, economyErrorMessages[result.reason]);
                 return;
               }
 

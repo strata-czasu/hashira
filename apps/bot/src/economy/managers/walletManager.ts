@@ -37,7 +37,7 @@ export const debitWallet = async ({
   walletId,
   amount,
   transaction,
-}: DebitWalletOptions): Promise<void> => {
+}: DebitWalletOptions) => {
   validateNonNegativeAmount(amount);
 
   const result = await prisma.wallet.updateMany({
@@ -52,7 +52,7 @@ export const debitWallet = async ({
 
   if (result.count === 0) throw new InsufficientBalanceError();
 
-  await prisma.transaction.create({
+  return prisma.transaction.create({
     data: {
       walletId,
       amount,
