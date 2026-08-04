@@ -41,21 +41,23 @@ export const addBalance = async ({
       currencyId: currency.id,
     });
 
-    await tx.wallet.update({
-      where: { id: wallet.id },
+    const transaction = await tx.transaction.create({
       data: {
-        balance: { increment: amount },
-        transactions: {
-          create: {
-            relatedUserId: fromUserId,
-            amount,
-            reason,
-            entryType: amount > 0 ? "credit" : "debit",
-            transactionType: "add",
-          },
-        },
+        walletId: wallet.id,
+        relatedUserId: fromUserId,
+        amount,
+        reason,
+        entryType: amount > 0 ? "credit" : "debit",
+        transactionType: "add",
       },
     });
+
+    const updatedWallet = await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: { increment: amount } },
+    });
+
+    return { transaction, wallet: updatedWallet };
   });
 };
 

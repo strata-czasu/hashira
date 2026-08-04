@@ -9,8 +9,20 @@ model Birthday2026Config {
   createdAt           DateTime @default(now()) @db.Timestamp(6)
   updatedAt           DateTime @updatedAt @db.Timestamp(6)
 
-  guild Guild                    @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  teams Birthday2026TeamConfig[]
+  guild                Guild                             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  economy              Birthday2026EconomyConfig?
+  teams                Birthday2026TeamConfig[]
+  feedBatches          Birthday2026FeedBatch[]
+  personalTransactions Birthday2026PersonalTransaction[]
+}
+
+model Birthday2026EconomyConfig {
+  configId               Int @id
+  currencyId             Int @unique
+  digestionDelaySeconds  Int
+
+  config   Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+  currency Currency           @relation(fields: [currencyId], references: [id], onDelete: Restrict)
 }
 
 model Birthday2026TeamConfig {
@@ -25,6 +37,7 @@ model Birthday2026TeamConfig {
   team         Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   captainUser  User?                     @relation("birthday2026Captain", fields: [captainUserId], references: [id])
   memberStates Birthday2026MemberState[]
+  wallet       Birthday2026TeamWallet?
 
   @@unique([id, configId])
   @@unique([configId, captainUserId])
@@ -43,4 +56,95 @@ model Birthday2026MemberState {
   @@unique([configId, userId])
   @@index([teamConfigId, configId])
   @@index([userId])
+}
+
+model Birthday2026TeamWallet {
+  id              Int      @id @default(autoincrement())
+  teamConfigId    Int      @unique
+  currencyId      Int
+  balance         Int
+  permanentWeight Int
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @db.Timestamp(6)
+
+  teamConfig   Birthday2026TeamConfig              @relation(fields: [teamConfigId], references: [id], onDelete: Cascade)
+  currency     Currency                            @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+  transactions Birthday2026TeamWalletTransaction[]
+  feedBatches  Birthday2026FeedBatch[]
+
+  @@index([currencyId])
+}
+
+model Birthday2026TeamWalletTransaction {
+  id                    Int       @id @default(autoincrement())
+  walletId              Int
+  feedBatchId           Int
+  personalTransactionId Int?      @unique
+  source                Birthday2026TeamWalletTransactionSource
+  entryType             EntryType
+  amount                Int
+  reason                String
+  sourceKey             String
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+
+  wallet              Birthday2026TeamWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  feedBatch           Birthday2026FeedBatch  @relation(fields: [feedBatchId], references: [id], onDelete: Restrict)
+  personalTransaction Transaction?           @relation(fields: [personalTransactionId], references: [id], onDelete: Restrict)
+
+  @@unique([walletId, source, sourceKey])
+  @@index([feedBatchId])
+}
+
+model Birthday2026FeedBatch {
+  id                    Int       @id @default(autoincrement())
+  configId              Int
+  walletId              Int
+  userId                String
+  personalTransactionId Int       @unique
+  amount                Int
+  remainingAmount       Int
+  sourceKey             String
+  digestAt              DateTime  @db.Timestamp(6)
+  digestedAt            DateTime? @db.Timestamp(6)
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+
+  config              Birthday2026Config                  @relation(fields: [configId], references: [id], onDelete: Cascade)
+  wallet              Birthday2026TeamWallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user                User                                @relation("birthday2026FeedOwner", fields: [userId], references: [id], onDelete: Cascade)
+  personalTransaction Transaction                         @relation(fields: [personalTransactionId], references: [id], onDelete: Restrict)
+  teamTransactions    Birthday2026TeamWalletTransaction[]
+
+  @@unique([configId, sourceKey])
+  @@index([walletId, digestedAt, digestAt])
+  @@index([userId])
+}
+
+enum Birthday2026PersonalTransactionSource {
+  staffGrant
+  feed
+}
+
+enum Birthday2026TeamWalletTransactionSource {
+  feed
+  digestion
+}
+
+model Birthday2026PersonalTransaction {
+  id              Int                                   @id @default(autoincrement())
+  configId        Int
+  userId          String
+  transactionId   Int                                   @unique
+  source          Birthday2026PersonalTransactionSource
+  sourceKey       String
+  createdByUserId String?
+  createdAt       DateTime                              @default(now()) @db.Timestamp(6)
+
+  config        Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user          User               @relation("birthday2026PersonalTransactionOwner", fields: [userId], references: [id], onDelete: Cascade)
+  createdByUser User?              @relation("birthday2026PersonalTransactionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  transaction   Transaction        @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@unique([configId, source, sourceKey])
+  @@index([userId])
+  @@index([createdByUserId])
 }

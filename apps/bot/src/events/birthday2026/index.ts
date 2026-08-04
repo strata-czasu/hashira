@@ -13,6 +13,13 @@ import { errorFollowUp } from "../../util/errorFollowUp";
 import { getColor } from "../../util/getColor";
 import { findBirthday2026Config, upsertBirthday2026Config } from "./configService";
 import {
+  type Birthday2026EconomyErrorReason,
+  feedBirthday2026Pig,
+  getBirthday2026EconomyStatus,
+  grantBirthday2026Pasza,
+  setupBirthday2026Economy,
+} from "./economyService";
+import {
   getBirthday2026EventState,
   getBirthday2026RegistrationState,
 } from "./eventState";
@@ -38,6 +45,18 @@ const teamErrorMessages = {
   role_already_used: "Ta rola jest już używana przez drużynę eventową.",
   team_already_exists: "Drużyna o tej nazwie już istnieje na serwerze.",
   team_not_found: "Nie znaleziono wskazanej drużyny.",
+};
+
+const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
+  config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
+  currency_conflict: "Nazwa albo symbol waluty są już używane na tym serwerze.",
+  economy_already_configured: "Ekonomia jest już skonfigurowana z innymi wartościami.",
+  economy_not_configured: "Najpierw skonfiguruj ekonomię eventu.",
+  insufficient_balance: "Użytkownik nie ma wystarczającej ilości Paszy.",
+  invalid_currency: "Nazwa i symbol waluty nie mogą być puste.",
+  invalid_digestion_delay: "Czas trawienia musi być nieujemną liczbą sekund.",
+  member_not_found: "Ten użytkownik nie należy do eventu.",
+  team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
 };
 
 const findTeamByRole = async (
@@ -200,6 +219,159 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             });
             await itx.editReply({
               content: `Flagi zapisane: widoczny=${config.visible}, aktywny=${config.enabled}.`,
+            });
+          }),
+      )
+      .addCommand("ekonomia", (command) =>
+        command
+          .setDescription("Skonfiguruj walutę i czas trawienia")
+          .addString("nazwa", (option) =>
+            option.setDescription("Nazwa waluty eventowej"),
+          )
+          .addString("symbol", (option) =>
+            option.setDescription("Symbol waluty eventowej"),
+          )
+          .addInteger("trawienie-sekundy", (option) =>
+            option.setDescription("Czas trawienia w sekundach").setMinValue(0),
+          )
+          .handle(
+            async (
+              { prisma },
+              {
+                nazwa: currencyName,
+                symbol: currencySymbol,
+                "trawienie-sekundy": digestionDelaySeconds,
+              },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+              await ensureUserExists(prisma, itx.user);
+
+              const result = await setupBirthday2026Economy(prisma, {
+                guildId: itx.guildId,
+                currencyName,
+                currencySymbol,
+                digestionDelaySeconds,
+                createdByUserId: itx.user.id,
+              });
+              if (!result.ok) {
+                await errorFollowUp(itx, economyErrorMessages[result.reason]);
+                return;
+              }
+
+              await itx.editReply(
+                `Ekonomia skonfigurowana: waluta ${result.currencyId}, portfele drużyn: ${result.teamWalletCount}.`,
+              );
+            },
+          ),
+      ),
+  )
+  .group("urodziny-ops", (group) =>
+    group
+      .setDescription("Bieżąca obsługa eventu urodzinowego 2026")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .setDMPermission(false)
+      .addCommand("daj-pasze", (command) =>
+        command
+          .setDescription("Przyznaj uczestnikowi audytowaną Paszę")
+          .addUser("user", (option) => option.setDescription("Uczestnik eventu"))
+          .addInteger("ilosc", (option) =>
+            option.setDescription("Ilość Paszy").setMinValue(1),
+          )
+          .addString("powod", (option) =>
+            option.setDescription("Powód przyznania Paszy"),
+          )
+          .handle(async ({ prisma }, { user, ilosc: amount, powod: reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            await ensureUserExists(prisma, itx.user);
+
+            const result = await grantBirthday2026Pasza(prisma, {
+              guildId: itx.guildId,
+              userId: user.id,
+              amount,
+              sourceKey: itx.id,
+              createdByUserId: itx.user.id,
+              reason,
+            });
+            if (!result.ok) {
+              await errorFollowUp(itx, economyErrorMessages[result.reason]);
+              return;
+            }
+
+            await itx.editReply(
+              `${result.created ? "Przyznano" : "To przyznanie było już zapisane:"} ${result.amount} Paszy dla ${userMention(result.userId)}. Saldo: ${result.walletBalance}.`,
+            );
+          }),
+      )
+      .addCommand("nakarm-test", (command) =>
+        command
+          .setDescription("Przetestuj karmienie świni uczestnika")
+          .addUser("user", (option) => option.setDescription("Uczestnik eventu"))
+          .addInteger("ilosc", (option) =>
+            option.setDescription("Ilość Paszy").setMinValue(1),
+          )
+          .addString("powod", (option) =>
+            option.setDescription("Powód testowego karmienia"),
+          )
+          .handle(
+            async (
+              { prisma, messageQueue },
+              { user, ilosc: amount, powod: reason },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+
+              const result = await feedBirthday2026Pig(prisma, {
+                guildId: itx.guildId,
+                userId: user.id,
+                amount,
+                sourceKey: itx.id,
+                acceptedAt: itx.createdAt,
+                reason,
+                scheduleDigestion: (tx, batch) =>
+                  messageQueue.push(
+                    "birthday2026Digest",
+                    { batchId: batch.id },
+                    batch.digestAt,
+                    batch.id.toString(),
+                    tx,
+                  ),
+              });
+              if (!result.ok) {
+                await errorFollowUp(itx, economyErrorMessages[result.reason]);
+                return;
+              }
+
+              await itx.editReply(
+                `${result.created ? "Nakarmiono" : "To karmienie było już zapisane:"} ${result.batch.amount} Paszy. Saldo osoby: ${result.personalBalance}, w korycie: ${result.teamBalance}, trawienie ${time(result.batch.digestAt, TimestampStyles.RelativeTime)}.`,
+              );
+            },
+          ),
+      )
+      .addCommand("status-ekonomii", (command) =>
+        command
+          .setDescription("Sprawdź wagę, koryta i spójność feed batchy")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const statuses = await getBirthday2026EconomyStatus(prisma, itx.guildId);
+            if (!statuses) {
+              await errorFollowUp(itx, "Ekonomia eventu nie jest skonfigurowana.");
+              return;
+            }
+
+            await itx.editReply({
+              content:
+                statuses
+                  .map(
+                    (status) =>
+                      `${bold(status.teamName)}: waga=${status.permanentWeight ?? "brak"}, koryto=${status.balance ?? "brak"}, batch=${status.unresolvedFeed ?? "brak"}, spójne=${status.reconciled ? "tak" : "NIE"}`,
+                  )
+                  .join("\n") || "Brak drużyn.",
             });
           }),
       )

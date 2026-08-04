@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { Birthday2026Config } from "@hashira/db";
 import {
   getBirthday2026EventDayIndex,
   getBirthday2026EventState,
@@ -8,11 +9,16 @@ import {
 const start = new Date("2026-08-01T18:00:00Z");
 const end = new Date("2026-08-08T18:00:00Z");
 
-const config = {
+const config: Birthday2026Config = {
+  id: 1,
+  guildId: "guild-id",
   enabled: true,
   eventStartAt: start,
   eventEndAt: end,
+  timezone: "UTC",
   visible: true,
+  createdAt: start,
+  updatedAt: start,
 };
 
 describe("Birthday 2026 event state", () => {

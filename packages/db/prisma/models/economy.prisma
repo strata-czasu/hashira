@@ -6,10 +6,12 @@ model Currency {
   createdBy String
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  user                             User       @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
-  guild                            Guild      @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
-  wallet_wallet_currencyTocurrency Wallet[]   @relation("wallet_currencyTocurrency")
+  user                             User                     @relation(fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "currency_createdBy_users_id_fk")
+  guild                            Guild                    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "currency_guildId_guild_id_fk")
+  wallet_wallet_currencyTocurrency Wallet[]                 @relation("wallet_currencyTocurrency")
   shopItems                        ShopItem[]
+  birthday2026EconomyConfig        Birthday2026EconomyConfig?
+  birthday2026TeamWallets          Birthday2026TeamWallet[]
 
   @@unique([guildId, name], map: "currency_guildId_name_unique")
   @@unique([guildId, symbol], map: "currency_guildId_symbol_unique")
@@ -47,9 +49,12 @@ model Transaction {
   transactionType TransactionType
   entryType       EntryType
 
-  relatedUser   User?   @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
-  relatedWallet Wallet? @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
-  wallet        Wallet  @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
+  relatedUser                       User?                              @relation(fields: [relatedUserId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedUserId_users_id_fk")
+  relatedWallet                     Wallet?                            @relation("transaction_relatedWalletTowallet", fields: [relatedWalletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_relatedWallet_wallet_id_fk")
+  wallet                            Wallet                             @relation("transaction_walletTowallet", fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transaction_wallet_wallet_id_fk")
+  birthday2026PersonalTransaction   Birthday2026PersonalTransaction?
+  birthday2026TeamWalletTransaction Birthday2026TeamWalletTransaction?
+  birthday2026FeedBatch             Birthday2026FeedBatch?
 
   @@map("transaction")
 }
