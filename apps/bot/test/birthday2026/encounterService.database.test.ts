@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import type { PrismaTransaction } from "@hashira/db";
-import { PrismaClient } from "@hashira/prisma-client";
+import { PrismaClient, type PrismaTransaction } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { Client } from "discord.js";
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
