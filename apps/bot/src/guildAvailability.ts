@@ -1,10 +1,9 @@
 import { type ExtractContext, Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
+import { type ExtendedPrismaClient, isUniqueConstraintError } from "@hashira/db";
 import { DiscordAPIError, type Guild } from "discord.js";
 import { base } from "./base";
 import type { Logger, LogMessageType } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
-import { isUniqueConstraintError } from "./util/isUniqueConstraintError";
 
 type BaseContext = ExtractContext<typeof base>;
 const ALLOWED_GUILDS: string[] = Object.values(GUILD_IDS);

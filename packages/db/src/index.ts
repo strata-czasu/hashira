@@ -19,3 +19,4 @@ export type RedisClient = typeof redis;
 
 export * from "@hashira/prisma-client";
 export { DatabasePaginator } from "./paginate";
+export { isUniqueConstraintError } from "./util/isUniqueConstraintError";

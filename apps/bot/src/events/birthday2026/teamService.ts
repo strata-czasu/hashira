@@ -1,5 +1,8 @@
-import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
-import { isUniqueConstraintError } from "../../util/isUniqueConstraintError";
+import {
+  type ExtendedPrismaClient,
+  isUniqueConstraintError,
+  type PrismaTransaction,
+} from "@hashira/db";
 
 type TeamAllocationCandidate = {
   teamConfigId: number;
