@@ -95,19 +95,19 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             const teams = await findBirthday2026Teams(prisma, itx.guildId);
             const now = new Date();
-            const configuredTucznicy = teams.filter(
-              (team) => team.identity !== null,
+            const configuredTucznicy = teams.filter((team) =>
+              Boolean(team.identity?.tucznikUserId),
             ).length;
             const tucznicyReady =
-              teams.length === 4 && configuredTucznicy === teams.length;
+              teams.length > 0 && configuredTucznicy === teams.length;
             const teamLines = teams.map(
               (team) =>
                 `${roleMention(team.roleId)} — ${team._count.memberStates} os. — Tucznik: ${
-                  team.identity
+                  team.identity?.tucznikUserId
                     ? userMention(team.identity.tucznikUserId)
                     : "nie wyznaczono"
                 } — kapitan: ${
-                  team.identity
+                  team.identity?.captainUserId
                     ? userMention(team.identity.captainUserId)
                     : "nie wyznaczono"
                 }`,
@@ -123,7 +123,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `${bold("Start:")} ${time(config.eventStartAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Koniec:")} ${time(config.eventEndAt, TimestampStyles.LongDateTime)}`,
                 `${bold("Strefa:")} ${config.timezone}`,
-                `${bold("Tucznicy:")} ${configuredTucznicy}/4 — gotowość: ${tucznicyReady ? "tak" : "nie"}`,
+                `${bold("Tucznicy:")} ${configuredTucznicy}/${teams.length} — gotowość: ${tucznicyReady ? "tak" : "nie"}`,
                 `${bold("Drużyny:")}`,
                 teamLines.join("\n") || "brak",
               ].join("\n"),
@@ -529,7 +529,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       )
       .addCommand("tucznik", (command) =>
         command
-          .setDescription("Wyznacz albo zastąp Tucznika i ustaw go kapitanem")
+          .setDescription("Wyznacz albo zastąp Tucznika")
           .addUser("user", (option) => option.setDescription("Nowy Tucznik"))
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .handle(async ({ prisma }, { user, druzyna: role }, itx) => {
@@ -554,13 +554,13 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
 
             await itx.editReply(
-              `${userMention(user.id)} jest Tucznikiem i kapitanem ${roleMention(team.roleId)}.`,
+              `${userMention(user.id)} jest Tucznikiem ${roleMention(team.roleId)}.`,
             );
           }),
       )
       .addCommand("usun-tucznika", (command) =>
         command
-          .setDescription("Usuń konfigurację Tucznika i kapitana drużyny")
+          .setDescription("Usuń konfigurację Tucznika drużyny")
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .handle(async ({ prisma }, { druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -584,7 +584,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
 
             await itx.editReply(
-              `Usunięto konfigurację Tucznika i kapitana drużyny ${roleMention(team.roleId)}.`,
+              `Usunięto konfigurację Tucznika drużyny ${roleMention(team.roleId)}.`,
             );
           }),
       ),
