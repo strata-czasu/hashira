@@ -38,6 +38,7 @@ const eventStateLabels = {
 
 const historySourceLabels = {
   feed: "karmienie",
+  settlement: "wygaśnięcie po rozliczeniu",
   staffGrant: "korekta administracji",
   textActivity: "aktywność tekstowa",
   voiceActivity: "aktywność głosowa",

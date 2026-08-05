@@ -20,7 +20,7 @@ export type Birthday2026PlayerHistoryEntry = {
   createdAt: Date;
   entryType: "credit" | "debit";
   reason: string | null;
-  source: "feed" | "staffGrant" | "textActivity" | "voiceActivity";
+  source: "feed" | "settlement" | "staffGrant" | "textActivity" | "voiceActivity";
 };
 
 export type Birthday2026PublicTeam = {

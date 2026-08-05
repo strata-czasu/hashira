@@ -8,12 +8,16 @@ import { addSeconds } from "date-fns";
 import { InsufficientBalanceError } from "../../economy/economyError";
 import { addBalance } from "../../economy/managers/transferManager";
 import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
+import { claimBirthday2026Config } from "./configService";
+import { getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026EconomyErrorReason =
   | "config_not_found"
   | "currency_conflict"
   | "economy_not_configured"
   | "economy_already_configured"
+  | "event_settled"
+  | "event_not_open"
   | "invalid_currency"
   | "invalid_digestion_delay"
   | "insufficient_balance"
@@ -202,10 +206,12 @@ export const grantBirthday2026Pasza = async (
     where: { guildId: input.guildId },
     select: {
       id: true,
+      settlement: { select: { configId: true } },
       economy: { select: { currencyId: true } },
     },
   });
   if (!config) return { ok: false, reason: "config_not_found" };
+  if (config.settlement) return { ok: false, reason: "event_settled" };
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" };
   }
@@ -225,6 +231,9 @@ export const grantBirthday2026Pasza = async (
   if (!membership) return { ok: false, reason: "member_not_found" };
 
   return prisma.$transaction(async (tx) => {
+    const state = await claimBirthday2026Config(tx, config.id);
+    if (state.settlement) return { ok: false, reason: "event_settled" };
+
     const { transaction, wallet } = await addBalance({
       prisma: nestedTransaction(tx),
       fromUserId: input.createdByUserId,
@@ -319,8 +328,8 @@ export const feedBirthday2026Pig = async (
 ): Promise<FeedBirthday2026PigResult> => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
-    select: {
-      id: true,
+    include: {
+      settlement: { select: { configId: true } },
       economy: {
         select: {
           currencyId: true,
@@ -330,6 +339,10 @@ export const feedBirthday2026Pig = async (
     },
   });
   if (!config) return { ok: false, reason: "config_not_found" };
+  if (config.settlement) return { ok: false, reason: "event_settled" };
+  if (getBirthday2026EventState(config, input.acceptedAt) !== "open") {
+    return { ok: false, reason: "event_not_open" };
+  }
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" };
   }
@@ -354,6 +367,11 @@ export const feedBirthday2026Pig = async (
 
   try {
     return await prisma.$transaction(async (tx) => {
+      const state = await claimBirthday2026Config(tx, config.id);
+      if (state.settlement) return { ok: false, reason: "event_settled" };
+      if (!state.enabled) {
+        return { ok: false, reason: "event_not_open" };
+      }
       const wallet = await getDefaultWallet({
         prisma: nestedTransaction(tx),
         guildId: input.guildId,
@@ -455,12 +473,21 @@ export const digestBirthday2026FeedBatch = async (
   },
 ): Promise<DigestBirthday2026FeedBatchResult> =>
   prisma.$transaction(async (tx) => {
-    const batch = await tx.birthday2026FeedBatch.findUnique({
+    let batch = await tx.birthday2026FeedBatch.findUnique({
       where: { id: input.batchId },
       include: { wallet: true },
     });
-
     if (!batch) return { ok: false, reason: "batch_not_found" };
+
+    // Serialize against settlement and other event activity; the batch may
+    // have changed while waiting for the claim, so read it again.
+    await claimBirthday2026Config(tx, batch.configId);
+    batch = await tx.birthday2026FeedBatch.findUnique({
+      where: { id: input.batchId },
+      include: { wallet: true },
+    });
+    if (!batch) return { ok: false, reason: "batch_not_found" };
+
     if (batch.digestedAt) {
       return {
         ok: true,
