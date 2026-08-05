@@ -12,10 +12,10 @@ import {
   setupBirthday2026Economy,
 } from "../../src/events/birthday2026/economyService";
 import {
+  finalizeBirthday2026Event,
+  getBirthday2026FinalizationDiagnostics,
   getBirthday2026Results,
-  getBirthday2026SettlementDiagnostics,
-  settleBirthday2026Event,
-} from "../../src/events/birthday2026/settlementService";
+} from "../../src/events/birthday2026/finalizationService";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -182,14 +182,14 @@ databaseTests("Birthday 2026 final settlement", () => {
       settledAt: new Date("2026-08-03T18:00:00Z"),
       settledByUserId: actorUserId,
     };
-    expect(await settleBirthday2026Event(prisma, settlementInput)).toEqual({
+    expect(await finalizeBirthday2026Event(prisma, settlementInput)).toEqual({
       ok: false,
       reason: "event_open",
     });
     await setBirthday2026FeatureState(prisma, guildId, { enabled: false });
 
     const [settlement, racingGrant] = await Promise.all([
-      settleBirthday2026Event(prisma, settlementInput),
+      finalizeBirthday2026Event(prisma, settlementInput),
       grantBirthday2026Pasza(prisma, {
         guildId,
         userId: firstMember,
@@ -227,7 +227,7 @@ databaseTests("Birthday 2026 final settlement", () => {
         ],
       },
     });
-    expect(await settleBirthday2026Event(prisma, settlementInput)).toMatchObject({
+    expect(await finalizeBirthday2026Event(prisma, settlementInput)).toMatchObject({
       ok: true,
       created: false,
       settlement: { configId: config.config.id },
@@ -253,7 +253,7 @@ databaseTests("Birthday 2026 final settlement", () => {
       }),
     ).toBe(3);
     expect(
-      await getBirthday2026SettlementDiagnostics(
+      await getBirthday2026FinalizationDiagnostics(
         prisma,
         guildId,
         settlementInput.settledAt,

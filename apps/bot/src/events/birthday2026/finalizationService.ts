@@ -35,7 +35,7 @@ class SettlementInvariantError extends Error {
   }
 }
 
-export const settleBirthday2026Event = async (
+export const finalizeBirthday2026Event = async (
   prisma: ExtendedPrismaClient,
   input: {
     guildId: string;
@@ -279,7 +279,7 @@ export const settleBirthday2026Event = async (
   return { ok: true, created: false, settlement } as const;
 };
 
-export const getBirthday2026SettlementDiagnostics = async (
+export const getBirthday2026FinalizationDiagnostics = async (
   prisma: PrismaTransaction,
   guildId: string,
   now: Date,

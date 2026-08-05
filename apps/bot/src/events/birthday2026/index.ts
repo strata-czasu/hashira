@@ -35,6 +35,11 @@ import {
   getBirthday2026RegistrationState,
 } from "./eventState";
 import {
+  finalizeBirthday2026Event,
+  getBirthday2026FinalizationDiagnostics,
+  getBirthday2026Results,
+} from "./finalizationService";
+import {
   type Birthday2026PlayerFeedErrorReason,
   type Birthday2026PublicErrorReason,
   feedBirthday2026Player,
@@ -54,11 +59,6 @@ import {
   registerBirthday2026Participant,
   withdrawBirthday2026Registration,
 } from "./registrationService";
-import {
-  getBirthday2026Results,
-  getBirthday2026SettlementDiagnostics,
-  settleBirthday2026Event,
-} from "./settlementService";
 import { parseBirthday2026Instant } from "./staffInput";
 import {
   configureBirthday2026Artwork,
@@ -483,7 +483,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               prisma.birthday2026RosterFinalization.findUnique({
                 where: { configId: config.id },
               }),
-              getBirthday2026SettlementDiagnostics(prisma, itx.guildId, now),
+              getBirthday2026FinalizationDiagnostics(prisma, itx.guildId, now),
             ]);
             const configuredTucznicy = teams.filter((team) =>
               Boolean(team.identity?.tucznikUserId),
@@ -1234,7 +1234,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             }
             await ensureUserExists(prisma, itx.user);
 
-            const result = await settleBirthday2026Event(prisma, {
+            const result = await finalizeBirthday2026Event(prisma, {
               guildId: itx.guildId,
               settledAt: itx.createdAt,
               settledByUserId: itx.user.id,
