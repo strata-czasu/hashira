@@ -184,6 +184,7 @@ model User {
   birthday2026IndividualResults      Birthday2026IndividualResult[]
   birthday2026EncounterEntries       Birthday2026EncounterEntry[]
   birthday2026EncounterWins          Birthday2026EncounterWinner[]
+  birthday2026PowerupActivations     Birthday2026PowerupActivation[]
   birthday2026Registrations         Birthday2026Registration[]
   birthday2026MemberStates          Birthday2026MemberState[]
   birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
