@@ -40,6 +40,7 @@ const historySourceLabels = {
   feed: "karmienie",
   staffGrant: "korekta administracji",
   textActivity: "aktywność tekstowa",
+  voiceActivity: "aktywność głosowa",
 } satisfies Record<Birthday2026PlayerHistoryEntry["source"], string>;
 
 const formatPasza = (amount: number, symbol: string) =>

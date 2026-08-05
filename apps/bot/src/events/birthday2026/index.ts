@@ -60,6 +60,10 @@ import {
   findBirthday2026DisabledTextChannels,
   getBirthday2026TextEarningDiagnostics,
 } from "./textEarningService";
+import {
+  configureBirthday2026VoiceEarning,
+  getBirthday2026VoiceEarningDiagnostics,
+} from "./voiceEarningService";
 
 const teamErrorMessages = {
   already_in_team: "Ten użytkownik jest już w tej drużynie.",
@@ -286,11 +290,13 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const [teams, disabledTextChannels, textDiagnostics] = await Promise.all([
-              findBirthday2026Teams(prisma, itx.guildId),
-              findBirthday2026DisabledTextChannels(prisma, itx.guildId),
-              getBirthday2026TextEarningDiagnostics(prisma, itx.guildId),
-            ]);
+            const [teams, disabledTextChannels, textDiagnostics, voiceDiagnostics] =
+              await Promise.all([
+                findBirthday2026Teams(prisma, itx.guildId),
+                findBirthday2026DisabledTextChannels(prisma, itx.guildId),
+                getBirthday2026TextEarningDiagnostics(prisma, itx.guildId),
+                getBirthday2026VoiceEarningDiagnostics(prisma, itx.guildId),
+              ]);
             const now = new Date();
             const configuredTucznicy = teams.filter((team) =>
               Boolean(team.identity?.tucznikUserId),
@@ -326,6 +332,12 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                     : "nie skonfigurowano"
                 }`,
                 `${bold("Naliczona Pasza tekstowa:")} ${textDiagnostics?.awardedTransactions ?? 0} — liczniki=${textDiagnostics?.counterTotal ?? 0}, dni użytkowników=${textDiagnostics?.dailyRows ?? 0}, spójne=${textDiagnostics?.reconciled ? "tak" : "NIE"}`,
+                `${bold("Głos:")} ${
+                  voiceDiagnostics
+                    ? `jednostka=${voiceDiagnostics.unitSeconds}s, limit=${voiceDiagnostics.dailyCap}/dzień`
+                    : "nie skonfigurowano"
+                }`,
+                `${bold("Naliczona Pasza głosowa:")} ${voiceDiagnostics?.awardedPasza ?? 0} w ${voiceDiagnostics?.awardedTransactions ?? 0} transakcjach — liczniki=${voiceDiagnostics?.counterTotal ?? 0}, dni użytkowników=${voiceDiagnostics?.dailyRows ?? 0}, spójne=${voiceDiagnostics?.reconciled ? "tak" : "NIE"}`,
                 `${bold("Tucznicy:")} ${configuredTucznicy}/${teams.length} — gotowość: ${tucznicyReady ? "tak" : "nie"}`,
                 `${bold("Drużyny:")}`,
                 teamLines.join("\n") || "brak",
@@ -523,6 +535,49 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
               await itx.editReply(
                 `Zdobywanie Paszy za tekst: okno ${windowMinutes} min, limit ${dailyCap} na dzień eventowy.`,
+              );
+            },
+          ),
+      )
+      .addCommand("glos", (command) =>
+        command
+          .setDescription("Skonfiguruj automatyczne zdobywanie Paszy za głos")
+          .addInteger("jednostka-minuty", (option) =>
+            option.setDescription("Minuty aktywnego głosu na 1 Paszę").setMinValue(1),
+          )
+          .addInteger("limit-dzienny", (option) =>
+            option.setDescription("Maksymalna Pasza dziennie").setMinValue(1),
+          )
+          .handle(
+            async (
+              { prisma },
+              { "jednostka-minuty": unitMinutes, "limit-dzienny": dailyCap },
+              itx,
+            ) => {
+              if (!itx.inCachedGuild()) return;
+              await itx.deferReply({ flags: "Ephemeral" });
+
+              const result = await configureBirthday2026VoiceEarning(prisma, {
+                guildId: itx.guildId,
+                unitSeconds: unitMinutes * 60,
+                dailyCap,
+              });
+              if (!result.ok) {
+                const messages = {
+                  config_not_found:
+                    "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
+                  invalid_daily_cap:
+                    "Limit dzienny musi być dodatnią liczbą całkowitą.",
+                  invalid_unit: "Jednostka głosowa musi być dodatnią liczbą minut.",
+                  voice_earning_already_used:
+                    "Nie można zmienić reguł głosowych po przyznaniu pierwszej Paszy.",
+                };
+                await errorFollowUp(itx, messages[result.reason]);
+                return;
+              }
+
+              await itx.editReply(
+                `Zdobywanie Paszy za głos: jednostka ${unitMinutes} min, limit ${dailyCap} na dzień eventowy.`,
               );
             },
           ),

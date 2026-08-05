@@ -12,6 +12,7 @@ model Birthday2026Config {
   guild                Guild                             @relation(fields: [guildId], references: [id], onDelete: Cascade)
   economy              Birthday2026EconomyConfig?
   textEarning          Birthday2026TextEarningConfig?
+  voiceEarning         Birthday2026VoiceEarningConfig?
   teams                Birthday2026TeamConfig[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
@@ -34,6 +35,15 @@ model Birthday2026TextEarningConfig {
   config           Birthday2026Config                @relation(fields: [configId], references: [id], onDelete: Cascade)
   disabledChannels Birthday2026DisabledTextChannel[]
   dailyStates      Birthday2026DailyTextEarning[]
+}
+
+model Birthday2026VoiceEarningConfig {
+  configId    Int @id
+  unitSeconds Int
+  dailyCap    Int
+
+  config      Birthday2026Config             @relation(fields: [configId], references: [id], onDelete: Cascade)
+  dailyStates Birthday2026DailyVoiceEarning[]
 }
 
 model Birthday2026TeamConfig {
@@ -106,6 +116,19 @@ model Birthday2026DailyTextEarning {
   @@index([userId])
 }
 
+model Birthday2026DailyVoiceEarning {
+  configId      Int
+  userId        String
+  eventDayIndex Int
+  awardedUnits  Int
+
+  config Birthday2026VoiceEarningConfig @relation(fields: [configId], references: [configId], onDelete: Cascade)
+  user   User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId, eventDayIndex])
+  @@index([userId])
+}
+
 model Birthday2026TeamWallet {
   id              Int      @id @default(autoincrement())
   teamConfigId    Int      @unique
@@ -171,6 +194,7 @@ enum Birthday2026PersonalTransactionSource {
   staffGrant
   feed
   textActivity
+  voiceActivity
 }
 
 enum Birthday2026TeamWalletTransactionSource {
