@@ -13,7 +13,7 @@ import {
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
-  setBirthday2026Tucznik,
+  createBirthday2026TeamIdentity,
 } from "../../src/events/birthday2026/teamService";
 
 const connectionString = process.env.DATABASE_TEST_URL;
@@ -69,18 +69,19 @@ databaseTests("Birthday 2026 canonical status", () => {
       color: 0xff8800,
     });
     if (!team.ok) throw new Error(team.reason);
-    const member = await assignBirthday2026Member(prisma, {
-      guildId,
-      teamConfigId: team.team.id,
-      userId: tucznikUserId,
-    });
-    if (!member.ok) throw new Error(member.reason);
-    const identity = await setBirthday2026Tucznik(
+    for (const userId of [actorUserId, tucznikUserId]) {
+      const member = await assignBirthday2026Member(prisma, {
+        guildId,
+        teamConfigId: team.team.id,
+        userId,
+      });
+      if (!member.ok) throw new Error(member.reason);
+    }
+    const identity = await createBirthday2026TeamIdentity(
       prisma,
       guildId,
       team.team.id,
-      tucznikUserId,
-      actorUserId,
+      { captainUserId: actorUserId, tucznikUserId },
     );
     if (!identity.ok) throw new Error(identity.reason);
     const economy = await setupBirthday2026Economy(prisma, {
