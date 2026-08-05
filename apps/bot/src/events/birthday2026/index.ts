@@ -3,6 +3,7 @@ import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { render } from "@hashira/jsx";
 import {
   bold,
+  type Client,
   channelMention,
   type Guild,
   PermissionFlagsBits,
@@ -50,6 +51,12 @@ import {
   withdrawBirthday2026Registration,
 } from "./registrationService";
 import { parseBirthday2026Instant } from "./staffInput";
+import {
+  configureBirthday2026Artwork,
+  configureBirthday2026Milestones,
+  configureBirthday2026Persona,
+  reconcileBirthday2026StatusMessage,
+} from "./statusService";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -111,14 +118,14 @@ const economyErrorMessages = {
 const publicErrorMessages = {
   economy_not_configured: "Ekonomia eventu nie jest jeszcze gotowa.",
   event_not_available: "Event nie jest teraz dostępny.",
-  teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
+  teams_not_ready: "Drużyny, ich Tucznicy i persony nie są jeszcze gotowi.",
 } satisfies Record<Birthday2026PublicErrorReason, string>;
 
 const playerFeedErrorMessages = {
   ...economyErrorMessages,
   event_not_available: "Event nie jest teraz dostępny.",
   event_not_open: "Karmienie jest dostępne tylko podczas trwania eventu.",
-  teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
+  teams_not_ready: "Drużyny, ich Tucznicy i persony nie są jeszcze gotowi.",
 } satisfies Record<Birthday2026PlayerFeedErrorReason, string>;
 
 const registrationErrorMessages = {
@@ -127,7 +134,8 @@ const registrationErrorMessages = {
   event_not_available: "Event nie jest teraz dostępny.",
   not_registered: "Nie jesteś zapisany do eventu.",
   registration_closed: "Event już się zakończył.",
-  teams_not_ready: "Wszystkie drużyny muszą najpierw mieć swoich Tuczników.",
+  teams_not_ready:
+    "Wszystkie drużyny muszą najpierw mieć swoich Tuczników i zatwierdzone persony.",
 };
 
 const finalizationErrorMessages = {
@@ -135,7 +143,8 @@ const finalizationErrorMessages = {
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
   earning_not_configured: "Najpierw skonfiguruj zdobywanie Paszy za tekst i głos.",
   event_enabled: "Wyłącz event przed przydzieleniem drużyn.",
-  teams_not_ready: "Skonfiguruj dokładnie cztery drużyny i ich Tuczników.",
+  teams_not_ready:
+    "Skonfiguruj dokładnie cztery drużyny, ich Tuczników i zatwierdzone persony.",
 };
 
 const getPlayerSnapshotOrReply = async (
@@ -177,6 +186,21 @@ const syncBirthday2026Roles = async (prisma: ExtendedPrismaClient, guild: Guild)
     failed: results.filter((result) => result.status === "rejected").length,
     total: assignments.length,
   };
+};
+
+const updateBirthday2026Status = async (
+  client: Client,
+  prisma: ExtendedPrismaClient,
+  teamConfigId: number,
+) => {
+  const result = await reconcileBirthday2026StatusMessage(client, prisma, teamConfigId);
+  if (
+    !result.ok &&
+    result.reason !== "status_not_configured" &&
+    result.reason !== "status_not_ready"
+  ) {
+    console.warn(`Failed to update Birthday 2026 status: ${result.reason}`);
+  }
 };
 
 export const birthday2026 = new Hashira({ name: "birthday2026" })
@@ -316,6 +340,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               await errorFollowUp(itx, playerFeedErrorMessages[result.reason]);
               return;
             }
+            await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
 
             const snapshot = await getPlayerSnapshotOrReply(
               prisma,
@@ -417,8 +442,13 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             const configuredTucznicy = teams.filter((team) =>
               Boolean(team.identity?.tucznikUserId),
             ).length;
+            const configuredPersonas = teams.filter(
+              (team) => team.persona !== null,
+            ).length;
             const tucznicyReady =
-              teams.length > 0 && configuredTucznicy === teams.length;
+              teams.length > 0 &&
+              configuredTucznicy === teams.length &&
+              configuredPersonas === teams.length;
             const teamLines = teams.map(
               (team) =>
                 `${roleMention(team.roleId)} — ${team._count.memberStates} os. — Tucznik: ${
@@ -429,7 +459,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   team.identity?.captainUserId
                     ? userMention(team.identity.captainUserId)
                     : "nie wyznaczono"
-                }`,
+                } — persona: ${team.persona ? `${team.persona.fallbackEmoji} ${team.persona.title}` : "nie zatwierdzono"}`,
             );
 
             await itx.editReply({
@@ -758,6 +788,159 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             },
           ),
       )
+      .addCommand("progi", (command) =>
+        command
+          .setDescription("Ustaw cztery wspólne progi wagi")
+          .addInteger("pierwszy", (option) =>
+            option.setDescription("Pierwszy próg").setMinValue(1),
+          )
+          .addInteger("drugi", (option) =>
+            option.setDescription("Drugi próg").setMinValue(1),
+          )
+          .addInteger("trzeci", (option) =>
+            option.setDescription("Trzeci próg").setMinValue(1),
+          )
+          .addInteger("finalny", (option) =>
+            option.setDescription("Próg formy finałowej").setMinValue(1),
+          )
+          .handle(async ({ prisma }, { pierwszy, drugi, trzeci, finalny }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const result = await configureBirthday2026Milestones(prisma, itx.guildId, [
+              pierwszy,
+              drugi,
+              trzeci,
+              finalny,
+            ]);
+            if (!result.ok) {
+              const messages = {
+                config_not_found: "Najpierw skonfiguruj event.",
+                event_enabled: "Wyłącz event przed ustawieniem progów.",
+                invalid_thresholds: "Progi muszą być dodatnie i rosnąć bez powtórzeń.",
+                milestones_already_configured:
+                  "Progi są już skonfigurowane z innymi wartościami.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            await itx.editReply(
+              `Ustawiono progi: ${result.milestones.map((milestone) => milestone.threshold).join(", ")}.`,
+            );
+          }),
+      )
+      .addCommand("persona", (command) =>
+        command
+          .setDescription("Zapisz zatwierdzoną personę Tucznika")
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .addString("tytul", (option) =>
+            option.setDescription("Zatwierdzony tytuł persony"),
+          )
+          .addString("emoji", (option) =>
+            option.setDescription("Awaryjne emoji persony"),
+          )
+          .handle(async ({ prisma }, { druzyna: role, tytul: title, emoji }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            await ensureUserExists(prisma, itx.user);
+            const team = await findTeamByRole(prisma, itx.guildId, role.id);
+            if (!team) {
+              await errorFollowUp(itx, "Ta rola nie jest drużyną tego eventu.");
+              return;
+            }
+            const result = await configureBirthday2026Persona(prisma, {
+              guildId: itx.guildId,
+              teamConfigId: team.id,
+              title,
+              fallbackEmoji: emoji,
+              configuredByUserId: itx.user.id,
+              consentedAt: itx.createdAt,
+            });
+            if (!result.ok) {
+              const messages = {
+                invalid_persona: "Tytuł i emoji nie mogą być puste.",
+                team_not_found: "Nie znaleziono drużyny.",
+                tucznik_not_configured: "Najpierw wyznacz Tucznika drużyny.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            await itx.editReply(
+              `Zapisano zatwierdzoną personę ${result.persona.fallbackEmoji} ${result.persona.title}.`,
+            );
+          }),
+      )
+      .addCommand("grafika", (command) =>
+        command
+          .setDescription("Ustaw zatwierdzoną grafikę etapu Tucznika")
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .addInteger("etap", (option) =>
+            option.setDescription("Etap od 0 do 4").setMinValue(0).setMaxValue(4),
+          )
+          .addString("url", (option) => option.setDescription("Adres HTTPS grafiki"))
+          .handle(async ({ prisma }, { druzyna: role, etap, url }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const team = await findTeamByRole(prisma, itx.guildId, role.id);
+            if (!team) {
+              await errorFollowUp(itx, "Ta rola nie jest drużyną tego eventu.");
+              return;
+            }
+            const result = await configureBirthday2026Artwork(prisma, {
+              guildId: itx.guildId,
+              teamConfigId: team.id,
+              milestonePosition: etap,
+              imageUrl: url,
+            });
+            if (!result.ok) {
+              const messages = {
+                invalid_url: "Grafika musi mieć poprawny adres HTTPS.",
+                milestone_not_found: "Najpierw skonfiguruj wskazany próg.",
+                persona_not_configured: "Najpierw skonfiguruj personę Tucznika.",
+                team_not_found: "Nie znaleziono drużyny.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            await itx.editReply("Zapisano grafikę etapu Tucznika.");
+          }),
+      )
+      .addCommand("status-kanal", (command) =>
+        command
+          .setDescription("Utwórz lub odzyskaj kanoniczny status drużyny")
+          .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
+          .addChannel("kanal", (option) => option.setDescription("Kanał statusu"))
+          .handle(async ({ prisma }, { druzyna: role, kanal }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+            const team = await findTeamByRole(prisma, itx.guildId, role.id);
+            if (!team) {
+              await errorFollowUp(itx, "Ta rola nie jest drużyną tego eventu.");
+              return;
+            }
+            const result = await reconcileBirthday2026StatusMessage(
+              itx.client,
+              prisma,
+              team.id,
+              kanal.id,
+            );
+            if (!result.ok) {
+              const messages = {
+                channel_not_sendable: "Bot nie może wysyłać wiadomości na tym kanale.",
+                status_not_configured: "Nie wskazano kanału statusu.",
+                status_not_ready:
+                  "Skonfiguruj ekonomię, personę, Tucznika i portfel drużyny.",
+                team_not_found: "Nie znaleziono drużyny.",
+              };
+              await errorFollowUp(itx, messages[result.reason]);
+              return;
+            }
+            await itx.editReply(
+              result.recreated
+                ? "Utworzono kanoniczny status drużyny."
+                : "Odświeżono kanoniczny status drużyny.",
+            );
+          }),
+      )
       .addCommand("wylacz-kanal-tekst", (command) =>
         command
           .setDescription("Wyklucz kanał ze zdobywania Paszy za tekst")
@@ -943,6 +1126,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 await errorFollowUp(itx, economyErrorMessages[result.reason]);
                 return;
               }
+              await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
 
               await itx.editReply(
                 `${result.created ? "Nakarmiono" : "To karmienie było już zapisane:"} ${result.batch.amount} Paszy. Saldo osoby: ${result.personalBalance}, w korycie: ${result.teamBalance}, trawienie ${time(result.batch.digestAt, TimestampStyles.RelativeTime)}.`,
@@ -1091,7 +1275,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             await itx.deferReply({ flags: "Ephemeral" });
 
             const team = await findTeamByRole(prisma, itx.guildId, role.id);
-
             if (!team) {
               await errorFollowUp(itx, "Ta rola nie jest drużyną tego eventu.");
               return;
@@ -1106,7 +1289,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 tucznikUserId: tucznik.id,
               },
             );
-
             if (!result.ok) {
               await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
@@ -1156,6 +1338,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .handle(async ({ prisma }, { user, druzyna: role }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
+            await ensureUserExists(prisma, itx.user);
 
             const team = await findTeamByRole(prisma, itx.guildId, role.id);
             if (!team) {
@@ -1168,6 +1351,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               itx.guildId,
               team.id,
               user.id,
+              itx.user.id,
             );
             if (!result.ok) {
               await errorFollowUp(itx, teamErrorMessages[result.reason]);
@@ -1234,6 +1418,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       await errorFollowUp(itx, playerFeedErrorMessages[result.reason]);
       return;
     }
+    await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
 
     const after = await getPlayerSnapshotOrReply(
       prisma,

@@ -146,6 +146,7 @@ export const findBirthday2026Teams = (prisma: PrismaTransaction, guildId: string
     include: {
       team: true,
       identity: true,
+      persona: true,
       _count: { select: { memberStates: true } },
     },
     orderBy: { id: "asc" },
@@ -335,11 +336,13 @@ export const createBirthday2026TeamIdentity = async (
       });
 
       if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
-
       if (teamConfig.identity) {
         return { ok: false, reason: "identity_already_configured" } as const;
       }
 
+      if (teamConfig.identity) {
+        return { ok: false, reason: "identity_already_configured" } as const;
+      }
       const [captainMembership, tucznikMembership] = await Promise.all([
         tx.birthday2026MemberState.findUnique({
           where: {
@@ -358,7 +361,6 @@ export const createBirthday2026TeamIdentity = async (
           },
         }),
       ]);
-
       if (!captainMembership || captainMembership.teamConfigId !== teamConfig.id) {
         return { ok: false, reason: "captain_not_member" } as const;
       }
@@ -375,7 +377,6 @@ export const createBirthday2026TeamIdentity = async (
           captainUserId: input.captainUserId,
         },
       });
-
       return { ok: true, identity } as const;
     });
   } catch (error) {
@@ -423,7 +424,10 @@ export const setBirthday2026Captain = async (
         where: { teamConfigId: teamConfig.id },
         data: { captainUserId: userId },
       });
-      return { ok: true, identity } as const;
+      const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({
+        where: { id: teamConfig.id },
+      });
+      return { ok: true, team, identity } as const;
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -438,6 +442,7 @@ export const setBirthday2026Tucznik = (
   guildId: string,
   teamConfigId: number,
   userId: string,
+  changedByUserId: string,
 ) =>
   prisma
     .$transaction(async (tx) => {
@@ -446,7 +451,7 @@ export const setBirthday2026Tucznik = (
         select: {
           id: true,
           configId: true,
-          identity: { select: { teamConfigId: true } },
+          identity: { select: { tucznikUserId: true } },
         },
       });
       if (!teamConfig) return { ok: false, reason: "team_not_found" } as const;
@@ -465,11 +470,37 @@ export const setBirthday2026Tucznik = (
         return { ok: false, reason: "identity_not_configured" } as const;
       }
 
+      const identityChanged = teamConfig.identity.tucznikUserId !== userId;
+      if (identityChanged) {
+        await Promise.all([
+          tx.birthday2026TeamPersona.deleteMany({
+            where: { teamConfigId: teamConfig.id },
+          }),
+          tx.birthday2026TeamArtwork.deleteMany({
+            where: { teamConfigId: teamConfig.id },
+          }),
+        ]);
+      }
+
       const identity = await tx.birthday2026TeamIdentity.update({
         where: { teamConfigId: teamConfig.id },
         data: { tucznikUserId: userId },
       });
-      return { ok: true, identity } as const;
+      if (identityChanged) {
+        await tx.birthday2026TucznikChange.create({
+          data: {
+            teamConfigId: teamConfig.id,
+            configId: teamConfig.configId,
+            previousUserId: teamConfig.identity.tucznikUserId,
+            nextUserId: userId,
+            changedByUserId,
+          },
+        });
+      }
+      const team = await tx.birthday2026TeamConfig.findUniqueOrThrow({
+        where: { id: teamConfig.id },
+      });
+      return { ok: true, team, identity } as const;
     })
     .catch((error) => {
       if (isUniqueConstraintError(error)) {
@@ -518,8 +549,7 @@ export const rebalanceBirthday2026Members = (
         members.push({
           userId: member.userId,
           activityEstimate,
-          ...(team.identity?.captainUserId === member.userId ||
-          team.identity?.tucznikUserId === member.userId
+          ...(team.identity?.captainUserId === member.userId
             ? { fixedTeamConfigId: team.id }
             : {}),
         });

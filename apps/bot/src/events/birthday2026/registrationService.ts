@@ -43,7 +43,7 @@ export const registerBirthday2026Participant = async (
         textEarning: true,
         voiceEarning: true,
         teams: {
-          include: { identity: true, memberStates: true },
+          include: { identity: true, memberStates: true, persona: true },
           orderBy: { id: "asc" },
         },
       },
@@ -54,7 +54,10 @@ export const registerBirthday2026Participant = async (
     if (getBirthday2026RegistrationState(config, now) !== "open") {
       return { ok: false, reason: "registration_closed" } as const;
     }
-    if (config.teams.length !== 4 || config.teams.some((team) => !team.identity)) {
+    if (
+      config.teams.length !== 4 ||
+      config.teams.some((team) => !team.identity || !team.persona)
+    ) {
       return { ok: false, reason: "teams_not_ready" } as const;
     }
     if (
@@ -62,7 +65,6 @@ export const registerBirthday2026Participant = async (
     ) {
       return { ok: false, reason: "already_assigned" } as const;
     }
-
     const result = await tx.birthday2026Registration.createMany({
       data: { configId: config.id, userId },
       skipDuplicates: true,
@@ -277,7 +279,7 @@ export const finalizeBirthday2026Registration = async (
           textEarning: true,
           voiceEarning: true,
           teams: {
-            include: { identity: true, memberStates: true },
+            include: { identity: true, persona: true, memberStates: true },
             orderBy: { id: "asc" },
           },
         },
@@ -287,7 +289,10 @@ export const finalizeBirthday2026Registration = async (
         return { ok: false, reason: "already_finalized" } as const;
       }
       if (config.enabled) return { ok: false, reason: "event_enabled" } as const;
-      if (config.teams.length !== 4 || config.teams.some((team) => !team.identity)) {
+      if (
+        config.teams.length !== 4 ||
+        config.teams.some((team) => !team.identity || !team.persona)
+      ) {
         return { ok: false, reason: "teams_not_ready" } as const;
       }
       if (!config.textEarning || !config.voiceEarning) {

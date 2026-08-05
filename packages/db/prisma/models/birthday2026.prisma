@@ -16,6 +16,7 @@ model Birthday2026Config {
   teams                Birthday2026TeamConfig[]
   registrations        Birthday2026Registration[]
   rosterFinalization   Birthday2026RosterFinalization?
+  milestones           Birthday2026Milestone[]
   feedBatches          Birthday2026FeedBatch[]
   personalTransactions Birthday2026PersonalTransaction[]
 }
@@ -58,6 +59,11 @@ model Birthday2026TeamConfig {
   config       Birthday2026Config        @relation(fields: [configId], references: [id], onDelete: Cascade)
   team         Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   identity     Birthday2026TeamIdentity?
+  persona      Birthday2026TeamPersona?
+  artworks     Birthday2026TeamArtwork[]
+  milestones   Birthday2026TeamMilestone[]
+  statusMessage Birthday2026StatusMessage?
+  tucznikChanges Birthday2026TucznikChange[]
   memberStates Birthday2026MemberState[]
   wallet       Birthday2026TeamWallet?
 
@@ -78,6 +84,98 @@ model Birthday2026TeamIdentity {
   @@unique([teamConfigId, configId])
   @@unique([configId, tucznikUserId])
   @@unique([configId, captainUserId])
+}
+
+model Birthday2026TeamPersona {
+  teamConfigId      Int      @id
+  configId          Int
+  tucznikUserId     String
+  title             String
+  fallbackEmoji     String
+  consentedAt       DateTime @db.Timestamp(6)
+  configuredByUserId String
+  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+
+  teamConfig  Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  tucznikUser User                   @relation("birthday2026PersonaSubject", fields: [tucznikUserId], references: [id], onDelete: Restrict)
+  configuredBy User                  @relation("birthday2026PersonaConfiguredBy", fields: [configuredByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([teamConfigId, configId])
+}
+
+model Birthday2026Milestone {
+  id        Int    @id @default(autoincrement())
+  configId  Int
+  position  Int
+  threshold Int
+  name      String
+
+  config      Birthday2026Config          @relation(fields: [configId], references: [id], onDelete: Cascade)
+  artworks    Birthday2026TeamArtwork[]
+  completions Birthday2026TeamMilestone[]
+
+  @@unique([id, configId])
+  @@unique([configId, position])
+  @@unique([configId, threshold])
+}
+
+model Birthday2026TeamArtwork {
+  teamConfigId Int
+  milestoneId  Int
+  configId     Int
+  imageUrl     String
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  milestone  Birthday2026Milestone  @relation(fields: [milestoneId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@id([teamConfigId, milestoneId])
+  @@index([milestoneId, configId])
+}
+
+model Birthday2026TeamMilestone {
+  teamConfigId Int
+  milestoneId  Int
+  configId     Int
+  completedAt  DateTime @default(now()) @db.Timestamp(6)
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  milestone  Birthday2026Milestone  @relation(fields: [milestoneId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@id([teamConfigId, milestoneId])
+  @@index([milestoneId, configId])
+}
+
+model Birthday2026StatusMessage {
+  teamConfigId Int      @id
+  configId     Int
+  channelId    String
+  messageId    String
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+
+  @@unique([teamConfigId, configId])
+  @@unique([channelId, messageId])
+}
+
+model Birthday2026TucznikChange {
+  id               Int      @id @default(autoincrement())
+  teamConfigId     Int
+  configId         Int
+  previousUserId   String?
+  nextUserId       String?
+  changedByUserId  String
+  changedAt        DateTime @default(now()) @db.Timestamp(6)
+
+  teamConfig   Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  previousUser User?                  @relation("birthday2026PreviousTucznik", fields: [previousUserId], references: [id], onDelete: Restrict)
+  nextUser     User?                  @relation("birthday2026NextTucznik", fields: [nextUserId], references: [id], onDelete: Restrict)
+  changedBy    User                   @relation("birthday2026TucznikChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([teamConfigId, changedAt])
+  @@index([previousUserId])
+  @@index([nextUserId])
+  @@index([changedByUserId])
 }
 
 model Birthday2026MemberState {

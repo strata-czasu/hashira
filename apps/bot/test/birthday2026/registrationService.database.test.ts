@@ -7,6 +7,7 @@ import {
   registerBirthday2026Participant,
   withdrawBirthday2026Registration,
 } from "../../src/events/birthday2026/registrationService";
+import { configureBirthday2026Persona } from "../../src/events/birthday2026/statusService";
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
@@ -84,6 +85,15 @@ const setupReadyTeams = async (fixture: Awaited<ReturnType<typeof createFixture>
       { captainUserId, tucznikUserId },
     );
     if (!identity.ok) throw new Error(identity.reason);
+    const persona = await configureBirthday2026Persona(prisma, {
+      guildId: fixture.guildId,
+      teamConfigId: team.team.id,
+      title: `Registration persona ${index}`,
+      fallbackEmoji: "🐗",
+      configuredByUserId: captainUserId,
+      consentedAt: new Date("2026-08-01T18:00:00Z"),
+    });
+    if (!persona.ok) throw new Error(persona.reason);
     teams.push(team.team);
   }
   return teams;

@@ -71,6 +71,7 @@ export const getBirthday2026PlayerSnapshot = async (
       teams: {
         include: {
           identity: true,
+          persona: true,
           memberStates: {
             where: { userId },
             select: { joinedAt: true },
@@ -87,7 +88,7 @@ export const getBirthday2026PlayerSnapshot = async (
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" } as const;
   }
-  if (config.teams.some((team) => !team.identity || !team.wallet)) {
+  if (config.teams.some((team) => !team.identity || !team.persona || !team.wallet)) {
     return { ok: false, reason: "teams_not_ready" };
   }
 
@@ -191,6 +192,7 @@ export const feedBirthday2026Player = async (
       teams: {
         select: {
           identity: { select: { teamConfigId: true } },
+          persona: { select: { teamConfigId: true } },
           wallet: { select: { id: true } },
         },
       },
@@ -202,7 +204,7 @@ export const feedBirthday2026Player = async (
   if (!config.economy) {
     return { ok: false, reason: "economy_not_configured" } as const;
   }
-  if (config.teams.some((team) => !team.identity || !team.wallet)) {
+  if (config.teams.some((team) => !team.identity || !team.persona || !team.wallet)) {
     return { ok: false, reason: "teams_not_ready" } as const;
   }
   if (getBirthday2026EventState(config, input.acceptedAt) !== "open") {
