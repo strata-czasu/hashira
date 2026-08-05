@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import type { PrismaTransaction } from "@hashira/db";
+import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { render } from "@hashira/jsx";
 import {
   bold,
@@ -161,28 +161,18 @@ const findTeamByRole = async (
   return teams.find((team) => team.roleId === roleId) ?? null;
 };
 
-const syncBirthday2026Roles = async (
-  prisma: Parameters<typeof findBirthday2026RoleAssignments>[0],
-  guild: Guild,
-) => {
-  const { assignments, roleIds } = await findBirthday2026RoleAssignments(
-    prisma,
-    guild.id,
-  );
+const syncBirthday2026Roles = async (prisma: ExtendedPrismaClient, guild: Guild) => {
+  const { assignments } = await findBirthday2026RoleAssignments(prisma, guild.id);
+
   const results = await Promise.allSettled(
     assignments.map(async (assignment) => {
       const member = await guild.members.fetch(assignment.userId);
-      const oldRoles = roleIds.filter(
-        (roleId) => roleId !== assignment.roleId && member.roles.cache.has(roleId),
-      );
-      if (oldRoles.length > 0) {
-        await member.roles.remove(oldRoles, "Synchronizacja Birthday 2026");
-      }
       if (!member.roles.cache.has(assignment.roleId)) {
         await member.roles.add(assignment.roleId, "Synchronizacja Birthday 2026");
       }
     }),
   );
+
   return {
     failed: results.filter((result) => result.status === "rejected").length,
     total: assignments.length,

@@ -1,8 +1,4 @@
-import type {
-  Birthday2026Config,
-  ExtendedPrismaClient,
-  PrismaTransaction,
-} from "@hashira/db";
+import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { isValidTimeZone } from "./staffInput";
 
 export type Birthday2026ConfigInput = {
@@ -58,13 +54,3 @@ export const upsertBirthday2026Config = async (
     return { ok: true, config } as const;
   });
 };
-
-export const setBirthday2026FeatureState = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-  state: Partial<Pick<Birthday2026Config, "enabled" | "visible">>,
-) =>
-  prisma.birthday2026Config.update({
-    where: { guildId },
-    data: state,
-  });

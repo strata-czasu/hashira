@@ -1,6 +1,7 @@
 import type { Birthday2026Config } from "@hashira/db";
 
 export const MILLISECONDS_PER_EVENT_DAY = 24 * 60 * 60 * 1000;
+export const BIRTHDAY2026_REGISTRATION_ACTIVITY_DAYS = 28;
 
 export type Birthday2026EventState =
   | "not_configured"

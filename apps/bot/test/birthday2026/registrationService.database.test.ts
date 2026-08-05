@@ -10,7 +10,7 @@ import {
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
-  setBirthday2026Tucznik,
+  createBirthday2026TeamIdentity,
 } from "../../src/events/birthday2026/teamService";
 import { configureBirthday2026TextEarning } from "../../src/events/birthday2026/textEarningService";
 import { configureBirthday2026VoiceEarning } from "../../src/events/birthday2026/voiceEarningService";
@@ -29,7 +29,7 @@ const createFixture = async () => {
   const suffix = crypto.randomUUID();
   const guildId = `birthday-registration-guild-${suffix}`;
   const users = Array.from(
-    { length: 7 },
+    { length: 11 },
     (_, index) => `birthday-registration-user-${index}-${suffix}`,
   );
   guildIds.push(guildId);
@@ -53,8 +53,11 @@ const setupReadyTeams = async (fixture: Awaited<ReturnType<typeof createFixture>
   if (!prisma) throw new Error("DATABASE_TEST_URL is required");
   const teams = [];
   for (let index = 0; index < 4; index += 1) {
-    const userId = fixture.users[index];
-    if (!userId) throw new Error("Missing fixture Tucznik");
+    const captainUserId = fixture.users[index * 2];
+    const tucznikUserId = fixture.users[index * 2 + 1];
+    if (!captainUserId || !tucznikUserId) {
+      throw new Error("Missing fixture team identities");
+    }
     const team = await createBirthday2026Team(prisma, {
       guildId: fixture.guildId,
       name: `Registration team ${index} ${fixture.suffix}`,
@@ -62,17 +65,23 @@ const setupReadyTeams = async (fixture: Awaited<ReturnType<typeof createFixture>
       color: index + 1,
     });
     if (!team.ok) throw new Error(team.reason);
-    const member = await assignBirthday2026Member(prisma, {
+    const captainMembership = await assignBirthday2026Member(prisma, {
       guildId: fixture.guildId,
       teamConfigId: team.team.id,
-      userId,
+      userId: captainUserId,
     });
-    if (!member.ok) throw new Error(member.reason);
-    const identity = await setBirthday2026Tucznik(
+    if (!captainMembership.ok) throw new Error(captainMembership.reason);
+    const tucznikMembership = await assignBirthday2026Member(prisma, {
+      guildId: fixture.guildId,
+      teamConfigId: team.team.id,
+      userId: tucznikUserId,
+    });
+    if (!tucznikMembership.ok) throw new Error(tucznikMembership.reason);
+    const identity = await createBirthday2026TeamIdentity(
       prisma,
       fixture.guildId,
       team.team.id,
-      userId,
+      { captainUserId, tucznikUserId },
     );
     if (!identity.ok) throw new Error(identity.reason);
     teams.push(team.team);
@@ -102,7 +111,7 @@ databaseTests("Birthday 2026 registration", () => {
   it("opens registration only after all Tucznicy are ready", async () => {
     if (!prisma) throw new Error("DATABASE_TEST_URL is required");
     const fixture = await createFixture();
-    const participant = fixture.users[4];
+    const participant = fixture.users[8];
     if (!participant) throw new Error("Missing fixture participant");
     const now = new Date("2026-08-01T18:00:00Z");
 
@@ -156,8 +165,8 @@ databaseTests("Birthday 2026 registration", () => {
     if (!prisma) throw new Error("DATABASE_TEST_URL is required");
     const fixture = await createFixture();
     await setupReadyTeams(fixture);
-    const textUser = fixture.users[4];
-    const voiceUser = fixture.users[5];
+    const textUser = fixture.users[8];
+    const voiceUser = fixture.users[9];
     if (!textUser || !voiceUser) throw new Error("Missing fixture participants");
     const registrationTime = new Date("2026-08-01T18:00:00Z");
 
@@ -219,7 +228,7 @@ databaseTests("Birthday 2026 registration", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.reason);
-    expect(result.assignments).toHaveLength(6);
+    expect(result.assignments).toHaveLength(10);
     expect(
       result.assignments.find((assignment) => assignment.userId === textUser)
         ?.activityEstimate,
@@ -232,7 +241,7 @@ databaseTests("Birthday 2026 registration", () => {
       await prisma.birthday2026MemberState.count({
         where: { configId: fixture.config.id },
       }),
-    ).toBe(6);
+    ).toBe(10);
     expect(
       await prisma.birthday2026RosterFinalization.findUnique({
         where: { configId: fixture.config.id },
@@ -242,7 +251,7 @@ databaseTests("Birthday 2026 registration", () => {
       await finalizeBirthday2026Registration(prisma, fixture.guildId, () => 1),
     ).toEqual({ ok: false, reason: "already_finalized" });
 
-    const lateUser = fixture.users[6];
+    const lateUser = fixture.users[10];
     if (!lateUser) throw new Error("Missing fixture late participant");
     const lateRegistration = await registerBirthday2026Participant(
       prisma,

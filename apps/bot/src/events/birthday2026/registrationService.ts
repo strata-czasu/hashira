@@ -4,7 +4,11 @@ import {
   Prisma,
   type PrismaTransaction,
 } from "@hashira/db";
-import { getBirthday2026RegistrationState } from "./eventState";
+import {
+  BIRTHDAY2026_REGISTRATION_ACTIVITY_DAYS,
+  getBirthday2026RegistrationState,
+  MILLISECONDS_PER_EVENT_DAY,
+} from "./eventState";
 import { planBirthday2026TeamAssignments } from "./teamService";
 
 const lockBirthday2026RegistrationConfig = async (
@@ -187,7 +191,7 @@ const getActivityEstimates = async (
     text_daily AS (
       SELECT
         uta."userId",
-        FLOOR(EXTRACT(EPOCH FROM (uta."timestamp" - ${analysisStartAt}::timestamp)) / 86400)::int AS day_index,
+        FLOOR(EXTRACT(EPOCH FROM (uta."timestamp" - ${analysisStartAt}::timestamp)) / ${MILLISECONDS_PER_EVENT_DAY / 1000})::int AS day_index,
         LEAST(
           COUNT(DISTINCT FLOOR(EXTRACT(EPOCH FROM uta."timestamp") / ${config.textEarning.windowSeconds})),
           ${config.textEarning.dailyCap}
@@ -208,7 +212,7 @@ const getActivityEstimates = async (
     voice_daily AS (
       SELECT
         vs."userId",
-        FLOOR(EXTRACT(EPOCH FROM (vs."joinedAt" - ${analysisStartAt}::timestamp)) / 86400)::int AS day_index,
+        FLOOR(EXTRACT(EPOCH FROM (vs."joinedAt" - ${analysisStartAt}::timestamp)) / ${MILLISECONDS_PER_EVENT_DAY / 1000})::int AS day_index,
         LEAST(
           FLOOR(SUM(vst."secondsSpent") / ${config.voiceEarning.unitSeconds}),
           ${config.voiceEarning.dailyCap}
@@ -291,7 +295,10 @@ export const finalizeBirthday2026Registration = async (
       }
 
       const analysisEndAt = config.eventStartAt;
-      const analysisStartAt = new Date(analysisEndAt.getTime() - 28 * 86_400_000);
+      const analysisStartAt = new Date(
+        analysisEndAt.getTime() -
+          BIRTHDAY2026_REGISTRATION_ACTIVITY_DAYS * MILLISECONDS_PER_EVENT_DAY,
+      );
       const activityEstimates = await getActivityEstimates(
         tx,
         {
