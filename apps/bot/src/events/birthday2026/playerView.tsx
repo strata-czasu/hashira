@@ -27,20 +27,20 @@ import type {
 
 export const BIRTHDAY_2026_FEED_ALL_CUSTOM_ID = "birthday2026-feed-all";
 
-const eventStateLabels: Record<Birthday2026PlayerSnapshot["eventState"], string> = {
+const eventStateLabels = {
   disabled: "wstrzymany",
   finished: "zakończony",
   hidden: "ukryty",
   not_configured: "nieskonfigurowany",
   not_started: "jeszcze się nie rozpoczął",
   open: "trwa",
-};
+} satisfies Record<Birthday2026PlayerSnapshot["eventState"], string>;
 
-const historySourceLabels: Record<Birthday2026PlayerHistoryEntry["source"], string> = {
+const historySourceLabels = {
   feed: "karmienie",
   staffGrant: "korekta administracji",
   textActivity: "aktywność tekstowa",
-};
+} satisfies Record<Birthday2026PlayerHistoryEntry["source"], string>;
 
 const formatPasza = (amount: number, symbol: string) =>
   `${amount.toLocaleString("pl-PL")} ${symbol}`;

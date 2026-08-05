@@ -1,5 +1,9 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
-import { type FeedBirthday2026PigResult, feedBirthday2026Pig } from "./economyService";
+import {
+  type Birthday2026EconomyErrorReason,
+  type FeedBirthday2026PigInput,
+  feedBirthday2026Pig,
+} from "./economyService";
 import { type Birthday2026EventState, getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026PublicErrorReason =
@@ -71,15 +75,12 @@ export const getBirthday2026PlayerSnapshot = async (
     },
   });
   if (!config?.visible) {
-    return { ok: false, reason: "event_not_available" };
+    return { ok: false, reason: "event_not_available" } as const;
   }
   if (!config.economy) {
-    return { ok: false, reason: "economy_not_configured" };
+    return { ok: false, reason: "economy_not_configured" } as const;
   }
-  if (
-    config.teams.length !== 4 ||
-    config.teams.some((team) => !team.identity || !team.wallet)
-  ) {
+  if (config.teams.some((team) => !team.identity || !team.wallet)) {
     return { ok: false, reason: "teams_not_ready" };
   }
 
@@ -165,19 +166,15 @@ export const getBirthday2026PlayerSnapshot = async (
   };
 };
 
-type FeedBirthday2026PlayerInput = Parameters<typeof feedBirthday2026Pig>[1];
-
-export type FeedBirthday2026PlayerResult =
-  | FeedBirthday2026PigResult
-  | {
-      ok: false;
-      reason: Birthday2026PublicErrorReason | "event_not_open";
-    };
+export type Birthday2026PlayerFeedErrorReason =
+  | Birthday2026EconomyErrorReason
+  | Birthday2026PublicErrorReason
+  | "event_not_open";
 
 export const feedBirthday2026Player = async (
   prisma: ExtendedPrismaClient,
-  input: FeedBirthday2026PlayerInput,
-): Promise<FeedBirthday2026PlayerResult> => {
+  input: FeedBirthday2026PigInput,
+) => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
     include: {
@@ -191,19 +188,16 @@ export const feedBirthday2026Player = async (
     },
   });
   if (!config?.visible) {
-    return { ok: false, reason: "event_not_available" };
+    return { ok: false, reason: "event_not_available" } as const;
   }
   if (!config.economy) {
-    return { ok: false, reason: "economy_not_configured" };
+    return { ok: false, reason: "economy_not_configured" } as const;
   }
-  if (
-    config.teams.length !== 4 ||
-    config.teams.some((team) => !team.identity || !team.wallet)
-  ) {
-    return { ok: false, reason: "teams_not_ready" };
+  if (config.teams.some((team) => !team.identity || !team.wallet)) {
+    return { ok: false, reason: "teams_not_ready" } as const;
   }
   if (getBirthday2026EventState(config, input.acceptedAt) !== "open") {
-    return { ok: false, reason: "event_not_open" };
+    return { ok: false, reason: "event_not_open" } as const;
   }
 
   return feedBirthday2026Pig(prisma, input);

@@ -13,7 +13,7 @@ import {
 import {
   assignBirthday2026Member,
   createBirthday2026Team,
-  setBirthday2026Tucznik,
+  createBirthday2026TeamIdentity,
 } from "../../src/events/birthday2026/teamService";
 
 const connectionString = process.env.DATABASE_TEST_URL;
@@ -56,14 +56,28 @@ const createFixture = async () => {
     { length: 4 },
     (_, index) => `birthday-player-tucznik-${index}-${suffix}`,
   );
+  const captainUserIds = Array.from(
+    { length: 4 },
+    (_, index) => `birthday-player-captain-${index}-${suffix}`,
+  );
   guildIds.push(guildId);
-  userIds.push(actorUserId, memberUserId, nonMemberUserId, ...tucznikUserIds);
+  userIds.push(
+    actorUserId,
+    memberUserId,
+    nonMemberUserId,
+    ...captainUserIds,
+    ...tucznikUserIds,
+  );
 
   await prisma.guild.create({ data: { id: guildId } });
   await prisma.user.createMany({
-    data: [actorUserId, memberUserId, nonMemberUserId, ...tucznikUserIds].map((id) => ({
-      id,
-    })),
+    data: [
+      actorUserId,
+      memberUserId,
+      nonMemberUserId,
+      ...captainUserIds,
+      ...tucznikUserIds,
+    ].map((id) => ({ id })),
   });
 
   const configResult = await upsertBirthday2026Config(prisma, {
@@ -78,6 +92,9 @@ const createFixture = async () => {
 
   const teams = [];
   for (const [index, tucznikUserId] of tucznikUserIds.entries()) {
+    const captainUserId = captainUserIds[index];
+    if (!captainUserId) throw new Error("Player fixture captain is missing");
+
     const teamResult = await createBirthday2026Team(prisma, {
       guildId,
       name: `Team ${index + 1} ${suffix}`,
@@ -87,18 +104,20 @@ const createFixture = async () => {
     if (!teamResult.ok) throw new Error(teamResult.reason);
     teams.push(teamResult.team);
 
-    const assignment = await assignBirthday2026Member(prisma, {
-      guildId,
-      teamConfigId: teamResult.team.id,
-      userId: tucznikUserId,
-    });
-    if (!assignment.ok) throw new Error(assignment.reason);
+    for (const userId of [captainUserId, tucznikUserId]) {
+      const assignment = await assignBirthday2026Member(prisma, {
+        guildId,
+        teamConfigId: teamResult.team.id,
+        userId,
+      });
+      if (!assignment.ok) throw new Error(assignment.reason);
+    }
 
-    const identity = await setBirthday2026Tucznik(
+    const identity = await createBirthday2026TeamIdentity(
       prisma,
       guildId,
       teamResult.team.id,
-      tucznikUserId,
+      { captainUserId, tucznikUserId },
     );
     if (!identity.ok) throw new Error(identity.reason);
   }

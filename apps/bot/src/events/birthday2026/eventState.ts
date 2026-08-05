@@ -13,13 +13,13 @@ export type Birthday2026EventState =
 export const getBirthday2026EventState = (
   config: Birthday2026Config | null,
   now: Date,
-): Birthday2026EventState => {
-  if (!config) return "not_configured";
-  if (!config.visible) return "hidden";
-  if (!config.enabled) return "disabled";
-  if (now < config.eventStartAt) return "not_started";
-  if (now >= config.eventEndAt) return "finished";
-  return "open";
+) => {
+  if (!config) return "not_configured" as const;
+  if (!config.visible) return "hidden" as const;
+  if (!config.enabled) return "disabled" as const;
+  if (now < config.eventStartAt) return "not_started" as const;
+  if (now >= config.eventEndAt) return "finished" as const;
+  return "open" as const;
 };
 
 export const getBirthday2026RegistrationState = (

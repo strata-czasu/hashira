@@ -1,9 +1,11 @@
 import { Hashira } from "@hashira/core";
+import type { PrismaTransaction } from "@hashira/db";
 import { render } from "@hashira/jsx";
 import {
   bold,
   channelMention,
   PermissionFlagsBits,
+  type RepliableInteraction,
   roleMention,
   TimestampStyles,
   time,
@@ -27,8 +29,8 @@ import {
   getBirthday2026RegistrationState,
 } from "./eventState";
 import {
+  type Birthday2026PlayerFeedErrorReason,
   type Birthday2026PublicErrorReason,
-  type FeedBirthday2026PlayerResult,
   feedBirthday2026Player,
   getBirthday2026PlayerSnapshot,
 } from "./playerService";
@@ -83,7 +85,7 @@ const teamErrorMessages = {
   tucznik_not_member: "Tucznik musi należeć do wskazanej drużyny.",
 };
 
-const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
+const economyErrorMessages = {
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
   currency_conflict: "Nazwa albo symbol waluty są już używane na tym serwerze.",
   economy_already_configured: "Ekonomia jest już skonfigurowana z innymi wartościami.",
@@ -93,32 +95,27 @@ const economyErrorMessages: Record<Birthday2026EconomyErrorReason, string> = {
   invalid_digestion_delay: "Czas trawienia musi być nieujemną liczbą sekund.",
   member_not_found: "Ten użytkownik nie należy do eventu.",
   team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
-};
+} satisfies Record<Birthday2026EconomyErrorReason, string>;
 
-const publicErrorMessages: Record<Birthday2026PublicErrorReason, string> = {
+const publicErrorMessages = {
   economy_not_configured: "Ekonomia eventu nie jest jeszcze gotowa.",
   event_not_available: "Event nie jest teraz dostępny.",
   teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
-};
+} satisfies Record<Birthday2026PublicErrorReason, string>;
 
-type Birthday2026PlayerFeedErrorReason = Extract<
-  FeedBirthday2026PlayerResult,
-  { ok: false }
->["reason"];
-
-const playerFeedErrorMessages: Record<Birthday2026PlayerFeedErrorReason, string> = {
+const playerFeedErrorMessages = {
   ...economyErrorMessages,
   event_not_available: "Event nie jest teraz dostępny.",
   event_not_open: "Karmienie jest dostępne tylko podczas trwania eventu.",
   teams_not_ready: "Drużyny i ich Tucznicy nie są jeszcze gotowi.",
-};
+} satisfies Record<Birthday2026PlayerFeedErrorReason, string>;
 
 const getPlayerSnapshotOrReply = async (
-  prisma: Parameters<typeof getBirthday2026PlayerSnapshot>[0],
+  prisma: PrismaTransaction,
   guildId: string,
   userId: string,
   now: Date,
-  itx: Parameters<typeof errorFollowUp>[0],
+  itx: RepliableInteraction,
 ) => {
   const result = await getBirthday2026PlayerSnapshot(prisma, guildId, userId, now);
   if (!result.ok) {
@@ -128,7 +125,7 @@ const getPlayerSnapshotOrReply = async (
   return result.snapshot;
 };
 const findTeamByRole = async (
-  prisma: Parameters<typeof findBirthday2026Teams>[0],
+  prisma: PrismaTransaction,
   guildId: string,
   roleId: string,
 ) => {
@@ -340,10 +337,10 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         command
           .setDescription("Ustaw daty i prywatne flagi eventu")
           .addString("start", (option) =>
-            option.setDescription("Np. 2026-08-03T20:00:00+02:00"),
+            option.setDescription("Np. 2026-08-01T20:00:00+02:00"),
           )
           .addString("koniec", (option) =>
-            option.setDescription("Np. 2026-08-10T20:00:00+02:00"),
+            option.setDescription("Np. 2026-08-08T20:00:00+02:00"),
           )
           .addString("strefa", (option) =>
             option.setDescription("Strefa IANA, np. Europe/Warsaw"),
@@ -374,7 +371,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               if (!eventStartAt || !eventEndAt) {
                 await errorFollowUp(
                   itx,
-                  "Daty muszą być pełnymi znacznikami ISO z offsetem, np. 2026-08-03T20:00:00+02:00.",
+                  "Daty muszą być pełnymi znacznikami ISO z offsetem, np. 2026-08-01T20:00:00+02:00.",
                 );
                 return;
               }

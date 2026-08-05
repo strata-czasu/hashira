@@ -258,10 +258,20 @@ export const grantBirthday2026Pasza = async (
   });
 };
 
-type ScheduleDigestion = (
+export type ScheduleBirthday2026Digestion = (
   tx: PrismaTransaction,
   batch: Pick<Birthday2026FeedBatch, "digestAt" | "id">,
 ) => Promise<void>;
+
+export type FeedBirthday2026PigInput = {
+  guildId: string;
+  userId: string;
+  amount: number;
+  sourceKey: string;
+  acceptedAt: Date;
+  reason: string;
+  scheduleDigestion: ScheduleBirthday2026Digestion;
+};
 
 export type FeedBirthday2026PigResult =
   | {
@@ -303,15 +313,7 @@ const findFeedResult = async (
 
 export const feedBirthday2026Pig = async (
   prisma: ExtendedPrismaClient,
-  input: {
-    guildId: string;
-    userId: string;
-    amount: number;
-    sourceKey: string;
-    acceptedAt: Date;
-    reason: string;
-    scheduleDigestion: ScheduleDigestion;
-  },
+  input: FeedBirthday2026PigInput,
 ): Promise<FeedBirthday2026PigResult> => {
   const config = await prisma.birthday2026Config.findUnique({
     where: { guildId: input.guildId },
