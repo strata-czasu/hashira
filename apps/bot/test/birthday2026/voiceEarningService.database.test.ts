@@ -64,6 +64,15 @@ const createFixture = async (dailyCap = 18, unitSeconds = 600) => {
     userId: memberUserId,
   });
   if (!assignment.ok) throw new Error(assignment.reason);
+  await prisma.birthday2026MemberState.update({
+    where: {
+      configId_userId: {
+        configId: config.config.id,
+        userId: memberUserId,
+      },
+    },
+    data: { joinedAt: new Date("2026-08-03T18:00:00Z") },
+  });
 
   const economy = await setupBirthday2026Economy(prisma, {
     guildId,

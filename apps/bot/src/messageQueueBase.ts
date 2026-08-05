@@ -20,6 +20,7 @@ import {
 import { Effect } from "effect";
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
+import { awardBirthday2026VoicePasza } from "./events/birthday2026/voiceEarningService";
 import { sendCombatlog } from "./events/halloween2025/combatLogUtil";
 import {
   PrismaCombatRepository,
@@ -95,6 +96,10 @@ type Halloween2025EndSpawnData = {
 
 type Birthday2026DigestData = {
   batchId: number;
+};
+
+type Birthday2026VoiceAwardData = {
+  voiceSessionId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -489,6 +494,20 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (!result.ok && result.reason !== "batch_not_found") {
               throw new Error(
                 `Failed to digest Birthday 2026 feed batch ${batchId}: ${result.reason}`,
+              );
+            }
+          },
+        )
+        .addHandler(
+          "birthday2026VoiceAward",
+          async (_, { voiceSessionId }: Birthday2026VoiceAwardData) => {
+            const result = await awardBirthday2026VoicePasza(prisma, {
+              voiceSessionId,
+            });
+
+            if (!result.ok && result.reason !== "voice_session_not_found") {
+              console.warn(
+                `Birthday 2026 voice award skipped for session ${voiceSessionId}: ${result.reason}`,
               );
             }
           },

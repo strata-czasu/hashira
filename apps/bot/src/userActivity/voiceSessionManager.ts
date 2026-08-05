@@ -1,4 +1,9 @@
-import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+import type {
+  ExtendedPrismaClient,
+  Prisma,
+  PrismaTransaction,
+  RedisClient,
+} from "@hashira/db";
 import { type RangeUnion, range } from "@hashira/utils/range";
 import { type Duration, differenceInSeconds } from "date-fns";
 import type { Guild, VoiceBasedChannel, VoiceState } from "discord.js";
@@ -18,16 +23,21 @@ type RangeState = RangeUnion<0, 32>;
 const MAX_SESSION_DURATION = { minutes: 15 } as const satisfies Duration;
 const MAX_SESSION_DURATION_SECONDS = durationToSeconds(MAX_SESSION_DURATION);
 
-type VoiceSessionPersistedHandler = (voiceSessionId: number) => Promise<void>;
+type VoiceSessionPersistedHandler = (
+  voiceSessionId: number,
+  tx: PrismaTransaction,
+) => Promise<void>;
 
 export class VoiceSessionManager {
   private redis: RedisClient;
   private prisma: ExtendedPrismaClient;
+  // TODO: this should be removed after the birthday2026 event is over, and the voice session data is no longer needed for that event
   private onVoiceSessionPersisted: VoiceSessionPersistedHandler | undefined;
 
   constructor(
     redis: RedisClient,
     prisma: ExtendedPrismaClient,
+
     onVoiceSessionPersisted?: VoiceSessionPersistedHandler,
   ) {
     this.redis = redis;
@@ -299,12 +309,14 @@ export class VoiceSessionManager {
     );
 
     await ensureUserExists(this.prisma, state.id);
-    const voiceSession = await this.prisma.voiceSession.create({
-      data: voiceSessionRecord,
-      select: { id: true },
+    await this.prisma.$transaction(async (tx) => {
+      const voiceSession = await tx.voiceSession.create({
+        data: voiceSessionRecord,
+        select: { id: true },
+      });
+      await this.onVoiceSessionPersisted?.(voiceSession.id, tx);
     });
     await this.redis.del(key);
-    await this.onVoiceSessionPersisted?.(voiceSession.id);
   }
 
   async handleVoiceState(voiceState: VoiceState): Promise<[string] | []> {
@@ -350,12 +362,14 @@ export class VoiceSessionManager {
       );
 
       await ensureUserExists(this.prisma, userId);
-      const persistedSession = await this.prisma.voiceSession.create({
-        data: voiceSession,
-        select: { id: true },
+      await this.prisma.$transaction(async (tx) => {
+        const persistedSession = await tx.voiceSession.create({
+          data: voiceSession,
+          select: { id: true },
+        });
+        await this.onVoiceSessionPersisted?.(persistedSession.id, tx);
       });
       await this.redis.del(key);
-      await this.onVoiceSessionPersisted?.(persistedSession.id);
     } catch (error) {
       console.error(`Failed to process orphaned session ${key}:`, error);
     }

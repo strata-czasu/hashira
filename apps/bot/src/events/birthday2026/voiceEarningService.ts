@@ -4,8 +4,12 @@ import type {
   PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { getDefaultWallet } from "../../economy/managers/walletManager";
-import { getBirthday2026EventDayIndex, getBirthday2026EventState } from "./eventState";
+import { addBalance } from "../../economy/managers/transferManager";
+import {
+  getBirthday2026EventDayIndex,
+  getBirthday2026EventState,
+  MILLISECONDS_PER_EVENT_DAY,
+} from "./eventState";
 
 export type ConfigureBirthday2026VoiceEarningResult =
   | { ok: true; config: Birthday2026VoiceEarningConfig }
@@ -187,8 +191,10 @@ export const awardBirthday2026VoicePasza = async (
   if (eventDayIndex === null) {
     return { ok: false, reason: "event_not_open" };
   }
-  const dayStart = new Date(config.eventStartAt.getTime() + eventDayIndex * 86_400_000);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const dayStart = new Date(
+    config.eventStartAt.getTime() + eventDayIndex * MILLISECONDS_PER_EVENT_DAY,
+  );
+  const dayEnd = new Date(dayStart.getTime() + MILLISECONDS_PER_EVENT_DAY);
   const eligibleTime = await prisma.voiceSessionTotal.aggregate({
     where: {
       isAlone: false,
@@ -270,25 +276,13 @@ export const awardBirthday2026VoicePasza = async (
       };
     }
 
-    const wallet = await getDefaultWallet({
+    const { transaction, wallet } = await addBalance({
       prisma: nestedTransaction(tx),
       guildId: voiceSession.guildId,
-      userId: voiceSession.userId,
+      toUserId: voiceSession.userId,
+      amount: awardedUnits,
+      reason: `Birthday 2026 voice activity: day ${eventDayIndex}, session ${voiceSession.id}`,
       currencyId,
-    });
-    const updatedWallet = await tx.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: { increment: awardedUnits } },
-    });
-    const transaction = await tx.transaction.create({
-      data: {
-        walletId: wallet.id,
-        amount: awardedUnits,
-        reason: `Birthday 2026 voice activity: day ${eventDayIndex}, session ${voiceSession.id}`,
-        transactionType: "add",
-        entryType: "credit",
-        createdAt: voiceSession.leftAt,
-      },
     });
     await tx.birthday2026PersonalTransaction.create({
       data: {
@@ -308,7 +302,7 @@ export const awardBirthday2026VoicePasza = async (
       eligibleSeconds,
       eventDayIndex,
       status: "awarded",
-      walletBalance: updatedWallet.balance,
+      walletBalance: wallet.balance,
     };
   });
 };

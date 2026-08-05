@@ -1,6 +1,6 @@
 import type { Birthday2026Config } from "@hashira/db";
 
-const MILLISECONDS_PER_EVENT_DAY = 24 * 60 * 60 * 1000;
+export const MILLISECONDS_PER_EVENT_DAY = 24 * 60 * 60 * 1000;
 
 export type Birthday2026EventState =
   | "not_configured"
