@@ -190,7 +190,7 @@ const syncBirthday2026Roles = async (prisma: ExtendedPrismaClient, guild: Guild)
 
 const updateBirthday2026Status = async (
   client: Client,
-  prisma: Parameters<typeof reconcileBirthday2026StatusMessage>[1],
+  prisma: ExtendedPrismaClient,
   teamConfigId: number,
 ) => {
   const result = await reconcileBirthday2026StatusMessage(client, prisma, teamConfigId);
