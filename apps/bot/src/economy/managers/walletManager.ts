@@ -15,6 +15,7 @@ const getDefaultWalletName = (guildId: string) => {
 };
 
 type DebitTransaction = {
+  createdAt?: Date;
   relatedUserId?: string | null;
   relatedWalletId?: number | null;
   reason: string | null;

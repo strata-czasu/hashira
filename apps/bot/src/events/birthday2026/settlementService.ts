@@ -3,6 +3,8 @@ import {
   isUniqueConstraintError,
   type PrismaTransaction,
 } from "@hashira/db";
+import { InsufficientBalanceError } from "../../economy/economyError";
+import { debitWallet } from "../../economy/managers/walletManager";
 import { claimBirthday2026Config } from "./configService";
 
 const getStoredBirthday2026Results = (prisma: PrismaTransaction, guildId: string) =>
@@ -229,22 +231,15 @@ export const settleBirthday2026Event = async (
       }
 
       for (const wallet of personalWallets) {
-        const debit = await tx.wallet.updateMany({
-          where: { id: wallet.id, balance: wallet.balance },
-          data: { balance: 0 },
-        });
-        if (debit.count === 0) {
-          throw new SettlementInvariantError("personal_wallet_balance_mismatch");
-        }
-        const transaction = await tx.transaction.create({
-          data: {
-            walletId: wallet.id,
+        const transaction = await debitWallet({
+          prisma: tx,
+          walletId: wallet.id,
+          amount: wallet.balance,
+          transaction: {
+            createdAt: input.settledAt,
             relatedUserId: input.settledByUserId,
-            amount: wallet.balance,
             reason: "Birthday 2026: unused Pasza expired at settlement",
             transactionType: "add",
-            entryType: "debit",
-            createdAt: input.settledAt,
           },
         });
         await tx.birthday2026PersonalTransaction.create({
@@ -272,6 +267,9 @@ export const settleBirthday2026Event = async (
   } catch (error) {
     if (error instanceof SettlementInvariantError) {
       return { ok: false, reason: error.reason } as const;
+    }
+    if (error instanceof InsufficientBalanceError) {
+      return { ok: false, reason: "personal_wallet_balance_mismatch" } as const;
     }
     if (!isUniqueConstraintError(error)) throw error;
   }
