@@ -79,6 +79,51 @@ export const upsertBirthday2026Config = async (
   });
 };
 
+const isBirthday2026Ready = async (prisma: PrismaTransaction, configId: number) => {
+  const config = await prisma.birthday2026Config.findUniqueOrThrow({
+    where: { id: configId },
+    include: {
+      economy: true,
+      encounterConfig: true,
+      milestones: true,
+      powerupConfig: true,
+      raidConfig: true,
+      rosterFinalization: true,
+      textEarning: true,
+      voiceEarning: true,
+      teams: {
+        include: {
+          identity: true,
+          persona: true,
+          powerupState: true,
+          statusMessage: true,
+          wallet: true,
+        },
+      },
+    },
+  });
+
+  return (
+    config.economy !== null &&
+    config.encounterConfig !== null &&
+    config.milestones.length === 4 &&
+    config.powerupConfig !== null &&
+    config.raidConfig !== null &&
+    config.rosterFinalization !== null &&
+    config.textEarning !== null &&
+    config.voiceEarning !== null &&
+    config.teams.length === 4 &&
+    config.teams.every(
+      (team) =>
+        team.identity !== null &&
+        team.persona !== null &&
+        team.powerupState !== null &&
+        team.statusMessage !== null &&
+        team.wallet !== null,
+    )
+  );
+};
+
 export const setBirthday2026FeatureState = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
@@ -93,6 +138,9 @@ export const setBirthday2026FeatureState = async (
     const current = await claimBirthday2026Config(tx, existing.id);
     if (current.settlement && state.enabled) {
       return { ok: false, reason: "event_settled" } as const;
+    }
+    if (state.enabled && !(await isBirthday2026Ready(tx, configRecord.id))) {
+      return { ok: false, reason: "event_not_ready" } as const;
     }
     const config = await tx.birthday2026Config.update({
       where: { id: existing.id },

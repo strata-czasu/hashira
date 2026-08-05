@@ -185,6 +185,8 @@ model User {
   birthday2026EncounterEntries       Birthday2026EncounterEntry[]
   birthday2026EncounterWins          Birthday2026EncounterWinner[]
   birthday2026PowerupActivations     Birthday2026PowerupActivation[]
+  birthday2026RaidAttempts           Birthday2026RaidAttempt[]  @relation("birthday2026RaidCaptain")
+  birthday2026RaidVictimTransfers    Birthday2026RaidTransfer[] @relation("birthday2026RaidVictim")
   birthday2026Registrations         Birthday2026Registration[]
   birthday2026MemberStates          Birthday2026MemberState[]
   birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
