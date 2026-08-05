@@ -3,9 +3,9 @@ import { nestedTransaction } from "@hashira/db/transaction";
 import { render } from "@hashira/jsx";
 import { addSeconds } from "date-fns";
 import { type Client, RESTJSONErrorCodes } from "discord.js";
-import { getDefaultWallet } from "../../economy/managers/walletManager";
+import { addBalance } from "../../economy/managers/transferManager";
 import { discordTry } from "../../util/discordTry";
-import { lockBirthday2026Config } from "./configService";
+import { claimBirthday2026Config } from "./configService";
 import { buildBirthday2026EncounterView } from "./encounterView";
 import { getBirthday2026EventState } from "./eventState";
 
@@ -37,36 +37,39 @@ export const configureBirthday2026Encounters = async (
     return { ok: false, reason: "invalid_config" } as const;
   }
 
-  const config = await prisma.birthday2026Config.findUnique({
-    where: { guildId: input.guildId },
-    select: { id: true, settlement: { select: { configId: true } } },
-  });
-  if (!config) return { ok: false, reason: "config_not_found" } as const;
-  if (config.settlement) return { ok: false, reason: "event_settled" } as const;
+  return prisma.$transaction(async (tx) => {
+    const config = await tx.birthday2026Config.findUnique({
+      where: { guildId: input.guildId },
+      select: { id: true },
+    });
+    if (!config) return { ok: false, reason: "config_not_found" } as const;
+    const state = await claimBirthday2026Config(tx, config.id);
+    if (state.settlement) return { ok: false, reason: "event_settled" } as const;
 
-  const encounterConfig = await prisma.birthday2026EncounterConfig.upsert({
-    where: { configId: config.id },
-    create: {
-      configId: config.id,
-      channelId,
-      responseWindowSeconds: input.responseWindowSeconds,
-      spawnIntervalSeconds: input.spawnIntervalSeconds,
-      individualReward: input.individualReward,
-      winCap: input.winCap,
-      teamThreshold: input.teamThreshold,
-      teamReward: input.teamReward,
-    },
-    update: {
-      channelId,
-      responseWindowSeconds: input.responseWindowSeconds,
-      spawnIntervalSeconds: input.spawnIntervalSeconds,
-      individualReward: input.individualReward,
-      winCap: input.winCap,
-      teamThreshold: input.teamThreshold,
-      teamReward: input.teamReward,
-    },
+    const encounterConfig = await tx.birthday2026EncounterConfig.upsert({
+      where: { configId: config.id },
+      create: {
+        configId: config.id,
+        channelId,
+        responseWindowSeconds: input.responseWindowSeconds,
+        spawnIntervalSeconds: input.spawnIntervalSeconds,
+        individualReward: input.individualReward,
+        winCap: input.winCap,
+        teamThreshold: input.teamThreshold,
+        teamReward: input.teamReward,
+      },
+      update: {
+        channelId,
+        responseWindowSeconds: input.responseWindowSeconds,
+        spawnIntervalSeconds: input.spawnIntervalSeconds,
+        individualReward: input.individualReward,
+        winCap: input.winCap,
+        teamThreshold: input.teamThreshold,
+        teamReward: input.teamReward,
+      },
+    });
+    return { ok: true, config: encounterConfig } as const;
   });
-  return { ok: true, config: encounterConfig } as const;
 };
 
 type ScheduleEncounterJob = (
@@ -95,7 +98,7 @@ export const spawnBirthday2026Encounter = async (
       select: { id: true },
     });
     if (!configRecord) return { ok: false, reason: "config_not_found" } as const;
-    await lockBirthday2026Config(tx, configRecord.id);
+    await claimBirthday2026Config(tx, configRecord.id);
     const config = await tx.birthday2026Config.findUniqueOrThrow({
       where: { id: configRecord.id },
       include: { encounterConfig: true, settlement: true },
@@ -166,7 +169,7 @@ export const enterBirthday2026Encounter = (
     if (initial.config.guildId !== input.guildId) {
       return { ok: false, reason: "encounter_not_found" } as const;
     }
-    const state = await lockBirthday2026Config(tx, initial.configId);
+    const state = await claimBirthday2026Config(tx, initial.configId);
     if (state.settlement) return { ok: false, reason: "event_settled" } as const;
 
     const encounter = await tx.birthday2026Encounter.findUnique({
@@ -200,6 +203,15 @@ export const enterBirthday2026Encounter = (
     });
     if (!membership) return { ok: false, reason: "member_not_found" } as const;
 
+    if (encounter.kind === "quickGrab") {
+      const wins = await tx.birthday2026EncounterWinner.count({
+        where: { configId: encounter.configId, userId: input.userId },
+      });
+      if (wins >= encounter.config.encounterConfig.winCap) {
+        return { ok: false, reason: "win_cap_reached" } as const;
+      }
+    }
+
     const entry = await tx.birthday2026EncounterEntry.createMany({
       data: {
         encounterId: encounter.id,
@@ -215,12 +227,6 @@ export const enterBirthday2026Encounter = (
     }
 
     if (encounter.kind === "quickGrab") {
-      const wins = await tx.birthday2026EncounterWinner.count({
-        where: { configId: encounter.configId, userId: input.userId },
-      });
-      if (wins >= encounter.config.encounterConfig.winCap) {
-        return { ok: false, reason: "win_cap_reached" } as const;
-      }
       const claim = await tx.birthday2026Encounter.updateMany({
         where: {
           id: encounter.id,
@@ -234,26 +240,14 @@ export const enterBirthday2026Encounter = (
         return { ok: false, reason: "encounter_not_open" } as const;
       }
 
-      const wallet = await getDefaultWallet({
+      const reward = encounter.config.encounterConfig.individualReward;
+      const { transaction, wallet: updatedWallet } = await addBalance({
         prisma: nestedTransaction(tx),
         guildId: encounter.config.guildId,
-        userId: input.userId,
+        toUserId: input.userId,
         currencyId: encounter.config.economy.currencyId,
-      });
-      const reward = encounter.config.encounterConfig.individualReward;
-      const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: reward } },
-      });
-      const transaction = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount: reward,
-          reason: `Birthday 2026 quick encounter ${encounter.id}`,
-          transactionType: "add",
-          entryType: "credit",
-          createdAt: input.enteredAt,
-        },
+        amount: reward,
+        reason: `Birthday 2026 quick encounter ${encounter.id}`,
       });
       await Promise.all([
         tx.birthday2026PersonalTransaction.create({
@@ -302,6 +296,9 @@ export const enterBirthday2026Encounter = (
       } as const;
     }
 
+    if (!membership.teamConfig.wallet) {
+      return { ok: false, reason: "team_wallet_not_found" } as const;
+    }
     const completion = await tx.birthday2026TeamEncounterCompletion.createMany({
       data: {
         encounterId: encounter.id,
@@ -313,9 +310,6 @@ export const enterBirthday2026Encounter = (
       skipDuplicates: true,
     });
     if (completion.count > 0) {
-      if (!membership.teamConfig.wallet) {
-        return { ok: false, reason: "team_wallet_not_found" } as const;
-      }
       await tx.birthday2026TeamWallet.update({
         where: { id: membership.teamConfig.wallet.id },
         data: {

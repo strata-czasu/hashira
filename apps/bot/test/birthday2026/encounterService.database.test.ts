@@ -205,6 +205,28 @@ databaseTests("Birthday 2026 encounters", () => {
     ).toEqual({ ok: false, reason: "already_entered" });
     expect(await prisma.task.count({ where: { id: { in: taskIds } } })).toBe(4);
 
+    const cappedQuick = await spawnBirthday2026Encounter(prisma, {
+      guildId,
+      kind: "quickGrab",
+      sourceKey: `capped-quick-${suffix}`,
+      startsAt: new Date("2026-08-02T19:02:00Z"),
+      scheduleJob,
+    });
+    if (!cappedQuick.ok) throw new Error(cappedQuick.reason);
+    expect(
+      await enterBirthday2026Encounter(prisma, {
+        encounterId: cappedQuick.encounter.id,
+        guildId,
+        userId: winner.userId,
+        enteredAt: new Date("2026-08-02T19:02:01Z"),
+      }),
+    ).toEqual({ ok: false, reason: "win_cap_reached" });
+    expect(
+      await prisma.birthday2026EncounterEntry.count({
+        where: { encounterId: cappedQuick.encounter.id },
+      }),
+    ).toBe(0);
+
     let nextMessageId = 1;
     const messages = new Map<
       string,
