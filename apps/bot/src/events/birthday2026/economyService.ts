@@ -8,7 +8,7 @@ import { addSeconds } from "date-fns";
 import { InsufficientBalanceError } from "../../economy/economyError";
 import { addBalance } from "../../economy/managers/transferManager";
 import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
-import { lockBirthday2026Config } from "./configService";
+import { claimBirthday2026Config } from "./configService";
 import { getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026EconomyErrorReason =
@@ -231,7 +231,7 @@ export const grantBirthday2026Pasza = async (
   if (!membership) return { ok: false, reason: "member_not_found" };
 
   return prisma.$transaction(async (tx) => {
-    const state = await lockBirthday2026Config(tx, config.id);
+    const state = await claimBirthday2026Config(tx, config.id);
     if (state.settlement) return { ok: false, reason: "event_settled" };
 
     const { transaction, wallet } = await addBalance({
@@ -367,7 +367,7 @@ export const feedBirthday2026Pig = async (
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const state = await lockBirthday2026Config(tx, config.id);
+      const state = await claimBirthday2026Config(tx, config.id);
       if (state.settlement) return { ok: false, reason: "event_settled" };
       if (!state.enabled) {
         return { ok: false, reason: "event_not_open" };
@@ -479,14 +479,15 @@ export const digestBirthday2026FeedBatch = async (
     });
     if (!batch) return { ok: false, reason: "batch_not_found" };
 
-    await lockBirthday2026Config(tx, batch.configId);
+    // Serialize against settlement and other event activity; the batch may
+    // have changed while waiting for the claim, so read it again.
+    await claimBirthday2026Config(tx, batch.configId);
     batch = await tx.birthday2026FeedBatch.findUnique({
       where: { id: input.batchId },
       include: { wallet: true },
     });
     if (!batch) return { ok: false, reason: "batch_not_found" };
 
-    if (!batch) return { ok: false, reason: "batch_not_found" };
     if (batch.digestedAt) {
       return {
         ok: true,

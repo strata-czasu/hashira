@@ -6,7 +6,7 @@ import {
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { addBalance } from "../../economy/managers/transferManager";
-import { lockBirthday2026Config } from "./configService";
+import { claimBirthday2026Config } from "./configService";
 import { getBirthday2026EventDayIndex, getBirthday2026EventState } from "./eventState";
 
 export type Birthday2026TextEarningErrorReason =
@@ -339,7 +339,7 @@ export const awardBirthday2026TextPasza = async (
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const state = await lockBirthday2026Config(tx, config.id);
+      const state = await claimBirthday2026Config(tx, config.id);
       if (!state.enabled || state.settlement) {
         return { ok: false, reason: "event_not_open" } as const;
       }

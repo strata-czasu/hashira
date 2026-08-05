@@ -3,7 +3,7 @@ import {
   isUniqueConstraintError,
   type PrismaTransaction,
 } from "@hashira/db";
-import { lockBirthday2026Config } from "./configService";
+import { claimBirthday2026Config } from "./configService";
 
 const getStoredBirthday2026Results = (prisma: PrismaTransaction, guildId: string) =>
   prisma.birthday2026Settlement.findFirst({
@@ -51,7 +51,8 @@ export const settleBirthday2026Event = async (
         select: { id: true },
       });
       if (!configRecord) throw new SettlementInvariantError("config_not_found");
-      await lockBirthday2026Config(tx, configRecord.id);
+      const claimed = await claimBirthday2026Config(tx, configRecord.id);
+      if (claimed.settlement) return false;
       const config = await tx.birthday2026Config.findUnique({
         where: { guildId: input.guildId },
         include: {
@@ -69,7 +70,6 @@ export const settleBirthday2026Event = async (
       if (!config.economy) {
         throw new SettlementInvariantError("economy_not_configured");
       }
-      if (config.settlement) return false;
       if (config.enabled && input.settledAt < config.eventEndAt) {
         throw new SettlementInvariantError("event_open");
       }
