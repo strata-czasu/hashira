@@ -37,6 +37,7 @@ const eventStateLabels = {
 } satisfies Record<Birthday2026PlayerSnapshot["eventState"], string>;
 
 const historySourceLabels = {
+  encounter: "szybkie wydarzenie",
   feed: "karmienie",
   settlement: "wygaśnięcie po rozliczeniu",
   staffGrant: "korekta administracji",
