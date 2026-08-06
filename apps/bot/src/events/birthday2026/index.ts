@@ -164,7 +164,7 @@ const finalizationErrorMessages = {
   earning_not_configured: "Najpierw skonfiguruj zdobywanie Paszy za tekst i głos.",
   event_enabled: "Wyłącz event przed przydzieleniem drużyn.",
   teams_not_ready:
-    "Skonfiguruj dokładnie cztery drużyny, ich Tuczników i zatwierdzone persony.",
+    "Skonfiguruj co najmniej jedną drużynę, jej Tucznika i zatwierdzoną personę.",
 };
 
 const getPlayerSnapshotOrReply = async (

@@ -56,7 +56,7 @@ export const registerBirthday2026Participant = async (
       return { ok: false, reason: "registration_closed" } as const;
     }
     if (
-      config.teams.length !== 4 ||
+      config.teams.length === 0 ||
       config.teams.some((team) => !team.identity || !team.persona)
     ) {
       return { ok: false, reason: "teams_not_ready" } as const;
@@ -292,7 +292,7 @@ export const finalizeBirthday2026Registration = async (
       }
       if (config.enabled) return { ok: false, reason: "event_enabled" } as const;
       if (
-        config.teams.length !== 4 ||
+        config.teams.length === 0 ||
         config.teams.some((team) => !team.identity || !team.persona)
       ) {
         return { ok: false, reason: "teams_not_ready" } as const;

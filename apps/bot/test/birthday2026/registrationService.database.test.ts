@@ -50,10 +50,13 @@ const createFixture = async () => {
   return { config: result.config, guildId, suffix, users };
 };
 
-const setupReadyTeams = async (fixture: Awaited<ReturnType<typeof createFixture>>) => {
+const setupReadyTeams = async (
+  fixture: Awaited<ReturnType<typeof createFixture>>,
+  teamCount: number,
+) => {
   if (!prisma) throw new Error("DATABASE_TEST_URL is required");
   const teams = [];
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < teamCount; index += 1) {
     const captainUserId = fixture.users[index * 2];
     const tucznikUserId = fixture.users[index * 2 + 1];
     if (!captainUserId || !tucznikUserId) {
@@ -135,7 +138,7 @@ databaseTests("Birthday 2026 registration", () => {
       ),
     ).toEqual({ ok: false, reason: "teams_not_ready" });
 
-    await setupReadyTeams(fixture);
+    await setupReadyTeams(fixture, 4);
     expect(
       await registerBirthday2026Participant(
         prisma,
@@ -171,10 +174,31 @@ databaseTests("Birthday 2026 registration", () => {
     ).toEqual({ ok: false, reason: "registration_closed" });
   });
 
+  it("supports any positive number of ready teams", async () => {
+    if (!prisma) throw new Error("DATABASE_TEST_URL is required");
+
+    for (const teamCount of [1, 3, 5]) {
+      const fixture = await createFixture();
+      const participant = fixture.users[10];
+      if (!participant) throw new Error("Missing fixture participant");
+
+      await setupReadyTeams(fixture, teamCount);
+      expect(
+        await registerBirthday2026Participant(
+          prisma,
+          fixture.guildId,
+          participant,
+          new Date("2026-08-01T18:00:00Z"),
+          () => 0,
+        ),
+      ).toEqual({ ok: true, assigned: false });
+    }
+  });
+
   it("finalizes the activity-balanced roster once", async () => {
     if (!prisma) throw new Error("DATABASE_TEST_URL is required");
     const fixture = await createFixture();
-    await setupReadyTeams(fixture);
+    await setupReadyTeams(fixture, 4);
     const textUser = fixture.users[8];
     const voiceUser = fixture.users[9];
     if (!textUser || !voiceUser) throw new Error("Missing fixture participants");
