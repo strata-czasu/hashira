@@ -5,8 +5,10 @@ import {
   type PrismaTransaction,
 } from "@hashira/db";
 import {
+  ActionRow,
   Bold,
   Br,
+  Button,
   Container,
   H1,
   H2,
@@ -16,8 +18,15 @@ import {
   Separator,
   TextDisplay,
 } from "@hashira/jsx";
-import { type Client, RESTJSONErrorCodes, roleMention, userMention } from "discord.js";
+import {
+  ButtonStyle,
+  type Client,
+  RESTJSONErrorCodes,
+  roleMention,
+  userMention,
+} from "discord.js";
 import { discordTry } from "../../util/discordTry";
+import { BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX } from "./playerView";
 
 const milestoneNames = [
   "Początek",
@@ -261,6 +270,13 @@ export const buildBirthday2026TeamStatusView = (
           <MediaGalleryItem url={artwork.imageUrl} />
         </MediaGallery>
       ) : null}
+      <ActionRow>
+        <Button
+          customId={`${BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX}:${team.id}`}
+          label="🥣 Nakarm Tucznika"
+          style={ButtonStyle.Success}
+        />
+      </ActionRow>
     </Container>
   );
 };

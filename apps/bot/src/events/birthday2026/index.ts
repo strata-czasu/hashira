@@ -2,18 +2,27 @@ import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { render } from "@hashira/jsx";
 import {
+  ActionRowBuilder,
+  type ButtonInteraction,
   bold,
+  type ChatInputCommandInteraction,
   type Client,
   channelMention,
+  DiscordjsErrorCodes,
   type Guild,
+  type ModalActionRowComponentBuilder,
+  ModalBuilder,
   PermissionFlagsBits,
   type RepliableInteraction,
   roleMention,
+  TextInputBuilder,
+  TextInputStyle,
   TimestampStyles,
   time,
   userMention,
 } from "discord.js";
 import { base } from "../../base";
+import { discordTry } from "../../util/discordTry";
 import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import { getColor } from "../../util/getColor";
@@ -28,6 +37,7 @@ import {
   feedBirthday2026Pig,
   getBirthday2026EconomyStatus,
   grantBirthday2026Pasza,
+  type ScheduleBirthday2026Digestion,
   setupBirthday2026Economy,
 } from "./economyService";
 import {
@@ -56,7 +66,11 @@ import {
 } from "./playerService";
 import {
   BIRTHDAY_2026_FEED_ALL_CUSTOM_ID,
+  BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID,
+  BIRTHDAY_2026_FEED_MODAL_CUSTOM_ID_PREFIX,
+  BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX,
   buildBirthday2026BalanceView,
+  buildBirthday2026CrossFeedAnnouncementView,
   buildBirthday2026FeedResultView,
   buildBirthday2026InfoView,
   buildBirthday2026RankingView,
@@ -132,6 +146,9 @@ const economyErrorMessages = {
   invalid_currency: "Nazwa i symbol waluty nie mogą być puste.",
   invalid_digestion_delay: "Czas trawienia musi być nieujemną liczbą sekund.",
   member_not_found: "Ten użytkownik nie należy do eventu.",
+  target_team_not_found: "Nie znaleziono drużyny, do której chcesz przekazać Paszę.",
+  cross_feed_already_used:
+    "Możesz przypadkowo nakarmić drużynę tylko raz podczas całego eventu.",
   team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
 } satisfies Record<Birthday2026EconomyErrorReason, string>;
 
@@ -181,6 +198,167 @@ const getPlayerSnapshotOrReply = async (
   }
   return result.snapshot;
 };
+
+const runBirthday2026FeedModal = async (
+  itx: ChatInputCommandInteraction<"cached"> | ButtonInteraction<"cached">,
+  prisma: ExtendedPrismaClient,
+  scheduleDigestion: ScheduleBirthday2026Digestion,
+  targetTeamConfigId: number,
+) => {
+  const before = await getBirthday2026PlayerSnapshot(
+    prisma,
+    itx.guildId,
+    itx.user.id,
+    itx.createdAt,
+  );
+  if (!before.ok) {
+    await errorFollowUp(itx, publicErrorMessages[before.reason]);
+    return;
+  }
+  if (!before.snapshot.membership) {
+    await errorFollowUp(itx, playerFeedErrorMessages.member_not_found);
+    return;
+  }
+
+  const modalCustomId = `${BIRTHDAY_2026_FEED_MODAL_CUSTOM_ID_PREFIX}:${targetTeamConfigId}:${itx.id}:${itx.user.id}`;
+  const modal = new ModalBuilder()
+    .setCustomId(modalCustomId)
+    .setTitle("🥣 Nakarm Tucznika")
+    .addComponents(
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId(BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID)
+          .setLabel(
+            `Ilość Paszy (masz: ${before.snapshot.balance} ${before.snapshot.currencySymbol})`,
+          )
+          .setPlaceholder("0")
+          .setMinLength(1)
+          .setMaxLength(9)
+          .setRequired(true)
+          .setValue(String(before.snapshot.balance))
+          .setStyle(TextInputStyle.Short),
+      ),
+    );
+  await itx.showModal(modal);
+
+  const submitItx = await discordTry(
+    () =>
+      itx.awaitModalSubmit({
+        time: 60_000 * 3,
+        filter: (submitted) => submitted.customId === modalCustomId,
+      }),
+    [DiscordjsErrorCodes.InteractionCollectorError],
+    () => null,
+  );
+  if (!submitItx) return;
+
+  await submitItx.deferReply({ flags: "Ephemeral" });
+
+  const rawAmount = submitItx.fields
+    .getTextInputValue(BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID)
+    .trim();
+  const amount = Number(rawAmount);
+  if (!Number.isSafeInteger(amount) || amount < 1) {
+    await errorFollowUp(submitItx, "Podaj poprawną liczbę Paszy.");
+    return;
+  }
+  if (amount > before.snapshot.balance) {
+    await errorFollowUp(submitItx, playerFeedErrorMessages.insufficient_balance);
+    return;
+  }
+
+  const ownTeamId = before.snapshot.membership.teamConfigId;
+  const result = await feedBirthday2026Player(prisma, {
+    guildId: itx.guildId,
+    userId: itx.user.id,
+    amount,
+    sourceKey: submitItx.id,
+    acceptedAt: submitItx.createdAt,
+    reason:
+      targetTeamConfigId === ownTeamId
+        ? "Birthday 2026 player feed"
+        : "Birthday 2026 cross-team feed",
+    targetTeamConfigId,
+    scheduleDigestion,
+  });
+  if (!result.ok) {
+    await errorFollowUp(submitItx, playerFeedErrorMessages[result.reason]);
+    return;
+  }
+  await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
+
+  if (targetTeamConfigId !== ownTeamId) {
+    await announceBirthday2026CrossFeed(
+      itx.client,
+      prisma,
+      itx.guildId,
+      itx.user.id,
+      result.batch.amount,
+      targetTeamConfigId,
+    );
+  }
+
+  const after = await getBirthday2026PlayerSnapshot(
+    prisma,
+    itx.guildId,
+    itx.user.id,
+    submitItx.createdAt,
+  );
+  if (!after.ok) {
+    await errorFollowUp(submitItx, publicErrorMessages[after.reason]);
+    return;
+  }
+  await submitItx.editReply(
+    render(
+      buildBirthday2026FeedResultView(
+        after.snapshot,
+        result.batch.amount,
+        result.batch.digestAt,
+        targetTeamConfigId,
+      ),
+    ),
+  );
+};
+
+const announceBirthday2026CrossFeed = async (
+  client: Client,
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  userId: string,
+  amount: number,
+  targetTeamConfigId: number,
+) => {
+  const config = await prisma.birthday2026Config.findUnique({
+    where: { guildId },
+    include: {
+      encounterConfig: { select: { channelId: true } },
+      teams: {
+        where: { id: targetTeamConfigId },
+        select: { roleId: true, color: true },
+      },
+    },
+  });
+  const channelId = config?.encounterConfig?.channelId;
+  const targetTeam = config?.teams[0];
+  if (!channelId || !targetTeam) return;
+
+  const channel = await client.channels.fetch(channelId);
+  if (!channel) return;
+  if (channel.isDMBased()) return;
+  if (!channel.isSendable()) return;
+
+  await channel.send(
+    render(
+      buildBirthday2026CrossFeedAnnouncementView({
+        userId,
+        amount,
+        targetRoleId: targetTeam.roleId,
+        accentColor: targetTeam.color,
+      }),
+    ),
+  );
+};
+
 const findTeamByRole = async (
   prisma: PrismaTransaction,
   guildId: string,
@@ -332,22 +510,29 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("nakarm", (command) =>
         command
           .setDescription("Przekaż Paszę Tucznikowi swojej drużyny")
-          .addInteger("ilosc", (option) =>
-            option.setDescription("Ilość Paszy").setMinValue(1),
-          )
-          .handle(async ({ prisma, messageQueue }, { ilosc: amount }, itx) => {
+          .handle(async ({ prisma, messageQueue }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            await itx.deferReply({ flags: "Ephemeral" });
             await ensureUserExists(prisma, itx.user);
 
-            const result = await feedBirthday2026Player(prisma, {
-              guildId: itx.guildId,
-              userId: itx.user.id,
-              amount,
-              sourceKey: itx.id,
-              acceptedAt: itx.createdAt,
-              reason: "Birthday 2026 player feed",
-              scheduleDigestion: (tx, batch) =>
+            const before = await getBirthday2026PlayerSnapshot(
+              prisma,
+              itx.guildId,
+              itx.user.id,
+              itx.createdAt,
+            );
+            if (!before.ok) {
+              await errorFollowUp(itx, publicErrorMessages[before.reason]);
+              return;
+            }
+            if (!before.snapshot.membership) {
+              await errorFollowUp(itx, playerFeedErrorMessages.member_not_found);
+              return;
+            }
+
+            await runBirthday2026FeedModal(
+              itx,
+              prisma,
+              (tx, batch) =>
                 messageQueue.push(
                   "birthday2026Digest",
                   { batchId: batch.id },
@@ -355,30 +540,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   batch.id.toString(),
                   tx,
                 ),
-            });
-            if (!result.ok) {
-              await errorFollowUp(itx, playerFeedErrorMessages[result.reason]);
-              return;
-            }
-            await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
-
-            const snapshot = await getPlayerSnapshotOrReply(
-              prisma,
-              itx.guildId,
-              itx.user.id,
-              itx.createdAt,
-              itx,
-            );
-            if (!snapshot) return;
-
-            await itx.editReply(
-              render(
-                buildBirthday2026FeedResultView(
-                  snapshot,
-                  result.batch.amount,
-                  result.batch.digestAt,
-                ),
-              ),
+              before.snapshot.membership.teamConfigId,
             );
           }),
       )
@@ -1342,6 +1504,18 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply({ flags: "Ephemeral" });
 
+              const memberState = await prisma.birthday2026MemberState.findFirst({
+                where: {
+                  userId: user.id,
+                  teamConfig: { config: { guildId: itx.guildId } },
+                },
+                select: { teamConfigId: true },
+              });
+              if (!memberState) {
+                await errorFollowUp(itx, economyErrorMessages.member_not_found);
+                return;
+              }
+
               const result = await feedBirthday2026Pig(prisma, {
                 guildId: itx.guildId,
                 userId: user.id,
@@ -1349,6 +1523,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 sourceKey: itx.id,
                 acceptedAt: itx.createdAt,
                 reason,
+                targetTeamConfigId: memberState.teamConfigId,
                 scheduleDigestion: (tx, batch) =>
                   messageQueue.push(
                     "birthday2026Digest",
@@ -1702,6 +1877,28 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       await itx.editReply(replies[result.status]);
       return;
     }
+    if (
+      itx.customId.startsWith(`${BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX}:`)
+    ) {
+      if (!itx.inCachedGuild()) return;
+      const targetTeamConfigId = Number(itx.customId.split(":").at(1));
+      if (!Number.isSafeInteger(targetTeamConfigId) || targetTeamConfigId <= 0) return;
+      await ensureUserExists(prisma, itx.user);
+      await runBirthday2026FeedModal(
+        itx,
+        prisma,
+        (tx, batch) =>
+          messageQueue.push(
+            "birthday2026Digest",
+            { batchId: batch.id },
+            batch.digestAt,
+            batch.id.toString(),
+            tx,
+          ),
+        targetTeamConfigId,
+      );
+      return;
+    }
     if (itx.customId !== BIRTHDAY_2026_FEED_ALL_CUSTOM_ID) return;
     if (!itx.inCachedGuild()) return;
 
@@ -1732,6 +1929,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       sourceKey: itx.id,
       acceptedAt: itx.createdAt,
       reason: "Birthday 2026 player feed",
+      targetTeamConfigId: before.membership.teamConfigId,
       scheduleDigestion: (tx, batch) =>
         messageQueue.push(
           "birthday2026Digest",
@@ -1762,6 +1960,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           after,
           result.batch.amount,
           result.batch.digestAt,
+          before.membership.teamConfigId,
         ),
       ),
     );

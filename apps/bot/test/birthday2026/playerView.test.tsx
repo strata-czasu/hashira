@@ -5,6 +5,7 @@ import type { Birthday2026PlayerSnapshot } from "../../src/events/birthday2026/p
 import {
   BIRTHDAY_2026_FEED_ALL_CUSTOM_ID,
   buildBirthday2026BalanceView,
+  buildBirthday2026CrossFeedAnnouncementView,
   buildBirthday2026FeedResultView,
   buildBirthday2026InfoView,
   buildBirthday2026RankingView,
@@ -137,10 +138,41 @@ describe("Birthday 2026 player JSX views", () => {
         { ...snapshot, balance: 7 },
         5,
         new Date("2026-08-03T22:05:00Z"),
+        snapshot.membership?.teamConfigId ?? 0,
       ),
     );
     expect(result).toContain("Tucznik nakarmiony");
     expect(result).toContain("Pozostałe saldo");
     expect(result).toContain(BIRTHDAY_2026_FEED_ALL_CUSTOM_ID);
+  });
+
+  it("shows a playful message when feeding another team", () => {
+    const cross = renderJson(
+      buildBirthday2026FeedResultView(
+        { ...snapshot, balance: 7 },
+        5,
+        new Date("2026-08-03T22:05:00Z"),
+        2,
+      ),
+    );
+    expect(cross).toContain("Pomyłka!");
+    expect(cross).toContain("<@&role-2>");
+    expect(cross).toContain("Pozostałe saldo");
+    expect(cross).toContain(BIRTHDAY_2026_FEED_ALL_CUSTOM_ID);
+  });
+
+  it("renders a company-policy announcement for a cross-feed", () => {
+    const announcement = renderJson(
+      buildBirthday2026CrossFeedAnnouncementView({
+        userId: "user-123",
+        amount: 5,
+        targetRoleId: "role-2",
+        accentColor: 0xff0000,
+      }),
+    );
+    expect(announcement).toContain("<@user-123>");
+    expect(announcement).toContain("5 paszy");
+    expect(announcement).toContain("<@&role-2>");
+    expect(announcement).toContain("niezgodne z wewnętrznymi ustaleniami");
   });
 });

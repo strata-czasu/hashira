@@ -1,5 +1,6 @@
 import type {
   Birthday2026FeedBatch,
+  Birthday2026TeamWallet,
   ExtendedPrismaClient,
   PrismaTransaction,
 } from "@hashira/db";
@@ -22,6 +23,8 @@ export type Birthday2026EconomyErrorReason =
   | "invalid_digestion_delay"
   | "insufficient_balance"
   | "member_not_found"
+  | "cross_feed_already_used"
+  | "target_team_not_found"
   | "team_wallet_not_found";
 
 export type SetupBirthday2026EconomyResult =
@@ -280,6 +283,7 @@ export type FeedBirthday2026PigInput = {
   acceptedAt: Date;
   reason: string;
   scheduleDigestion: ScheduleBirthday2026Digestion;
+  targetTeamConfigId: number;
 };
 
 export type FeedBirthday2026PigResult =
@@ -295,6 +299,53 @@ export type FeedBirthday2026PigResult =
       ok: false;
       reason: Birthday2026EconomyErrorReason;
     };
+
+const resolveBirthday2026FeedTarget = async (
+  tx: PrismaTransaction,
+  input: {
+    configId: number;
+    currencyId: number;
+    ownTeamId: number;
+    ownWallet: Birthday2026TeamWallet | null;
+    targetTeamConfigId: number;
+    userId: string;
+  },
+) => {
+  const { configId, currencyId, ownTeamId, ownWallet, targetTeamConfigId, userId } =
+    input;
+
+  if (targetTeamConfigId === ownTeamId) {
+    if (!ownWallet || ownWallet.currencyId !== currencyId) {
+      return { ok: false, reason: "team_wallet_not_found" } as const;
+    }
+    return { ok: true, teamConfigId: ownTeamId, walletId: ownWallet.id } as const;
+  }
+
+  const existingCrossFeed = await tx.birthday2026FeedBatch.findFirst({
+    where: {
+      configId,
+      userId,
+      wallet: { teamConfigId: { not: ownTeamId } },
+    },
+    select: { id: true },
+  });
+  if (existingCrossFeed) {
+    return { ok: false, reason: "cross_feed_already_used" } as const;
+  }
+
+  const targetTeam = await tx.birthday2026TeamConfig.findFirst({
+    where: { id: targetTeamConfigId, configId },
+    include: { wallet: true },
+  });
+  if (!targetTeam?.wallet || targetTeam.wallet.currencyId !== currencyId) {
+    return { ok: false, reason: "target_team_not_found" } as const;
+  }
+  return {
+    ok: true,
+    teamConfigId: targetTeam.id,
+    walletId: targetTeam.wallet.id,
+  } as const;
+};
 
 const findFeedResult = async (
   prisma: PrismaTransaction,
@@ -360,10 +411,6 @@ export const feedBirthday2026Pig = async (
     },
   });
   if (!membership) return { ok: false, reason: "member_not_found" };
-  const teamWallet = membership.teamConfig.wallet;
-  if (!teamWallet || teamWallet.currencyId !== currencyId) {
-    return { ok: false, reason: "team_wallet_not_found" };
-  }
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -372,6 +419,17 @@ export const feedBirthday2026Pig = async (
       if (!state.enabled) {
         return { ok: false, reason: "event_not_open" };
       }
+
+      const target = await resolveBirthday2026FeedTarget(tx, {
+        configId: config.id,
+        userId: input.userId,
+        currencyId,
+        targetTeamConfigId: input.targetTeamConfigId,
+        ownTeamId: membership.teamConfigId,
+        ownWallet: membership.teamConfig.wallet,
+      });
+      if (!target.ok) return target;
+
       const wallet = await getDefaultWallet({
         prisma: nestedTransaction(tx),
         guildId: input.guildId,
@@ -402,7 +460,7 @@ export const feedBirthday2026Pig = async (
       const batch = await tx.birthday2026FeedBatch.create({
         data: {
           configId: config.id,
-          walletId: teamWallet.id,
+          walletId: target.walletId,
           userId: input.userId,
           personalTransactionId: personalTransaction.id,
           amount: input.amount,
@@ -412,12 +470,12 @@ export const feedBirthday2026Pig = async (
         },
       });
       const updatedTeamWallet = await tx.birthday2026TeamWallet.update({
-        where: { id: teamWallet.id },
+        where: { id: target.walletId },
         data: { balance: { increment: input.amount } },
       });
       await tx.birthday2026TeamWalletTransaction.create({
         data: {
-          walletId: teamWallet.id,
+          walletId: target.walletId,
           feedBatchId: batch.id,
           personalTransactionId: personalTransaction.id,
           source: "feed",
@@ -439,7 +497,7 @@ export const feedBirthday2026Pig = async (
         batch,
         personalBalance: updatedPersonalWallet.balance,
         teamBalance: updatedTeamWallet.balance,
-        teamConfigId: membership.teamConfigId,
+        teamConfigId: target.teamConfigId,
       };
     });
   } catch (error) {
