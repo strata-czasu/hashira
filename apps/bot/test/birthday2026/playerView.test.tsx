@@ -170,10 +170,9 @@ describe("Birthday 2026 player JSX views", () => {
         accentColor: 0xff0000,
       }),
     );
-    expect(announcement).toContain("Naruszenie polityki firmy");
     expect(announcement).toContain("<@user-123>");
-    expect(announcement).toContain("5 Paszy");
+    expect(announcement).toContain("5 paszy");
     expect(announcement).toContain("<@&role-2>");
-    expect(announcement).toContain("katastrofa biologiczna");
+    expect(announcement).toContain("niezgodne z wewnętrznymi ustaleniami");
   });
 });
