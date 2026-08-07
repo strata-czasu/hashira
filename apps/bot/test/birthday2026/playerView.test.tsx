@@ -155,7 +155,7 @@ describe("Birthday 2026 player JSX views", () => {
         2,
       ),
     );
-    expect(cross).toContain("Oops, pomyłka!");
+    expect(cross).toContain("Pomyłka!");
     expect(cross).toContain("<@&role-2>");
     expect(cross).toContain("Pozostałe saldo");
     expect(cross).toContain(BIRTHDAY_2026_FEED_ALL_CUSTOM_ID);

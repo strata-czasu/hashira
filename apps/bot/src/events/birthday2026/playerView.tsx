@@ -232,16 +232,13 @@ export const buildBirthday2026FeedResultView = (
       }
     >
       <TextDisplay>
-        <H1>{isCrossFeed ? "😳 Oops, pomyłka!" : "🥣 Tucznik nakarmiony!"}</H1>
+        <H1>{isCrossFeed ? "Pomyłka!" : "Tucznik nakarmiony!"}</H1>
         <Br />
         {isCrossFeed && targetTeam ? (
           <>
-            Zamiast swojego Tucznika,{" "}
             <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> trafiło do
-            koryta drużyny {roleMention(targetTeam.roleId)}!
-            <Br />
-            Takie przypadki zdarzają się tylko raz na cały event — nikt się nie dowie.
-            👀
+            koryta drużyny {roleMention(targetTeam.roleId)} zamiast Twojego Tucznika.
+            Taka wpadka zdarza się tylko raz, zostaje między nami.
           </>
         ) : (
           <>
