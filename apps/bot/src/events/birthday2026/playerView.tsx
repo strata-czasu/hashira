@@ -102,7 +102,7 @@ export const buildBirthday2026InfoView = (
             {userMention(team.tucznikUserId)}
           </>
         ) : snapshot.registered ? (
-          "Jesteś zapisany. Drużynę otrzymasz przy początkowym przydziale."
+          "Udział jest już zarejestrowany. Drużynę przydzielimy przy początkowym przydziale."
         ) : (
           "Nie należysz jeszcze do drużyny eventowej."
         )}

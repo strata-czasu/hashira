@@ -166,10 +166,10 @@ const playerFeedErrorMessages = {
 } satisfies Record<Birthday2026PlayerFeedErrorReason, string>;
 
 const registrationErrorMessages = {
-  already_assigned: "Jesteś już przypisany do drużyny eventowej.",
-  already_registered: "Jesteś już zapisany do eventu.",
+  already_assigned: "Twój udział jest już przypisany do drużyny eventowej.",
+  already_registered: "Twój udział w evencie jest już zarejestrowany.",
   event_not_available: "Event nie jest teraz dostępny.",
-  not_registered: "Nie jesteś zapisany do eventu.",
+  not_registered: "Twój udział w evencie nie jest zarejestrowany.",
   registration_closed: "Event już się zakończył.",
   teams_not_ready:
     "Wszystkie drużyny muszą najpierw mieć swoich Tuczników i zatwierdzone persony.",
@@ -1854,7 +1854,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           event_settled: "Event został już rozliczony.",
           member_not_found: "Nie należysz do drużyny eventowej.",
           team_wallet_not_found: "Drużyna nie ma portfela eventowego.",
-          win_cap_reached: "Osiągnąłeś limit zwycięstw.",
+          win_cap_reached: "Limit zwycięstw został osiągnięty.",
         };
         await errorFollowUp(itx, messages[result.reason]);
         return;

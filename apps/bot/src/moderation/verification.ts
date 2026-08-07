@@ -250,7 +250,7 @@ const composeSuccessMessage = (
 
   if (verificationType === "plus18") {
     parts.push(
-      "Z uwagi na Twój wiek dałem Ci też rolę `18+` dzięki której uzyskałeś dostęp do kilku dodatkowych kanałów na serwerze, m.in do `#rozmowy-niesforne`.",
+      "Z uwagi na Twój wiek dodałem Ci też rolę `18+`, dzięki której masz teraz dostęp do kilku dodatkowych kanałów na serwerze, m.in do `#rozmowy-niesforne`.",
     );
   }
 

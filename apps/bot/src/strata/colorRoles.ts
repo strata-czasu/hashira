@@ -252,7 +252,7 @@ export const colorRoles = new Hashira({ name: "color-role" })
               });
 
               if (!colorRole) {
-                return await errorFollowUp(itx, "Nie jesteś właścicielem tej roli");
+                return await errorFollowUp(itx, "Nie posiadasz tej roli");
               }
 
               const newColors: RoleColorsResolvable = { primaryColor };
