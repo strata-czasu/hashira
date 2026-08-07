@@ -70,6 +70,7 @@ import {
   BIRTHDAY_2026_FEED_MODAL_CUSTOM_ID_PREFIX,
   BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX,
   buildBirthday2026BalanceView,
+  buildBirthday2026CrossFeedAnnouncementView,
   buildBirthday2026FeedResultView,
   buildBirthday2026InfoView,
   buildBirthday2026RankingView,
@@ -333,13 +334,13 @@ const announceBirthday2026CrossFeed = async (
       encounterConfig: { select: { channelId: true } },
       teams: {
         where: { id: targetTeamConfigId },
-        select: { roleId: true },
+        select: { roleId: true, color: true },
       },
     },
   });
   const channelId = config?.encounterConfig?.channelId;
-  const targetRoleId = config?.teams[0]?.roleId;
-  if (!channelId || !targetRoleId) return;
+  const targetTeam = config?.teams[0];
+  if (!channelId || !targetTeam) return;
 
   const channel = await client.channels.fetch(channelId);
   if (!channel) return;
@@ -347,11 +348,14 @@ const announceBirthday2026CrossFeed = async (
   if (!channel.isSendable()) return;
 
   await channel.send(
-    `🚨 Wykryto przypadek niezgodzentia z polityką firmy!\n\n` +
-      `Pracownik <@${userId}> został przyłapany na **dokarmianiu cudzej świni** – ` +
-      `przekazał ${amount} Paszy do koryta drużyny <@&${targetRoleId}>.\n\n` +
-      `Dział prawny prosi o nieużywanie wyrażenia "katastrofa biologiczna" ` +
-      `do czasu zakończenia postępowania.`,
+    render(
+      buildBirthday2026CrossFeedAnnouncementView({
+        userId,
+        amount,
+        targetRoleId: targetTeam.roleId,
+        accentColor: targetTeam.color,
+      }),
+    ),
   );
 };
 

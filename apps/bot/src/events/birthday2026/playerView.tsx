@@ -267,3 +267,26 @@ export const buildBirthday2026FeedResultView = (
     </Container>
   );
 };
+
+export const buildBirthday2026CrossFeedAnnouncementView = (input: {
+  userId: string;
+  amount: number;
+  targetRoleId: string;
+  accentColor: number;
+}): JSXNode => (
+  <Container accentColor={input.accentColor}>
+    <TextDisplay>
+      <H1>🚨 Naruszenie polityki firmy</H1>
+      <Br />
+      Pracownik <Bold>{userMention(input.userId)}</Bold> został przyłapany na{" "}
+      <Bold>dokarmianiu cudzej świni</Bold>. Przekazał <Bold>{input.amount} Paszy</Bold>{" "}
+      do koryta drużyny {roleMention(input.targetRoleId)}.
+      <Br />
+      <Separator divider />
+      <Br />
+      Dokarmianie cudzych świni jest niezgodne z polityką firmy. Dział prawny odnotował
+      incydent i prosi o nieużywanie wyrażenia „katastrofa biologiczna" do czasu
+      zakończenia postępowania.
+    </TextDisplay>
+  </Container>
+);
