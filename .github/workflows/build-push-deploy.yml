@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -71,7 +71,7 @@ jobs:
           push-to-registry: true
 
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: build-and-push
     environment: production
 
