@@ -286,6 +286,17 @@ const runBirthday2026FeedModal = async (
   }
   await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
 
+  if (targetTeamConfigId !== ownTeamId) {
+    await announceBirthday2026CrossFeed(
+      itx.client,
+      prisma,
+      itx.guildId,
+      itx.user.id,
+      result.batch.amount,
+      targetTeamConfigId,
+    );
+  }
+
   const after = await getBirthday2026PlayerSnapshot(
     prisma,
     itx.guildId,
@@ -305,6 +316,42 @@ const runBirthday2026FeedModal = async (
         targetTeamConfigId,
       ),
     ),
+  );
+};
+
+const announceBirthday2026CrossFeed = async (
+  client: Client,
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  userId: string,
+  amount: number,
+  targetTeamConfigId: number,
+) => {
+  const config = await prisma.birthday2026Config.findUnique({
+    where: { guildId },
+    include: {
+      encounterConfig: { select: { channelId: true } },
+      teams: {
+        where: { id: targetTeamConfigId },
+        select: { roleId: true },
+      },
+    },
+  });
+  const channelId = config?.encounterConfig?.channelId;
+  const targetRoleId = config?.teams[0]?.roleId;
+  if (!channelId || !targetRoleId) return;
+
+  const channel = await client.channels.fetch(channelId);
+  if (!channel) return;
+  if (channel.isDMBased()) return;
+  if (!channel.isSendable()) return;
+
+  await channel.send(
+    `🚨 Wykryto przypadek niezgodzentia z polityką firmy!\n\n` +
+      `Pracownik <@${userId}> został przyłapany na **dokarmianiu cudzej świni** – ` +
+      `przekazał ${amount} Paszy do koryta drużyny <@&${targetRoleId}>.\n\n` +
+      `Dział prawny prosi o nieużywanie wyrażenia "katastrofa biologiczna" ` +
+      `do czasu zakończenia postępowania.`,
   );
 };
 
