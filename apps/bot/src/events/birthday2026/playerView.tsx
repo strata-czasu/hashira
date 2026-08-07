@@ -238,7 +238,7 @@ export const buildBirthday2026FeedResultView = (
           <>
             <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> trafiło do
             koryta drużyny {roleMention(targetTeam.roleId)} zamiast Twojego Tucznika.
-            Taka wpadka zdarza się tylko raz, zostaje między nami.
+            Taka wpadka zdarza się tylko raz, zostaje między nami... chyba.
           </>
         ) : (
           <>
