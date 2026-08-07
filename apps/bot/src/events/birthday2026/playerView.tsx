@@ -218,17 +218,37 @@ export const buildBirthday2026FeedResultView = (
   snapshot: Birthday2026PlayerSnapshot,
   amount: number,
   digestAt: Date,
+  targetTeamConfigId: number,
 ): JSXNode => {
   const team = findPlayerTeam(snapshot);
+  const isCrossFeed = targetTeamConfigId !== snapshot.membership?.teamConfigId;
+  const targetTeam = snapshot.teams.find((team) => team.id === targetTeamConfigId);
   const canFeedAgain = snapshot.balance > 0 && snapshot.eventState === "open";
 
   return (
-    <Container accentColor={team?.color ?? 0xf5a623}>
+    <Container
+      accentColor={
+        isCrossFeed ? (targetTeam?.color ?? 0xf5a623) : (team?.color ?? 0xf5a623)
+      }
+    >
       <TextDisplay>
-        <H1>🥣 Tucznik nakarmiony!</H1>
+        <H1>{isCrossFeed ? "😳 Oops, pomyłka!" : "🥣 Tucznik nakarmiony!"}</H1>
         <Br />
-        Przekazano <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> do koryta{" "}
-        {team ? roleMention(team.roleId) : "Twojej drużyny"}.
+        {isCrossFeed && targetTeam ? (
+          <>
+            Zamiast swojego Tucznika,{" "}
+            <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> trafiło do
+            koryta drużyny {roleMention(targetTeam.roleId)}!
+            <Br />
+            Takie przypadki zdarzają się tylko raz na cały event — nikt się nie dowie.
+            👀
+          </>
+        ) : (
+          <>
+            Przekazano <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> do
+            koryta Twojej drużyny.
+          </>
+        )}
         <Br />
         <Bold>Pozostałe saldo:</Bold>{" "}
         {formatPasza(snapshot.balance, snapshot.currencySymbol)}

@@ -137,10 +137,26 @@ describe("Birthday 2026 player JSX views", () => {
         { ...snapshot, balance: 7 },
         5,
         new Date("2026-08-03T22:05:00Z"),
+        snapshot.membership?.teamConfigId ?? 0,
       ),
     );
     expect(result).toContain("Tucznik nakarmiony");
     expect(result).toContain("Pozostałe saldo");
     expect(result).toContain(BIRTHDAY_2026_FEED_ALL_CUSTOM_ID);
+  });
+
+  it("shows a playful message when feeding another team", () => {
+    const cross = renderJson(
+      buildBirthday2026FeedResultView(
+        { ...snapshot, balance: 7 },
+        5,
+        new Date("2026-08-03T22:05:00Z"),
+        2,
+      ),
+    );
+    expect(cross).toContain("Oops, pomyłka!");
+    expect(cross).toContain("<@&role-2>");
+    expect(cross).toContain("Pozostałe saldo");
+    expect(cross).toContain(BIRTHDAY_2026_FEED_ALL_CUSTOM_ID);
   });
 });

@@ -302,6 +302,7 @@ const runBirthday2026FeedModal = async (
         after.snapshot,
         result.batch.amount,
         result.batch.digestAt,
+        targetTeamConfigId,
       ),
     ),
   );
@@ -1908,6 +1909,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           after,
           result.batch.amount,
           result.batch.digestAt,
+          before.membership.teamConfigId,
         ),
       ),
     );
