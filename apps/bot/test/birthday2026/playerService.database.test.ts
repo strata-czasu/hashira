@@ -218,6 +218,7 @@ databaseTests("Birthday 2026 public player loop", () => {
       sourceKey: `player-feed-${crypto.randomUUID()}`,
       acceptedAt: new Date("2026-08-03T18:00:00Z"),
       reason: "Player command feed",
+      targetTeamConfigId: fixture.team.id,
       scheduleDigestion,
     });
     expect(feed.ok).toBeTrue();
@@ -251,6 +252,7 @@ databaseTests("Birthday 2026 public player loop", () => {
       sourceKey: `gated-feed-${crypto.randomUUID()}`,
       acceptedAt: new Date("2026-08-03T17:59:59Z"),
       reason: "Gated player feed",
+      targetTeamConfigId: fixture.team.id,
       scheduleDigestion,
     };
 

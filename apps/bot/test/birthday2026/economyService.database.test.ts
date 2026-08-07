@@ -203,6 +203,7 @@ databaseTests("Birthday 2026 economy services", () => {
       acceptedAt,
       reason: "Slice 2 integration feed",
       scheduleDigestion,
+      targetTeamConfigId: fixture.team.id,
     };
     const feed = await feedBirthday2026Pig(prisma, feedInput);
     const repeatedFeed = await feedBirthday2026Pig(prisma, feedInput);
@@ -316,6 +317,7 @@ databaseTests("Birthday 2026 economy services", () => {
           acceptedAt: new Date("2026-08-01T18:00:00Z"),
           reason: `Concurrency feed ${key}`,
           scheduleDigestion,
+          targetTeamConfigId: fixture.team.id,
         }),
       ),
     );
@@ -357,5 +359,144 @@ databaseTests("Birthday 2026 economy services", () => {
         },
       }),
     ).toBe(1);
+  });
+
+  it("allows a single cross-team feed per member and credits the target team", async () => {
+    if (!prisma) throw new Error("DATABASE_TEST_URL is required");
+    const suffix = crypto.randomUUID();
+    const guildId = `birthday-cross-guild-${suffix}`;
+    const actorUserId = `birthday-cross-actor-${suffix}`;
+    const memberUserId = `birthday-cross-member-${suffix}`;
+    const otherMemberUserId = `birthday-cross-other-${suffix}`;
+    guildIds.push(guildId);
+    userIds.push(actorUserId, memberUserId, otherMemberUserId);
+
+    await prisma.guild.create({ data: { id: guildId } });
+    await prisma.user.createMany({
+      data: [{ id: actorUserId }, { id: memberUserId }, { id: otherMemberUserId }],
+    });
+
+    const configResult = await upsertBirthday2026Config(prisma, {
+      guildId,
+      eventStartAt: new Date("2026-08-01T18:00:00Z"),
+      eventEndAt: new Date("2026-08-08T18:00:00Z"),
+      timezone: "Europe/Warsaw",
+      visible: true,
+      enabled: true,
+    });
+    if (!configResult.ok) throw new Error(configResult.reason);
+
+    const ownTeamResult = await createBirthday2026Team(prisma, {
+      guildId,
+      name: `Own ${suffix}`,
+      roleId: `own-role-${suffix}`,
+      color: 0xff8800,
+    });
+    const otherTeamResult = await createBirthday2026Team(prisma, {
+      guildId,
+      name: `Other ${suffix}`,
+      roleId: `other-role-${suffix}`,
+      color: 0x00ff88,
+    });
+    if (!ownTeamResult.ok) throw new Error(ownTeamResult.reason);
+    if (!otherTeamResult.ok) throw new Error(otherTeamResult.reason);
+
+    await assignBirthday2026Member(prisma, {
+      guildId,
+      teamConfigId: ownTeamResult.team.id,
+      userId: memberUserId,
+    });
+    await assignBirthday2026Member(prisma, {
+      guildId,
+      teamConfigId: ownTeamResult.team.id,
+      userId: otherMemberUserId,
+    });
+
+    const setup = await setupBirthday2026Economy(prisma, {
+      guildId,
+      currencyName: `Pasza ${suffix}`,
+      currencySymbol: `C${suffix.slice(0, 6)}`,
+      digestionDelaySeconds: 60,
+      createdByUserId: actorUserId,
+    });
+    if (!setup.ok) throw new Error(setup.reason);
+    currencyIds.push(setup.currencyId);
+
+    await grantBirthday2026Pasza(prisma, {
+      guildId,
+      userId: memberUserId,
+      amount: 100,
+      sourceKey: `cross-grant-${suffix}`,
+      createdByUserId: actorUserId,
+      reason: "Cross feed grant",
+    });
+
+    const crossInput = {
+      guildId,
+      userId: memberUserId,
+      amount: 60,
+      sourceKey: `cross-feed-${suffix}`,
+      acceptedAt: new Date("2026-08-01T18:00:00Z"),
+      reason: "Cross team feed",
+      scheduleDigestion,
+      targetTeamConfigId: otherTeamResult.team.id,
+    };
+
+    const cross = await feedBirthday2026Pig(prisma, crossInput);
+    expect(cross).toMatchObject({
+      ok: true,
+      created: true,
+      teamConfigId: otherTeamResult.team.id,
+    });
+    if (!cross.ok) throw new Error(cross.reason);
+
+    const crossAgain = await feedBirthday2026Pig(prisma, {
+      ...crossInput,
+      sourceKey: `cross-feed-again-${suffix}`,
+    });
+    expect(crossAgain).toMatchObject({
+      ok: false,
+      reason: "cross_feed_already_used",
+    });
+
+    const ownFeed = await feedBirthday2026Pig(prisma, {
+      guildId,
+      userId: memberUserId,
+      amount: 30,
+      sourceKey: `own-feed-${suffix}`,
+      acceptedAt: new Date("2026-08-01T18:00:00Z"),
+      reason: "Own team feed",
+      scheduleDigestion,
+      targetTeamConfigId: ownTeamResult.team.id,
+    });
+    expect(ownFeed).toMatchObject({
+      ok: true,
+      created: true,
+      teamConfigId: ownTeamResult.team.id,
+    });
+
+    const personalWallet = await prisma.wallet.findFirstOrThrow({
+      where: { userId: memberUserId, currencyId: setup.currencyId },
+    });
+    const ownWallet = await prisma.birthday2026TeamWallet.findUniqueOrThrow({
+      where: { teamConfigId: ownTeamResult.team.id },
+    });
+    const otherWallet = await prisma.birthday2026TeamWallet.findUniqueOrThrow({
+      where: { teamConfigId: otherTeamResult.team.id },
+    });
+    expect(personalWallet.balance + ownWallet.balance + otherWallet.balance).toBe(100);
+    expect([ownWallet.balance, otherWallet.balance]).toEqual([30, 60]);
+
+    const badCross = await feedBirthday2026Pig(prisma, {
+      guildId,
+      userId: otherMemberUserId,
+      amount: 10,
+      sourceKey: `cross-bad-${suffix}`,
+      acceptedAt: new Date("2026-08-01T18:00:00Z"),
+      reason: "Bad cross target",
+      scheduleDigestion,
+      targetTeamConfigId: 999_999_999,
+    });
+    expect(badCross).toMatchObject({ ok: false, reason: "target_team_not_found" });
   });
 });

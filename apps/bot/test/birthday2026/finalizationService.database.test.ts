@@ -160,10 +160,10 @@ databaseTests("Birthday 2026 final settlement", () => {
       if (!grant.ok) throw new Error(grant.reason);
     }
     const acceptedAt = new Date("2026-08-02T18:00:00Z");
-    for (const [userId, amount] of [
-      [firstMember, 20],
-      [secondMember, 10],
-      [thirdMember, 10],
+    for (const [userId, team, amount] of [
+      [firstMember, first.team, 20],
+      [secondMember, second.team, 10],
+      [thirdMember, second.team, 10],
     ] as const) {
       const feed = await feedBirthday2026Pig(prisma, {
         guildId,
@@ -172,6 +172,7 @@ databaseTests("Birthday 2026 final settlement", () => {
         sourceKey: `settlement-feed:${userId}`,
         acceptedAt,
         reason: "Settlement fixture",
+        targetTeamConfigId: team.id,
         scheduleDigestion,
       });
       if (!feed.ok) throw new Error(feed.reason);

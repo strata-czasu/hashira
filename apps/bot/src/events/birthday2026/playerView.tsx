@@ -26,6 +26,9 @@ import type {
 } from "./playerService";
 
 export const BIRTHDAY_2026_FEED_ALL_CUSTOM_ID = "birthday2026-feed-all";
+export const BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX = "birthday2026-feed-team";
+export const BIRTHDAY_2026_FEED_MODAL_CUSTOM_ID_PREFIX = "birthday2026-feed-modal";
+export const BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID = "birthday2026-feed-amount";
 
 const eventStateLabels = {
   disabled: "wstrzymany",
