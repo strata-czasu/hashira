@@ -283,7 +283,6 @@ export type FeedBirthday2026PigInput = {
   acceptedAt: Date;
   reason: string;
   scheduleDigestion: ScheduleBirthday2026Digestion;
-  /** The team whose Tucznik receives the Pasza. */
   targetTeamConfigId: number;
 };
 
@@ -301,16 +300,6 @@ export type FeedBirthday2026PigResult =
       reason: Birthday2026EconomyErrorReason;
     };
 
-type ResolveBirthday2026FeedTargetResult =
-  | { ok: true; teamConfigId: number; walletId: number }
-  | {
-      ok: false;
-      reason:
-        | "cross_feed_already_used"
-        | "target_team_not_found"
-        | "team_wallet_not_found";
-    };
-
 const resolveBirthday2026FeedTarget = async (
   tx: PrismaTransaction,
   input: {
@@ -321,15 +310,15 @@ const resolveBirthday2026FeedTarget = async (
     targetTeamConfigId: number;
     userId: string;
   },
-): Promise<ResolveBirthday2026FeedTargetResult> => {
+) => {
   const { configId, currencyId, ownTeamId, ownWallet, targetTeamConfigId, userId } =
     input;
 
   if (targetTeamConfigId === ownTeamId) {
     if (!ownWallet || ownWallet.currencyId !== currencyId) {
-      return { ok: false, reason: "team_wallet_not_found" };
+      return { ok: false, reason: "team_wallet_not_found" } as const;
     }
-    return { ok: true, teamConfigId: ownTeamId, walletId: ownWallet.id };
+    return { ok: true, teamConfigId: ownTeamId, walletId: ownWallet.id } as const;
   }
 
   const existingCrossFeed = await tx.birthday2026FeedBatch.findFirst({
@@ -341,7 +330,7 @@ const resolveBirthday2026FeedTarget = async (
     select: { id: true },
   });
   if (existingCrossFeed) {
-    return { ok: false, reason: "cross_feed_already_used" };
+    return { ok: false, reason: "cross_feed_already_used" } as const;
   }
 
   const targetTeam = await tx.birthday2026TeamConfig.findFirst({
@@ -349,13 +338,13 @@ const resolveBirthday2026FeedTarget = async (
     include: { wallet: true },
   });
   if (!targetTeam?.wallet || targetTeam.wallet.currencyId !== currencyId) {
-    return { ok: false, reason: "target_team_not_found" };
+    return { ok: false, reason: "target_team_not_found" } as const;
   }
   return {
     ok: true,
     teamConfigId: targetTeam.id,
     walletId: targetTeam.wallet.id,
-  };
+  } as const;
 };
 
 const findFeedResult = async (
