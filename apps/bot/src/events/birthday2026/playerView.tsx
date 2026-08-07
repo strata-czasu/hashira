@@ -273,9 +273,9 @@ export const buildBirthday2026CrossFeedAnnouncementView = (input: {
 }): JSXNode => (
   <Container accentColor={input.accentColor}>
     <TextDisplay>
-      {userMention(input.userId)} dokarmił cudzego tucznika. Przekazał{" "}
-      <Bold>{input.amount} paszy</Bold> do koryta drużyny{" "}
-      {roleMention(input.targetRoleId)}.
+      Cudzy tucznik został nakarmiony przez {userMention(input.userId)} — do koryta
+      drużyny {roleMention(input.targetRoleId)} trafiło{" "}
+      <Bold>{input.amount} paszy</Bold>.
       <Br />
       Gildia przypomina, że takie zachowanie jest niezgodne z wewnętrznymi ustaleniami
       dla poszukiwaczy przygód.
