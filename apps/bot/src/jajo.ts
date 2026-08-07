@@ -69,14 +69,14 @@ const EGG_TABLE = [
 ] as const satisfies ItemTableEntry[];
 
 const WEDKA_MOCK_MESSAGES = [
-  "Zapomniałeś, że łowisko jest zamknięte na wielkanoc?",
+  "Łowisko zamknięte na wielkanoc — czy o tym nie pamiętasz?",
   "Łowisko nieczynne — wielkanocna przerwa!",
   "Ryby mają wolne na święta!",
   "PZW ogłosiło wielkanocny zakaz połowu!",
   "Zamiast moczyć kij, poszukaj lepiej jajek!",
   "Ryby malują pisanki, nie mają czasu na branie.",
   "Królik wielkanocny zarekwirował wszystkie wędki!",
-  "Zarzuciłeś spławik, ale wyłowiłeś tylko mokrą rzeżuchę.",
+  "Zarzucony spławik przyniósł tylko mokrą rzeżuchę.",
   "Państwowa Straż Rybacka sprawdza dzisiaj tylko koszyczki ze święconką.",
   "Szczupak poszedł święcić koszyczki, wraca po świętach.",
   "Wędka zaplątała się w koszyczek. Odpuść sobie i idź szukać pisanek!",
@@ -105,7 +105,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         if (!canFish) {
           await itx.editReply({
-            content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
+            content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
           await discordTry(
@@ -204,7 +204,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         if (!canFish) {
           await itx.editReply({
-            content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
+            content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
           await discordTry(
