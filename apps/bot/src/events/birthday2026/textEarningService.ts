@@ -20,18 +20,13 @@ export type Birthday2026TextEarningErrorReason =
   | "invalid_occurred_at"
   | "invalid_window"
   | "member_not_found"
-  | "text_earning_already_used"
   | "text_earning_not_configured";
 
 export type ConfigureBirthday2026TextEarningResult =
   | { ok: true; config: Birthday2026TextEarningConfig }
   | {
       ok: false;
-      reason:
-        | "config_not_found"
-        | "invalid_daily_cap"
-        | "invalid_window"
-        | "text_earning_already_used";
+      reason: "config_not_found" | "invalid_daily_cap" | "invalid_window";
     };
 
 export const configureBirthday2026TextEarning = async (
@@ -60,14 +55,6 @@ export const configureBirthday2026TextEarning = async (
       config.textEarning.dailyCap === input.dailyCap
     ) {
       return { ok: true, config: config.textEarning };
-    }
-
-    const existingAward = await tx.birthday2026PersonalTransaction.findFirst({
-      where: { configId: config.id, source: "textActivity" },
-      select: { id: true },
-    });
-    if (existingAward) {
-      return { ok: false, reason: "text_earning_already_used" };
     }
 
     const textEarning = await tx.birthday2026TextEarningConfig.upsert({

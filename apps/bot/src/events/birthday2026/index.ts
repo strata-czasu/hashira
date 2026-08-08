@@ -964,8 +964,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   invalid_daily_cap:
                     "Limit dzienny musi być dodatnią liczbą całkowitą.",
                   invalid_window: "Okno aktywności musi być dodatnią liczbą minut.",
-                  text_earning_already_used:
-                    "Nie można zmienić reguł tekstowych po przyznaniu pierwszej Paszy.",
                 };
                 await errorFollowUp(itx, messages[result.reason]);
                 return;
@@ -1007,8 +1005,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   invalid_daily_cap:
                     "Limit dzienny musi być dodatnią liczbą całkowitą.",
                   invalid_unit: "Jednostka głosowa musi być dodatnią liczbą minut.",
-                  voice_earning_already_used:
-                    "Nie można zmienić reguł głosowych po przyznaniu pierwszej Paszy.",
                 };
                 await errorFollowUp(itx, messages[result.reason]);
                 return;

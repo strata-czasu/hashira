@@ -268,9 +268,12 @@ databaseTests("Birthday 2026 voice earning", () => {
       await configureBirthday2026VoiceEarning(prisma, {
         guildId: fixture.guildId,
         unitSeconds: 300,
-        dailyCap: 18,
+        dailyCap: 9,
       }),
-    ).toEqual({ ok: false, reason: "voice_earning_already_used" });
+    ).toMatchObject({ ok: true, config: { unitSeconds: 300, dailyCap: 9 } });
+    expect(
+      await getBirthday2026VoiceEarningDiagnostics(prisma, fixture.guildId),
+    ).toMatchObject({ unitSeconds: 300, dailyCap: 9 });
   });
 
   it("enforces the daily cap across concurrent completed sessions", async () => {
