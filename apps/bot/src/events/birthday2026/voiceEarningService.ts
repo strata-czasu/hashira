@@ -16,11 +16,7 @@ export type ConfigureBirthday2026VoiceEarningResult =
   | { ok: true; config: Birthday2026VoiceEarningConfig }
   | {
       ok: false;
-      reason:
-        | "config_not_found"
-        | "invalid_daily_cap"
-        | "invalid_unit"
-        | "voice_earning_already_used";
+      reason: "config_not_found" | "invalid_daily_cap" | "invalid_unit";
     };
 
 export const configureBirthday2026VoiceEarning = async (
@@ -49,14 +45,6 @@ export const configureBirthday2026VoiceEarning = async (
       config.voiceEarning.dailyCap === input.dailyCap
     ) {
       return { ok: true, config: config.voiceEarning };
-    }
-
-    const existingAward = await tx.birthday2026PersonalTransaction.findFirst({
-      where: { configId: config.id, source: "voiceActivity" },
-      select: { id: true },
-    });
-    if (existingAward) {
-      return { ok: false, reason: "voice_earning_already_used" };
     }
 
     return {

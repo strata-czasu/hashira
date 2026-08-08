@@ -261,9 +261,12 @@ databaseTests("Birthday 2026 text earning", () => {
       await configureBirthday2026TextEarning(prisma, {
         guildId: fixture.guildId,
         windowSeconds: 600,
-        dailyCap: 24,
+        dailyCap: 12,
       }),
-    ).toEqual({ ok: false, reason: "text_earning_already_used" });
+    ).toMatchObject({ ok: true, config: { windowSeconds: 600, dailyCap: 12 } });
+    expect(
+      await getBirthday2026TextEarningDiagnostics(prisma, fixture.guildId),
+    ).toMatchObject({ windowSeconds: 600, dailyCap: 12 });
   });
 
   it("enforces the daily cap atomically across concurrent windows", async () => {
