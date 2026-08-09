@@ -81,7 +81,6 @@ import {
   finalizeBirthday2026Registration,
   findBirthday2026RoleAssignments,
   registerBirthday2026Participant,
-  withdrawBirthday2026Registration,
 } from "./registrationService";
 import { parseBirthday2026Instant } from "./staffInput";
 import { getBirthday2026Stats, renderBirthday2026StatsFile } from "./statsService";
@@ -449,26 +448,6 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                   : " Nie udało się nadać roli; administracja może uruchomić synchronizację."
               }`,
             );
-          }),
-      )
-      .addCommand("zrezygnuj", (command) =>
-        command
-          .setDescription("Wycofaj zapis przed przydzieleniem drużyny")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply({ flags: "Ephemeral" });
-
-            const result = await withdrawBirthday2026Registration(
-              prisma,
-              itx.guildId,
-              itx.user.id,
-              itx.createdAt,
-            );
-            if (!result.ok) {
-              await errorFollowUp(itx, registrationErrorMessages[result.reason]);
-              return;
-            }
-            await itx.editReply("Wycofano Twój zapis do eventu.");
           }),
       )
       .addCommand("info", (command) =>
