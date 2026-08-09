@@ -3,6 +3,7 @@ import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { render } from "@hashira/jsx";
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   type ButtonInteraction,
   bold,
   type ChatInputCommandInteraction,
@@ -83,6 +84,7 @@ import {
   withdrawBirthday2026Registration,
 } from "./registrationService";
 import { parseBirthday2026Instant } from "./staffInput";
+import { getBirthday2026Stats, renderBirthday2026StatsFile } from "./statsService";
 import {
   configureBirthday2026Artwork,
   configureBirthday2026Milestones,
@@ -1440,6 +1442,52 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                     .join("\n")
                 : "Brak wykluczonych kanałów.",
             );
+          }),
+      )
+      .addCommand("statystyki", (command) =>
+        command
+          .setDescription("Pobierz szczegółowe statystyki Paszy eventu")
+          .handle(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
+
+            const result = await getBirthday2026Stats(prisma, itx.guildId);
+            if (!result.ok) {
+              await errorFollowUp(
+                itx,
+                result.reason === "config_not_found"
+                  ? "Event urodzinowy nie jest skonfigurowany."
+                  : "Najpierw skonfiguruj ekonomię eventu.",
+              );
+              return;
+            }
+
+            const { stats } = result;
+            const teamLines = stats.teams
+              .map(
+                (team, index) =>
+                  `${index + 1}. ${bold(team.teamName)} — ${team.totalPasza.toLocaleString("pl-PL")} Paszy łącznie (waga ${team.permanentWeight.toLocaleString("pl-PL")} + koryto ${team.troughBalance.toLocaleString("pl-PL")}) — ${team.contributorCount} karmiących / ${team.memberCount} osób — ${team.sharePercent.toFixed(1)}%`,
+              )
+              .join("\n");
+
+            const attachment = new AttachmentBuilder(
+              Buffer.from(renderBirthday2026StatsFile(stats, itx.createdAt), "utf-8"),
+              {
+                name: `birthday2026-statystyki-${itx.createdAt.toISOString().slice(0, 10)}.txt`,
+              },
+            );
+
+            await itx.editReply({
+              content: [
+                `${bold("Statystyki Birthday 2026")}`,
+                `Łączna Pasza w drużynach: ${stats.totalTeamPasza.toLocaleString("pl-PL")}, zarobiona: ${stats.totalEarnedPasza.toLocaleString("pl-PL")}, przekazana świniom: ${stats.totalFedPasza.toLocaleString("pl-PL")}, niewydana: ${stats.totalUnspentPasza.toLocaleString("pl-PL")}.`,
+                "",
+                teamLines || "Brak drużyn.",
+                "",
+                "Pełne dane (w tym niewydana Pasza per członek) w załączonym pliku.",
+              ].join("\n"),
+              files: [attachment],
+            });
           }),
       ),
   )
