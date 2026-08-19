@@ -78,5 +78,5 @@ jobs:
     steps:
       - name: Trigger Deployment Webhook
         run: |
-          curl --request GET '${{ secrets.COOLIFY_WEBHOOK }}' \
+          curl --request POST '${{ secrets.COOLIFY_WEBHOOK }}' \
           --header 'Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}'
