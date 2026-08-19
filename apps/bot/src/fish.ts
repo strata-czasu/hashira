@@ -143,14 +143,15 @@ export const fish = new Hashira({ name: "fish" })
         // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
         const { name, amount } = getItemById(FISH_TABLE, id)!;
 
-        await addBalance({
-          prisma,
-          currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-          reason: `Łowienie ${id}`,
-          guildId: itx.guildId,
-          toUserId: itx.user.id,
-          amount,
-        });
+        // TEMPORARILY DISABLED: fishing no longer awards balance.
+        // await addBalance({
+        //   prisma,
+        //   currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+        //   reason: `Łowienie ${id}`,
+        //   guildId: itx.guildId,
+        //   toUserId: itx.user.id,
+        //   amount,
+        // });
 
         await prisma.lastFishing.create({
           data: { userId: itx.user.id, guildId: itx.guildId },
