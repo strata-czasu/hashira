@@ -1,5 +1,10 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type ExtendedPrismaClient, type Task } from "@hashira/db";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type Prisma,
+  type Task,
+} from "@hashira/db";
 import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
@@ -111,6 +116,105 @@ const importWalletBalancesChunk = async (
         transactionType: "add",
       })),
     });
+  });
+};
+
+type ImportInventoryRow = {
+  userId: string;
+  itemName: string;
+  description: string;
+  quantity: number;
+};
+
+const parseCsv = (content: string): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (content[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      if (row.some((field) => field !== "")) rows.push(row);
+      row = [];
+      field = "";
+    } else if (char !== "\r") {
+      field += char;
+    }
+  }
+  row.push(field);
+  if (row.some((field) => field !== "")) rows.push(row);
+  return rows;
+};
+
+const importInventoryChunk = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  createdBy: string,
+  rows: ImportInventoryRow[],
+) => {
+  await prisma.$transaction(async (tx) => {
+    await ensureUsersExist(tx, [createdBy, ...rows.map((row) => row.userId)]);
+
+    const uniqueNames = [...new Set(rows.map((row) => row.itemName))];
+    const existingItems = await tx.item.findMany({
+      where: { guildId, name: { in: uniqueNames }, deletedAt: null },
+      select: { id: true, name: true },
+    });
+    const itemIdByName = new Map(existingItems.map((item) => [item.name, item.id]));
+
+    const missingNames = uniqueNames.filter((name) => !itemIdByName.has(name));
+    if (missingNames.length > 0) {
+      const firstRowByName = new Map(rows.map((row) => [row.itemName, row]));
+      const created = await tx.item.createManyAndReturn({
+        data: missingNames.map((name) => ({
+          guildId,
+          createdBy,
+          type: "item" as const,
+          name,
+          description: firstRowByName.get(name)?.description || null,
+        })),
+        select: { id: true, name: true },
+      });
+      for (const item of created) itemIdByName.set(item.name, item.id);
+    }
+
+    const inventoryItems: Prisma.InventoryItemCreateManyInput[] = [];
+    const totals: { userId: string; itemId: number; quantity: number }[] = [];
+    for (const row of rows) {
+      const itemId = itemIdByName.get(row.itemName);
+      if (!itemId) throw new Error(`Item not found: ${row.itemName}`);
+      for (let i = 0; i < row.quantity; i++) {
+        inventoryItems.push({ userId: row.userId, itemId });
+      }
+      totals.push({ userId: row.userId, itemId, quantity: row.quantity });
+    }
+
+    await tx.inventoryItem.createMany({ data: inventoryItems });
+
+    for (const { userId, itemId, quantity } of totals) {
+      await tx.inventoryItemTotal.upsert({
+        where: { userId_itemId: { userId, itemId } },
+        create: { userId, itemId, quantity },
+        update: { quantity: { increment: quantity } },
+      });
+    }
   });
 };
 
@@ -467,6 +571,91 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             }
 
             await itx.editReply(`Imported balances for ${processed} users`);
+          }),
+      )
+      .addCommand("import-inventory", (command) =>
+        command
+          .setDescription("Import inventory from a CSV")
+          .addAttachment("csv", (option) =>
+            option.setDescription("CSV with user_id,guild_id,nazwa,opis,ilosc"),
+          )
+          .addString("after-user", (option) =>
+            option.setDescription(
+              "Resume after this user id (from a previous failure report)",
+            ),
+          )
+          .handle(async (ctx, { csv, "after-user": afterUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            if (csv.size > 10_000_000) return;
+            await itx.deferReply();
+
+            const content = await fetch(csv.url).then((res) => res.text());
+
+            const rows: ImportInventoryRow[] = [];
+            for (const columns of parseCsv(content).slice(1)) {
+              const [userId, guildId, itemName, description, ilosc] = columns;
+              if (!userId || guildId !== itx.guildId) continue;
+              const quantity = Number(ilosc);
+              if (!Number.isSafeInteger(quantity) || quantity <= 0) continue;
+              if (!itemName) continue;
+              rows.push({
+                userId,
+                itemName,
+                description: description?.trim() || "",
+                quantity,
+              });
+            }
+
+            rows.sort((a, b) =>
+              a.userId.localeCompare(b.userId, undefined, { numeric: true }),
+            );
+
+            const chunkSize = 10;
+            const chunks: ImportInventoryRow[][] = [];
+            for (let i = 0; i < rows.length; i += chunkSize) {
+              chunks.push(rows.slice(i, i + chunkSize));
+            }
+
+            const startIndex = afterUser
+              ? chunks.findIndex((chunk) => {
+                  const last = chunk.at(-1);
+                  return last
+                    ? last.userId.localeCompare(afterUser, undefined, {
+                        numeric: true,
+                      }) > 0
+                    : false;
+                })
+              : 0;
+
+            if (startIndex === -1) {
+              await itx.editReply("Nothing to import (all users already processed)");
+              return;
+            }
+
+            let processed = 0;
+            let lastProcessedUserId: string | undefined;
+
+            for (let index = startIndex; index < chunks.length; index++) {
+              const chunk = chunks[index];
+              if (!chunk) continue;
+              try {
+                await importInventoryChunk(ctx.prisma, itx.guildId, itx.user.id, chunk);
+              } catch (error) {
+                await itx.editReply(
+                  `Import failed. Last successfully processed user: ${lastProcessedUserId ?? "none"}. Rerun with after-user=${lastProcessedUserId ?? ""} to resume. Error: ${error}`,
+                );
+                return;
+              }
+              processed += chunk.length;
+              lastProcessedUserId = chunk.at(-1)?.userId;
+              await itx
+                .editReply(
+                  `Importing inventory... ${processed}/${rows.length} users (last user: ${lastProcessedUserId})`,
+                )
+                .catch(() => {});
+            }
+
+            await itx.editReply(`Imported inventory for ${processed} users`);
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>
