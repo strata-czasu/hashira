@@ -1,5 +1,5 @@
 import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Task } from "@hashira/db";
+import { DatabasePaginator, type ExtendedPrismaClient, type Task } from "@hashira/db";
 import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
@@ -19,17 +19,100 @@ import {
 } from "discord.js";
 import { isNil, isNotNil } from "es-toolkit";
 import { base } from "./base";
+import { WalletCreationError } from "./economy/economyError";
+import { getCurrency } from "./economy/managers/currencyManager";
 import { addBalances } from "./economy/managers/transferManager";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
+import { ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
 import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "./util/privilegedIntents";
+
+type ImportWalletBalanceRow = { userId: string; amount: number };
+
+const importWalletBalancesChunk = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  rows: ImportWalletBalanceRow[],
+) => {
+  await prisma.$transaction(async (tx) => {
+    await ensureUsersExist(
+      tx,
+      rows.map((row) => row.userId),
+    );
+
+    const currency = await getCurrency({
+      prisma: tx,
+      guildId,
+      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+    });
+
+    const uniqueUserIds = [...new Set(rows.map((row) => row.userId))];
+
+    await tx.wallet.createMany({
+      data: uniqueUserIds.map((userId) => ({
+        userId,
+        guildId,
+        name: STRATA_CZASU_CURRENCY.defaultWalletName,
+        currencyId: currency.id,
+        default: true,
+      })),
+      skipDuplicates: true,
+    });
+
+    const wallets = await tx.wallet.updateManyAndReturn({
+      where: {
+        userId: { in: uniqueUserIds },
+        guildId,
+        name: STRATA_CZASU_CURRENCY.defaultWalletName,
+        currencyId: currency.id,
+      },
+      data: { default: true },
+    });
+
+    const walletIdByUserId = new Map(
+      wallets.map((wallet) => [wallet.userId, wallet.id]),
+    );
+
+    const walletAmounts: { walletId: number; amount: number }[] = [];
+    for (const { userId, amount } of rows) {
+      const walletId = walletIdByUserId.get(userId);
+      if (!walletId) throw new WalletCreationError([userId]);
+      walletAmounts.push({ walletId, amount });
+    }
+
+    const walletIdsByAmount = new Map<number, number[]>();
+    for (const { walletId, amount } of walletAmounts) {
+      const walletIds = walletIdsByAmount.get(amount) ?? [];
+      walletIds.push(walletId);
+      walletIdsByAmount.set(amount, walletIds);
+    }
+
+    for (const [amount, walletIds] of walletIdsByAmount) {
+      await tx.wallet.updateMany({
+        where: { id: { in: walletIds } },
+        data: { balance: { increment: amount } },
+      });
+    }
+
+    await tx.transaction.createMany({
+      data: walletAmounts.map(({ walletId, amount }) => ({
+        walletId,
+        relatedUserId: null,
+        amount,
+        reason: "Wallet import",
+        entryType: amount > 0 ? "credit" : "debit",
+        transactionType: "add",
+      })),
+    });
+  });
+};
 
 export const miscellaneous = new Hashira({ name: "miscellaneous" })
   .use(base)
@@ -305,6 +388,85 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             });
 
             await itx.editReply("Added balance to role");
+          }),
+      )
+      .addCommand("import-wallet-balances", (command) =>
+        command
+          .setDescription("Import wallet balances from a CSV")
+          .addAttachment("csv", (option) =>
+            option.setDescription("CSV with user_id,guild_id,waluta"),
+          )
+          .addString("after-user", (option) =>
+            option.setDescription(
+              "Resume after this user id (from a previous failure report)",
+            ),
+          )
+          .handle(async (ctx, { csv, "after-user": afterUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            if (csv.size > 10_000_000) return;
+            await itx.deferReply();
+
+            const content = await fetch(csv.url).then((res) => res.text());
+
+            const rows: { userId: string; amount: number }[] = [];
+            for (const line of content.split("\n").slice(1)) {
+              const [userId, guildId, waluta] = line.split(",");
+              if (!userId || guildId !== itx.guildId) continue;
+              const amount = Number(waluta);
+              if (!Number.isSafeInteger(amount) || amount === 0) continue;
+              rows.push({ userId, amount });
+            }
+
+            rows.sort((a, b) =>
+              a.userId.localeCompare(b.userId, undefined, { numeric: true }),
+            );
+
+            const chunkSize = 1_000;
+            const chunks: { userId: string; amount: number }[][] = [];
+            for (let i = 0; i < rows.length; i += chunkSize) {
+              chunks.push(rows.slice(i, i + chunkSize));
+            }
+
+            const startIndex = afterUser
+              ? chunks.findIndex((chunk) => {
+                  const last = chunk.at(-1);
+                  return last
+                    ? last.userId.localeCompare(afterUser, undefined, {
+                        numeric: true,
+                      }) > 0
+                    : false;
+                })
+              : 0;
+
+            if (startIndex === -1) {
+              await itx.editReply("Nothing to import (all users already processed)");
+              return;
+            }
+
+            let processed = 0;
+            let lastProcessedUserId: string | undefined;
+
+            for (let index = startIndex; index < chunks.length; index++) {
+              const chunk = chunks[index];
+              if (!chunk) continue;
+              try {
+                await importWalletBalancesChunk(ctx.prisma, itx.guildId, chunk);
+              } catch (error) {
+                await itx.editReply(
+                  `Import failed. Last successfully processed user: ${lastProcessedUserId ?? "none"}. Rerun with after-user=${lastProcessedUserId ?? ""} to resume. Error: ${error}`,
+                );
+                return;
+              }
+              processed += chunk.length;
+              lastProcessedUserId = chunk.at(-1)?.userId;
+              await itx
+                .editReply(
+                  `Importing wallet balances... ${processed}/${rows.length} users (last user: ${lastProcessedUserId})`,
+                )
+                .catch(() => {});
+            }
+
+            await itx.editReply(`Imported balances for ${processed} users`);
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>
