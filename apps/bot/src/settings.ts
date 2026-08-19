@@ -1,5 +1,5 @@
 import { Hashira } from "@hashira/core";
-import type { LogSettings } from "@hashira/db";
+import type { Currency, LogSettings } from "@hashira/db";
 import {
   ChannelType,
   channelMention,
@@ -30,6 +30,9 @@ const formatLogSettings = (settings: LogSettings | null) => {
 
 const formatChannelSetting = (name: string, channelId: string | null) =>
   `${name}: ${channelId ? channelMention(channelId) : "Nie ustawiono"}`;
+
+const formatDefaultCurrency = (currency: Currency | null) =>
+  `Domyślna waluta: ${currency ? `${currency.name} (${currency.symbol})` : "Nie ustawiono"}`;
 
 export const settings = new Hashira({ name: "settings" })
   .use(base)
@@ -332,6 +335,67 @@ export const settings = new Hashira({ name: "settings" })
             });
           }),
       )
+      .addCommand("default-currency", (command) =>
+        command
+          .setDescription("Ustaw domyślną walutę serwera (puste = wyczyść)")
+          .addString("waluta", (waluta) =>
+            waluta
+              .setDescription("Waluta, która ma być domyślna")
+              .setRequired(false)
+              .setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            const focused = itx.options.getFocused().toLowerCase();
+
+            const currencies = await prisma.currency.findMany({
+              where: {
+                guildId: itx.guildId,
+                OR: [
+                  { name: { contains: focused, mode: "insensitive" } },
+                  { symbol: { contains: focused, mode: "insensitive" } },
+                ],
+              },
+              take: 25,
+            });
+
+            await itx.respond(
+              currencies.map((currency) => ({
+                name: `${currency.name} (${currency.symbol})`,
+                value: currency.symbol,
+              })),
+            );
+          })
+          .handle(async ({ prisma }, { waluta }, itx) => {
+            if (!itx.inCachedGuild()) return;
+
+            const defaultCurrency = waluta
+              ? await prisma.currency.findFirst({
+                  where: { guildId: itx.guildId, symbol: waluta },
+                })
+              : null;
+
+            if (waluta && !defaultCurrency) {
+              await itx.reply({
+                content: `Nie znaleziono waluty o symbolu ${waluta}`,
+                flags: "Ephemeral",
+              });
+              return;
+            }
+
+            await prisma.guildSettings.update({
+              where: { guildId: itx.guildId },
+              data: { defaultCurrencyId: defaultCurrency?.id ?? null },
+            });
+
+            await itx.reply({
+              content: defaultCurrency
+                ? `Domyślna waluta serwera została ustawiona na ${defaultCurrency.name} (${defaultCurrency.symbol})`
+                : "Usunięto domyślną walutę serwera",
+              flags: "Ephemeral",
+            });
+          }),
+      )
       .addCommand("list", (command) =>
         command
           .setDescription("Wyświetl ustawienia serwera")
@@ -340,7 +404,7 @@ export const settings = new Hashira({ name: "settings" })
 
             const settings = await prisma.guildSettings.findFirst({
               where: { guildId: itx.guildId },
-              include: { logSettings: true },
+              include: { logSettings: true, defaultCurrency: true },
             });
 
             if (!settings) throw new Error("Guild settings not found");
@@ -350,6 +414,7 @@ export const settings = new Hashira({ name: "settings" })
               formatRoleSetting("Rola 18+", settings.plus18RoleId),
               formatRoleSetting("Rola urlop", settings.moderatorLeaveRoleId),
               formatUserSetting("Manager urlopów", settings.moderatorLeaveManagerId),
+              formatDefaultCurrency(settings.defaultCurrency),
               formatLogSettings(settings.logSettings),
             ];
 

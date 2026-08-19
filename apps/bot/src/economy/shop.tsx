@@ -17,7 +17,6 @@ import {
   userMention,
 } from "discord.js";
 import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import {
@@ -39,7 +38,13 @@ import {
   type ShopItemWithDetails,
   updateShopItem,
 } from "./managers/shopService";
-import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
+import {
+  formatBalance,
+  formatItem,
+  getGuildDefaultCurrencySymbol,
+  getItem,
+  getTypeNameForList,
+} from "./util";
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -265,12 +270,53 @@ async function handleShopPurchaseButtonClick({
   });
 }
 
-async function autocompleteShopItems({
+/**
+ * Resolve the currency used by a shop command: an explicit override, or the
+ * guild's configured default currency (null when none is configured).
+ */
+const getEffectiveCurrencySymbol = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  override?: string | null,
+): Promise<string | null> =>
+  override ? override : getGuildDefaultCurrencySymbol(prisma, guildId);
+
+async function autocompleteCurrencies({
   prisma,
   itx,
 }: {
   prisma: ExtendedPrismaClient;
   itx: AutocompleteInteraction<"cached">;
+}) {
+  const focused = itx.options.getFocused().toLowerCase();
+
+  const currencies = await prisma.currency.findMany({
+    where: {
+      guildId: itx.guildId,
+      OR: [
+        { name: { contains: focused, mode: "insensitive" } },
+        { symbol: { contains: focused, mode: "insensitive" } },
+      ],
+    },
+    take: 25,
+  });
+
+  await itx.respond(
+    currencies.map((currency) => ({
+      name: `${currency.name} (${currency.symbol})`,
+      value: currency.symbol,
+    })),
+  );
+}
+
+async function autocompleteShopItems({
+  prisma,
+  itx,
+  currencySymbol,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+  currencySymbol?: string | null;
 }) {
   const shopItems = await prisma.shopItem.findMany({
     where: {
@@ -282,6 +328,7 @@ async function autocompleteShopItems({
           mode: "insensitive",
         },
       },
+      ...(currencySymbol ? { currency: { symbol: currencySymbol } } : {}),
     },
     include: { item: true, currency: true },
     take: 25,
@@ -289,9 +336,39 @@ async function autocompleteShopItems({
   await itx.respond(
     shopItems.map(({ id, price, item, currency }) => ({
       value: id,
-      name: `${item.name} - ${formatAmount(price)}${currency.symbol} ${getTypeNameForList(item.type)}`,
+      name: `${item.name} - ${formatAmount(price)} ${currency.symbol} ${getTypeNameForList(item.type)}`,
     })),
   );
+}
+
+/**
+ * Shared autocomplete handler for shop commands with a currency selector and an
+ * item selector.
+ */
+async function handleShopAutocomplete({
+  prisma,
+  itx,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+}) {
+  if (itx.options.getFocused(true).name === "waluta") {
+    await autocompleteCurrencies({ prisma, itx });
+    return;
+  }
+
+  const currencySymbol = await getEffectiveCurrencySymbol(
+    prisma,
+    itx.guildId,
+    itx.options.getString("waluta"),
+  );
+
+  if (!currencySymbol) {
+    await itx.respond([]);
+    return;
+  }
+
+  await autocompleteShopItems({ prisma, itx, currencySymbol });
 }
 
 export const shop = new Hashira({ name: "shop" })
@@ -306,23 +383,54 @@ export const shop = new Hashira({ name: "shop" })
           .addBoolean("id", (id) =>
             id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
           )
-          .handle(async ({ prisma }, { id: maybeShowId }, itx) => {
+          .addString("waluta", (waluta) =>
+            waluta
+              .setDescription("Waluta, w której chcesz zobaczyć sklep")
+              .setRequired(false)
+              .setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await handleShopAutocomplete({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { id: maybeShowId, waluta }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const showId = maybeShowId ?? false;
+            const currencySymbol = await getEffectiveCurrencySymbol(
+              prisma,
+              itx.guildId,
+              waluta,
+            );
+
+            if (!currencySymbol) {
+              await errorFollowUp(
+                itx,
+                "Nie ustawiono domyślnej waluty serwera. Użyj /settings default-currency",
+              );
+              return;
+            }
 
             const paginator = new DatabasePaginator(
               (props, price) =>
                 prisma.shopItem.findMany({
                   ...props,
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: currencySymbol },
+                  },
                   orderBy: { price },
                   include: { item: true, currency: true },
                 }),
               () =>
                 prisma.shopItem.count({
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: currencySymbol },
+                  },
                 }),
             );
 
@@ -358,9 +466,15 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(1),
           )
+          .addString("waluta", (waluta) =>
+            waluta
+              .setDescription("Waluta, w której kupujesz")
+              .setRequired(false)
+              .setAutocomplete(true),
+          )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            await autocompleteShopItems({ prisma, itx });
+            await handleShopAutocomplete({ prisma, itx });
           })
           .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -401,6 +515,16 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(1),
           )
+          .addString("currency", (currency) =>
+            currency
+              .setDescription("Waluta ceny (domyślnie waluta serwera)")
+              .setRequired(false)
+              .setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await handleShopAutocomplete({ prisma, itx });
+          })
           .handle(
             async (
               { prisma },
@@ -409,6 +533,7 @@ export const shop = new Hashira({ name: "shop" })
                 price,
                 "global-stock": globalStock,
                 "user-limit": userPurchaseLimit,
+                currency,
               },
               itx,
             ) => {
@@ -422,11 +547,26 @@ export const shop = new Hashira({ name: "shop" })
               }
 
               await ensureUserExists(prisma, itx.user);
+
+              const currencySymbol = await getEffectiveCurrencySymbol(
+                prisma,
+                itx.guildId,
+                currency,
+              );
+
+              if (!currencySymbol) {
+                await errorFollowUp(
+                  itx,
+                  "Nie ustawiono domyślnej waluty serwera. Użyj /settings default-currency",
+                );
+                return;
+              }
+
               const shopItem = await createShopItem({
                 prisma,
                 itemId: id,
                 guildId: itx.guildId,
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                currencySymbol,
                 price,
                 createdBy: itx.user.id,
                 globalStock,

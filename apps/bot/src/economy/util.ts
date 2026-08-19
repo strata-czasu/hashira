@@ -1,10 +1,31 @@
-import type { Item, ItemType, PrismaTransaction } from "@hashira/db";
+import type {
+  ExtendedPrismaClient,
+  Item,
+  ItemType,
+  PrismaTransaction,
+} from "@hashira/db";
 import { bold, inlineCode } from "discord.js";
 import { InvalidAmountError } from "./economyError";
 
 export type GetCurrencyConditionOptions =
   | { currencySymbol: string }
   | { currencyId: number };
+
+/**
+ * Resolve the guild's configured default currency symbol, or null when none is
+ * configured.
+ */
+export const getGuildDefaultCurrencySymbol = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+): Promise<string | null> => {
+  const settings = await prisma.guildSettings.findUnique({
+    where: { guildId },
+    include: { defaultCurrency: true },
+  });
+
+  return settings?.defaultCurrency?.symbol ?? null;
+};
 
 export const validateNonNegativeAmount = (amount: number): void => {
   if (!Number.isSafeInteger(amount) || amount < 0) {
