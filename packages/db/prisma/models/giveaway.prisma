@@ -48,7 +48,17 @@ model GiveawayReward {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
-  amount  Int
-  reward  String
+  amount Int
+  reward String
+  type   GiveawayRewardType?
+
   winners GiveawayWinner[]
+}
+
+enum GiveawayRewardType {
+  currency
+  mute
+  item
+
+  @@map("giveaway_reward_type")
 }

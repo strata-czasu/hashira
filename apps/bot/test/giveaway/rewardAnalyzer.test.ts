@@ -1,0 +1,199 @@
+import { describe, expect, it } from "bun:test";
+import {
+  analyzeCurrencyReward,
+  formatCompactValue,
+  formatFixedReward,
+  formatRewardPreview,
+  isMuteReward,
+  levenshtein,
+  parseMuteDuration,
+} from "../../src/giveaway/rewardAnalyzer";
+
+describe("analyzeCurrencyReward", () => {
+  it("parses plain points", () => {
+    expect(analyzeCurrencyReward("100 punktów")).toBe(100);
+    expect(analyzeCurrencyReward("50 pkt")).toBe(50);
+    expect(analyzeCurrencyReward("1000pkt")).toBe(1000);
+    expect(analyzeCurrencyReward("1 punkt")).toBe(1);
+    expect(analyzeCurrencyReward("2 punkty")).toBe(2);
+    expect(analyzeCurrencyReward("3 punktu")).toBe(3);
+  });
+
+  it("parses k/m suffixes case-insensitively", () => {
+    expect(analyzeCurrencyReward("1k pkt")).toBe(1000);
+    expect(analyzeCurrencyReward("1K PKT")).toBe(1000);
+    expect(analyzeCurrencyReward("1m pkt")).toBe(1_000_000);
+    expect(analyzeCurrencyReward("1M pkt")).toBe(1_000_000);
+    expect(analyzeCurrencyReward("1.5k pkt")).toBe(1500);
+    expect(analyzeCurrencyReward("1,5k pkt")).toBe(1500);
+  });
+
+  it("handles negatives and flexible spacing", () => {
+    expect(analyzeCurrencyReward("-1k  pkt")).toBe(-1000);
+    expect(analyzeCurrencyReward("-50 pkt")).toBe(-50);
+    expect(analyzeCurrencyReward("1000  pkt")).toBe(1000);
+  });
+
+  it("returns null for non-currency rewards", () => {
+    expect(analyzeCurrencyReward("gruszki")).toBeNull();
+    expect(analyzeCurrencyReward("wyciszenie 1d")).toBeNull();
+    expect(analyzeCurrencyReward("100")).toBeNull();
+    expect(analyzeCurrencyReward("100 gruszek")).toBeNull();
+  });
+});
+
+describe("isMuteReward", () => {
+  it("matches mute keywords", () => {
+    expect(isMuteReward("wyciszenie 1d")).toBe(true);
+    expect(isMuteReward("1d wyciszenia")).toBe(true);
+    expect(isMuteReward("mute 2h")).toBe(true);
+    expect(isMuteReward("muta 1d")).toBe(true);
+    expect(isMuteReward("WYCISZENIE 1d")).toBe(true);
+  });
+
+  it("does not match non-mute rewards", () => {
+    expect(isMuteReward("100 punktów")).toBe(false);
+    expect(isMuteReward("gruszki")).toBe(false);
+    expect(isMuteReward("muterka")).toBe(false);
+  });
+});
+
+describe("parseMuteDuration", () => {
+  it("parses durations from mute rewards", () => {
+    expect(parseMuteDuration("wyciszenie 1d")).toEqual({ days: 1 });
+    expect(parseMuteDuration("mute 2h")).toEqual({ hours: 2 });
+    expect(parseMuteDuration("1d wyciszenia")).toEqual({ days: 1 });
+    expect(parseMuteDuration("wyciszenie 1d 2h")).toEqual({ days: 1, hours: 2 });
+  });
+
+  it("returns null when no duration present", () => {
+    expect(parseMuteDuration("wyciszenie")).toBeNull();
+  });
+});
+
+describe("levenshtein", () => {
+  it("computes edit distance", () => {
+    expect(levenshtein("kitten", "sitting")).toBe(3);
+    expect(levenshtein("abc", "abc")).toBe(0);
+    expect(levenshtein("", "abc")).toBe(3);
+  });
+});
+
+describe("formatCompactValue", () => {
+  it("formats values with k/m suffixes", () => {
+    expect(formatCompactValue(1000)).toBe("1k");
+    expect(formatCompactValue(1500)).toBe("1.5k");
+    expect(formatCompactValue(-1000)).toBe("-1k");
+    expect(formatCompactValue(1_000_000)).toBe("1m");
+    expect(formatCompactValue(500_000)).toBe("500k");
+    expect(formatCompactValue(123)).toBe("123");
+  });
+});
+
+describe("formatRewardPreview", () => {
+  it("formats currency values", () => {
+    expect(
+      formatRewardPreview({
+        reward: "1k pkt",
+        amount: 2,
+        type: "currency",
+        parsedValue: 1000,
+        parsedDuration: null,
+        matchedItem: null,
+      }),
+    ).toBe("2x 1k pkt (✅ 1k pkt)");
+  });
+
+  it("formats mute with parsed duration", () => {
+    expect(
+      formatRewardPreview({
+        reward: "wyciszenie 1d",
+        amount: 1,
+        type: "mute",
+        parsedValue: null,
+        parsedDuration: { days: 1 },
+        matchedItem: null,
+      }),
+    ).toBe("1x wyciszenie 1d (✅ 1d mute)");
+  });
+
+  it("formats item with corrected name and id", () => {
+    expect(
+      formatRewardPreview({
+        reward: "bal",
+        amount: 1,
+        type: "item",
+        parsedValue: null,
+        parsedDuration: null,
+        matchedItem: { id: 3, name: "Ball" } as never,
+      }),
+    ).toBe("1x bal (✅ Ball id:3)");
+  });
+
+  it("formats unmatched", () => {
+    expect(
+      formatRewardPreview({
+        reward: "nieznane",
+        amount: 1,
+        type: null,
+        parsedValue: null,
+        parsedDuration: null,
+        matchedItem: null,
+      }),
+    ).toBe("1x nieznane (❌)");
+  });
+});
+
+describe("formatFixedReward", () => {
+  it("returns fixed currency text", () => {
+    expect(
+      formatFixedReward({
+        reward: "1k pkt",
+        amount: 2,
+        type: "currency",
+        parsedValue: 1000,
+        parsedDuration: null,
+        matchedItem: null,
+      }),
+    ).toEqual({ amount: 2, reward: "1000 pkt", type: "currency" });
+  });
+
+  it("returns fixed mute text", () => {
+    expect(
+      formatFixedReward({
+        reward: "wyciszenie 1d",
+        amount: 1,
+        type: "mute",
+        parsedValue: null,
+        parsedDuration: { days: 1 },
+        matchedItem: null,
+      }),
+    ).toEqual({ amount: 1, reward: "1d mute", type: "mute" });
+  });
+
+  it("returns fixed item name", () => {
+    expect(
+      formatFixedReward({
+        reward: "bal",
+        amount: 1,
+        type: "item",
+        parsedValue: null,
+        parsedDuration: null,
+        matchedItem: { id: 3, name: "Ball" } as never,
+      }),
+    ).toEqual({ amount: 1, reward: "Ball", type: "item" });
+  });
+
+  it("returns original text when unmatched", () => {
+    expect(
+      formatFixedReward({
+        reward: "nieznane",
+        amount: 1,
+        type: null,
+        parsedValue: null,
+        parsedDuration: null,
+        matchedItem: null,
+      }),
+    ).toEqual({ amount: 1, reward: "nieznane", type: null });
+  });
+});

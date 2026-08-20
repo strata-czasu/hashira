@@ -86,13 +86,18 @@ function err(component: ButtonComponent, message: Message<boolean>): Result {
  */
 export function waitForButtonClick(
   message: Message<boolean>,
-  customId: string,
+  customId: string | string[],
   timeout: Duration,
   filter: ButtonFilter,
 ) {
-  const component = message.resolveComponent(customId);
+  const customIds = Array.isArray(customId) ? customId : [customId];
+  const components = customIds
+    .map((id) => message.resolveComponent(id))
+    .filter(
+      (component): component is ButtonComponent => component instanceof ButtonComponent,
+    );
 
-  if (!component || !(component instanceof ButtonComponent)) {
+  if (components.length === 0) {
     throw new Error(`Button with customId "${customId}" not found in message.`);
   }
 
@@ -102,13 +107,22 @@ export function waitForButtonClick(
       componentType: ComponentType.Button,
       time: durationToMilliseconds(timeout),
       max: 1,
-      filter,
+      filter: (interaction) => {
+        if (!customIds.includes(interaction.customId)) return false;
+        return filter(interaction);
+      },
     });
 
     collector.once("end", (interactions, _) => {
       const interaction = interactions.first();
-      if (interaction) resolve(ok(interaction, component));
-      else resolve(err(component, message));
+      if (interaction) {
+        const matched = components.find(
+          (component) => component.customId === interaction.customId,
+        );
+        if (matched) resolve(ok(interaction, matched));
+      } else if (components[0]) {
+        resolve(err(components[0], message));
+      }
     });
   });
 }

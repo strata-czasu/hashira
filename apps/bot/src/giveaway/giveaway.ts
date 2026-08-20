@@ -20,6 +20,11 @@ import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
+  analyzeRewards,
+  formatFixedReward,
+  formatRewardPreview,
+} from "./rewardAnalyzer";
+import {
   autocompleteGiveawayId,
   createGiveawayButtonRow,
   createLeaveButtonRow,
@@ -138,6 +143,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               const parsedRewards: GiveawayReward[] = parseRewards(rewards);
 
+              const analyzedRewards = await analyzeRewards(
+                parsedRewards,
+                prisma,
+                itx.guildId,
+              );
+
               const parsedTime: Duration | null = parseDuration(duration);
 
               if (parsedTime === null) {
@@ -153,6 +164,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
               const confirmButton = new ButtonBuilder()
                 .setCustomId("confirm")
                 .setLabel("Potwierdź poprawność")
+                .setStyle(ButtonStyle.Secondary);
+
+              const confirmFixedButton = new ButtonBuilder()
+                .setCustomId("confirm-fixed")
+                .setLabel("Potwierdź z poprawkami")
                 .setStyle(ButtonStyle.Secondary);
 
               const messageContainer = new ContainerBuilder();
@@ -183,9 +199,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 )
                 .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
                 .addTextDisplayComponents((td) =>
-                  td.setContent(
-                    `${parsedRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`,
-                  ),
+                  td
+                    .setContent(
+                      `${analyzedRewards.map(formatRewardPreview).join("\n")}\n`,
+                    )
+                    .setId(3),
                 )
                 .addTextDisplayComponents((td) =>
                   td.setContent(`Koniec ${time(endTime, "R")}`).setId(4),
@@ -203,7 +221,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
                     .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
                     .setId(99),
                 )
-                .addActionRowComponents((ar) => ar.setComponents([confirmButton]));
+                .addActionRowComponents((ar) =>
+                  ar.setComponents([confirmButton, confirmFixedButton]),
+                );
 
               const responseConfirm = await itx.editReply({
                 components: [messageContainer],
@@ -223,14 +243,29 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               const confirmation = await waitForButtonClick(
                 responseConfirm,
-                "confirm",
+                ["confirm", "confirm-fixed"],
                 { minutes: 1 },
                 (interaction) => interaction.user.id === itx.user.id,
               );
 
               if (!confirmation.interaction) return;
 
+              const finalRewards =
+                confirmation.interaction.customId === "confirm-fixed"
+                  ? analyzedRewards.map(formatFixedReward)
+                  : parsedRewards;
+
               itx.deleteReply();
+
+              const rewardsIndex = messageContainer.components.findIndex(
+                (c) => c.data?.id === 3 && c.data?.type === ComponentType.TextDisplay,
+              );
+              if (rewardsIndex !== -1) {
+                messageContainer.components[rewardsIndex] =
+                  new TextDisplayBuilder().setContent(
+                    `${finalRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`,
+                  );
+              }
 
               messageContainer.addActionRowComponents(
                 createGiveawayButtonRow(false).setId(2),
@@ -258,9 +293,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   roleBlacklist: blacklist ? [blacklist.id] : [],
                   participants: { create: [] },
                   rewards: {
-                    create: parsedRewards.map(({ amount, reward }) => ({
+                    create: finalRewards.map(({ amount, reward, type }) => ({
                       amount,
                       reward,
+                      type,
                     })),
                   },
                   totalRewards: totalRewards,

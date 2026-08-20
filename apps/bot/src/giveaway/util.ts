@@ -57,7 +57,7 @@ function createLeaveButtonRow() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
 }
 
-export { GiveawayBannerRatio, createGiveawayButtonRow, createLeaveButtonRow };
+export { createGiveawayButtonRow, createLeaveButtonRow, GiveawayBannerRatio };
 
 export function parseRewards(input: string): GiveawayReward[] {
   return input
@@ -69,9 +69,15 @@ export function parseRewards(input: string): GiveawayReward[] {
       if (match) {
         const [, num, reward] = match;
         if (reward)
-          return { id: 0, giveawayId: 0, amount: Number(num), reward: reward.trim() };
+          return {
+            id: 0,
+            giveawayId: 0,
+            amount: Number(num),
+            reward: reward.trim(),
+            type: null,
+          };
       }
-      return { id: 0, giveawayId: 0, amount: 1, reward: item };
+      return { id: 0, giveawayId: 0, amount: 1, reward: item, type: null };
     });
 }
 

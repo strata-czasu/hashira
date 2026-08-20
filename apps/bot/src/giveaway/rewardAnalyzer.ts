@@ -1,0 +1,230 @@
+import type { ExtendedPrismaClient, GiveawayRewardType, Item } from "@hashira/db";
+import type { Duration } from "date-fns";
+import { formatDuration, parseDuration } from "../util/duration";
+
+export type RewardType = Exclude<GiveawayRewardType, null>;
+
+export type AnalyzedReward = {
+  reward: string;
+  amount: number;
+  type: RewardType | null;
+  parsedValue: number | null;
+  parsedDuration: Duration | null;
+  matchedItem: Item | null;
+};
+
+const CURRENCY_RE =
+  /^\s*([+-]?(?:\d+[.,]?\d*|[.,]\d+))\s*(k|m)?\s*(?:pkt[.]?|punkt(?:y|ów|u)?)\s*$/i;
+
+const MUTE_RE = /(?:^|\s)(?:wycisze(?:nie|nia)|mute|muta)(?:\s|$)/i;
+
+const DURATION_RE = /([+-]?\d+\s*[smhd])/gi;
+
+const SUFFIX_MULTIPLIER: Record<string, number> = { k: 1_000, m: 1_000_000 };
+
+const parseNumberWithSuffix = (input: string): number | null => {
+  const normalized = input.replace(",", ".");
+  const match = normalized.match(/^\s*([+-]?\d+(?:\.\d+)?)\s*(k|m)?\s*$/i);
+  if (!match) return null;
+
+  const number = match[1];
+  const suffix = match[2];
+  if (!number) return null;
+
+  const value = Number(number);
+  if (Number.isNaN(value)) return null;
+
+  const multiplier = suffix ? (SUFFIX_MULTIPLIER[suffix.toLowerCase()] ?? 1) : 1;
+  return value * multiplier;
+};
+
+export const analyzeCurrencyReward = (reward: string): number | null => {
+  const match = reward.match(CURRENCY_RE);
+  if (!match) return null;
+
+  const number = match[1];
+  const suffix = match[2];
+  if (!number) return null;
+
+  const value = parseNumberWithSuffix(number);
+  if (value === null) return null;
+
+  const multiplier = suffix ? (SUFFIX_MULTIPLIER[suffix.toLowerCase()] ?? 1) : 1;
+  return Math.round(value * multiplier);
+};
+
+export const isMuteReward = (reward: string): boolean => MUTE_RE.test(reward);
+
+export const parseMuteDuration = (reward: string): Duration | null => {
+  const match = reward.match(DURATION_RE);
+  if (!match) return null;
+  return parseDuration(match.join(" "));
+};
+
+const DIACRITIC_MAP: Record<string, string> = {
+  ą: "a",
+  ć: "c",
+  ę: "e",
+  ł: "l",
+  ń: "n",
+  ó: "o",
+  ś: "s",
+  ź: "z",
+  ż: "z",
+};
+
+const normalizeText = (input: string): string =>
+  input
+    .toLowerCase()
+    .replace(/[ąćęłńóśźż]/g, (char) => DIACRITIC_MAP[char] ?? char)
+    .replace(/[^a-z0-9]/g, "");
+
+export const levenshtein = (a: string, b: string): number => {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const curr: number[] = [i];
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const insert = (curr[j - 1] ?? 0) + 1;
+      const remove = (prev[j] ?? 0) + 1;
+      const replace = (prev[j - 1] ?? 0) + cost;
+      curr[j] = Math.min(insert, remove, replace);
+    }
+    prev = curr;
+  }
+
+  return prev[n] ?? 0;
+};
+
+const MATCH_THRESHOLD = 2;
+
+const findItemMatch = (items: Item[], reward: string): Item | null => {
+  const normalizedReward = normalizeText(reward.trim());
+
+  const exact = items.find((item) => normalizeText(item.name) === normalizedReward);
+  if (exact) return exact;
+
+  let best: Item | null = null;
+  let bestDistance = Infinity;
+
+  for (const item of items) {
+    const distance = levenshtein(normalizedReward, normalizeText(item.name));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = item;
+    }
+  }
+
+  if (best && bestDistance <= MATCH_THRESHOLD) return best;
+
+  return null;
+};
+
+export const fetchGuildItems = (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+): Promise<Item[]> =>
+  prisma.item.findMany({
+    where: { guildId, deletedAt: null },
+  });
+
+export const analyzeRewards = async (
+  rewards: { reward: string; amount: number }[],
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+): Promise<AnalyzedReward[]> => {
+  const analyzed = rewards.map<AnalyzedReward>(({ reward, amount }) => ({
+    reward,
+    amount,
+    type: null,
+    parsedValue: null,
+    parsedDuration: null,
+    matchedItem: null,
+  }));
+
+  for (const entry of analyzed) {
+    const parsedValue = analyzeCurrencyReward(entry.reward);
+    if (parsedValue !== null) {
+      entry.type = "currency";
+      entry.parsedValue = parsedValue;
+    }
+  }
+
+  for (const entry of analyzed) {
+    if (entry.type === null && isMuteReward(entry.reward)) {
+      entry.type = "mute";
+      entry.parsedDuration = parseMuteDuration(entry.reward);
+    }
+  }
+
+  const unmatched = analyzed.filter((entry) => entry.type === null);
+  if (unmatched.length > 0) {
+    const items = await fetchGuildItems(prisma, guildId);
+    for (const entry of unmatched) {
+      const item = findItemMatch(items, entry.reward);
+      if (item) {
+        entry.type = "item";
+        entry.matchedItem = item;
+      }
+    }
+  }
+
+  return analyzed;
+};
+
+export const formatCompactValue = (value: number): string => {
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+
+  if (abs >= 1_000_000) {
+    const m = abs / 1_000_000;
+    return `${sign}${Number.isInteger(m) ? m : m.toFixed(1).replace(/\.0$/, "")}m`;
+  }
+  if (abs >= 1_000) {
+    const k = abs / 1_000;
+    return `${sign}${Number.isInteger(k) ? k : k.toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  return `${value}`;
+};
+
+export const formatRewardPreview = (reward: AnalyzedReward): string => {
+  const {
+    amount,
+    reward: rewardText,
+    type,
+    parsedValue,
+    parsedDuration,
+    matchedItem,
+  } = reward;
+
+  const marker =
+    type === null
+      ? "❌"
+      : type === "currency"
+        ? `✅ ${parsedValue !== null ? formatCompactValue(parsedValue) : ""} pkt`.trim()
+        : type === "mute"
+          ? `✅ ${parsedDuration ? formatDuration(parsedDuration) : ""} mute`.trim()
+          : `✅ ${matchedItem?.name ?? ""} id:${matchedItem?.id ?? ""}`.trim();
+
+  return `${amount}x ${rewardText} (${marker})`;
+};
+
+export const formatFixedReward = (
+  reward: AnalyzedReward,
+): { amount: number; reward: string; type: RewardType | null } => {
+  const fixedText =
+    reward.type === "currency" && reward.parsedValue !== null
+      ? `${reward.parsedValue} pkt`
+      : reward.type === "mute" && reward.parsedDuration
+        ? `${formatDuration(reward.parsedDuration)} mute`
+        : reward.type === "item" && reward.matchedItem
+          ? reward.matchedItem.name
+          : reward.reward;
+
+  return { amount: reward.amount, reward: fixedText, type: reward.type };
+};
