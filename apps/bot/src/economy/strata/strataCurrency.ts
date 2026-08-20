@@ -103,73 +103,6 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             await view.render(itx);
           }),
       )
-      .addCommand("dodaj", (command) =>
-        command
-          .setDescription("[KADRA] Dodaj punkty użytkownikowi")
-          .addInteger("ilość", (option) =>
-            option.setDescription("Ilość punktów do dodania"),
-          )
-          .addString("użytkownicy", (option) =>
-            option.setDescription("Użytkownicy, którym chcesz dodać punkty"),
-          )
-          .addString("powód", (option) =>
-            option.setDescription("Powód dodania punktów").setRequired(false),
-          )
-          .handle(
-            async (
-              { prisma, economyLog: log },
-              { ilość: amount, użytkownicy: rawMembers, powód: reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              // Check if the user has moderate members permission
-              if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
-                await itx.reply("Nie masz uprawnień do dodawania punktów");
-                return;
-              }
-
-              const members = await fetchMembers(
-                itx.guild,
-                parseUserMentions(rawMembers),
-              );
-
-              await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
-
-              try {
-                await addBalances({
-                  prisma,
-                  fromUserId: itx.user.id,
-                  guildId: itx.guildId,
-                  currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-                  toUserIds: [...members.keys()],
-                  amount,
-                  reason,
-                });
-              } catch (error) {
-                if (error instanceof EconomyError) {
-                  await itx.reply(error.message);
-                  return;
-                }
-                throw error;
-              }
-              log.push("currencyAdd", itx.guild, {
-                moderator: itx.user,
-                toUsers: members.map((m) => m.user),
-                amount,
-                reason,
-              });
-
-              const amountFormatted = formatBalance(
-                amount,
-                STRATA_CZASU_CURRENCY.symbol,
-              );
-
-              await itx.reply(
-                `Dodano ${amountFormatted} ${members.size} ${pluralizers.users(members.size)}.`,
-              );
-            },
-          ),
-      )
       .addCommand("przekaz", (command) =>
         command
           .setDescription("Przekaż punkty użytkownikowi")
@@ -235,5 +168,61 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               );
             },
           ),
+      ),
+  )
+  .command("punkty-dodaj", (command) =>
+    command
+      .setDescription("Dodaj punkty użytkownikowi/użytkownikom")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .addInteger("ilość", (option) =>
+        option.setDescription("Ilość punktów do dodania"),
+      )
+      .addString("użytkownicy", (option) =>
+        option.setDescription("Użytkownicy, którym chcesz dodać punkty"),
+      )
+      .addString("powód", (option) =>
+        option.setDescription("Powód dodania punktów").setRequired(false),
+      )
+      .handle(
+        async (
+          { prisma, economyLog: log },
+          { ilość: amount, użytkownicy: rawMembers, powód: reason },
+          itx,
+        ) => {
+          if (!itx.inCachedGuild()) return;
+
+          const members = await fetchMembers(itx.guild, parseUserMentions(rawMembers));
+          await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
+
+          try {
+            await addBalances({
+              prisma,
+              fromUserId: itx.user.id,
+              guildId: itx.guildId,
+              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              toUserIds: [...members.keys()],
+              amount,
+              reason,
+            });
+          } catch (error) {
+            if (error instanceof EconomyError) {
+              await itx.reply(error.message);
+              return;
+            }
+            throw error;
+          }
+          log.push("currencyAdd", itx.guild, {
+            moderator: itx.user,
+            toUsers: members.map((m) => m.user),
+            amount,
+            reason,
+          });
+
+          const amountFormatted = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+
+          await itx.reply(
+            `Dodano ${amountFormatted} ${members.size} ${pluralizers.users(members.size)}.`,
+          );
+        },
       ),
   );
