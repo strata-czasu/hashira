@@ -20,7 +20,7 @@ export const USER_IDS = {
 
 export const STRATA_CZASU_CURRENCY = {
   name: "pkt",
-  symbol: "pkt",
+  symbol: " pkt",
   defaultWalletName: "Portfel",
 } as const;
 

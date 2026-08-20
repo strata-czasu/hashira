@@ -95,7 +95,7 @@ const setDefaultLogChannels = async (guildId: string) => {
 
 if (isProduction) {
   await createGuild(GUILD_IDS.StrataCzasu);
-  await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
+  // await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
   await createDefaultItems(GUILD_IDS.StrataCzasu);
   await seedDefaultPlayerAbilities(prisma);
   await seedMonstersForGuild(prisma, GUILD_IDS.StrataCzasu);
