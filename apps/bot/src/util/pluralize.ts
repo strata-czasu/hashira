@@ -1,72 +1,59 @@
-const internalPluralize = (count: number, declinations: [number, string][]) => {
-  for (const [key, value] of declinations) {
-    if (count >= key) return value;
-  }
+const PLURAL_RULES = new Intl.PluralRules("pl-PL");
 
-  // biome-ignore lint/style/noNonNullAssertion: This will always be defined considering how the function is used
-  return declinations.at(-1)![1];
+export type PluralDeclinations = {
+  one: string;
+  few: string;
+  many: string;
 };
 
-const extractDeclinations = (
-  declinations: Record<number, string>,
-): [number, string][] => {
-  const entries = Object.entries(declinations).map(
-    ([key, value]) => [Number.parseInt(key, 10), value] as [number, string],
-  );
-
-  if (entries.length === 0) throw new Error("No possibilities provided");
-
-  return entries.toSorted(([numA], [numB]) => numB - numA);
+const selectDeclination = (count: number, declinations: PluralDeclinations): string => {
+  const form = PLURAL_RULES.select(count);
+  if (form === "one") return declinations.one;
+  if (form === "few") return declinations.few;
+  return declinations.many;
 };
 
-export const pluralize = (count: number, declinations: Record<number, string>) => {
-  const declinationsArray = extractDeclinations(declinations);
+export const pluralize = (count: number, declinations: PluralDeclinations) =>
+  selectDeclination(count, declinations);
 
-  return internalPluralize(count, declinationsArray);
-};
-
-export const createPluralize = (declinations: Record<number, string>) => {
-  const declinationsArray = extractDeclinations(declinations);
-
-  return (count: number) => internalPluralize(count, declinationsArray);
+export const createPluralize = (declinations: PluralDeclinations) => {
+  return (count: number) => selectDeclination(count, declinations);
 };
 
 export const pluralizers = {
   users: createPluralize({
-    0: "użytkowników",
-    1: "użytkownik",
-    2: "użytkowników",
+    one: "użytkownik",
+    few: "użytkownicy",
+    many: "użytkowników",
   }),
   dativeUsers: createPluralize({
-    0: "użytkownikom",
-    1: "użytkownikowi",
-    2: "użytkownikom",
+    one: "użytkownikowi",
+    few: "użytkownikom",
+    many: "użytkownikom",
   }),
   messages: createPluralize({
-    0: "wiadomości",
-    1: "wiadomość",
-    2: "wiadomości",
+    one: "wiadomość",
+    few: "wiadomości",
+    many: "wiadomości",
   }),
   points: createPluralize({
-    0: "punktów",
-    1: "punkt",
-    2: "punkty",
-    5: "punktów",
+    one: "punkt",
+    few: "punkty",
+    many: "punktów",
   }),
   days: createPluralize({
-    0: "dni",
-    1: "dzień",
-    2: "dni",
+    one: "dzień",
+    few: "dni",
+    many: "dni",
   }),
   genitiveDays: createPluralize({
-    0: "dni",
-    1: "dnia",
-    2: "dni",
+    one: "dnia",
+    few: "dni",
+    many: "dni",
   }),
   warns: createPluralize({
-    0: "ostrzeżeń",
-    1: "ostrzeżenie",
-    2: "ostrzeżenia",
-    5: "ostrzeżeń",
+    one: "ostrzeżenie",
+    few: "ostrzeżenia",
+    many: "ostrzeżeń",
   }),
 };
