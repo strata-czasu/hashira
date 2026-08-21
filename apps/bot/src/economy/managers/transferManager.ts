@@ -258,5 +258,13 @@ export const transferBalances = async ({
         transactionType: "transfer",
       })),
     });
+
+    return {
+      sourceWallet: { ...fromWallet, balance: fromWallet.balance - sum },
+      recipientWallets: wallets.map((wallet) => ({
+        ...wallet,
+        balance: wallet.balance + amount,
+      })),
+    };
   });
 };

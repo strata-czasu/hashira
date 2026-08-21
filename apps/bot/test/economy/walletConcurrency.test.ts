@@ -313,7 +313,11 @@ walletDatabaseTests("wallet concurrency", () => {
       data: { balance: 100 },
     });
 
-    await transferBalances(options);
+    const { sourceWallet, recipientWallets } = await transferBalances(options);
+    expect(sourceWallet.id).toBe(fixture.sourceWallet.id);
+    expect(recipientWallets.map((wallet) => wallet.userId).sort()).toEqual(
+      [firstRecipient, secondRecipient].sort(),
+    );
 
     const wallets = await prisma.wallet.findMany({
       where: { guildId: fixture.guildId },
