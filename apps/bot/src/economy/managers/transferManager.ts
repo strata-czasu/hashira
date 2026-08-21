@@ -1,4 +1,4 @@
-import type { ExtendedPrismaClient, Wallet } from "@hashira/db";
+import type { ExtendedPrismaClient } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { InvalidAmountError, SelfTransferError } from "../economyError";
 import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
@@ -194,11 +194,6 @@ type TransferBalancesOptions = {
   reason: string | null;
 } & GetCurrencyConditionOptions;
 
-export type TransferBalancesResult = {
-  sourceWallet: Wallet;
-  recipientWallets: Wallet[];
-};
-
 export const transferBalances = async ({
   prisma,
   fromUserId,
@@ -207,7 +202,7 @@ export const transferBalances = async ({
   amount,
   reason,
   ...currencyOptions
-}: TransferBalancesOptions): Promise<TransferBalancesResult> => {
+}: TransferBalancesOptions) => {
   return await prisma.$transaction(async (tx) => {
     validateNonNegativeAmount(amount);
 
@@ -264,13 +259,12 @@ export const transferBalances = async ({
       })),
     });
 
-    const sourceWallet = await tx.wallet.findUniqueOrThrow({
-      where: { id: fromWallet.id },
-    });
-    const recipientWallets = await tx.wallet.findMany({
-      where: { id: { in: wallets.map((wallet) => wallet.id) } },
-    });
-
-    return { sourceWallet, recipientWallets };
+    return {
+      sourceWallet: { ...fromWallet, balance: fromWallet.balance - sum },
+      recipientWallets: wallets.map((wallet) => ({
+        ...wallet,
+        balance: wallet.balance + amount,
+      })),
+    };
   });
 };
