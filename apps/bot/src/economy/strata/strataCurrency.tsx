@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
 import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
 import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -276,19 +276,24 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 confirmationLines.push(`Powód: ${italic(reason)}`);
               }
 
-              const confirmed = await waitForConfirmation(
+              const confirmed = await waitForConfirmationV2(
                 { send: itx.editReply.bind(itx) },
-                confirmationLines.join("\n"),
+                <Container>
+                  <TextDisplay>
+                    <H3>Przekazanie punktów</H3>
+                    {"\n"}
+                    {confirmationLines.join("\n")}
+                  </TextDisplay>
+                </Container>,
                 "Tak",
                 "Nie",
                 (action) => action.user.id === itx.user.id,
               );
 
               if (!confirmed) {
-                await itx.editReply({
-                  content: "Anulowano przekazywanie punktów.",
-                  components: [],
-                });
+                await itx.editReply(
+                  render(<TextDisplay content="Anulowano przekazywanie punktów." />),
+                );
                 return;
               }
 
@@ -377,19 +382,24 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             confirmationLines.push(`Powód: ${italic(reason)}`);
           }
 
-          const confirmed = await waitForConfirmation(
+          const confirmed = await waitForConfirmationV2(
             { send: itx.editReply.bind(itx) },
-            confirmationLines.join("\n"),
+            <Container>
+              <TextDisplay>
+                <H3>Dodanie punktów</H3>
+                {"\n"}
+                {confirmationLines.join("\n")}
+              </TextDisplay>
+            </Container>,
             "Tak",
             "Nie",
             (action) => action.user.id === itx.user.id,
           );
 
           if (!confirmed) {
-            await itx.editReply({
-              content: "Anulowano dodawanie punktów.",
-              components: [],
-            });
+            await itx.editReply(
+              render(<TextDisplay content="Anulowano dodawanie punktów." />),
+            );
             return;
           }
 

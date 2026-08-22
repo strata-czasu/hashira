@@ -565,6 +565,7 @@ class Hashira<
 }
 
 export { ConfirmationDialog, waitForConfirmation } from "./confirmationDialog";
+export { waitForConfirmationV2 } from "./confirmationDialogV2";
 export { PaginatedView } from "./paginatedView";
 export { Hashira, decoratorInitBase };
 export type { BaseDecorator, ExtractContext, HashiraContext, HashiraDecorators };
