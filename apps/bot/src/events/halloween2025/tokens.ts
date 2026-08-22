@@ -280,7 +280,7 @@ export const tokens = new Hashira({ name: "tokens" })
               const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
 
               await itx.reply(
-                `Dodano ${amountFormatted} ${members.size} ${pluralizers.users(members.size)}.`,
+                `Dodano ${amountFormatted} ${members.size} ${pluralizers.genitiveUsers(members.size)}.`,
               );
             },
           ),
