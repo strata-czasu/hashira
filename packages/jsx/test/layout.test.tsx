@@ -232,3 +232,44 @@ describe("Container", () => {
     `);
   });
 });
+
+describe("raw text children", () => {
+  it("renders plain strings in containers as TextDisplay", () => {
+    expect(
+      <Container>
+        {"- first"}
+        {"- second"}
+      </Container>,
+    ).toMatchSnapshot();
+  });
+
+  it("renders numbers in containers as TextDisplay", () => {
+    expect(<Container>{42}</Container>).toMatchSnapshot();
+  });
+
+  it("keeps mixed string and component children in order", () => {
+    const container = (
+      <Container>
+        {"top text"}
+        <Separator />
+        {"bottom text"}
+      </Container>
+    );
+    const json = container.toJSON().components.map((c: { type: number }) => c.type);
+    expect(json).toEqual([10, 14, 10]);
+  });
+
+  it("renders plain strings in sections as TextDisplay", () => {
+    const section = (
+      <Section
+        accessory={
+          <Button label="Action" style={ButtonStyle.Primary} customId="section-btn" />
+        }
+      >
+        {"section text"}
+      </Section>
+    );
+    const [text] = section.toJSON().components;
+    expect(text).toMatchObject({ type: 10, content: "section text" });
+  });
+});
