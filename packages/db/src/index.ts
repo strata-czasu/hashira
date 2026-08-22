@@ -9,7 +9,17 @@ export const prisma: PrismaClient = new PrismaClient({ adapter });
 export type ExtendedPrismaClient = PrismaClient;
 export type PrismaTransaction = Prisma.TransactionClient;
 
-export const redis = await createClient({ url: env.REDIS_URL })
+export const redis = await createClient({
+  url: env.REDIS_URL,
+  socket: {
+    reconnectStrategy: (retries) =>
+      retries > 20
+        ? new Error(
+            "Could not connect to Redis. Is the server running and REDIS_URL correct?",
+          )
+        : Math.min(retries * 50, 500),
+  },
+})
   .on("connect", () => console.log("Connected to Redis"))
   .on("end", () => console.log("Disconnected from Redis"))
   .on("error", (err) => console.error("Redis client error:", err))
