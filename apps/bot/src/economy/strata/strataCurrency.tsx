@@ -1,4 +1,4 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
 import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
 import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
 import { PaginatorOrder } from "@hashira/paginate";
@@ -276,19 +276,24 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                 confirmationLines.push(`Powód: ${italic(reason)}`);
               }
 
-              const confirmed = await waitForConfirmation(
+              const confirmed = await waitForConfirmationV2(
                 { send: itx.editReply.bind(itx) },
-                confirmationLines.join("\n"),
+                <Container>
+                  <TextDisplay>
+                    <H3>Przekazanie punktów</H3>
+                    {"\n"}
+                    {confirmationLines.join("\n")}
+                  </TextDisplay>
+                </Container>,
                 "Tak",
                 "Nie",
                 (action) => action.user.id === itx.user.id,
               );
 
               if (!confirmed) {
-                await itx.editReply({
-                  content: "Anulowano przekazywanie punktów.",
-                  components: [],
-                });
+                await itx.editReply(
+                  render(<TextDisplay content="Anulowano przekazywanie punktów." />),
+                );
                 return;
               }
 
@@ -316,11 +321,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                     userMention(recipientWallet.userId),
                 );
 
-                // The confirmation dialog set plain content on this message.
-                // Discord keeps omitted fields on edit, so the legacy content
-                // must be explicitly cleared when switching to Components V2.
-                await itx.editReply({
-                  ...render(
+                await itx.editReply(
+                  render(
                     <BulkOperationReport
                       heading="Przekazano punkty"
                       amountPerUser={amount}
@@ -329,8 +331,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                       remainingBalance={sourceWallet.balance}
                     />,
                   ),
-                  content: null,
-                });
+                );
               } catch (error) {
                 if (error instanceof EconomyError) {
                   await errorFollowUp(itx, error.message);
@@ -381,19 +382,24 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             confirmationLines.push(`Powód: ${italic(reason)}`);
           }
 
-          const confirmed = await waitForConfirmation(
+          const confirmed = await waitForConfirmationV2(
             { send: itx.editReply.bind(itx) },
-            confirmationLines.join("\n"),
+            <Container>
+              <TextDisplay>
+                <H3>Dodanie punktów</H3>
+                {"\n"}
+                {confirmationLines.join("\n")}
+              </TextDisplay>
+            </Container>,
             "Tak",
             "Nie",
             (action) => action.user.id === itx.user.id,
           );
 
           if (!confirmed) {
-            await itx.editReply({
-              content: "Anulowano dodawanie punktów.",
-              components: [],
-            });
+            await itx.editReply(
+              render(<TextDisplay content="Anulowano dodawanie punktów." />),
+            );
             return;
           }
 
@@ -418,8 +424,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               (id) => members.get(id)?.toString() ?? userMention(id),
             );
 
-            await itx.editReply({
-              ...render(
+            await itx.editReply(
+              render(
                 <BulkOperationReport
                   heading="Dodano punkty"
                   amountPerUser={amount}
@@ -427,8 +433,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   reason={reason}
                 />,
               ),
-              content: null,
-            });
+            );
           } catch (error) {
             if (error instanceof EconomyError) {
               await errorFollowUp(itx, error.message);
