@@ -26,6 +26,11 @@ export const pluralizers = {
     few: "użytkownicy",
     many: "użytkowników",
   }),
+  genitiveUsers: createPluralize({
+    one: "użytkownika",
+    few: "użytkowników",
+    many: "użytkowników",
+  }),
   dativeUsers: createPluralize({
     one: "użytkownikowi",
     few: "użytkownikom",

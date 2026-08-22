@@ -45,7 +45,7 @@ export const massDM = new Hashira({ name: "massDM" })
               { send: itx.editReply.bind(itx) },
               `Czy na pewno chcesz wysłać wiadomość do ${bold(
                 eligibleMembers.size.toString(),
-              )} ${pluralizers.users(eligibleMembers.size)}?\n\nTreść: ${italic(content)}`,
+              )} ${pluralizers.genitiveUsers(eligibleMembers.size)}?\n\nTreść: ${italic(content)}`,
               "Tak",
               "Nie",
               (action) => action.user.id === itx.user.id,

@@ -936,7 +936,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   });
                 }
                 await itx.editReply(
-                  `Dodano ${users.size} ${pluralizers.users(users.size)} do wykluczeń z głosowań DM`,
+                  `Dodano ${users.size} ${pluralizers.genitiveUsers(users.size)} do wykluczeń z głosowań DM`,
                 );
               }),
           )
@@ -963,7 +963,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   await prisma.dmPollExclusion.delete({ where: { userId: user.id } });
                 }
                 await itx.editReply(
-                  `Usunięto ${users.size} ${pluralizers.users(users.size)} z wykluczeń z głosowań DM`,
+                  `Usunięto ${users.size} ${pluralizers.genitiveUsers(users.size)} z wykluczeń z głosowań DM`,
                 );
               }),
           )
