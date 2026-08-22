@@ -269,7 +269,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               }
 
               const confirmationLines = [
-                `Czy na pewno chcesz przekazać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(recipientIds.length.toString())} ${pluralizers.users(recipientIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
+                `Czy na pewno chcesz przekazać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(recipientIds.length.toString())} ${pluralizers.genitiveUsers(recipientIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
                 `Twoje saldo po operacji: ${formatBalance(projectedBalance, CURRENCY_SYMBOL)}`,
               ];
               if (reason) {
@@ -376,7 +376,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
 
           const totalAmount = Math.abs(amount) * memberIds.length;
           const confirmationLines = [
-            `Czy na pewno chcesz dodać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.users(memberIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
+            `Czy na pewno chcesz dodać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.genitiveUsers(memberIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
           ];
           if (reason) {
             confirmationLines.push(`Powód: ${italic(reason)}`);

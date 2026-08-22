@@ -53,7 +53,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
           const totalAmount = amount * toUsers.length;
           lines.push(
-            `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizers.users(
+            `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizers.genitiveUsers(
               toUsers.length,
             )}: ${userMentions}`,
             `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
@@ -87,7 +87,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
           const totalAmount = amount * toUsers.length;
           lines.push(
-            `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizers.users(
+            `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizers.genitiveUsers(
               toUsers.length,
             )}: ${userMentions}`,
             `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
