@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUN_VERSION: 1.3.10
+  BUN_VERSION: 1.4.0
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
   DATABASE_TEST_URL: postgres://postgres:postgres@localhost:5432/postgres
   # Dummy variables
