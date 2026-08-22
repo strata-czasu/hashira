@@ -316,8 +316,11 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                     userMention(recipientWallet.userId),
                 );
 
-                await itx.editReply(
-                  render(
+                // The confirmation dialog set plain content on this message.
+                // Discord keeps omitted fields on edit, so the legacy content
+                // must be explicitly cleared when switching to Components V2.
+                await itx.editReply({
+                  ...render(
                     <BulkOperationReport
                       heading="Przekazano punkty"
                       amountPerUser={amount}
@@ -326,7 +329,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                       remainingBalance={sourceWallet.balance}
                     />,
                   ),
-                );
+                  content: null,
+                });
               } catch (error) {
                 if (error instanceof EconomyError) {
                   await errorFollowUp(itx, error.message);
@@ -414,8 +418,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               (id) => members.get(id)?.toString() ?? userMention(id),
             );
 
-            await itx.editReply(
-              render(
+            await itx.editReply({
+              ...render(
                 <BulkOperationReport
                   heading="Dodano punkty"
                   amountPerUser={amount}
@@ -423,7 +427,8 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   reason={reason}
                 />,
               ),
-            );
+              content: null,
+            });
           } catch (error) {
             if (error instanceof EconomyError) {
               await errorFollowUp(itx, error.message);
