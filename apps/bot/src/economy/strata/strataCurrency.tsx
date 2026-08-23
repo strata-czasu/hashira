@@ -353,9 +353,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
       .addString("użytkownicy", (option) =>
         option.setDescription("Użytkownicy, którym chcesz dodać punkty"),
       )
-      .addString("powód", (option) =>
-        option.setDescription("Powód dodania punktów").setRequired(false),
-      )
+      .addString("powód", (option) => option.setDescription("Powód dodania punktów"))
       .handle(
         async (
           { prisma, economyLog: log },
