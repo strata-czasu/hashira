@@ -1,4 +1,4 @@
-import { ComponentBuilder } from "discord.js";
+import { ComponentBuilder, TextDisplayBuilder } from "discord.js";
 import { type HostComponent, hostMarker, type JSXNode, type JSXRecord } from "../types";
 
 export function markAsHost<P extends JSXRecord, R extends JSXNode>(
@@ -10,6 +10,12 @@ export function markAsHost<P extends JSXRecord, R extends JSXNode>(
 export function flattenChildren(children: JSXNode): ComponentBuilder[] {
   if (Array.isArray(children)) {
     return children.flatMap(flattenChildren);
+  }
+
+  if (typeof children === "string" || typeof children === "number") {
+    // Components V2 requires all content to live inside components,
+    // so raw text is rendered as a TextDisplay.
+    return [new TextDisplayBuilder().setContent(String(children))];
   }
 
   if (children instanceof ComponentBuilder) {

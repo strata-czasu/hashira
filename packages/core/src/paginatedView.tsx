@@ -140,17 +140,9 @@ export class PaginatedView<T> {
   async #updateMessage(showButtons: boolean) {
     const items = await this.#paginator.current();
     const renderedItems = await Promise.all(
-      items.map(async (item, idx) => {
-        const rendered = await this.#renderItem(
-          item,
-          idx + this.#paginator.currentOffset + 1,
-          showButtons,
-        );
-        if (typeof rendered === "string") {
-          return <TextDisplay content={rendered} />;
-        }
-        return rendered;
-      }),
+      items.map(async (item, idx) =>
+        this.#renderItem(item, idx + this.#paginator.currentOffset + 1, showButtons),
+      ),
     );
 
     const output = render(
