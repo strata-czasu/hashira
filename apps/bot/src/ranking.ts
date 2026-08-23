@@ -378,8 +378,8 @@ export const ranking = new Hashira({ name: "ranking" })
                   >`
                   select
                     "channelId",
-                    count(*) as "total",
-                    count(distinct "userId") as "uniqueMembers"
+                    count(*)::int as "total",
+                    count(distinct "userId")::int as "uniqueMembers"
                   from "userTextActivity"
                   where
                     "guildId" = ${itx.guild.id}
@@ -473,8 +473,8 @@ export const ranking = new Hashira({ name: "ranking" })
                 >`
                   select
                     "userId",
-                    count(*) as "total",
-                    count(distinct "channelId") as "uniqueChannels"
+                    count(*)::int as "total",
+                    count(distinct "channelId")::int as "uniqueChannels"
                   from "userTextActivity"
                   where
                     "guildId" = ${itx.guild.id}
