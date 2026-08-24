@@ -35,7 +35,7 @@ export class TopLevelSlashCommand<
   const Options extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Options];
+  declare protected readonly nominal: [Settings, Options];
   #builder = new SlashCommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;

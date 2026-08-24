@@ -7,13 +7,10 @@ describe("validateNonNegativeAmount", () => {
     expect(() => validateNonNegativeAmount(amount)).not.toThrow();
   });
 
-  it.each([
-    -1,
-    1.5,
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    2 ** 53,
-  ])("rejects %p", (amount) => {
-    expect(() => validateNonNegativeAmount(amount)).toThrow(InvalidAmountError);
-  });
+  it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53])(
+    "rejects %p",
+    (amount) => {
+      expect(() => validateNonNegativeAmount(amount)).toThrow(InvalidAmountError);
+    },
+  );
 });

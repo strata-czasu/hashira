@@ -29,9 +29,8 @@ describe("TextDisplay", () => {
   });
 
   it("renders text display with markdown", () => {
-    expect(
-      <TextDisplay content="**Bold** and *italic* text with `code`" />,
-    ).toMatchInlineSnapshot(`
+    expect(<TextDisplay content="**Bold** and *italic* text with `code`" />)
+      .toMatchInlineSnapshot(`
       TextDisplayBuilder {
         "data": {
           "content": "**Bold** and *italic* text with \`code\`",

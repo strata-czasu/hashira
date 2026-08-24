@@ -55,7 +55,7 @@ export class Group<
   const Commands extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Commands];
+  declare protected readonly nominal: [Settings, Commands];
   protected readonly _topLevel: Settings["TopLevel"];
   #builder: SlashCommandBuilder | SlashCommandSubcommandGroupBuilder;
   #handlers: Handlers = {};
@@ -231,7 +231,7 @@ export class SlashCommand<
   const Options extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Options];
+  declare protected readonly nominal: [Settings, Options];
   #builder = new SlashCommandSubcommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;

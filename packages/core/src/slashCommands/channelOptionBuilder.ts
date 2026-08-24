@@ -16,11 +16,10 @@ export class ChannelOptionBuilder<
   ChannelType extends Channel = Channel,
   HasDescription extends boolean = false,
   Required extends boolean = true,
-> implements OptionBuilder<Required, ChannelType>
-{
+> implements OptionBuilder<Required, ChannelType> {
   declare _: { type: If<Required, ChannelType, ChannelType | null> };
   // Enforce nominal typing
-  protected declare readonly nominal: [HasDescription, Required];
+  declare protected readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandChannelOption().setRequired(true);
 
   setChannelType<T extends ApplicationCommandOptionAllowedChannelTypes[]>(

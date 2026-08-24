@@ -83,9 +83,7 @@ const calculateHandleAfter = (delay: number | Date, createdAt: Date) => {
 
 type PersistenceTransaction = ExtendedPrismaClient | PrismaTransaction;
 
-export class PrismaMessageQueuePersistence
-  implements MessageQueuePersistence<PersistenceTransaction>
-{
+export class PrismaMessageQueuePersistence implements MessageQueuePersistence<PersistenceTransaction> {
   readonly #prisma: ExtendedPrismaClient;
 
   constructor(prisma: ExtendedPrismaClient) {

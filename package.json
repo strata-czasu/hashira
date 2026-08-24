@@ -8,12 +8,15 @@
     "expect-type": "^1.2.2",
     "knip": "^5.64.3",
     "lefthook": "^1.13.6",
+    "oxfmt": "^0.65.0",
     "typescript": "^5.9.3"
   },
   "scripts": {
     "bump": "bun ./scripts/bunVersion.ts",
     "debug": "bun run --cwd apps/bot debug",
-    "fix": "biome check --write",
+    "fix": "biome check --write && oxfmt",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
     "prisma-generate": "bun run --cwd packages/db prisma generate",
     "prisma-migrate-deploy": "bun run --cwd packages/db prisma migrate deploy",

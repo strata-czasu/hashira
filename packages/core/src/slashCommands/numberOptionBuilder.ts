@@ -10,11 +10,10 @@ import type { If, OptionBuilder } from "../types";
 export class NumberOptionBuilder<
   HasDescription extends boolean = false,
   Required extends boolean = true,
-> implements OptionBuilder<Required, number>
-{
+> implements OptionBuilder<Required, number> {
   declare _: { type: If<Required, number, number | null> };
   // Enforce nominal typing
-  protected declare readonly nominal: [HasDescription, Required];
+  declare protected readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandNumberOption().setRequired(true);
 
   setDescription(description: string): NumberOptionBuilder<true, Required> {

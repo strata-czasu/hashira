@@ -8,9 +8,8 @@ type Sum<A extends number, B extends number> = [
   ...BuildArray<B>,
 ]["length"];
 
-type Add<A extends number, B extends number> = Sum<A, B> extends number
-  ? Sum<A, B>
-  : never;
+type Add<A extends number, B extends number> =
+  Sum<A, B> extends number ? Sum<A, B> : never;
 
 type Increment<N extends number> = Add<N, 1>;
 

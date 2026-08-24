@@ -102,9 +102,8 @@ describe("Separator", () => {
   });
 
   it("renders separator with large spacing", () => {
-    expect(
-      <Separator spacing={SeparatorSpacingSize.Large} divider />,
-    ).toMatchInlineSnapshot(`
+    expect(<Separator spacing={SeparatorSpacingSize.Large} divider />)
+      .toMatchInlineSnapshot(`
       SeparatorBuilder {
         "data": {
           "divider": true,

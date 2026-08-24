@@ -17,7 +17,8 @@ commands, and views belong in `apps/bot/src/events/birthday2026/`.
 - `bun start` / `bun debug`: run the bot normally or with the inspector.
 - `bun run typecheck`: type-check every workspace.
 - `bun test`: run all Bun tests; database tests require `DATABASE_TEST_URL`.
-- `bun run fix`: format, lint, and organize imports with Biome.
+- `bun run fix`: lint and organize imports with Biome, then format with oxfmt.
+- `bun run format` / `bun run format:check`: format (or verify) with oxfmt.
 - `bun prisma-generate`: regenerate the Prisma client after schema changes.
 - `bun prisma-migrate-dev --name <name>`: generate and apply a development
   migration. Put unsupported constraints or backfills in a separate follow-up
@@ -27,8 +28,9 @@ commands, and views belong in `apps/bot/src/events/birthday2026/`.
 
 ## Coding Style & Naming Conventions
 
-Biome enforces space indentation, organized imports, recommended lint rules, and an
-88-character line width. Use TypeScript, `camelCase` for values/functions,
+Oxfmt enforces formatting (space indentation, an 88-character line width; see
+`.oxfmtrc.json`). Biome enforces recommended lint rules and organized imports
+(its formatter is disabled). Use TypeScript, `camelCase` for values/functions,
 `PascalCase` for types/classes/components, and descriptive domain filenames such as
 `inventoryService.ts`. Prefer existing managers and transaction helpers over
 feature-local copies. Do not add new Prisma `map:` attributes; existing mappings are

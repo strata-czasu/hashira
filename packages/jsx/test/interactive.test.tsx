@@ -57,9 +57,8 @@ describe("Button", () => {
   });
 
   it("renders danger button", () => {
-    expect(
-      <Button label="Danger" style={ButtonStyle.Danger} customId="btn-danger" />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Danger" style={ButtonStyle.Danger} customId="btn-danger" />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "custom_id": "btn-danger",
@@ -73,9 +72,8 @@ describe("Button", () => {
   });
 
   it("renders link button with URL", () => {
-    expect(
-      <Button label="Visit Site" url="https://example.com" />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Visit Site" url="https://example.com" />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "emoji": undefined,

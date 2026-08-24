@@ -29,8 +29,10 @@ export function isVNode(value: unknown): value is VNode<JSXRecord, JSXNode> {
 
 export const hostMarker = Symbol.for("host-component");
 
-export interface HostComponent<P extends JSXRecord, R extends JSXNode>
-  extends ComponentFunction<P, R> {
+export interface HostComponent<
+  P extends JSXRecord,
+  R extends JSXNode,
+> extends ComponentFunction<P, R> {
   readonly [hostMarker]: true;
 }
 

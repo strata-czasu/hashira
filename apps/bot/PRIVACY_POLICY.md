@@ -8,9 +8,9 @@ Administratorem danych osobowych przetwarzanych za pomocą bota Biszkopt („Bot
 
 Z Administratorem można skontaktować się:
 
-* pod adresem e-mail: **[defous@strataczasu.org](mailto:defous@strataczasu.org)**;
-* za pośrednictwem administracji serwera Discord Strata Czasu;
-* poprzez wiadomość prywatną wysłaną do Bota.
+- pod adresem e-mail: **[defous@strataczasu.org](mailto:defous@strataczasu.org)**;
+- za pośrednictwem administracji serwera Discord Strata Czasu;
+- poprzez wiadomość prywatną wysłaną do Bota.
 
 W sprawach dotyczących przetwarzania danych osobowych, uzyskania kopii danych, ich sprostowania, ograniczenia przetwarzania lub usunięcia należy skontaktować się z Administratorem za pomocą wskazanego adresu e-mail.
 
