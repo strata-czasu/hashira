@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
+    "./preview": "./src/preview/index.ts"
   },
   "scripts": {
     "typecheck": "tsc"

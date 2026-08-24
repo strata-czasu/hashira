@@ -187,3 +187,7 @@ dist
 PG_DATA/
 REDIS_DATA/
 *.js
+
+# View preview snapshots (scripts/view-snapshot.ts)
+
+snapshots/
