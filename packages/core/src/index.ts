@@ -161,7 +161,7 @@ class Hashira<
     Commands
   >;
 
-  // biome-ignore lint/complexity/noBannedTypes: Cannot use other more specific type here
+  // Cannot use other more specific type here
   const(name: string | Function, value?: unknown) {
     if (typeof name === "string") {
       this.#const[name] = value;

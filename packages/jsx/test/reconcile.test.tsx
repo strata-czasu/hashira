@@ -84,7 +84,7 @@ describe("JSX", () => {
   });
 
   it("renders empty fragment as empty array", () => {
-    // biome-ignore lint/complexity/noUselessFragments: we are testing fragments here
+    // we are testing fragments here
     expect(<></>).toMatchInlineSnapshot(`[]`);
   });
 

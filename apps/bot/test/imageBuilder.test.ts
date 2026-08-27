@@ -78,7 +78,7 @@ describe("imageBuilder", () => {
       const res = cheerio.load(image.result());
       const tintableTspans = res("g[id='Marriage Status Text'] tspan[fill='#3C3E43']");
       for (const tspan of tintableTspans) {
-        // biome-ignore lint/complexity/useLiteralKeys: Because why not
+        // Because why not
         const fill = tspan.attribs["fill"];
         expect(fill).toBe(tintColor);
       }

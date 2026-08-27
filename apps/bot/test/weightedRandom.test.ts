@@ -3,7 +3,7 @@ import { Effect, Random } from "effect";
 
 import { weightedRandom } from "../src/util/weightedRandom";
 
-// biome-ignore lint/style/noNonNullAssertion: test code
+// non-null assertion is intentional in test code
 let random: () => number = null!;
 
 beforeEach(() => {
@@ -149,7 +149,7 @@ describe("weightedRandom", () => {
       { value: "c", weight: 0.7 },
     ];
     const result = weightedRandom(items, (item) => item.weight, random);
-    // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a result
+    // This is guaranteed to find a result
     expect(items).toContain(result!);
   });
 
@@ -239,7 +239,7 @@ describe("weightedRandom", () => {
 
     const result = weightedRandom(items, (item) => item.priority * item.multiplier, random);
 
-    // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a result
+    // This is guaranteed to find a result
     expect(items).toContain(result!);
   });
 });

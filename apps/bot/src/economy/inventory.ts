@@ -362,7 +362,7 @@ export const inventory = new Hashira({ name: "inventory" })
             if (underLimit.length > 0) {
               const formattedUsers =
                 underLimit.length === 1
-                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                  ? // The size is checked to be 1
                     bold(underLimit.at(0)!.tag)
                   : `${bold(underLimit.length.toString())} ${pluralizers.dativeUsers(underLimit.length)}`;
               parts.push(
@@ -373,7 +373,7 @@ export const inventory = new Hashira({ name: "inventory" })
             if (overLimit.length > 0)
               parts.push(
                 overLimit.length === 1
-                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                  ? // The size is checked to be 1
                     `${overLimit.at(0)!.tag} ma już maksymalną ilość przedmiotu`
                   : `${bold(overLimit.length.toString())} ${pluralizers.users(overLimit.length)} ma już maksymalną ilość przedmiotu: ${overLimit.map((user) => user.tag).join(", ")}`,
               );

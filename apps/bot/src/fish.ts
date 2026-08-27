@@ -133,7 +133,7 @@ export const fish = new Hashira({ name: "fish" })
         }
 
         const { id } = getRandomItem(FISH_TABLE);
-        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find a fish
+        // This is guaranteed to find a fish
         const { name, amount } = getItemById(FISH_TABLE, id)!;
 
         // TEMPORARILY DISABLED: fishing no longer awards balance.

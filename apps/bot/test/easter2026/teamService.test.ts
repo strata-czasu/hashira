@@ -6,7 +6,7 @@ import {
   type TeamWithConfig,
 } from "../../src/events/easter2026/teamService";
 
-// biome-ignore lint/style/noNonNullAssertion: test code
+// non-null assertion is intentional in test code
 let random: () => number = null!;
 
 beforeEach(() => {

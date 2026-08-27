@@ -265,7 +265,7 @@ const processStatusEffects = (combatant: Combatant, events: CombatEvent[], turn:
   const effectsToRemove: number[] = [];
 
   for (let i = 0; i < combatant.statusEffects.length; i++) {
-    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    // used with index check
     const effect = combatant.statusEffects[i]!;
 
     switch (effect.type) {
@@ -308,7 +308,7 @@ const processStatusEffects = (combatant: Combatant, events: CombatEvent[], turn:
   }
 
   for (let i = effectsToRemove.length - 1; i >= 0; i--) {
-    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    // used with index check
     combatant.statusEffects.splice(effectsToRemove[i]!, 1);
   }
 };
@@ -341,7 +341,7 @@ const selectRandomTarget = (candidates: Combatant[], random: () => number) =>
 const selectRandom = <T>(items: T[], random: () => number): T | null => {
   if (items.length === 0) return null;
   const randomIndex = Math.floor(random() * items.length);
-  // biome-ignore lint/style/noNonNullAssertion: items is non-empty
+  // items is non-empty
   return items[randomIndex]!;
 };
 
@@ -551,7 +551,7 @@ const executePlayerAction = (
   player.abilityCooldowns.set(ability.name, ability.cooldown);
 
   const targets: Combatant[] = [];
-  // biome-ignore lint/style/noNonNullAssertion: monster must exist
+  // monster must exist
   const monster = combatants.get("monster")!;
   const alivePlayers = getAliveCombatants(
     combatants,

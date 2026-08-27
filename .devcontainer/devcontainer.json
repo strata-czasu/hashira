@@ -21,7 +21,7 @@
         "ms-vscode.vscode-typescript-next",
         "TypeScriptTeam.native-preview",
         "oven.bun-vscode",
-        "biomejs.biome",
+        "oxc.oxc-vscode",
         "Prisma.prisma",
         "tamasfe.even-better-toml"
       ]

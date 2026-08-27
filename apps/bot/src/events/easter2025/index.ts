@@ -125,7 +125,7 @@ const getTeamEmbed = async (
   const activities = await getTeamActivity(prisma, team.id);
 
   const totalActivity = activities.reduce(
-    // biome-ignore lint/style/noNonNullAssertion: This is some quirk of Prisma
+    // This is some quirk of Prisma
     (sum, activity) => sum + activity.activity_count!,
     0n,
   );

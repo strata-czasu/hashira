@@ -78,7 +78,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
                 );
               }
 
-              // biome-ignore lint/style/noNonNullAssertion: we know that messages has at least one message because of the check above
+              // we know that messages has at least one message because of the check above
               const discohookMessage = shareData.messages[0]!;
               const messageData = toMessageCreateOptions(discohookMessage.data);
 
