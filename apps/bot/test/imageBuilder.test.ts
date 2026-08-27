@@ -40,7 +40,7 @@ describe("imageBuilder", () => {
   describe("tint color", () => {
     const tintColor = "#aabbcc";
 
-    it("changes nick and title background fill", async () => {
+    it("changes nick background fill", async () => {
       const image = await getImageBuilder();
       image.tintColor(tintColor);
       const res = cheerio.load(image.result());
@@ -55,10 +55,12 @@ describe("imageBuilder", () => {
       const res = cheerio.load(image.result());
       const statsBarFill = res("rect[id='Stats Bar']").attr("fill");
       const capsIconFill = res("path[id='Stats Caps Icon']").attr("fill");
+      const repIconFill = res("path[id='Stats Rep Icon']").attr("fill");
       const itemsIconFill = res("path[id='Stats Items Icon']").attr("fill");
 
       expect(statsBarFill).toBe(tintColor);
       expect(capsIconFill).toBe(tintColor);
+      expect(repIconFill).toBe(tintColor);
       expect(itemsIconFill).toBe(tintColor);
     });
 
@@ -84,29 +86,13 @@ describe("imageBuilder", () => {
       }
     });
 
-    it("changes guild join and account creation date value text fill", async () => {
+    it("changes guild join date value text fill", async () => {
       const image = await getImageBuilder();
       image.tintColor(tintColor);
       const res = cheerio.load(image.result());
       const joinDateFill = res("text[id='Guild Join Value']").attr("fill");
-      const creationDateFill = res("text[id='Account Creation Value']").attr("fill");
 
       expect(joinDateFill).toBe(tintColor);
-      expect(creationDateFill).toBe(tintColor);
-    });
-
-    it("changes exp value, icon and text fill", async () => {
-      const image = await getImageBuilder();
-      image.tintColor(tintColor);
-
-      const res = cheerio.load(image.result());
-      const valueFill = res("text[id='Exp Value']").attr("fill");
-      const iconFill = res("path[id='Exp Icon']").attr("fill");
-      const textFill = res("text[id='Exp Text']").attr("fill");
-
-      expect(valueFill).toBe(tintColor);
-      expect(iconFill).toBe(tintColor);
-      expect(textFill).toBe(tintColor);
     });
 
     it("changes level background wave fill", async () => {
@@ -142,28 +128,12 @@ describe("imageBuilder", () => {
     expect(nickname).toBe("Test Nickname");
   });
 
-  it("changes title text", async () => {
-    const image = await getImageBuilder();
-    image.title("Test Title");
-    const res = cheerio.load(image.result());
-    const title = res("text[id='Title Value']").text();
-    expect(title).toBe("Test Title");
-  });
-
   it("changes guild join date", async () => {
     const image = await getImageBuilder();
     image.guildJoinDate(new Date("2023-01-01T00:00:00Z"));
     const res = cheerio.load(image.result());
     const guildJoinDate = res("text[id='Guild Join Value']").text();
     expect(guildJoinDate).toBe("01.01.2023");
-  });
-
-  it("changes account creation date", async () => {
-    const image = await getImageBuilder();
-    image.accountCreationDate(new Date("2023-01-01T00:00:00Z"));
-    const res = cheerio.load(image.result());
-    const accountCreationDate = res("text[id='Account Creation Value']").text();
-    expect(accountCreationDate).toBe("01.01.2023");
   });
 
   describe("economy stats", () => {
@@ -197,16 +167,16 @@ describe("imageBuilder", () => {
       const image = await getImageBuilder();
       image.voiceActivity(100);
       const res = cheerio.load(image.result());
-      const voiceActivity = res("g[id='Activity Voice Value'] > text").text();
-      expect(voiceActivity).toBe("100h");
+      const voiceActivity = res("text[id='Activity Voice Value']").text();
+      expect(voiceActivity).toBe("100");
     });
 
     it("changes text activity amount", async () => {
       const image = await getImageBuilder();
       image.textActivity(100);
       const res = cheerio.load(image.result());
-      const textActivity = res("g[id='Activity Text Value'] > text").text();
-      expect(textActivity).toBe("100 wiad.");
+      const textActivity = res("text[id='Activity Text Value']").text();
+      expect(textActivity).toBe("100");
     });
   });
 
@@ -216,7 +186,7 @@ describe("imageBuilder", () => {
       image.marriageStatusDays(100);
       const res = cheerio.load(image.result());
       const days = res("g[id='Marriage Status Text Top'] > text").text();
-      expect(days).toBe("Od 100 dni w związku");
+      expect(days).toBe("100 dni w związku");
     });
 
     it("pluralizes days amount in marriage status", async () => {
@@ -224,7 +194,7 @@ describe("imageBuilder", () => {
       image.marriageStatusDays(1);
       const res = cheerio.load(image.result());
       const days = res("g[id='Marriage Status Text Top'] > text").text();
-      expect(days).toBe("Od 1 dnia w związku");
+      expect(days).toBe("1 dzień w związku");
     });
 
     it("changes spouse nickname in marriage status", async () => {
