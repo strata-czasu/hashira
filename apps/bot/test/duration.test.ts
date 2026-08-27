@@ -9,7 +9,7 @@ import {
   secondsToDuration,
 } from "../src/util/duration";
 
-// biome-ignore lint/style/noNonNullAssertion: test code
+// non-null assertion is intentional in test code
 let random: () => number = null!;
 
 beforeEach(() => {

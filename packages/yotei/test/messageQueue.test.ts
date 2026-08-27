@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test code
+// Non-null assertions are intentional here: test code
 
 import { describe, expect, it } from "bun:test";
 

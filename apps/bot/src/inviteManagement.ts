@@ -53,7 +53,7 @@ export const inviteManagement = new Hashira({ name: "invite-management" })
 
             const oldInvitesToRemove = excludedInvites.filter(
               (invite) =>
-                // biome-ignore lint/style/noNonNullAssertion: We ensure createdAt is set above
+                // We ensure createdAt is set above
                 differenceInWeeks(now, invite.createdAt!) > 2 && invite.uses === 0,
             );
 

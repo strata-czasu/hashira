@@ -28,8 +28,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install
       - name: Run Linting
-        run: bunx biome lint .
+        run: bun run lint
 
   format:
     runs-on: ubuntu-latest

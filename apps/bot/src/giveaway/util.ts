@@ -238,7 +238,7 @@ export async function selectAndSaveWinners(
   const winningUsers: Omit<GiveawayWinner, "id">[] = [];
 
   for (const { amount, id: rewardId } of rewards) {
-    // biome-ignore lint/suspicious/noAssignInExpressions: this is intended as a compact way to slice
+    // this is intended as a compact way to slice
     const slice = shuffledIds.slice(idx, (idx += amount));
     if (slice.length > 0) {
       winningUsers.push(

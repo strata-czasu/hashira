@@ -169,7 +169,6 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
             );
 
             if (!confirmation) {
-              errorFollowUp;
               await itx.editReply({
                 content: "Anulowano usunięcie urlopu",
                 components: [],

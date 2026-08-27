@@ -311,7 +311,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           )
           .handle(async ({ prisma }, { message, "stage-id": stageId }, itx) => {
             await itx.deferReply();
-            const where = { ...(stageId ? { stageId } : {}) };
+            const where = stageId ? { stageId } : {};
 
             const participants = await prisma.birthdayEventStage2024Completion.findMany({
               where,

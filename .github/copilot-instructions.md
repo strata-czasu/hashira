@@ -106,7 +106,7 @@ docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compo
 
 ### Code Quality
 
-- **Linting/Formatting**: `bun fix` (uses Biome)
+- **Linting/Formatting**: `bun fix` (uses oxlint and oxfmt)
 - **Type checking**: `bun typecheck`
 - **Dead code detection**: Uses Knip configuration
 - **Git hooks**: Lefthook runs checks pre-commit

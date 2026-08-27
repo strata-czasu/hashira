@@ -111,7 +111,7 @@ export const jajo = new Hashira({ name: "jajo" })
         }
 
         const { id } = getRandomItem(EGG_TABLE);
-        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find an egg
+        // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
 
         await addBalance({
@@ -202,7 +202,7 @@ export const jajo = new Hashira({ name: "jajo" })
         }
 
         const { id } = getRandomItem(EGG_TABLE);
-        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find an egg
+        // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
 
         await addBalance({
@@ -220,7 +220,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
         const mockMessage =
-          // biome-ignore lint/style/noNonNullAssertion: this is guaranteed to find an egg
+          // this is guaranteed to find an egg
           WEDKA_MOCK_MESSAGES[randomInt(0, WEDKA_MOCK_MESSAGES.length)]!;
         const eggMessage = formatEggMessage(id, name, balance);
 

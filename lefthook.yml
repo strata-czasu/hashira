@@ -1,14 +1,20 @@
 pre-commit:
   commands:
-    check:
+    lint:
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}"
+      run: bunx oxlint --fix {staged_files}
+      stage_fixed: true
+
+    format:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
-      run: bunx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && bunx oxfmt {staged_files} && git update-index --again
+      run: bunx oxfmt {staged_files}
+      stage_fixed: true
 
 pre-push:
   commands:
     check:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
-      run: bunx biome check --no-errors-on-unmatched --files-ignore-unknown=true {push_files}
+      run: bunx oxlint {push_files}
     format:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,css,graphql,md,yaml,yml}"
       run: bunx oxfmt --check {push_files}

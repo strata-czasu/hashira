@@ -130,7 +130,7 @@ export const access = new Hashira({ name: "access" }).use(base).group("dostepy",
               await messageQueue.push(
                 "channelRestrictionEnd",
                 { restrictionId: restriction.id },
-                // biome-ignore lint/style/noNonNullAssertion: flow ensures duration is defined and is parseable
+                // flow ensures duration is defined and is parseable
                 durationToSeconds(duration!),
                 restriction.id.toString(),
               );

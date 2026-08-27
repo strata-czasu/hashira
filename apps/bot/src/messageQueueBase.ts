@@ -144,7 +144,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
             user: member.user,
             createdAt: updatedUltimatum.createdAt,
-            // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
+            // Non-null assertion is safe here because the ultimatum has just ended
             endedAt: updatedUltimatum.endedAt!,
             reason: updatedUltimatum.reason,
           });
