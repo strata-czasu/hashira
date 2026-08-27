@@ -1,5 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import type { ExtendedPrismaClient, StickyMessage } from "@hashira/db";
+
 import { StickyMessageCache } from "../src/stickyMessage/stickyMessageCache";
 
 describe("StickyMessageCache", () => {

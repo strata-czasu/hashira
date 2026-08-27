@@ -1,4 +1,5 @@
 import { ButtonBuilder, ButtonStyle, type ComponentEmojiResolvable } from "discord.js";
+
 import { getTextContent, markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
 
@@ -14,11 +15,7 @@ interface BaseButtonProps {
 
 export interface InteractiveButtonProps extends BaseButtonProps {
   /** Button style - Primary, Secondary, Success, or Danger */
-  style:
-    | ButtonStyle.Primary
-    | ButtonStyle.Secondary
-    | ButtonStyle.Success
-    | ButtonStyle.Danger;
+  style: ButtonStyle.Primary | ButtonStyle.Secondary | ButtonStyle.Success | ButtonStyle.Danger;
   /** Developer-defined identifier; max 100 characters */
   customId: string;
   /** URL is not allowed for interactive buttons */

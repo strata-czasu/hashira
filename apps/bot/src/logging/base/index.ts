@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+
 import { economyLog } from "./economyLog";
 import { memberLog } from "./memberLog";
 import { messageLog } from "./messageLog";

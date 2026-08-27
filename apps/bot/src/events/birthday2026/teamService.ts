@@ -32,19 +32,11 @@ const pickLowestProjectedTeam = (
   random: () => number,
 ): number => {
   const minimumActivity = Math.min(...teams.map((team) => team.projectedActivity));
-  const activityCandidates = teams.filter(
-    (team) => team.projectedActivity === minimumActivity,
-  );
-  const minimumMembers = Math.min(
-    ...activityCandidates.map((team) => team.memberCount),
-  );
-  const candidates = activityCandidates.filter(
-    (team) => team.memberCount === minimumMembers,
-  );
+  const activityCandidates = teams.filter((team) => team.projectedActivity === minimumActivity);
+  const minimumMembers = Math.min(...activityCandidates.map((team) => team.memberCount));
+  const candidates = activityCandidates.filter((team) => team.memberCount === minimumMembers);
   const selected =
-    candidates[
-      Math.min(Math.floor(random() * candidates.length), candidates.length - 1)
-    ];
+    candidates[Math.min(Math.floor(random() * candidates.length), candidates.length - 1)];
 
   if (!selected) throw new Error("Cannot allocate a member without a team");
   return selected.teamConfigId;
@@ -104,10 +96,7 @@ export const planBirthday2026TeamAssignments = (
 
   const movableMembers = members
     .filter((member) => member.fixedTeamConfigId === undefined)
-    .sort(
-      (a, b) =>
-        b.activityEstimate - a.activityEstimate || a.userId.localeCompare(b.userId),
-    );
+    .sort((a, b) => b.activityEstimate - a.activityEstimate || a.userId.localeCompare(b.userId));
 
   const initialState: AllocationState = {
     assignments: [],
@@ -129,8 +118,7 @@ export const planBirthday2026TeamAssignments = (
     }, initialState);
 
   const finalState = movableMembers.reduce(
-    (state, member) =>
-      assignMember(state, member, pickLowestProjectedTeam(state.teams, random)),
+    (state, member) => assignMember(state, member, pickLowestProjectedTeam(state.teams, random)),
     stateAfterFixedMembers,
   );
 
@@ -549,26 +537,20 @@ export const rebalanceBirthday2026Members = (
         members.push({
           userId: member.userId,
           activityEstimate,
-          ...(team.identity?.captainUserId === member.userId
-            ? { fixedTeamConfigId: team.id }
-            : {}),
+          ...(team.identity?.captainUserId === member.userId ? { fixedTeamConfigId: team.id } : {}),
         });
       }
     }
     for (const team of config.teams) {
       if (
         team.identity?.captainUserId &&
-        !team.memberStates.some(
-          (member) => member.userId === team.identity?.captainUserId,
-        )
+        !team.memberStates.some((member) => member.userId === team.identity?.captainUserId)
       ) {
         return { ok: false, reason: "captain_not_member" } as const;
       }
       if (
         team.identity?.tucznikUserId &&
-        !team.memberStates.some(
-          (member) => member.userId === team.identity?.tucznikUserId,
-        )
+        !team.memberStates.some((member) => member.userId === team.identity?.tucznikUserId)
       ) {
         return { ok: false, reason: "tucznik_not_member" } as const;
       }

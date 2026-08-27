@@ -5,6 +5,7 @@ import {
   SlashCommandUserOption,
   type User,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class UserOptionBuilder<
@@ -33,15 +34,10 @@ export class UserOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     if (interaction.isAutocomplete()) return null as this["_"]["type"];
-    return interaction.options.getUser(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getUser(name, this.#builder.required) as this["_"]["type"];
   }
 }

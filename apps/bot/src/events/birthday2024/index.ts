@@ -1,9 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import {
-  type BirthdayEventStage2024,
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-} from "@hashira/db";
 import {
   ActionRowBuilder,
   type BaseMessageOptions,
@@ -17,6 +11,14 @@ import {
   userMention,
 } from "discord.js";
 import { intersection, randomInt } from "es-toolkit";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import {
+  type BirthdayEventStage2024,
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+} from "@hashira/db";
+
 import { base } from "../../base";
 import { sendDirectMessage } from "../../util/sendDirectMessage";
 
@@ -49,9 +51,7 @@ const runReplacers = (content: string, ctx: ReplaceCtx) => {
   return result;
 };
 
-const readComponents = (
-  stage: BirthdayEventStage2024,
-): ActionRowBuilder<ButtonBuilder>[] => {
+const readComponents = (stage: BirthdayEventStage2024): ActionRowBuilder<ButtonBuilder>[] => {
   if (stage.buttons.length === 0) return [];
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>();
@@ -122,10 +122,7 @@ const handleStageInput = async (
     return await reply({ content: "Ten etap jest zablokowany przez twój inny wybór" });
   }
 
-  if (
-    mentionedStage.requiredStageId &&
-    !lastStagesIds.includes(mentionedStage.requiredStageId)
-  ) {
+  if (mentionedStage.requiredStageId && !lastStagesIds.includes(mentionedStage.requiredStageId)) {
     if (mentionedStage.outputRequirementsInvalid) {
       const content = runReplacers(mentionedStage.outputRequirementsInvalid, {
         userId: authorId,
@@ -153,9 +150,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
             option.setDescription("Wymagania dla poprawnego rozwiązania"),
           )
           .addString("output-requirements-invalid", (option) =>
-            option
-              .setRequired(false)
-              .setDescription("Wymagania dla niepoprawnego rozwiązania"),
+            option.setRequired(false).setDescription("Wymagania dla niepoprawnego rozwiązania"),
           )
           .addInteger("required-stage-id", (option) =>
             option.setRequired(false).setDescription("ID wymaganego etapu"),
@@ -192,40 +187,32 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
           ),
       )
       .addCommand("list-stages", (command) =>
-        command
-          .setDescription("Lista etapów urodzin 2024")
-          .handle(async ({ prisma }, _, itx) => {
-            const paginator = new DatabasePaginator(
-              (props, id) =>
-                prisma.birthdayEventStage2024.findMany({ ...props, orderBy: { id } }),
-              () => prisma.birthdayEventStage2024.count(),
-              { pageSize: 5 },
-            );
+        command.setDescription("Lista etapów urodzin 2024").handle(async ({ prisma }, _, itx) => {
+          const paginator = new DatabasePaginator(
+            (props, id) => prisma.birthdayEventStage2024.findMany({ ...props, orderBy: { id } }),
+            () => prisma.birthdayEventStage2024.count(),
+            { pageSize: 5 },
+          );
 
-            const extractButtons = (row: BirthdayEventStage2024) => {
-              return row.buttons.map((button) => button.split(":")[1]);
-            };
+          const extractButtons = (row: BirthdayEventStage2024) => {
+            return row.buttons.map((button) => button.split(":")[1]);
+          };
 
-            const formatStage = (row: BirthdayEventStage2024) => {
-              return [
-                heading(`${row.keyword} (${row.id})`, HeadingLevel.Three),
-                `Wiadomość udanej próby: ${row.outputRequirementsValid}`,
-                `Wiadomość nieudanej próby: ${row.outputRequirementsInvalid ?? "Brak"}`,
-                `Wymagany etap: ${row.requiredStageId ?? "Brak"}`,
-                `Przyciski: ${row.buttons.length > 0 ? extractButtons(row) : "Brak"}`,
-                `Zablokowane przez: ${row.lockedBy.length > 0 ? row.lockedBy.join(", ") : "Brak"}`,
-              ].join("\n");
-            };
+          const formatStage = (row: BirthdayEventStage2024) => {
+            return [
+              heading(`${row.keyword} (${row.id})`, HeadingLevel.Three),
+              `Wiadomość udanej próby: ${row.outputRequirementsValid}`,
+              `Wiadomość nieudanej próby: ${row.outputRequirementsInvalid ?? "Brak"}`,
+              `Wymagany etap: ${row.requiredStageId ?? "Brak"}`,
+              `Przyciski: ${row.buttons.length > 0 ? extractButtons(row) : "Brak"}`,
+              `Zablokowane przez: ${row.lockedBy.length > 0 ? row.lockedBy.join(", ") : "Brak"}`,
+            ].join("\n");
+          };
 
-            const paginate = new PaginatedView(
-              paginator,
-              "Etapy urodzin 2024",
-              formatStage,
-              true,
-            );
+          const paginate = new PaginatedView(paginator, "Etapy urodzin 2024", formatStage, true);
 
-            await paginate.render(itx);
-          }),
+          await paginate.render(itx);
+        }),
       )
       .addCommand("edit-stage", (command) =>
         command
@@ -235,14 +222,10 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
             option.setRequired(false).setDescription("Słowo kluczowe"),
           )
           .addString("output-requirements-valid", (option) =>
-            option
-              .setRequired(false)
-              .setDescription("Wymagania dla poprawnego rozwiązania"),
+            option.setRequired(false).setDescription("Wymagania dla poprawnego rozwiązania"),
           )
           .addString("output-requirements-invalid", (option) =>
-            option
-              .setRequired(false)
-              .setDescription("Wymagania dla niepoprawnego rozwiązania"),
+            option.setRequired(false).setDescription("Wymagania dla niepoprawnego rozwiązania"),
           )
           .addInteger("required-stage-id", (option) =>
             option.setRequired(false).setDescription("ID wymaganego etapu"),
@@ -279,9 +262,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
                 ...(buttons ? { buttons: buttons.split("|") } : {}),
                 ...(lockedBy
                   ? {
-                      lockedBy: lockedBy
-                        .split("|")
-                        .map((it) => Number.parseInt(it, 10)),
+                      lockedBy: lockedBy.split("|").map((it) => Number.parseInt(it, 10)),
                     }
                   : {}),
               };
@@ -324,21 +305,18 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
       .addCommand("notify-participants", (command) =>
         command
           .setDescription("Powiadamia uczestników o urodzinach 2024")
-          .addString("message", (option) =>
-            option.setDescription("Wiadomość do wysłania"),
-          )
+          .addString("message", (option) => option.setDescription("Wiadomość do wysłania"))
           .addInteger("stage-id", (option) =>
-            option
-              .setRequired(false)
-              .setDescription("ID etapu, który uczestnicy ukończyli"),
+            option.setRequired(false).setDescription("ID etapu, który uczestnicy ukończyli"),
           )
           .handle(async ({ prisma }, { message, "stage-id": stageId }, itx) => {
             await itx.deferReply();
             const where = { ...(stageId ? { stageId } : {}) };
 
-            const participants = await prisma.birthdayEventStage2024Completion.findMany(
-              { where, distinct: "userId" },
-            );
+            const participants = await prisma.birthdayEventStage2024Completion.findMany({
+              where,
+              distinct: "userId",
+            });
 
             const sendDmPromises = participants.map(async ({ userId }) => {
               const content = runReplacers(message, { userId });
@@ -359,9 +337,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
               return;
             }
 
-            await itx.editReply(
-              `Wysłano powiadomienia do ${participants.length} uczestników`,
-            );
+            await itx.editReply(`Wysłano powiadomienia do ${participants.length} uczestników`);
           }),
       ),
   )
@@ -369,14 +345,9 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
     if (message.author.bot) return;
     if (message.inGuild()) return;
 
-    await handleStageInput(
-      prisma,
-      message.author.id,
-      message.content,
-      async (options) => {
-        await message.reply(options);
-      },
-    );
+    await handleStageInput(prisma, message.author.id, message.content, async (options) => {
+      await message.reply(options);
+    });
   })
   .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
     const customId = itx.customId.split("_")[0];
@@ -388,12 +359,7 @@ export const birthday2024 = new Hashira({ name: "birthday-2024" })
 
     if (!matchingStage) return;
 
-    await handleStageInput(
-      prisma,
-      itx.user.id,
-      matchingStage.keyword,
-      async (options) => {
-        await itx.reply(options);
-      },
-    );
+    await handleStageInput(prisma, itx.user.id, matchingStage.keyword, async (options) => {
+      await itx.reply(options);
+    });
   });

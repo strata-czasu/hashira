@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { CombatEvent } from "../../src/events/halloween2025/combatLog";
 import {
   calculatePlayerDamage,

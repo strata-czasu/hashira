@@ -1,3 +1,12 @@
+import {
+  type ButtonInteraction,
+  ButtonStyle,
+  type CacheType,
+  type ChatInputCommandInteraction,
+  ComponentType,
+  type Message,
+} from "discord.js";
+
 /** @jsxImportSource @hashira/jsx */
 import {
   ActionRow,
@@ -10,20 +19,8 @@ import {
   TextDisplay,
 } from "@hashira/jsx";
 import { type Paginator, PaginatorOrder } from "@hashira/paginate";
-import {
-  type ButtonInteraction,
-  ButtonStyle,
-  type CacheType,
-  type ChatInputCommandInteraction,
-  ComponentType,
-  type Message,
-} from "discord.js";
 
-type RenderItem<T> = (
-  item: T,
-  index: number,
-  active: boolean,
-) => Promise<JSXNode> | JSXNode;
+type RenderItem<T> = (item: T, index: number, active: boolean) => Promise<JSXNode> | JSXNode;
 type HandleButtonInteraction = (interaction: ButtonInteraction) => Promise<void>;
 
 function PaginatedViewComponent({

@@ -1,4 +1,5 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import {
   InsufficientBalanceError,
@@ -217,9 +218,7 @@ export const getDefaultWallets = async ({
     });
     const walletsByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet]));
 
-    const missingUserIds = uniqueUserIds.filter(
-      (userId) => !walletsByUserId.has(userId),
-    );
+    const missingUserIds = uniqueUserIds.filter((userId) => !walletsByUserId.has(userId));
 
     if (missingUserIds.length > 0) {
       const name = getDefaultWalletName(guildId);
@@ -248,9 +247,7 @@ export const getDefaultWallets = async ({
       for (const wallet of ensuredWallets) walletsByUserId.set(wallet.userId, wallet);
     }
 
-    const usersWithoutWallets = uniqueUserIds.filter(
-      (userId) => !walletsByUserId.has(userId),
-    );
+    const usersWithoutWallets = uniqueUserIds.filter((userId) => !walletsByUserId.has(userId));
 
     if (usersWithoutWallets.length > 0) {
       throw new WalletCreationError(usersWithoutWallets);

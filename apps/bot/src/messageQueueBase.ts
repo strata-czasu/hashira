@@ -1,6 +1,3 @@
-import { Hashira } from "@hashira/core";
-import { VerificationStatus } from "@hashira/db";
-import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
 import { compareAsc, type Duration, formatDuration } from "date-fns";
 import {
   type ActionRow,
@@ -18,6 +15,11 @@ import {
   userMention,
 } from "discord.js";
 import { Effect } from "effect";
+
+import { Hashira } from "@hashira/core";
+import { VerificationStatus } from "@hashira/db";
+import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
+
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
 import {
@@ -121,79 +123,70 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
       ...ctx,
       messageQueue: new MessageQueue(new PrismaMessageQueuePersistence(ctx.prisma))
         .addArg<"client", Client>()
-        .addHandler(
-          "ultimatumEnd",
-          async ({ client }, { userId, guildId }: UltimatumEndData) => {
-            const currentUltimatum = await prisma.ultimatum.findFirst({
-              where: { userId, guildId, endedAt: null },
-            });
-            if (!currentUltimatum) return;
+        .addHandler("ultimatumEnd", async ({ client }, { userId, guildId }: UltimatumEndData) => {
+          const currentUltimatum = await prisma.ultimatum.findFirst({
+            where: { userId, guildId, endedAt: null },
+          });
+          if (!currentUltimatum) return;
 
-            const updatedUltimatum = await prisma.ultimatum.update({
-              where: { id: currentUltimatum.id },
-              data: { endedAt: new Date() },
-            });
+          const updatedUltimatum = await prisma.ultimatum.update({
+            where: { id: currentUltimatum.id },
+            data: { endedAt: new Date() },
+          });
 
-            const member = await fetchGuildMember(client, guildId, userId);
-            if (!member) return;
+          const member = await fetchGuildMember(client, guildId, userId);
+          if (!member) return;
 
-            await member.roles.remove(STRATA_CZASU.ULTIMATUM_ROLE, "Koniec ultimatum");
+          await member.roles.remove(STRATA_CZASU.ULTIMATUM_ROLE, "Koniec ultimatum");
 
-            await sendDirectMessage(
-              member.user,
-              "Hej, to znowu ja! Twoje ultimatum dobiegło końca!",
-            );
+          await sendDirectMessage(member.user, "Hej, to znowu ja! Twoje ultimatum dobiegło końca!");
 
-            ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
-              user: member.user,
-              createdAt: updatedUltimatum.createdAt,
-              // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
-              endedAt: updatedUltimatum.endedAt!,
-              reason: updatedUltimatum.reason,
-            });
-          },
-        )
-        .addHandler(
-          "muteEnd",
-          async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
-            // Don't remove the mute role if the user has a verification in progress
-            const verificationInProgress = await prisma.verification.findFirst({
-              where: { userId, guildId, status: VerificationStatus.in_progress },
-            });
+          ctx.strataCzasuLog.push("ultimatumEnd", member.guild, {
+            user: member.user,
+            createdAt: updatedUltimatum.createdAt,
+            // biome-ignore lint/style/noNonNullAssertion: Non-null assertion is safe here because the ultimatum has just ended
+            endedAt: updatedUltimatum.endedAt!,
+            reason: updatedUltimatum.reason,
+          });
+        })
+        .addHandler("muteEnd", async ({ client }, { muteId, guildId, userId }: MuteEndData) => {
+          // Don't remove the mute role if the user has a verification in progress
+          const verificationInProgress = await prisma.verification.findFirst({
+            where: { userId, guildId, status: VerificationStatus.in_progress },
+          });
 
-            if (verificationInProgress) return;
+          if (verificationInProgress) return;
 
-            const settings = await prisma.guildSettings.findFirst({
-              where: { guildId },
-            });
+          const settings = await prisma.guildSettings.findFirst({
+            where: { guildId },
+          });
 
-            if (!settings || !settings.muteRoleId) return;
-            const muteRoleId = settings.muteRoleId;
+          if (!settings || !settings.muteRoleId) return;
+          const muteRoleId = settings.muteRoleId;
 
-            const member = await fetchGuildMember(client, guildId, userId);
-            if (!member) return;
+          const member = await fetchGuildMember(client, guildId, userId);
+          if (!member) return;
 
-            await discordTry(
-              async () => {
-                await member.roles.remove(muteRoleId, `Koniec wyciszenia [${muteId}]`);
-              },
-              [RESTJSONErrorCodes.MissingPermissions],
-              async () => {
-                console.warn(
-                  `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
-                );
-              },
-            );
+          await discordTry(
+            async () => {
+              await member.roles.remove(muteRoleId, `Koniec wyciszenia [${muteId}]`);
+            },
+            [RESTJSONErrorCodes.MissingPermissions],
+            async () => {
+              console.warn(
+                `Missing permissions to remove mute role ${settings.muteRoleId} from member ${userId} on guild ${guildId}`,
+              );
+            },
+          );
 
-            // NOTE: We could mention the user on the server if sending the DM fails
-            await sendDirectMessage(
-              member.user,
-              `To znowu ja ${userMention(
-                member.id,
-              )}. Dostałem informację, że Twoje wyciszenie dobiegło końca. Do zobaczenia na czatach!`,
-            );
-          },
-        )
+          // NOTE: We could mention the user on the server if sending the DM fails
+          await sendDirectMessage(
+            member.user,
+            `To znowu ja ${userMention(
+              member.id,
+            )}. Dostałem informację, że Twoje wyciszenie dobiegło końca. Do zobaczenia na czatach!`,
+          );
+        })
         .addHandler(
           "verificationEnd",
           async ({ client }, { verificationId }: VerificationEndData) => {
@@ -243,9 +236,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             } else {
               directMessageContent +=
                 " Nie udało się zbanować użytkownika. Sprawdź permisje i zbanuj go ręcznie.";
-              console.warn(
-                `Missing permissions to ban user ${user.id} (failed 16+ verification).`,
-              );
+              console.warn(`Missing permissions to ban user ${user.id} (failed 16+ verification).`);
             }
             if (!sentMessage) {
               directMessageContent +=
@@ -256,10 +247,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
         )
         .addHandler(
           "verificationReminder",
-          async (
-            { client },
-            { verificationId, elapsed, remaining }: VerificationReminderData,
-          ) => {
+          async ({ client }, { verificationId, elapsed, remaining }: VerificationReminderData) => {
             const verification = await prisma.verification.findFirst({
               where: { id: verificationId, status: VerificationStatus.in_progress },
             });
@@ -289,15 +277,12 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             );
           },
         )
-        .addHandler(
-          "reminder",
-          async ({ client }, { userId, guildId, text }: ReminderData) => {
-            const member = await fetchGuildMember(client, guildId, userId);
-            if (!member) return;
+        .addHandler("reminder", async ({ client }, { userId, guildId, text }: ReminderData) => {
+          const member = await fetchGuildMember(client, guildId, userId);
+          if (!member) return;
 
-            await sendDirectMessage(member.user, text);
-          },
-        )
+          await sendDirectMessage(member.user, text);
+        })
         .addHandler(
           "channelRestrictionEnd",
           async ({ client }, { restrictionId }: ChannelRestrictionEndData) => {
@@ -354,11 +339,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (user) {
               await sendDirectMessage(
                 user,
-                composeChannelRestrictionRestoreMessage(
-                  user,
-                  restriction.channelId,
-                  null,
-                ),
+                composeChannelRestrictionRestoreMessage(user, restriction.channelId, null),
               );
             }
           },
@@ -415,10 +396,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (leave.addRole && moderatorLeaveRoleId) {
               await discordTry(
                 async () => {
-                  await member.roles.add(
-                    moderatorLeaveRoleId,
-                    `Rozpoczęcie urlopu [${leaveId}]`,
-                  );
+                  await member.roles.add(moderatorLeaveRoleId, `Rozpoczęcie urlopu [${leaveId}]`);
                   return true;
                 },
                 [RESTJSONErrorCodes.MissingPermissions],
@@ -438,11 +416,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
 
             const moderatorLeaveManagerId = settings?.moderatorLeaveManagerId;
             if (moderatorLeaveManagerId) {
-              const leaveManager = await fetchGuildMember(
-                client,
-                guildId,
-                moderatorLeaveManagerId,
-              );
+              const leaveManager = await fetchGuildMember(client, guildId, moderatorLeaveManagerId);
               if (leaveManager) {
                 await sendDirectMessage(leaveManager, {
                   content: `${userMention(member.id)} (${member.user.tag}) właśnie rozpoczął urlop do ${time(leave.endsAt, TimestampStyles.LongDateShortTime)} (${time(leave.endsAt, TimestampStyles.RelativeTime)}).`,
@@ -471,10 +445,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             if (leave.addRole && moderatorLeaveRoleId) {
               await discordTry(
                 async () => {
-                  await member.roles.remove(
-                    moderatorLeaveRoleId,
-                    `Koniec urlopu [${leaveId}]`,
-                  );
+                  await member.roles.remove(moderatorLeaveRoleId, `Koniec urlopu [${leaveId}]`);
                   return true;
                 },
                 [RESTJSONErrorCodes.MissingPermissions],
@@ -487,10 +458,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               );
             }
 
-            await sendDirectMessage(
-              member.user,
-              "Hej, właśnie skończył się Twój urlop!",
-            );
+            await sendDirectMessage(member.user, "Hej, właśnie skończył się Twój urlop!");
           },
         )
         .addHandler(
@@ -529,12 +497,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
           async ({ client }, { encounterId }: Birthday2026EncounterData) => {
             const now = new Date();
             await finishBirthday2026Encounter(prisma, encounterId, now);
-            await reconcileBirthday2026EncounterMessage(
-              client,
-              prisma,
-              encounterId,
-              now,
-            );
+            await reconcileBirthday2026EncounterMessage(client, prisma, encounterId, now);
           },
         )
         .addHandler(
@@ -626,9 +589,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
             );
 
             if (!channel?.isTextBased()) {
-              console.warn(
-                `Channel not found or not text-based for id ${spawn.channelId}`,
-              );
+              console.warn(`Channel not found or not text-based for id ${spawn.channelId}`);
               return;
             }
 
@@ -650,9 +611,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               return;
             }
 
-            const newContainer = new ContainerBuilder(
-              container.toJSON(),
-            ).spliceComponents(
+            const newContainer = new ContainerBuilder(container.toJSON()).spliceComponents(
               -1,
               1,
               new TextDisplayBuilder().setContent(
@@ -667,9 +626,7 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
               return;
             }
 
-            const newActionRow = new ActionRowBuilder<ButtonBuilder>(
-              actionRow.toJSON(),
-            );
+            const newActionRow = new ActionRowBuilder<ButtonBuilder>(actionRow.toJSON());
             newActionRow.components.at(0)?.setDisabled(true);
 
             await message.edit({ components: [newContainer, newActionRow] });

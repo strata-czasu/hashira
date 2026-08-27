@@ -1,7 +1,9 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient, type PrismaTransaction } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
 import type { Client } from "discord.js";
+
+import { PrismaClient, type PrismaTransaction } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
 import {
@@ -65,9 +67,7 @@ databaseTests("Birthday 2026 encounters", () => {
     const suffix = crypto.randomUUID();
     const guildId = `birthday-encounter-guild-${suffix}`;
     const actorUserId = `birthday-encounter-actor-${suffix}`;
-    const members = [0, 1, 2, 3].map(
-      (index) => `birthday-encounter-member-${index}-${suffix}`,
-    );
+    const members = [0, 1, 2, 3].map((index) => `birthday-encounter-member-${index}-${suffix}`);
     guildIds.push(guildId);
     userIds.push(actorUserId, ...members);
     await prisma.guild.create({ data: { id: guildId } });
@@ -228,15 +228,11 @@ databaseTests("Birthday 2026 encounters", () => {
     ).toBe(0);
 
     let nextMessageId = 1;
-    const messages = new Map<
-      string,
-      { id: string; edit: (data: unknown) => unknown }
-    >();
+    const messages = new Map<string, { id: string; edit: (data: unknown) => unknown }>();
     const channel = {
       isSendable: () => true,
       messages: {
-        fetch: async ({ message }: { message: string }) =>
-          messages.get(message) ?? null,
+        fetch: async ({ message }: { message: string }) => messages.get(message) ?? null,
       },
       send: async () => {
         const message = {

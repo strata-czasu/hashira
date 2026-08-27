@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { inlineCode, PermissionFlagsBits, type User } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { errorFollowUp } from "../util/errorFollowUp";
 import { sendDirectMessage } from "../util/sendDirectMessage";
 
@@ -10,10 +12,7 @@ Napisz do osoby, która zresetowała Ci nick ({{moderator}}), jego nową pingowa
 `;
 
 function formatNickResetDmContent(moderator: User) {
-  return NICK_RESET_DM_TEMPLATE.replace(
-    "{{moderator}}",
-    `${moderator} (${moderator.tag})`,
-  );
+  return NICK_RESET_DM_TEMPLATE.replace("{{moderator}}", `${moderator} (${moderator.tag})`);
 }
 
 export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
@@ -24,9 +23,7 @@ export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
     .addCommand("ustaw", (command) =>
       command
         .setDescription("Ustaw nick użytkownika")
-        .addUser("user", (user) =>
-          user.setDescription("Użytkownik, którego nick chcesz ustawić"),
-        )
+        .addUser("user", (user) => user.setDescription("Użytkownik, którego nick chcesz ustawić"))
         .addString("nick", (nick) => nick.setDescription("Nowy nick użytkownika"))
         .handle(async (_, { user, nick }, itx) => {
           if (!itx.inCachedGuild()) return;
@@ -46,17 +43,13 @@ export const nick = new Hashira({ name: "nick" }).group("nick", (group) =>
             nick,
             `Ustawienie nicku (moderator: ${itx.user.tag} (${itx.user.id}))`,
           );
-          await itx.editReply(
-            `Ustawiono nick użytkownika ${user.tag} na ${inlineCode(nick)}.`,
-          );
+          await itx.editReply(`Ustawiono nick użytkownika ${user.tag} na ${inlineCode(nick)}.`);
         }),
     )
     .addCommand("reset", (command) =>
       command
         .setDescription("Zresetuj nick użytkownika")
-        .addUser("user", (user) =>
-          user.setDescription("Użytkownik do zresetowania nicku"),
-        )
+        .addUser("user", (user) => user.setDescription("Użytkownik do zresetowania nicku"))
         .handle(async (_, { user }, itx) => {
           if (!itx.inCachedGuild()) return;
 

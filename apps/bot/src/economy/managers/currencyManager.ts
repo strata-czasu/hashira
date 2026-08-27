@@ -1,4 +1,5 @@
 import type { PrismaTransaction } from "@hashira/db";
+
 import { CurrencyNotFoundError } from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
 
@@ -7,15 +8,9 @@ type GetCurrencyOptions = {
   guildId: string;
 } & GetCurrencyConditionOptions;
 
-export const getCurrency = async ({
-  prisma,
-  guildId,
-  ...options
-}: GetCurrencyOptions) => {
+export const getCurrency = async ({ prisma, guildId, ...options }: GetCurrencyOptions) => {
   const currencyCondition =
-    "currencySymbol" in options
-      ? { symbol: options.currencySymbol }
-      : { id: options.currencyId };
+    "currencySymbol" in options ? { symbol: options.currencySymbol } : { id: options.currencyId };
 
   const currency = await prisma.currency.findFirst({
     where: {

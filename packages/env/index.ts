@@ -2,9 +2,7 @@ import * as v from "valibot";
 
 const ID = v.pipe(v.string(), v.regex(/^\d{17,19}$/));
 
-const SpaceSeparatedArray = <
-  TInput extends v.BaseSchema<string, unknown, v.BaseIssue<unknown>>,
->(
+const SpaceSeparatedArray = <TInput extends v.BaseSchema<string, unknown, v.BaseIssue<unknown>>>(
   matcher: TInput,
 ) =>
   v.pipe(

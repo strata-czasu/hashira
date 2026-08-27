@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Effect, Random } from "effect";
+
 import type { PlayerAbility } from "../../src/events/halloween2025/combatLog";
 import type { SpawnData } from "../../src/events/halloween2025/combatRepository";
 import { MockCombatRepository } from "../../src/events/halloween2025/combatRepository";

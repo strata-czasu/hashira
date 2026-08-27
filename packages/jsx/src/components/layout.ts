@@ -16,6 +16,7 @@ import {
   ThumbnailBuilder,
   UserSelectMenuBuilder,
 } from "discord.js";
+
 import { flattenChildren, markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
 
@@ -79,9 +80,7 @@ export const ActionRow = markAsHost(function ActionRow({
   return row;
 });
 
-export const Section = markAsHost(function Section(
-  props: SectionProps,
-): SectionBuilder {
+export const Section = markAsHost(function Section(props: SectionProps): SectionBuilder {
   const section = new SectionBuilder();
 
   const accessory = props.accessory;
@@ -102,9 +101,7 @@ export const Section = markAsHost(function Section(
   return section;
 });
 
-export const Separator = markAsHost(function Separator(
-  props: SeparatorProps,
-): SeparatorBuilder {
+export const Separator = markAsHost(function Separator(props: SeparatorProps): SeparatorBuilder {
   const sep = new SeparatorBuilder();
 
   if (props.divider) sep.setDivider(props.divider);
@@ -113,9 +110,7 @@ export const Separator = markAsHost(function Separator(
   return sep;
 });
 
-export const Container = markAsHost(function Container(
-  props: ContainerProps,
-): ContainerBuilder {
+export const Container = markAsHost(function Container(props: ContainerProps): ContainerBuilder {
   const container = new ContainerBuilder();
 
   if (props.accentColor) container.setAccentColor(props.accentColor);

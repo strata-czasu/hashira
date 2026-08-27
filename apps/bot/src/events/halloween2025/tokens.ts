@@ -1,12 +1,10 @@
+import { italic, PermissionFlagsBits, TimestampStyles, time } from "discord.js";
+
 import { Hashira, PaginatedView } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-  type Transaction,
-} from "@hashira/db";
+import { DatabasePaginator, type ExtendedPrismaClient, type Transaction } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { PaginatorOrder } from "@hashira/paginate";
-import { italic, PermissionFlagsBits, TimestampStyles, time } from "discord.js";
+
 import { base } from "../../base";
 import {
   CurrencyTransferLimitExceededError,
@@ -75,11 +73,7 @@ const transferTokensWithLimit = async ({
       currencySymbol: TOKENY_CURRENCY.symbol,
     });
     if (currentReceived + amount > TOKEN_TRANSFER_LIMIT) {
-      throw new CurrencyTransferLimitExceededError(
-        currentReceived,
-        TOKEN_TRANSFER_LIMIT,
-        amount,
-      );
+      throw new CurrencyTransferLimitExceededError(currentReceived, TOKEN_TRANSFER_LIMIT, amount);
     }
 
     const toWallet = await getDefaultWallet({
@@ -121,232 +115,217 @@ const transferTokensWithLimit = async ({
   });
 };
 
-export const tokens = new Hashira({ name: "tokens" })
-  .use(base)
-  .group("tokeny", (group) =>
-    group
-      .setDefaultMemberPermissions(0)
-      .setDescription("Komendy do tokenów")
-      .addCommand("sprawdz", (command) =>
-        command
-          .setDescription("Sprawdź swoje tokeny")
-          .addUser("użytkownik", (option) =>
-            option
-              .setDescription("Użytkownik, którego tokeny chcesz sprawdzić")
-              .setRequired(false),
-          )
-          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
-            if (!itx.inCachedGuild()) return;
+export const tokens = new Hashira({ name: "tokens" }).use(base).group("tokeny", (group) =>
+  group
+    .setDefaultMemberPermissions(0)
+    .setDescription("Komendy do tokenów")
+    .addCommand("sprawdz", (command) =>
+      command
+        .setDescription("Sprawdź swoje tokeny")
+        .addUser("użytkownik", (option) =>
+          option.setDescription("Użytkownik, którego tokeny chcesz sprawdzić").setRequired(false),
+        )
+        .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const userId = user?.id ?? itx.user.id;
+          const userId = user?.id ?? itx.user.id;
 
-            await ensureUserExists(prisma, userId);
+          await ensureUserExists(prisma, userId);
 
-            const wallet = await getDefaultWallet({
-              prisma,
-              userId,
-              guildId: itx.guildId,
-              currencySymbol: TOKENY_CURRENCY.symbol,
-            });
+          const wallet = await getDefaultWallet({
+            prisma,
+            userId,
+            guildId: itx.guildId,
+            currencySymbol: TOKENY_CURRENCY.symbol,
+          });
 
-            const receivedTokens = await getReceivedTransfers({
-              prisma,
-              userId,
-              guildId: itx.guildId,
-              currencySymbol: TOKENY_CURRENCY.symbol,
-            });
+          const receivedTokens = await getReceivedTransfers({
+            prisma,
+            userId,
+            guildId: itx.guildId,
+            currencySymbol: TOKENY_CURRENCY.symbol,
+          });
 
-            const self = itx.user.id === userId;
-            const balance = formatBalance(wallet.balance, TOKENY_CURRENCY.symbol);
-            const limitInfo = `(otrzymano z transferów: ${receivedTokens}/${TOKEN_TRANSFER_LIMIT})`;
-            if (self) {
-              await itx.reply(`Masz na swoim koncie: ${balance} ${limitInfo}`);
-            } else {
-              await itx.reply(
-                `Użytkownik ${user} ma na swoim koncie: ${balance} ${limitInfo}`,
-              );
+          const self = itx.user.id === userId;
+          const balance = formatBalance(wallet.balance, TOKENY_CURRENCY.symbol);
+          const limitInfo = `(otrzymano z transferów: ${receivedTokens}/${TOKEN_TRANSFER_LIMIT})`;
+          if (self) {
+            await itx.reply(`Masz na swoim koncie: ${balance} ${limitInfo}`);
+          } else {
+            await itx.reply(`Użytkownik ${user} ma na swoim koncie: ${balance} ${limitInfo}`);
+          }
+        }),
+    )
+    .addCommand("historia", (command) =>
+      command
+        .setDescription("Sprawdź historię transakcji tokenów")
+        .addUser("użytkownik", (option) =>
+          option.setDescription("Użytkownik, którego tokeny chcesz sprawdzić").setRequired(false),
+        )
+        .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+          if (!itx.inCachedGuild()) return;
+
+          const targetUser = user ?? itx.user;
+
+          await ensureUserExists(prisma, targetUser.id);
+
+          const wallet = await getDefaultWallet({
+            prisma,
+            userId: targetUser.id,
+            guildId: itx.guildId,
+            currencySymbol: TOKENY_CURRENCY.symbol,
+          });
+
+          const where = { walletId: wallet.id };
+          const paginator = new DatabasePaginator(
+            (props, createdAt) =>
+              prisma.transaction.findMany({
+                ...props,
+                where,
+                orderBy: { createdAt },
+              }),
+            () => prisma.transaction.count({ where }),
+            { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+          );
+
+          const formatTransaction = (transaction: Transaction) => {
+            const parts: string[] = [
+              time(transaction.createdAt, TimestampStyles.LongDateShortTime),
+              formatBalance(transaction.amount, TOKENY_CURRENCY.symbol),
+            ];
+            if (transaction.reason) {
+              parts.push(`- ${italic(transaction.reason)}`);
             }
-          }),
-      )
-      .addCommand("historia", (command) =>
-        command
-          .setDescription("Sprawdź historię transakcji tokenów")
-          .addUser("użytkownik", (option) =>
-            option
-              .setDescription("Użytkownik, którego tokeny chcesz sprawdzić")
-              .setRequired(false),
-          )
-          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+            return parts.join(" ");
+          };
+          const view = new PaginatedView(
+            paginator,
+            `Transakcje tokenów ${targetUser.tag}`,
+            formatTransaction,
+            true,
+          );
+          await view.render(itx);
+        }),
+    )
+    .addCommand("dodaj", (command) =>
+      command
+        .setDescription("[KADRA] Dodaj tokeny użytkownikowi")
+        .addInteger("ilość", (option) => option.setDescription("Ilość tokenów do dodania"))
+        .addString("użytkownicy", (option) =>
+          option.setDescription("Użytkownicy, którym chcesz dodać tokeny"),
+        )
+        .addString("powód", (option) =>
+          option.setDescription("Powód dodania tokenów").setRequired(false),
+        )
+        .handle(
+          async (
+            { prisma, economyLog: log },
+            { ilość: amount, użytkownicy: rawMembers, powód: reason },
+            itx,
+          ) => {
             if (!itx.inCachedGuild()) return;
+            // Check if the user has moderate members permission
+            if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
+              await itx.reply("Nie masz uprawnień do dodawania tokenów");
+              return;
+            }
 
-            const targetUser = user ?? itx.user;
+            const members = await fetchMembers(itx.guild, parseUserMentions(rawMembers));
 
-            await ensureUserExists(prisma, targetUser.id);
+            await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
 
-            const wallet = await getDefaultWallet({
-              prisma,
-              userId: targetUser.id,
-              guildId: itx.guildId,
-              currencySymbol: TOKENY_CURRENCY.symbol,
-            });
-
-            const where = { walletId: wallet.id };
-            const paginator = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.transaction.findMany({
-                  ...props,
-                  where,
-                  orderBy: { createdAt },
-                }),
-              () => prisma.transaction.count({ where }),
-              { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
-            );
-
-            const formatTransaction = (transaction: Transaction) => {
-              const parts: string[] = [
-                time(transaction.createdAt, TimestampStyles.LongDateShortTime),
-                formatBalance(transaction.amount, TOKENY_CURRENCY.symbol),
-              ];
-              if (transaction.reason) {
-                parts.push(`- ${italic(transaction.reason)}`);
-              }
-              return parts.join(" ");
-            };
-            const view = new PaginatedView(
-              paginator,
-              `Transakcje tokenów ${targetUser.tag}`,
-              formatTransaction,
-              true,
-            );
-            await view.render(itx);
-          }),
-      )
-      .addCommand("dodaj", (command) =>
-        command
-          .setDescription("[KADRA] Dodaj tokeny użytkownikowi")
-          .addInteger("ilość", (option) =>
-            option.setDescription("Ilość tokenów do dodania"),
-          )
-          .addString("użytkownicy", (option) =>
-            option.setDescription("Użytkownicy, którym chcesz dodać tokeny"),
-          )
-          .addString("powód", (option) =>
-            option.setDescription("Powód dodania tokenów").setRequired(false),
-          )
-          .handle(
-            async (
-              { prisma, economyLog: log },
-              { ilość: amount, użytkownicy: rawMembers, powód: reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              // Check if the user has moderate members permission
-              if (!itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
-                await itx.reply("Nie masz uprawnień do dodawania tokenów");
+            try {
+              await addBalances({
+                prisma,
+                fromUserId: itx.user.id,
+                guildId: itx.guildId,
+                currencySymbol: TOKENY_CURRENCY.symbol,
+                toUserIds: [...members.keys()],
+                amount,
+                reason,
+              });
+            } catch (error) {
+              if (error instanceof EconomyError) {
+                await itx.reply(error.message);
                 return;
               }
+              throw error;
+            }
+            log.push("currencyAdd", itx.guild, {
+              moderator: itx.user,
+              toUsers: members.map((m) => m.user),
+              amount,
+              reason,
+            });
 
-              const members = await fetchMembers(
-                itx.guild,
-                parseUserMentions(rawMembers),
-              );
+            const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
 
-              await ensureUsersExist(prisma, [...members.keys(), itx.user.id]);
+            await itx.reply(
+              `Dodano ${amountFormatted} ${members.size} ${pluralizers.genitiveUsers(members.size)}.`,
+            );
+          },
+        ),
+    )
+    .addCommand("przekaz", (command) =>
+      command
+        .setDescription("Przekaż tokeny użytkownikowi (max 50 tokenów można otrzymać)")
+        .addUser("użytkownik", (option) =>
+          option.setDescription("Użytkownik, któremu chcesz przekazać tokeny"),
+        )
+        .addInteger("ilość", (option) =>
+          option.setDescription("Ilość tokenów do przekazania").setMinValue(1),
+        )
+        .addString("powód", (option) =>
+          option.setDescription("Powód przekazania tokenów").setRequired(false),
+        )
+        .handle(
+          async (
+            { prisma, economyLog: log },
+            { użytkownik: user, ilość: amount, powód: reason },
+            itx,
+          ) => {
+            if (!itx.inCachedGuild()) return;
 
-              try {
-                await addBalances({
-                  prisma,
-                  fromUserId: itx.user.id,
-                  guildId: itx.guildId,
-                  currencySymbol: TOKENY_CURRENCY.symbol,
-                  toUserIds: [...members.keys()],
-                  amount,
-                  reason,
-                });
-              } catch (error) {
-                if (error instanceof EconomyError) {
-                  await itx.reply(error.message);
-                  return;
-                }
-                throw error;
-              }
-              log.push("currencyAdd", itx.guild, {
-                moderator: itx.user,
-                toUsers: members.map((m) => m.user),
+            await ensureUsersExist(prisma, [user.id, itx.user.id]);
+
+            try {
+              await transferTokensWithLimit({
+                prisma,
+                fromUserId: itx.user.id,
+                toUserId: user.id,
+                guildId: itx.guildId,
                 amount,
                 reason,
               });
-
-              const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
-
-              await itx.reply(
-                `Dodano ${amountFormatted} ${members.size} ${pluralizers.genitiveUsers(members.size)}.`,
-              );
-            },
-          ),
-      )
-      .addCommand("przekaz", (command) =>
-        command
-          .setDescription(
-            "Przekaż tokeny użytkownikowi (max 50 tokenów można otrzymać)",
-          )
-          .addUser("użytkownik", (option) =>
-            option.setDescription("Użytkownik, któremu chcesz przekazać tokeny"),
-          )
-          .addInteger("ilość", (option) =>
-            option.setDescription("Ilość tokenów do przekazania").setMinValue(1),
-          )
-          .addString("powód", (option) =>
-            option.setDescription("Powód przekazania tokenów").setRequired(false),
-          )
-          .handle(
-            async (
-              { prisma, economyLog: log },
-              { użytkownik: user, ilość: amount, powód: reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-
-              await ensureUsersExist(prisma, [user.id, itx.user.id]);
-
-              try {
-                await transferTokensWithLimit({
-                  prisma,
-                  fromUserId: itx.user.id,
-                  toUserId: user.id,
-                  guildId: itx.guildId,
-                  amount,
-                  reason,
-                });
-              } catch (error) {
-                if (error instanceof CurrencyTransferLimitExceededError) {
-                  const remaining = error.limit - error.currentReceived;
-                  await itx.reply(
-                    `Użytkownik ${user} może otrzymać jeszcze maksymalnie ${remaining} tokenów z transferów (${error.currentReceived}/${error.limit}).`,
-                  );
-                  return;
-                }
-                if (error instanceof SelfTransferError) {
-                  await itx.reply("Nie możesz przekazać tokenów samemu sobie.");
-                  return;
-                }
-                if (error instanceof EconomyError) {
-                  await itx.reply(error.message);
-                  return;
-                }
-                throw error;
+            } catch (error) {
+              if (error instanceof CurrencyTransferLimitExceededError) {
+                const remaining = error.limit - error.currentReceived;
+                await itx.reply(
+                  `Użytkownik ${user} może otrzymać jeszcze maksymalnie ${remaining} tokenów z transferów (${error.currentReceived}/${error.limit}).`,
+                );
+                return;
               }
-              log.push("currencyTransfer", itx.guild, {
-                fromUser: itx.user,
-                toUsers: [user],
-                amount,
-                reason,
-              });
+              if (error instanceof SelfTransferError) {
+                await itx.reply("Nie możesz przekazać tokenów samemu sobie.");
+                return;
+              }
+              if (error instanceof EconomyError) {
+                await itx.reply(error.message);
+                return;
+              }
+              throw error;
+            }
+            log.push("currencyTransfer", itx.guild, {
+              fromUser: itx.user,
+              toUsers: [user],
+              amount,
+              reason,
+            });
 
-              const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
+            const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
 
-              await itx.reply(`Przekazano ${amountFormatted} dla ${user}.`);
-            },
-          ),
-      ),
-  );
+            await itx.reply(`Przekazano ${amountFormatted} dla ${user}.`);
+          },
+        ),
+    ),
+);

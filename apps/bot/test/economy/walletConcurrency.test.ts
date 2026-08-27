@@ -1,10 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
-import {
-  InsufficientBalanceError,
-  InvalidAmountError,
-} from "../../src/economy/economyError";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient } from "@hashira/db";
+
+import { InsufficientBalanceError, InvalidAmountError } from "../../src/economy/economyError";
 import { purchaseShopItem } from "../../src/economy/managers/shopService";
 import {
   addBalance,
@@ -128,9 +127,9 @@ walletDatabaseTests("wallet concurrency", () => {
 
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
-    expect(
-      results.find((result) => result.status === "rejected")?.reason,
-    ).toBeInstanceOf(InsufficientBalanceError);
+    expect(results.find((result) => result.status === "rejected")?.reason).toBeInstanceOf(
+      InsufficientBalanceError,
+    );
 
     const source = await prisma.wallet.findUniqueOrThrow({
       where: { id: fixture.sourceWallet.id },
@@ -296,9 +295,7 @@ walletDatabaseTests("wallet concurrency", () => {
       reason: "Multi-transfer test",
     };
 
-    await expect(transferBalances(options)).rejects.toBeInstanceOf(
-      InsufficientBalanceError,
-    );
+    await expect(transferBalances(options)).rejects.toBeInstanceOf(InsufficientBalanceError);
     expect(
       await prisma.wallet.count({
         where: {
@@ -328,9 +325,7 @@ walletDatabaseTests("wallet concurrency", () => {
     });
 
     expect(wallets.reduce((sum, wallet) => sum + wallet.balance, 0)).toBe(100);
-    expect(
-      wallets.find((wallet) => wallet.id === fixture.sourceWallet.id)?.balance,
-    ).toBe(40);
+    expect(wallets.find((wallet) => wallet.id === fixture.sourceWallet.id)?.balance).toBe(40);
     expect(
       wallets
         .filter((wallet) => wallet.id !== fixture.sourceWallet.id)
@@ -384,20 +379,19 @@ walletDatabaseTests("wallet concurrency", () => {
       }),
     ).rejects.toBeInstanceOf(InvalidAmountError);
 
-    const [wallet, freeTransaction, inventoryCount, negativeListing] =
-      await Promise.all([
-        prisma.wallet.findUniqueOrThrow({ where: { id: fixture.sourceWallet.id } }),
-        prisma.transaction.findFirst({
-          where: { walletId: fixture.sourceWallet.id, amount: 0, entryType: "debit" },
-        }),
-        prisma.inventoryItem.count({
-          where: {
-            userId: fixture.sourceUserId,
-            itemId: { in: [getRequired(freeItem).id, getRequired(negativeItem).id] },
-          },
-        }),
-        prisma.shopItem.findUniqueOrThrow({ where: { id: negativeShopItem.id } }),
-      ]);
+    const [wallet, freeTransaction, inventoryCount, negativeListing] = await Promise.all([
+      prisma.wallet.findUniqueOrThrow({ where: { id: fixture.sourceWallet.id } }),
+      prisma.transaction.findFirst({
+        where: { walletId: fixture.sourceWallet.id, amount: 0, entryType: "debit" },
+      }),
+      prisma.inventoryItem.count({
+        where: {
+          userId: fixture.sourceUserId,
+          itemId: { in: [getRequired(freeItem).id, getRequired(negativeItem).id] },
+        },
+      }),
+      prisma.shopItem.findUniqueOrThrow({ where: { id: negativeShopItem.id } }),
+    ]);
 
     expect(wallet.balance).toBe(100);
     expect(freeTransaction?.reason).toContain("free test item");
@@ -464,9 +458,7 @@ walletDatabaseTests("wallet concurrency", () => {
         userId: fixture.sourceUserId,
         guildId: fixture.guildId,
       });
-    const results = await Promise.allSettled(
-      shopItems.map((shopItem) => purchase(shopItem.id)),
-    );
+    const results = await Promise.allSettled(shopItems.map((shopItem) => purchase(shopItem.id)));
 
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
@@ -493,9 +485,7 @@ walletDatabaseTests("wallet concurrency", () => {
       ]);
 
     expect(wallet.balance).toBe(20);
-    expect(updatedShopItems.map((shopItem) => shopItem.soldCount).sort()).toEqual([
-      0, 1,
-    ]);
+    expect(updatedShopItems.map((shopItem) => shopItem.soldCount).sort()).toEqual([0, 1]);
     expect(inventoryCount).toBe(1);
     expect(purchaseCount).toBe(1);
     expect(transactionCount).toBe(1);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { validateBirthday2026Config } from "../../src/events/birthday2026/configService";
 
 const validInput = {
@@ -17,9 +18,7 @@ describe("Birthday 2026 configuration validation", () => {
 
   it("rejects an invalid or empty timezone", () => {
     for (const timezone of ["", "   ", "Europe/Pigsty"]) {
-      expect(validateBirthday2026Config({ ...validInput, timezone })).toBe(
-        "invalid_timezone",
-      );
+      expect(validateBirthday2026Config({ ...validInput, timezone })).toBe("invalid_timezone");
     }
   });
 

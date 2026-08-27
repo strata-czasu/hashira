@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-
 import * as cheerio from "cheerio";
 import sharp from "sharp";
+
 import { ProfileImageBuilder } from "../src/profile/imageBuilder";
 
 const templateSVG = Bun.file(`${__dirname}/../src/profile/res/profile.svg`);
@@ -252,9 +252,7 @@ describe("imageBuilder", () => {
       const avatarImage = await getDummyImage();
       image.marriageAvatarImage(avatarImage);
       const res = cheerio.load(image.result());
-      const imageHref = res(
-        "image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']",
-      ).attr("href");
+      const imageHref = res("image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']").attr("href");
       expect(imageHref).toContain(avatarImage.toString("base64"));
     });
 

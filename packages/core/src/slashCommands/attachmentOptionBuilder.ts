@@ -5,6 +5,7 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandAttachmentOption,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class AttachmentOptionBuilder<
@@ -33,15 +34,10 @@ export class AttachmentOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     if (interaction.isAutocomplete()) return null as this["_"]["type"];
-    return interaction.options.getAttachment(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getAttachment(name, this.#builder.required) as this["_"]["type"];
   }
 }

@@ -1,6 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { ButtonStyle, SeparatorSpacingSize } from "discord.js";
+
 import {
   Button,
   Container,
@@ -16,9 +17,7 @@ describe("Section", () => {
   it("renders section with button accessory", () => {
     expect(
       <Section
-        accessory={
-          <Button label="Action" style={ButtonStyle.Primary} customId="section-btn" />
-        }
+        accessory={<Button label="Action" style={ButtonStyle.Primary} customId="section-btn" />}
       >
         <TextDisplay content="Section content with a button" />
       </Section>,
@@ -102,8 +101,7 @@ describe("Separator", () => {
   });
 
   it("renders separator with large spacing", () => {
-    expect(<Separator spacing={SeparatorSpacingSize.Large} divider />)
-      .toMatchInlineSnapshot(`
+    expect(<Separator spacing={SeparatorSpacingSize.Large} divider />).toMatchInlineSnapshot(`
       SeparatorBuilder {
         "data": {
           "divider": true,

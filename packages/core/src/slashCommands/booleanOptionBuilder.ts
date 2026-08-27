@@ -4,6 +4,7 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandBooleanOption,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class BooleanOptionBuilder<
@@ -32,14 +33,9 @@ export class BooleanOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
-    return interaction.options.getBoolean(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getBoolean(name, this.#builder.required) as this["_"]["type"];
   }
 }

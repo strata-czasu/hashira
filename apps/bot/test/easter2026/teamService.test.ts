@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Effect, Random } from "effect";
+
 import {
   pickLeastPopulatedTeam,
   type TeamWithConfig,

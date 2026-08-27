@@ -39,31 +39,17 @@ export class CombatService {
 
     const playerAbilities = await this.repository.getDefaultPlayerAbilities();
 
-    const combatState = initializeCombatState(
-      spawn.monster,
-      spawn.participants,
-      userNameMap,
-    );
+    const combatState = initializeCombatState(spawn.monster, spawn.participants, userNameMap);
 
-    const finalState = simulateCombat(
-      combatState,
-      playerAbilities,
-      maxTurns,
-      this.random,
-    );
+    const finalState = simulateCombat(combatState, playerAbilities, maxTurns, this.random);
 
     await this.repository.saveCombatLog(spawnId, finalState);
 
     const status =
-      finalState.result === "monster_captured"
-        ? "completed_captured"
-        : "completed_escaped";
+      finalState.result === "monster_captured" ? "completed_captured" : "completed_escaped";
 
     if (finalState.result === "monster_captured") {
-      const recipients = selectLootRecipients(
-        finalState.events,
-        spawn.participants.length,
-      );
+      const recipients = selectLootRecipients(finalState.events, spawn.participants.length);
 
       await this.repository.saveLootRecipients(spawnId, recipients);
     }

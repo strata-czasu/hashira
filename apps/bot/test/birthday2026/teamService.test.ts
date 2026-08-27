@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { planBirthday2026TeamAssignments } from "../../src/events/birthday2026/teamService";
 
 describe("Birthday 2026 team allocation", () => {
@@ -35,19 +36,14 @@ describe("Birthday 2026 team allocation", () => {
     );
 
     expect(
-      plan.assignments.find((assignment) => assignment.userId === "captain")
-        ?.teamConfigId,
+      plan.assignments.find((assignment) => assignment.userId === "captain")?.teamConfigId,
     ).toBe(1);
     expect(plan.teams.map((team) => team.projectedActivity)).toEqual([100, 80, 70, 70]);
   });
 
   it("rejects invalid estimates and unknown fixed teams", () => {
     expect(() =>
-      planBirthday2026TeamAssignments(
-        [1],
-        [{ userId: "a", activityEstimate: -1 }],
-        () => 0,
-      ),
+      planBirthday2026TeamAssignments([1], [{ userId: "a", activityEstimate: -1 }], () => 0),
     ).toThrow("Invalid activity estimate");
 
     expect(() =>
@@ -78,11 +74,7 @@ describe("Birthday 2026 team allocation", () => {
 
   it("rejects allocation without configured teams", () => {
     expect(() =>
-      planBirthday2026TeamAssignments(
-        [],
-        [{ userId: "a", activityEstimate: 1 }],
-        () => 0,
-      ),
+      planBirthday2026TeamAssignments([], [{ userId: "a", activityEstimate: 1 }], () => 0),
     ).toThrow("without teams");
   });
 });

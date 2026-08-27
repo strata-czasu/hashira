@@ -1,22 +1,14 @@
 import {
-  ConfirmationDialog,
-  type ExtractContext,
-  Hashira,
-  PaginatedView,
-} from "@hashira/core";
-import {
-  DatabasePaginator,
-  type Item,
-  type Prisma,
-  type PrismaTransaction,
-} from "@hashira/db";
-import {
   type AutocompleteInteraction,
   bold,
   inlineCode,
   PermissionFlagsBits,
   type User,
 } from "discord.js";
+
+import { ConfirmationDialog, type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator, type Item, type Prisma, type PrismaTransaction } from "@hashira/db";
+
 import { base } from "../base";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -24,12 +16,7 @@ import { fetchMembers } from "../util/fetchMembers";
 import { parseUserMentions } from "../util/parseUsers";
 import { pluralizers } from "../util/pluralize";
 import { getItemCountInInventory } from "./managers/inventoryService";
-import {
-  getInventoryItem,
-  getInventoryItems,
-  getItem,
-  getTypeNameForList,
-} from "./util";
+import { getInventoryItem, getInventoryItems, getItem, getTypeNameForList } from "./util";
 
 const autocompleteItem = async ({
   prisma,
@@ -128,15 +115,9 @@ const getUsersUnderAndOverLimit = async ({
     },
     _count: true,
   });
-  const perUserCounts = new Map(
-    usersHavingItem.map(({ userId, _count }) => [userId, _count]),
-  );
-  const underLimit = users.filter(
-    (user) => (perUserCounts.get(user.id) ?? 0) < perUserLimit,
-  );
-  const overLimit = users.filter(
-    (user) => (perUserCounts.get(user.id) ?? 0) >= perUserLimit,
-  );
+  const perUserCounts = new Map(usersHavingItem.map(({ userId, _count }) => [userId, _count]));
+  const underLimit = users.filter((user) => (perUserCounts.get(user.id) ?? 0) < perUserLimit);
+  const overLimit = users.filter((user) => (perUserCounts.get(user.id) ?? 0) >= perUserLimit);
   return [underLimit, overLimit];
 };
 
@@ -149,9 +130,7 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("user", (command) =>
         command
           .setDescription("Wyświetl ekwipunek użytkownika")
-          .addUser("user", (user) =>
-            user.setDescription("Użytkownik").setRequired(false),
-          )
+          .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(false))
           .handle(async ({ prisma }, { user: rawUser }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
@@ -208,117 +187,102 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Przekaż przedmiot innemu użytkownikowi")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addInteger("id", (id) =>
-            id.setDescription("ID przedmiotu").setAutocomplete(true),
-          )
+          .addInteger("id", (id) => id.setDescription("ID przedmiotu").setAutocomplete(true))
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteUserInventoryItem({ prisma, itx, userId: itx.user.id });
           })
-          .handle(
-            async (
-              { prisma, lock, economyLog },
-              { id: itemId, user: targetUser },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
+          .handle(async ({ prisma, lock, economyLog }, { id: itemId, user: targetUser }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-              if (targetUser.id === itx.user.id) {
-                return await errorFollowUp(
-                  itx,
-                  "Nie możesz przekazać przedmiotu samemu sobie!",
-                );
-              }
+            if (targetUser.id === itx.user.id) {
+              return await errorFollowUp(itx, "Nie możesz przekazać przedmiotu samemu sobie!");
+            }
 
-              const item = await prisma.item.findFirst({
-                where: {
-                  id: itemId,
-                  deletedAt: null,
-                  guildId: itx.guildId,
-                  type: "item",
-                },
-              });
-              if (!item) {
-                return await errorFollowUp(
-                  itx,
-                  "Przedmiot o podanym ID nie istnieje lub nie możesz go przekazać!",
-                );
-              }
+            const item = await prisma.item.findFirst({
+              where: {
+                id: itemId,
+                deletedAt: null,
+                guildId: itx.guildId,
+                type: "item",
+              },
+            });
+            if (!item) {
+              return await errorFollowUp(
+                itx,
+                "Przedmiot o podanym ID nie istnieje lub nie możesz go przekazać!",
+              );
+            }
 
-              await ensureUsersExist(prisma, [targetUser, itx.user]);
-              const dialog = new ConfirmationDialog(
-                `Czy na pewno chcesz przekazać ${bold(item.name)} [${inlineCode(
-                  itemId.toString(),
-                )}] dla ${bold(targetUser.tag)}?`,
-                "Tak",
-                "Nie",
-                async () => {
-                  const inventoryItem = await prisma.$transaction(async (tx) => {
-                    const inventoryItem = await getInventoryItem(
-                      tx,
+            await ensureUsersExist(prisma, [targetUser, itx.user]);
+            const dialog = new ConfirmationDialog(
+              `Czy na pewno chcesz przekazać ${bold(item.name)} [${inlineCode(
+                itemId.toString(),
+              )}] dla ${bold(targetUser.tag)}?`,
+              "Tak",
+              "Nie",
+              async () => {
+                const inventoryItem = await prisma.$transaction(async (tx) => {
+                  const inventoryItem = await getInventoryItem(
+                    tx,
+                    itemId,
+                    itx.guildId,
+                    itx.user.id,
+                  );
+                  if (!inventoryItem) {
+                    await errorFollowUp(itx, `Nie posiadasz ${bold(item.name)}`);
+                    return null;
+                  }
+
+                  if (item.perUserLimit !== null) {
+                    const targetUserCountInInventory = await getItemCountInInventory({
+                      prisma: tx,
                       itemId,
-                      itx.guildId,
-                      itx.user.id,
-                    );
-                    if (!inventoryItem) {
-                      await errorFollowUp(itx, `Nie posiadasz ${bold(item.name)}`);
+                      userId: targetUser.id,
+                    });
+                    if (targetUserCountInInventory >= item.perUserLimit) {
+                      await errorFollowUp(
+                        itx,
+                        `${bold(targetUser.tag)} posiada już maksymalną ilość ${bold(item.name)} (${targetUserCountInInventory}/${item.perUserLimit})`,
+                      );
                       return null;
                     }
+                  }
 
-                    if (item.perUserLimit !== null) {
-                      const targetUserCountInInventory = await getItemCountInInventory({
-                        prisma: tx,
-                        itemId,
-                        userId: targetUser.id,
-                      });
-                      if (targetUserCountInInventory >= item.perUserLimit) {
-                        await errorFollowUp(
-                          itx,
-                          `${bold(targetUser.tag)} posiada już maksymalną ilość ${bold(item.name)} (${targetUserCountInInventory}/${item.perUserLimit})`,
-                        );
-                        return null;
-                      }
-                    }
+                  await tx.inventoryItem.update({
+                    where: { id: inventoryItem.id },
+                    data: { userId: targetUser.id },
+                  });
 
-                    await tx.inventoryItem.update({
-                      where: { id: inventoryItem.id },
-                      data: { userId: targetUser.id },
-                    });
+                  return inventoryItem;
+                });
+                if (!inventoryItem) return;
+                await itx.editReply({
+                  content: `Przekazano ${bold(item.name)} dla ${bold(targetUser.tag)}`,
+                  components: [],
+                });
+                economyLog.push("itemTransfer", itx.guild, {
+                  fromUser: itx.user,
+                  toUser: targetUser,
+                  item,
+                });
+              },
+              async () => {
+                await itx.editReply({
+                  content: "Anulowano przekazywanie przedmiotu.",
+                  components: [],
+                });
+              },
+              (action) => action.user.id === itx.user.id,
+            );
 
-                    return inventoryItem;
-                  });
-                  if (!inventoryItem) return;
-                  await itx.editReply({
-                    content: `Przekazano ${bold(item.name)} dla ${bold(targetUser.tag)}`,
-                    components: [],
-                  });
-                  economyLog.push("itemTransfer", itx.guild, {
-                    fromUser: itx.user,
-                    toUser: targetUser,
-                    item,
-                  });
-                },
-                async () => {
-                  await itx.editReply({
-                    content: "Anulowano przekazywanie przedmiotu.",
-                    components: [],
-                  });
-                },
-                (action) => action.user.id === itx.user.id,
-              );
-
-              await lock.run(
-                [`inventory_item_transfer_${itx.guildId}_${itx.user.id}_${itemId}`],
-                async () => dialog.render({ send: itx.editReply.bind(itx) }),
-                () =>
-                  errorFollowUp(
-                    itx,
-                    "Jesteś już w trakcie przekazania tego przedmiotu!",
-                  ),
-              );
-            },
-          ),
+            await lock.run(
+              [`inventory_item_transfer_${itx.guildId}_${itx.user.id}_${itemId}`],
+              async () => dialog.render({ send: itx.editReply.bind(itx) }),
+              () => errorFollowUp(itx, "Jesteś już w trakcie przekazania tego przedmiotu!"),
+            );
+          }),
       ),
   )
   .group("eq-admin", (group) =>
@@ -330,110 +294,98 @@ export const inventory = new Hashira({ name: "inventory" })
         command
           .setDescription("Dodaj przedmiot do ekwipunku użytkownika")
           .addString("users", (user) =>
-            user.setDescription(
-              "Użytkownicy którym chcesz dodać przedmiot (oddzielone spacjami)",
-            ),
+            user.setDescription("Użytkownicy którym chcesz dodać przedmiot (oddzielone spacjami)"),
           )
-          .addInteger("przedmiot", (id) =>
-            id.setDescription("Przedmiot").setAutocomplete(true),
-          )
+          .addInteger("przedmiot", (id) => id.setDescription("Przedmiot").setAutocomplete(true))
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });
           })
-          .handle(
-            async (
-              { prisma, economyLog },
-              { przedmiot: itemId, users: rawUsers },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
+          .handle(async ({ prisma, economyLog }, { przedmiot: itemId, users: rawUsers }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-              const userIds = parseUserMentions(rawUsers);
-              if (userIds.length === 0) {
-                return await errorFollowUp(
-                  itx,
-                  "Nie podano żadnych użytkowników! Wspomnij użytkowników (np. @user) lub podaj ich ID.",
-                );
-              }
-
-              const members = await fetchMembers(itx.guild, userIds);
-              const users = members.map((m) => m.user);
-              if (users.length === 0) {
-                return await errorFollowUp(
-                  itx,
-                  "Żaden z podanych użytkowników nie jest członkiem tego serwera!",
-                );
-              }
-              await ensureUsersExist(prisma, users);
-
-              const addedForUsers = await prisma.$transaction(
-                async (tx): Promise<[Item, User[], User[]] | null> => {
-                  const item = await getItem(tx, itemId, itx.guildId);
-                  if (!item) {
-                    await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
-                    return null;
-                  }
-
-                  const [underLimit, overLimit] = await getUsersUnderAndOverLimit({
-                    prisma: tx,
-                    item,
-                    users,
-                  });
-
-                  await tx.inventoryItem.createMany({
-                    data: underLimit.map((user) => ({
-                      itemId,
-                      userId: user.id,
-                    })),
-                  });
-
-                  return [item, underLimit, overLimit];
-                },
+            const userIds = parseUserMentions(rawUsers);
+            if (userIds.length === 0) {
+              return await errorFollowUp(
+                itx,
+                "Nie podano żadnych użytkowników! Wspomnij użytkowników (np. @user) lub podaj ich ID.",
               );
-              if (!addedForUsers) return;
-              const [item, underLimit, overLimit] = addedForUsers;
+            }
 
-              economyLog.push("itemAddToInventory", itx.guild, {
-                moderator: itx.user,
-                users: underLimit,
-                item,
-                quantity: 1,
-              });
+            const members = await fetchMembers(itx.guild, userIds);
+            const users = members.map((m) => m.user);
+            if (users.length === 0) {
+              return await errorFollowUp(
+                itx,
+                "Żaden z podanych użytkowników nie jest członkiem tego serwera!",
+              );
+            }
+            await ensureUsersExist(prisma, users);
 
-              const parts: string[] = [];
+            const addedForUsers = await prisma.$transaction(
+              async (tx): Promise<[Item, User[], User[]] | null> => {
+                const item = await getItem(tx, itemId, itx.guildId);
+                if (!item) {
+                  await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
+                  return null;
+                }
 
-              if (underLimit.length > 0) {
-                const formattedUsers =
-                  underLimit.length === 1
-                    ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
-                      bold(underLimit.at(0)!.tag)
-                    : `${bold(underLimit.length.toString())} ${pluralizers.dativeUsers(underLimit.length)}`;
-                parts.push(
-                  `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${formattedUsers}`,
-                );
-              }
+                const [underLimit, overLimit] = await getUsersUnderAndOverLimit({
+                  prisma: tx,
+                  item,
+                  users,
+                });
 
-              if (overLimit.length > 0)
-                parts.push(
-                  overLimit.length === 1
-                    ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
-                      `${overLimit.at(0)!.tag} ma już maksymalną ilość przedmiotu`
-                    : `${bold(overLimit.length.toString())} ${pluralizers.users(overLimit.length)} ma już maksymalną ilość przedmiotu: ${overLimit.map((user) => user.tag).join(", ")}`,
-                );
+                await tx.inventoryItem.createMany({
+                  data: underLimit.map((user) => ({
+                    itemId,
+                    userId: user.id,
+                  })),
+                });
 
-              await itx.editReply(parts.join("\n"));
-            },
-          ),
+                return [item, underLimit, overLimit];
+              },
+            );
+            if (!addedForUsers) return;
+            const [item, underLimit, overLimit] = addedForUsers;
+
+            economyLog.push("itemAddToInventory", itx.guild, {
+              moderator: itx.user,
+              users: underLimit,
+              item,
+              quantity: 1,
+            });
+
+            const parts: string[] = [];
+
+            if (underLimit.length > 0) {
+              const formattedUsers =
+                underLimit.length === 1
+                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                    bold(underLimit.at(0)!.tag)
+                  : `${bold(underLimit.length.toString())} ${pluralizers.dativeUsers(underLimit.length)}`;
+              parts.push(
+                `Dodano ${bold(item.name)} ${getTypeNameForList(item.type)} do ekwipunku ${formattedUsers}`,
+              );
+            }
+
+            if (overLimit.length > 0)
+              parts.push(
+                overLimit.length === 1
+                  ? // biome-ignore lint/style/noNonNullAssertion: The size is checked to be 1
+                    `${overLimit.at(0)!.tag} ma już maksymalną ilość przedmiotu`
+                  : `${bold(overLimit.length.toString())} ${pluralizers.users(overLimit.length)} ma już maksymalną ilość przedmiotu: ${overLimit.map((user) => user.tag).join(", ")}`,
+              );
+
+            await itx.editReply(parts.join("\n"));
+          }),
       )
       .addCommand("zabierz", (command) =>
         command
           .setDescription("Zabierz przedmiot z ekwipunku użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .addInteger("przedmiot", (id) =>
-            id.setDescription("Przedmiot").setAutocomplete(true),
-          )
+          .addInteger("przedmiot", (id) => id.setDescription("Przedmiot").setAutocomplete(true))
           .addInteger("ilość", (amount) =>
             amount
               .setDescription("Ilość przedmiotów do zabrania")
@@ -447,11 +399,7 @@ export const inventory = new Hashira({ name: "inventory" })
             return autocompleteUserInventoryItem({ prisma, itx, userId });
           })
           .handle(
-            async (
-              { prisma, economyLog },
-              { przedmiot: itemId, ilość: amount, user },
-              itx,
-            ) => {
+            async ({ prisma, economyLog }, { przedmiot: itemId, ilość: amount, user }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -463,9 +411,7 @@ export const inventory = new Hashira({ name: "inventory" })
                   return { ok: false, reason: "not_found" } as const;
                 }
 
-                const owned = await getInventoryItems(tx, itx.guildId, user.id, [
-                  itemId,
-                ]);
+                const owned = await getInventoryItems(tx, itx.guildId, user.id, [itemId]);
 
                 if (owned.length === 0) {
                   return { ok: false, reason: "no_items", item } as const;
@@ -501,10 +447,7 @@ export const inventory = new Hashira({ name: "inventory" })
               if (!result.ok) {
                 switch (result.reason) {
                   case "not_found":
-                    return await errorFollowUp(
-                      itx,
-                      "Przedmiot o podanym ID nie istnieje",
-                    );
+                    return await errorFollowUp(itx, "Przedmiot o podanym ID nie istnieje");
                   case "no_items":
                     return await errorFollowUp(
                       itx,
@@ -526,9 +469,7 @@ export const inventory = new Hashira({ name: "inventory" })
               });
 
               const countText =
-                result.deletedCount === 1
-                  ? ""
-                  : ` (x${bold(result.deletedCount.toString())})`;
+                result.deletedCount === 1 ? "" : ` (x${bold(result.deletedCount.toString())})`;
               await itx.editReply(
                 `Usunięto ${bold(result.item.name)}${countText} z ekwipunku ${bold(user.tag)}.`,
               );
@@ -538,9 +479,7 @@ export const inventory = new Hashira({ name: "inventory" })
       .addCommand("posiadacze", (command) =>
         command
           .setDescription("Znajdź wszystkich użytkowników posiadających dany przedmiot")
-          .addInteger("przedmiot", (id) =>
-            id.setDescription("Przedmiot").setAutocomplete(true),
-          )
+          .addInteger("przedmiot", (id) => id.setDescription("Przedmiot").setAutocomplete(true))
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             return autocompleteItem({ prisma, itx });

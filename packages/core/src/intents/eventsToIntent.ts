@@ -1,4 +1,5 @@
 import { GatewayIntentBits } from "discord.js";
+
 import * as events from "./events";
 import { createEventsToIntent } from "./util";
 
@@ -27,24 +28,21 @@ export const autoModerationConfigurationEventsToIntent = createEventsToIntent(
   [GatewayIntentBits.Guilds, GatewayIntentBits.AutoModerationConfiguration],
 );
 
-export const guildInvitesEventsToIntent = createEventsToIntent(
-  events.guildInvitesEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildInvites],
-);
+export const guildInvitesEventsToIntent = createEventsToIntent(events.guildInvitesEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildInvites,
+]);
 
-export const guildMembersEventsToIntent = createEventsToIntent(
-  events.guildMembersEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
-);
+export const guildMembersEventsToIntent = createEventsToIntent(events.guildMembersEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMembers,
+]);
 
-export const guildMessagesEventsToIntent = createEventsToIntent(
-  events.guildMessagesEvents,
-  [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-);
+export const guildMessagesEventsToIntent = createEventsToIntent(events.guildMessagesEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
+]);
 
 export const guildMessageReactionsEventsToIntent = createEventsToIntent(
   events.guildMessageReactionsEvents,
@@ -56,51 +54,45 @@ export const guildMessageTypingEventsToIntent = createEventsToIntent(
   [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageTyping],
 );
 
-export const guildModerationEventsToIntent = createEventsToIntent(
-  events.guildModerationEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration],
-);
+export const guildModerationEventsToIntent = createEventsToIntent(events.guildModerationEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildModeration,
+]);
 
-export const guildPresencesEventsToIntent = createEventsToIntent(
-  events.guildPresencesEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildPresences],
-);
+export const guildPresencesEventsToIntent = createEventsToIntent(events.guildPresencesEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildPresences,
+]);
 
 export const guildScheduledEventsEventsToIntent = createEventsToIntent(
   events.guildScheduledEventsEvents,
   [GatewayIntentBits.Guilds, GatewayIntentBits.GuildScheduledEvents],
 );
 
-export const guildVoiceStatesEventsToIntent = createEventsToIntent(
-  events.guildVoiceStatesEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
-);
+export const guildVoiceStatesEventsToIntent = createEventsToIntent(events.guildVoiceStatesEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildVoiceStates,
+]);
 
-export const guildWebhooksEventsToIntent = createEventsToIntent(
-  events.guildWebhooksEvents,
-  [GatewayIntentBits.Guilds, GatewayIntentBits.GuildWebhooks],
-);
+export const guildWebhooksEventsToIntent = createEventsToIntent(events.guildWebhooksEvents, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildWebhooks,
+]);
 
 export const readyEventsToIntent = createEventsToIntent(events.readyEvents, []);
 
-export const interactionCreateToIntent = createEventsToIntent(
-  events.interactionCreate,
-  [],
-);
+export const interactionCreateToIntent = createEventsToIntent(events.interactionCreate, []);
 
-export const directMessageCreateToIntent = createEventsToIntent(
-  events.directMessageCreate,
-  [GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent],
-);
+export const directMessageCreateToIntent = createEventsToIntent(events.directMessageCreate, [
+  GatewayIntentBits.DirectMessages,
+  GatewayIntentBits.MessageContent,
+]);
 
-export const guildMessageCreateToIntent = createEventsToIntent(
-  events.guildMessageCreate,
-  [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-);
+export const guildMessageCreateToIntent = createEventsToIntent(events.guildMessageCreate, [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
+]);
 
 export const buttonInteractionCreateToIntent = createEventsToIntent(
   events.buttonInteractionCreate,

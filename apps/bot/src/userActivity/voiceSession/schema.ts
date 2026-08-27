@@ -1,5 +1,6 @@
-import { type RangeUnion, range, rangeObject } from "@hashira/utils/range";
 import * as v from "valibot";
+
+import { type RangeUnion, range, rangeObject } from "@hashira/utils/range";
 
 const BooleanString = v.pipe(
   v.string(),
@@ -76,9 +77,7 @@ export const AnyVersionVoiceSessionSchema = v.union([
   voiceSessionSchemaV3,
 ]);
 
-export type AnyVersionVoiceSessionSchema = v.InferOutput<
-  typeof AnyVersionVoiceSessionSchema
->;
+export type AnyVersionVoiceSessionSchema = v.InferOutput<typeof AnyVersionVoiceSessionSchema>;
 
 export const voiceSessionSchema = voiceSessionSchemaV3;
 export type VoiceSession = v.InferOutput<typeof voiceSessionSchema>;

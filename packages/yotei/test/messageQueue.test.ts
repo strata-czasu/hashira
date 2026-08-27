@@ -1,6 +1,7 @@
 // biome-ignore-all lint/style/noNonNullAssertion: test code
 
 import { describe, expect, it } from "bun:test";
+
 import type {
   MessageQueuePersistence,
   MessageQueueTask,
@@ -182,12 +183,9 @@ describe("MessageQueue", () => {
   it("processes pending tasks and marks them as completed", async () => {
     let handledPayload: unknown = null;
     const persistence = new InMemoryPersistence();
-    const queue = new MessageQueue(persistence, 10).addHandler(
-      "process",
-      async (_, data) => {
-        handledPayload = data;
-      },
-    );
+    const queue = new MessageQueue(persistence, 10).addHandler("process", async (_, data) => {
+      handledPayload = data;
+    });
 
     await queue.push("process", { action: "go" });
 

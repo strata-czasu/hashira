@@ -1,16 +1,16 @@
 {
   "name": "@hashira/core",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./intents": "./src/intents/index.ts",
     "./paginate": "./src/paginate.ts"
   },
-  "type": "module",
   "scripts": {
     "typecheck": "tsgo"
   },
   "dependencies": {
-    "@hashira/paginate": "workspace:*",
-    "@hashira/jsx": "workspace:*"
+    "@hashira/jsx": "workspace:*",
+    "@hashira/paginate": "workspace:*"
   }
 }

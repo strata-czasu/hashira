@@ -1,13 +1,13 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { ButtonStyle } from "discord.js";
+
 import { ActionRow, Button } from "../src";
 
 describe("Button", () => {
   it("renders primary button with label", () => {
-    expect(
-      <Button label="Click me" style={ButtonStyle.Primary} customId="btn-primary" />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Click me" style={ButtonStyle.Primary} customId="btn-primary" />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "custom_id": "btn-primary",
@@ -21,13 +21,8 @@ describe("Button", () => {
   });
 
   it("renders secondary button (default style)", () => {
-    expect(
-      <Button
-        label="Secondary"
-        customId="btn-secondary"
-        style={ButtonStyle.Secondary}
-      />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Secondary" customId="btn-secondary" style={ButtonStyle.Secondary} />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "custom_id": "btn-secondary",
@@ -41,9 +36,8 @@ describe("Button", () => {
   });
 
   it("renders success button", () => {
-    expect(
-      <Button label="Success" style={ButtonStyle.Success} customId="btn-success" />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Success" style={ButtonStyle.Success} customId="btn-success" />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "custom_id": "btn-success",
@@ -72,8 +66,7 @@ describe("Button", () => {
   });
 
   it("renders link button with URL", () => {
-    expect(<Button label="Visit Site" url="https://example.com" />)
-      .toMatchInlineSnapshot(`
+    expect(<Button label="Visit Site" url="https://example.com" />).toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "emoji": undefined,
@@ -100,14 +93,8 @@ describe("Button", () => {
   });
 
   it("renders disabled button", () => {
-    expect(
-      <Button
-        label="Disabled"
-        style={ButtonStyle.Primary}
-        customId="btn-disabled"
-        disabled
-      />,
-    ).toMatchInlineSnapshot(`
+    expect(<Button label="Disabled" style={ButtonStyle.Primary} customId="btn-disabled" disabled />)
+      .toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {
           "custom_id": "btn-disabled",
@@ -123,12 +110,7 @@ describe("Button", () => {
 
   it("renders button with emoji", () => {
     expect(
-      <Button
-        label="With Emoji"
-        style={ButtonStyle.Primary}
-        customId="btn-emoji"
-        emoji="👍"
-      />,
+      <Button label="With Emoji" style={ButtonStyle.Primary} customId="btn-emoji" emoji="👍" />,
     ).toMatchInlineSnapshot(`
       ButtonBuilder {
         "data": {

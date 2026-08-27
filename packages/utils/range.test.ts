@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { range, rangeObject } from "./range";
 
 describe("range", () => {
@@ -33,21 +34,15 @@ describe("range", () => {
   const rangeForNegatives = range as (start: number, end: number) => number[];
 
   it("should throw an error when start is negative", () => {
-    expect(() => rangeForNegatives(-1, 5)).toThrow(
-      "Range bounds must be non-negative integers",
-    );
+    expect(() => rangeForNegatives(-1, 5)).toThrow("Range bounds must be non-negative integers");
   });
 
   it("should throw an error when end is negative", () => {
-    expect(() => rangeForNegatives(0, -5)).toThrow(
-      "Range bounds must be non-negative integers",
-    );
+    expect(() => rangeForNegatives(0, -5)).toThrow("Range bounds must be non-negative integers");
   });
 
   it("should throw an error when both start and end are negative", () => {
-    expect(() => rangeForNegatives(-3, -1)).toThrow(
-      "Range bounds must be non-negative integers",
-    );
+    expect(() => rangeForNegatives(-3, -1)).toThrow("Range bounds must be non-negative integers");
   });
 });
 

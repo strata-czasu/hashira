@@ -1,7 +1,7 @@
 {
   "name": "@hashira/bot",
-  "module": "src/index.ts",
   "type": "module",
+  "module": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./*.ts": "./src/*.ts"

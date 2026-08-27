@@ -1,3 +1,5 @@
+import { addSeconds } from "date-fns";
+
 import type {
   Birthday2026FeedBatch,
   Birthday2026TeamWallet,
@@ -5,7 +7,7 @@ import type {
   PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
-import { addSeconds } from "date-fns";
+
 import { InsufficientBalanceError } from "../../economy/economyError";
 import { addBalance } from "../../economy/managers/transferManager";
 import { debitWallet, getDefaultWallet } from "../../economy/managers/walletManager";
@@ -58,10 +60,7 @@ export const setupBirthday2026Economy = (
     if (!input.currencyName || !input.currencySymbol) {
       return { ok: false, reason: "invalid_currency" };
     }
-    if (
-      !Number.isSafeInteger(input.digestionDelaySeconds) ||
-      input.digestionDelaySeconds < 0
-    ) {
+    if (!Number.isSafeInteger(input.digestionDelaySeconds) || input.digestionDelaySeconds < 0) {
       return { ok: false, reason: "invalid_digestion_delay" };
     }
 
@@ -111,8 +110,7 @@ export const setupBirthday2026Economy = (
     });
     const matchingCurrency = currencies.find(
       (currency) =>
-        currency.name === input.currencyName &&
-        currency.symbol === input.currencySymbol,
+        currency.name === input.currencyName && currency.symbol === input.currencySymbol,
     );
     if (currencies.length > 0 && !matchingCurrency) {
       return { ok: false, reason: "currency_conflict" };
@@ -311,8 +309,7 @@ const resolveBirthday2026FeedTarget = async (
     userId: string;
   },
 ) => {
-  const { configId, currencyId, ownTeamId, ownWallet, targetTeamConfigId, userId } =
-    input;
+  const { configId, currencyId, ownTeamId, ownWallet, targetTeamConfigId, userId } = input;
 
   if (targetTeamConfigId === ownTeamId) {
     if (!ownWallet || ownWallet.currencyId !== currencyId) {

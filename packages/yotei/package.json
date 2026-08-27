@@ -1,12 +1,12 @@
 {
   "name": "@hashira/yotei",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsgo"
   },
-  "type": "module",
   "dependencies": {
     "@hashira/db": "workspace:*",
     "date-fns": "^4.1.0"

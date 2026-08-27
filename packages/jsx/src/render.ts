@@ -20,6 +20,7 @@ import {
   SeparatorBuilder,
   TextDisplayBuilder,
 } from "discord.js";
+
 import { reconcile } from "./reconciler";
 import type { JSXNode } from "./types";
 

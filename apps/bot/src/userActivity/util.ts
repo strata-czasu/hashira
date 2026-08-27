@@ -59,9 +59,7 @@ export const getUsersTextActivity = async ({
     _count: { id: true },
   });
 
-  const textActivityMap = new Map(
-    textActivityCounts.map((item) => [item.userId, item._count.id]),
-  );
+  const textActivityMap = new Map(textActivityCounts.map((item) => [item.userId, item._count.id]));
 
   return textActivityMap;
 };
@@ -124,9 +122,7 @@ export const getUsersVoiceActivity = async ({
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) return new Map();
 
-  const results = await prisma.$queryRaw<
-    Array<{ userId: string; totalSeconds: bigint }>
-  >`
+  const results = await prisma.$queryRaw<Array<{ userId: string; totalSeconds: bigint }>>`
     SELECT
       vs."userId",
       COALESCE(SUM(vst."secondsSpent"), 0)::bigint as "totalSeconds"

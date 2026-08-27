@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { splitLongContent } from "../src/util/splitLongContent";
 
 describe("splitLongContent", () => {
@@ -11,10 +12,7 @@ describe("splitLongContent", () => {
   });
 
   test("should split content that exceeds limit", () => {
-    const lines = Array.from(
-      { length: 100 },
-      (_, i) => `Line ${i + 1}: Some content here`,
-    );
+    const lines = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}: Some content here`);
     const content = lines.join("\n");
     const result = splitLongContent(content, 500);
 
@@ -27,11 +25,9 @@ describe("splitLongContent", () => {
   });
 
   test("should not break lines in the middle when splitting", () => {
-    const content = [
-      "First complete line",
-      "Second complete line",
-      "Third complete line",
-    ].join("\n");
+    const content = ["First complete line", "Second complete line", "Third complete line"].join(
+      "\n",
+    );
 
     const result = splitLongContent(content, 50);
 

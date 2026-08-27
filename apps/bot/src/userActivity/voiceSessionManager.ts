@@ -1,8 +1,10 @@
-import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
-import { type RangeUnion, range } from "@hashira/utils/range";
 import { type Duration, differenceInSeconds } from "date-fns";
 import type { Guild, VoiceBasedChannel, VoiceState } from "discord.js";
 import * as v from "valibot";
+
+import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+import { type RangeUnion, range } from "@hashira/utils/range";
+
 import { durationToSeconds } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import {
@@ -152,8 +154,7 @@ export class VoiceSessionManager {
   }
 
   private updateSessionTimes(session: VoiceSession, delta: number): void {
-    session[`total_${session.state}`] =
-      (session[`total_${session.state}`] ?? 0) + delta;
+    session[`total_${session.state}`] = (session[`total_${session.state}`] ?? 0) + delta;
   }
 
   private voiceStateAlone(state: VoiceState): boolean {
@@ -190,9 +191,7 @@ export class VoiceSessionManager {
     };
   }
 
-  private async updateRemainingUsersAfterLeave(
-    channel: VoiceBasedChannel,
-  ): Promise<void> {
+  private async updateRemainingUsersAfterLeave(channel: VoiceBasedChannel): Promise<void> {
     if (channel.members.size === 1) {
       const remainingUser = channel.members.first();
       if (remainingUser?.voice) {
@@ -222,11 +221,7 @@ export class VoiceSessionManager {
     }
   }
 
-  async startVoiceSession(
-    channelId: string,
-    state: VoiceState,
-    now: Date,
-  ): Promise<void> {
+  async startVoiceSession(channelId: string, state: VoiceState, now: Date): Promise<void> {
     const key = this.getSessionKey(state.guild.id, state.id);
 
     const voiceSession: VoiceSession = {
@@ -366,17 +361,12 @@ export class VoiceSessionManager {
 
     const sessionPattern = `voiceSession:${guild.id}:*`;
     const allSessionKeys = await this.redis.keys(sessionPattern);
-    const orphanedSessions = allSessionKeys.filter(
-      (key) => !foundSessions.includes(key),
-    );
+    const orphanedSessions = allSessionKeys.filter((key) => !foundSessions.includes(key));
 
     await Promise.all(orphanedSessions.map((key) => this.handleOrphanedSession(key)));
   }
 
-  async handleVoiceStateUpdate(
-    oldState: VoiceState,
-    newState: VoiceState,
-  ): Promise<void> {
+  async handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState): Promise<void> {
     const now = new Date();
     // User joins a voice channel
     if (!oldState.channel && newState.channel) {

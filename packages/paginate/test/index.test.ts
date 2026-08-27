@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { PaginatorOrder, StaticPaginator } from "../src";
 
 describe("StaticPaginator", () => {

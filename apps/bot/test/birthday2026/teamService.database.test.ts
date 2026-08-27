@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
   configureBirthday2026Artwork,
@@ -63,12 +65,7 @@ const createFixture = async (userCount = 4) => {
   return { config: configResult.config, guildId, suffix, users };
 };
 
-const createTeam = async (
-  guildId: string,
-  name: string,
-  roleId: string,
-  color: number,
-) => {
+const createTeam = async (guildId: string, name: string, roleId: string, color: number) => {
   if (!prisma) throw new Error("DATABASE_TEST_URL is required");
   const result = await createBirthday2026Team(prisma, {
     guildId,
@@ -155,9 +152,9 @@ databaseTests("Birthday 2026 team services", () => {
     expect(moved.ok).toBe(true);
     if (!moved.ok) throw new Error(moved.reason);
     expect(moved.previousRoleId).toBe(first.roleId);
-    expect(
-      (await findBirthday2026Membership(prisma, fixture.guildId, userId))?.teamConfigId,
-    ).toBe(second.id);
+    expect((await findBirthday2026Membership(prisma, fixture.guildId, userId))?.teamConfigId).toBe(
+      second.id,
+    );
   });
 
   it("requires captains to be members and protects them from move/removal", async () => {
@@ -178,9 +175,10 @@ databaseTests("Birthday 2026 team services", () => {
       0x00ff00,
     );
 
-    expect(
-      await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId),
-    ).toEqual({ ok: false, reason: "captain_not_member" });
+    expect(await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId)).toEqual({
+      ok: false,
+      reason: "captain_not_member",
+    });
 
     await assignBirthday2026Member(prisma, {
       guildId: fixture.guildId,
@@ -192,9 +190,10 @@ databaseTests("Birthday 2026 team services", () => {
       teamConfigId: first.id,
       userId: tucznikUserId,
     });
-    expect(
-      await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId),
-    ).toEqual({ ok: false, reason: "identity_not_configured" });
+    expect(await setBirthday2026Captain(prisma, fixture.guildId, first.id, captainUserId)).toEqual({
+      ok: false,
+      reason: "identity_not_configured",
+    });
     expect(
       await createBirthday2026TeamIdentity(prisma, fixture.guildId, first.id, {
         captainUserId,
@@ -223,9 +222,7 @@ databaseTests("Birthday 2026 team services", () => {
       ok: false,
       reason: "captain_move_requires_replacement",
     });
-    expect(
-      await removeBirthday2026Member(prisma, fixture.guildId, captainUserId),
-    ).toEqual({
+    expect(await removeBirthday2026Member(prisma, fixture.guildId, captainUserId)).toEqual({
       ok: false,
       reason: "captain_move_requires_replacement",
     });
@@ -298,12 +295,10 @@ databaseTests("Birthday 2026 team services", () => {
       ),
     ).toEqual({ ok: false, reason: "tucznik_not_member" });
 
-    const appointment = await createBirthday2026TeamIdentity(
-      prisma,
-      fixture.guildId,
-      first.id,
-      { captainUserId: replacementCaptainUserId, tucznikUserId },
-    );
+    const appointment = await createBirthday2026TeamIdentity(prisma, fixture.guildId, first.id, {
+      captainUserId: replacementCaptainUserId,
+      tucznikUserId,
+    });
     expect(appointment).toMatchObject({
       ok: true,
       identity: {
@@ -399,9 +394,7 @@ databaseTests("Birthday 2026 team services", () => {
 
     const rebalance = await rebalanceBirthday2026Members(prisma, {
       guildId: fixture.guildId,
-      activityEstimates: new Map(
-        fixture.users.map((userId, index) => [userId, 100 - index * 10]),
-      ),
+      activityEstimates: new Map(fixture.users.map((userId, index) => [userId, 100 - index * 10])),
       random: () => 0,
     });
     if (!rebalance.ok) throw new Error(rebalance.reason);
@@ -494,9 +487,7 @@ databaseTests("Birthday 2026 team services", () => {
       }),
     ).toEqual({ ok: false, reason: "invalid_activity_estimate" });
 
-    const estimates = new Map(
-      fixture.users.map((userId, index) => [userId, 100 - index * 10]),
-    );
+    const estimates = new Map(fixture.users.map((userId, index) => [userId, 100 - index * 10]));
     const rebalanceResult = await rebalanceBirthday2026Members(prisma, {
       guildId: fixture.guildId,
       activityEstimates: estimates,
@@ -506,8 +497,7 @@ databaseTests("Birthday 2026 team services", () => {
     const { plan } = rebalanceResult;
 
     expect(
-      plan.assignments.find((assignment) => assignment.userId === captainUserId)
-        ?.teamConfigId,
+      plan.assignments.find((assignment) => assignment.userId === captainUserId)?.teamConfigId,
     ).toBe(captainTeam.id);
     expect(plan.assignments).toHaveLength(5);
 

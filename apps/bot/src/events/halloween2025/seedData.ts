@@ -1,21 +1,15 @@
 import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
+
 import { USER_IDS } from "../../specializedConstants";
 import { ensureUserExists } from "../../util/ensureUsersExist";
-import {
-  MONSTER_TEMPLATES,
-  type MonsterTemplate,
-  PLAYER_ABILITIES,
-} from "./monsterData";
+import { MONSTER_TEMPLATES, type MonsterTemplate, PLAYER_ABILITIES } from "./monsterData";
 
 export const TOKENY_CURRENCY = {
   name: "Tokeny",
   symbol: "T",
 } as const;
 
-export const seedTokenyCurrency = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-) => {
+export const seedTokenyCurrency = async (prisma: ExtendedPrismaClient, guildId: string) => {
   await ensureUserExists(prisma, USER_IDS.Defous);
   await prisma.currency.createMany({
     data: [
@@ -95,10 +89,7 @@ async function seedMonster(
   }
 }
 
-export const seedMonstersForGuild = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-) => {
+export const seedMonstersForGuild = async (prisma: ExtendedPrismaClient, guildId: string) => {
   await seedMonster(prisma, MONSTER_TEMPLATES.wereraccoon, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.fishermanGhost, guildId);
   await seedMonster(prisma, MONSTER_TEMPLATES.zombieCat, guildId);

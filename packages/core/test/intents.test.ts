@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { GatewayIntentBits } from "discord.js";
+
 import { filterDisabledIntents } from "../src/intents/util";
 
 describe("filterDisabledIntents", () => {
@@ -14,10 +15,7 @@ describe("filterDisabledIntents", () => {
       [GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent],
     );
 
-    expect(intents).toEqual([
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages,
-    ]);
+    expect(intents).toEqual([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]);
   });
 
   test("keeps intents when none are disabled", () => {

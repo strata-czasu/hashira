@@ -5,6 +5,7 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandIntegerOption,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class IntegerOptionBuilder<
@@ -53,14 +54,9 @@ export class IntegerOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
-    return interaction.options.getInteger(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getInteger(name, this.#builder.required) as this["_"]["type"];
   }
 }

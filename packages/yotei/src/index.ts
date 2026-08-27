@@ -1,21 +1,16 @@
-import type { Prettify } from "@hashira/utils/types";
 import { addSeconds } from "date-fns";
 import * as v from "valibot";
-import type {
-  MessageQueuePersistence,
-  MessageQueueTask,
-  TaskFindOptions,
-} from "./persistence";
+
+import type { Prettify } from "@hashira/utils/types";
+
+import type { MessageQueuePersistence, MessageQueueTask, TaskFindOptions } from "./persistence";
 
 const TaskData = v.object({
   type: v.string(),
   data: v.nonNullish(v.unknown()),
 });
 
-type Handler<T, U extends Record<string, unknown>> = (
-  props: U,
-  data: T,
-) => Promise<void>;
+type Handler<T, U extends Record<string, unknown>> = (props: U, data: T) => Promise<void>;
 
 type Handle = { [key: string]: unknown };
 
@@ -55,11 +50,7 @@ export class MessageQueue<
     HandleTypes,
     Prettify<Args & Record<T, U>>
   > {
-    return this as MessageQueue<
-      Transaction,
-      HandleTypes,
-      Prettify<Args & Record<T, U>>
-    >;
+    return this as MessageQueue<Transaction, HandleTypes, Prettify<Args & Record<T, U>>>;
   }
 
   /**
@@ -81,12 +72,7 @@ export class MessageQueue<
 
     const handleAfter = delay ? handleDelay(delay) : new Date();
 
-    await this.#persistence.createTask(
-      { type: type as string, data },
-      handleAfter,
-      identifier,
-      tx,
-    );
+    await this.#persistence.createTask({ type: type as string, data }, handleAfter, identifier, tx);
   }
 
   /**

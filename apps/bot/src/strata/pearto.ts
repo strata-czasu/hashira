@@ -1,6 +1,8 @@
 import { TZDate } from "@date-fns/tz";
-import { Hashira } from "@hashira/core";
 import { startOfDay } from "date-fns";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "../base";
 import { STRATA_CZASU, TZ } from "../specializedConstants";
 import { Cooldown } from "../util/cooldown";
@@ -37,9 +39,7 @@ export const pearto = new Hashira({ name: "pearto" })
       },
     });
 
-    const threshold = [5000, 7000, 9000, 11000, 50000].filter(
-      (n) => n > todaysMessages,
-    )[0];
+    const threshold = [5000, 7000, 9000, 11000, 50000].filter((n) => n > todaysMessages)[0];
 
     if (!threshold) return;
 

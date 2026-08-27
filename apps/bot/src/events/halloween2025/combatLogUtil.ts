@@ -1,4 +1,3 @@
-import type { ExtendedPrismaClient } from "@hashira/db";
 import {
   ContainerBuilder,
   DiscordjsErrorCodes,
@@ -11,6 +10,9 @@ import {
   userMention,
 } from "discord.js";
 import { Effect } from "effect";
+
+import type { ExtendedPrismaClient } from "@hashira/db";
+
 import { discordTry } from "../../util/discordTry";
 import { splitLongContent } from "../../util/splitLongContent";
 import type { TurnSnapshot } from "./combatLog";
@@ -32,21 +34,16 @@ const createTurnDisplayComponents = (turnSnapshot: TurnSnapshot) => {
 
     const content = `${turnHeader}\n\n${combatantStats.join("\n\n")}`;
 
-    return [
-      new ContainerBuilder().addTextDisplayComponents((td) => td.setContent(content)),
-    ];
+    return [new ContainerBuilder().addTextDisplayComponents((td) => td.setContent(content))];
   }
 
   const combatantHpLines = turnSnapshot.combatants.map(
-    (combatant) =>
-      `- **${combatant.name}**: ${combatant.stats.hp}/${combatant.stats.maxHp} HP`,
+    (combatant) => `- **${combatant.name}**: ${combatant.stats.hp}/${combatant.stats.maxHp} HP`,
   );
 
   const hpStatus = combatantHpLines.join("\n");
   const events = turnSnapshot.events
-    .map((event) =>
-      event.type === "turn_start" ? `\n${event.message}` : event.message,
-    )
+    .map((event) => (event.type === "turn_start" ? `\n${event.message}` : event.message))
     .join("\n");
 
   const headerAndHp = `${turnHeader}\n\n${hpStatus}\n\n`;
@@ -59,9 +56,7 @@ const createTurnDisplayComponents = (turnSnapshot: TurnSnapshot) => {
         ? `${headerAndHp}${eventChunk}`
         : `## Tura ${turnSnapshot.turnNumber} (część ${index + 1}/${eventChunks.length})\n\n${eventChunk}`;
 
-    return new ContainerBuilder().addTextDisplayComponents((td) =>
-      td.setContent(content),
-    );
+    return new ContainerBuilder().addTextDisplayComponents((td) => td.setContent(content));
   });
 };
 
@@ -113,9 +108,7 @@ export const sendCombatlog = Effect.fn("sendCombatlog")(function* (
       new ContainerBuilder().addTextDisplayComponents((td) =>
         td.setContent(
           `## Wynik walki\n\n${
-            fight.state.result === "monster_captured"
-              ? "Potwór został pojmany!"
-              : "Potwór uciekł!"
+            fight.state.result === "monster_captured" ? "Potwór został pojmany!" : "Potwór uciekł!"
           }`,
         ),
       ),
@@ -138,16 +131,12 @@ export const sendCombatlog = Effect.fn("sendCombatlog")(function* (
     "",
     "Loot został przydzielony uczestnikom walki według zadanych obrażeń:",
     "",
-    ...loot.map(
-      (l) => `${l.rank}. ${userMention(l.userId)} - ${l.damageDealt} obrażeń`,
-    ),
+    ...loot.map((l) => `${l.rank}. ${userMention(l.userId)} - ${l.damageDealt} obrażeń`),
   ];
 
   yield* sendToThread(thread, {
     components: [
-      new ContainerBuilder().addTextDisplayComponents((td) =>
-        td.setContent(lines.join("\n")),
-      ),
+      new ContainerBuilder().addTextDisplayComponents((td) => td.setContent(lines.join("\n"))),
     ],
     flags: MessageFlags.IsComponentsV2,
   });

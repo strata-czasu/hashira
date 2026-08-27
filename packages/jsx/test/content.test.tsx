@@ -1,6 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { TimestampStyles } from "discord.js";
+
 import {
   Bold,
   Br,
@@ -29,8 +30,7 @@ describe("TextDisplay", () => {
   });
 
   it("renders text display with markdown", () => {
-    expect(<TextDisplay content="**Bold** and *italic* text with `code`" />)
-      .toMatchInlineSnapshot(`
+    expect(<TextDisplay content="**Bold** and *italic* text with `code`" />).toMatchInlineSnapshot(`
       TextDisplayBuilder {
         "data": {
           "content": "**Bold** and *italic* text with \`code\`",
@@ -41,9 +41,8 @@ describe("TextDisplay", () => {
   });
 
   it("renders text display with children as content", () => {
-    expect(
-      <TextDisplay>This is some text inside the TextDisplay component.</TextDisplay>,
-    ).toMatchInlineSnapshot(`
+    expect(<TextDisplay>This is some text inside the TextDisplay component.</TextDisplay>)
+      .toMatchInlineSnapshot(`
       TextDisplayBuilder {
         "data": {
           "content": "This is some text inside the TextDisplay component.",
@@ -84,9 +83,9 @@ describe("TextDisplay", () => {
   });
 
   it("renders text display throws if both content and children are provided", () => {
-    expect(() => (
-      <TextDisplay content="Content prop">Child content</TextDisplay>
-    )).toThrowError("TextDisplay cannot have both `content` prop and children");
+    expect(() => <TextDisplay content="Content prop">Child content</TextDisplay>).toThrowError(
+      "TextDisplay cannot have both `content` prop and children",
+    );
   });
 });
 
@@ -105,13 +104,8 @@ describe("Thumbnail", () => {
   });
 
   it("renders thumbnail with description and spoiler", () => {
-    expect(
-      <Thumbnail
-        url="https://example.com/secret.png"
-        description="A secret image"
-        spoiler
-      />,
-    ).toMatchInlineSnapshot(`
+    expect(<Thumbnail url="https://example.com/secret.png" description="A secret image" spoiler />)
+      .toMatchInlineSnapshot(`
       ThumbnailBuilder {
         "data": {
           "description": "A secret image",

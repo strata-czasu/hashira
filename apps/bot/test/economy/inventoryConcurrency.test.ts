@@ -1,7 +1,9 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { PrismaClient } from "@hashira/db";
-import { PrismaPg } from "@prisma/adapter-pg";
+
 import {
   UserInventoryLimitExceededError,
   UserPurchaseLimitExceededError,
@@ -50,12 +52,7 @@ const barrieredOn = (
 ): ExtendedPrismaClient =>
   client.$extends({
     query: {
-      async $allOperations({
-        model: queriedModel,
-        operation: queriedOperation,
-        args,
-        query,
-      }) {
+      async $allOperations({ model: queriedModel, operation: queriedOperation, args, query }) {
         if (queriedModel === model && queriedOperation === operation) await arrive();
         return query(args);
       },

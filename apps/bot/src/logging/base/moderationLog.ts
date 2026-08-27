@@ -1,5 +1,3 @@
-import { Hashira } from "@hashira/core";
-import type { ChannelRestriction, Mute, Warn } from "@hashira/db";
 import { type Duration, formatDuration } from "date-fns";
 import {
   bold,
@@ -12,6 +10,10 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+import type { ChannelRestriction, Mute, Warn } from "@hashira/db";
+
 import { formatMuteLength } from "../../moderation/util";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
@@ -78,32 +80,22 @@ const getBanLogContent = (
 export const moderationLog = new Hashira({ name: "moderationLog" }).const(
   "moderationLog",
   new Logger()
-    .addMessageType(
-      "warnCreate",
-      async ({ timestamp }, { warn, moderator }: WarnCreateData) => {
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(
-            `${getWarnLogHeader("Nadaje", warn)}\nPowód: ${italic(warn.reason)}`,
-          )
-          .setColor("Green");
-      },
-    )
+    .addMessageType("warnCreate", async ({ timestamp }, { warn, moderator }: WarnCreateData) => {
+      return getLogMessageEmbed(moderator, timestamp)
+        .setDescription(`${getWarnLogHeader("Nadaje", warn)}\nPowód: ${italic(warn.reason)}`)
+        .setColor("Green");
+    })
     .addMessageType(
       "warnRemove",
       async ({ timestamp }, { warn, moderator, removeReason }: WarnRemoveData) => {
         let content = `${getWarnLogHeader("Usuwa", warn)}\nPowód warna: ${italic(warn.reason)}`;
         if (removeReason) content += `\nPowód usunięcia: ${italic(removeReason)}`;
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(content)
-          .setColor("Red");
+        return getLogMessageEmbed(moderator, timestamp).setDescription(content).setColor("Red");
       },
     )
     .addMessageType(
       "warnEdit",
-      async (
-        { timestamp },
-        { warn, moderator, oldReason, newReason }: WarnEditData,
-      ) => {
+      async ({ timestamp }, { warn, moderator, oldReason, newReason }: WarnEditData) => {
         return getLogMessageEmbed(moderator, timestamp)
           .setDescription(
             `${getWarnLogHeader("Edytuje", warn)}\nStary powód: ${italic(oldReason)}\nNowy powód: ${italic(newReason)}`,
@@ -111,62 +103,43 @@ export const moderationLog = new Hashira({ name: "moderationLog" }).const(
           .setColor("Yellow");
       },
     )
-    .addMessageType(
-      "muteCreate",
-      async ({ timestamp }, { mute, moderator }: MuteCreateData) => {
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(
-            `${getMuteLogHeader("Nadaje", mute)}\nCzas trwania: ${formatMuteLength(mute)}\nKoniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}\nPowód: ${italic(mute.reason)}`,
-          )
-          .setColor("Green");
-      },
-    )
+    .addMessageType("muteCreate", async ({ timestamp }, { mute, moderator }: MuteCreateData) => {
+      return getLogMessageEmbed(moderator, timestamp)
+        .setDescription(
+          `${getMuteLogHeader("Nadaje", mute)}\nCzas trwania: ${formatMuteLength(mute)}\nKoniec: ${time(mute.endsAt, TimestampStyles.RelativeTime)}\nPowód: ${italic(mute.reason)}`,
+        )
+        .setColor("Green");
+    })
     .addMessageType(
       "muteRemove",
       async ({ timestamp }, { mute, moderator, removeReason }: MuteRemoveData) => {
         let content = `${getMuteLogHeader("Usuwa", mute)}\nPowód mute: ${italic(mute.reason)}`;
         if (removeReason) content += `\nPowód usunięcia: ${italic(removeReason)}`;
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(content)
-          .setColor("Yellow");
+        return getLogMessageEmbed(moderator, timestamp).setDescription(content).setColor("Yellow");
       },
     )
     .addMessageType(
       "muteEdit",
       async (
         { timestamp },
-        {
-          mute,
-          moderator,
-          oldReason,
-          newReason,
-          oldDuration,
-          newDuration,
-        }: MuteEditData,
+        { mute, moderator, oldReason, newReason, oldDuration, newDuration }: MuteEditData,
       ) => {
         let content = getMuteLogHeader("Edytuje", mute);
         if (newReason)
           content += `\nStary powód: ${italic(oldReason)}\nNowy powód: ${italic(newReason)}`;
         if (newDuration)
           content += `\nStary czas trwania: ${formatDuration(oldDuration)}\nNowy czas trwania: ${formatDuration(newDuration)}`;
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(content)
-          .setColor("Yellow");
+        return getLogMessageEmbed(moderator, timestamp).setDescription(content).setColor("Yellow");
       },
     )
     .addMessageType(
       "channelRestrictionCreate",
-      async (
-        { timestamp },
-        { restriction, moderator }: ChannelRestrictionCreateData,
-      ) => {
+      async ({ timestamp }, { restriction, moderator }: ChannelRestrictionCreateData) => {
         let content = `**Odbiera dostęp** ${channelMention(restriction.channelId)} dla ${userMention(restriction.userId)}`;
         if (restriction.endsAt)
           content += `\nKoniec: ${time(restriction.endsAt, TimestampStyles.RelativeTime)}`;
         content += `\nPowód: ${italic(restriction.reason)}`;
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(content)
-          .setColor("Orange");
+        return getLogMessageEmbed(moderator, timestamp).setDescription(content).setColor("Orange");
       },
     )
     .addMessageType(
@@ -179,18 +152,14 @@ export const moderationLog = new Hashira({ name: "moderationLog" }).const(
           restriction.channelId,
         )} dla ${userMention(restriction.userId)}`;
         if (removeReason) content += `\nPowód przywrócenia: ${italic(removeReason)}`;
-        return getLogMessageEmbed(moderator, timestamp)
-          .setDescription(content)
-          .setColor("Green");
+        return getLogMessageEmbed(moderator, timestamp).setDescription(content).setColor("Green");
       },
     )
     .addMessageType(
       "guildBanAdd",
       async ({ timestamp }, { reason, user, moderator }: GuildBanAddData) => {
         const content = getBanLogContent("Otrzymuje bana", reason, moderator);
-        const embed = getLogMessageEmbed(user, timestamp)
-          .setDescription(content)
-          .setColor("Red");
+        const embed = getLogMessageEmbed(user, timestamp).setDescription(content).setColor("Red");
         return embed;
       },
     )
@@ -198,9 +167,7 @@ export const moderationLog = new Hashira({ name: "moderationLog" }).const(
       "guildBanRemove",
       async ({ timestamp }, { reason, user, moderator }: GuildBanRemoveData) => {
         const content = getBanLogContent("Otrzymuje unbana", reason, moderator);
-        const embed = getLogMessageEmbed(user, timestamp)
-          .setDescription(content)
-          .setColor("Green");
+        const embed = getLogMessageEmbed(user, timestamp).setDescription(content).setColor("Green");
         return embed;
       },
     ),

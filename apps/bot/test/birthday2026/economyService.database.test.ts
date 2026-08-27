@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient, type PrismaTransaction } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient, type PrismaTransaction } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
   digestBirthday2026FeedBatch,
@@ -87,10 +89,7 @@ const createFixture = async (digestionDelaySeconds: number) => {
   };
 };
 
-const scheduleDigestion = async (
-  tx: PrismaTransaction,
-  batch: { id: number; digestAt: Date },
-) => {
+const scheduleDigestion = async (tx: PrismaTransaction, batch: { id: number; digestAt: Date }) => {
   const task = await tx.task.create({
     data: {
       identifier: batch.id.toString(),
@@ -246,10 +245,7 @@ databaseTests("Birthday 2026 economy services", () => {
     const restartedPrisma = new PrismaClient({
       adapter: new PrismaPg({ connectionString }),
     });
-    const digestion = await digestBirthday2026FeedBatch(
-      restartedPrisma,
-      digestionInput,
-    );
+    const digestion = await digestBirthday2026FeedBatch(restartedPrisma, digestionInput);
     await restartedPrisma.$disconnect();
     expect(digestion).toMatchObject({
       ok: true,
@@ -323,9 +319,7 @@ databaseTests("Birthday 2026 economy services", () => {
     );
     expect(results.filter((result) => result.ok)).toHaveLength(1);
     expect(
-      results.filter(
-        (result) => !result.ok && result.reason === "insufficient_balance",
-      ),
+      results.filter((result) => !result.ok && result.reason === "insufficient_balance"),
     ).toHaveLength(1);
 
     const wallet = await prisma.wallet.findFirstOrThrow({

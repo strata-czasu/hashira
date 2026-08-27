@@ -4,6 +4,7 @@ import {
   Prisma,
   type PrismaTransaction,
 } from "@hashira/db";
+
 import {
   BIRTHDAY2026_REGISTRATION_ACTIVITY_DAYS,
   getBirthday2026RegistrationState,
@@ -11,10 +12,7 @@ import {
 } from "./eventState";
 import { planBirthday2026TeamAssignments } from "./teamService";
 
-const lockBirthday2026RegistrationConfig = async (
-  prisma: PrismaTransaction,
-  guildId: string,
-) => {
+const lockBirthday2026RegistrationConfig = async (prisma: PrismaTransaction, guildId: string) => {
   const [config] = await prisma.$queryRaw<{ id: number }[]>(Prisma.sql`
     SELECT "id"
     FROM "Birthday2026Config"
@@ -55,15 +53,10 @@ export const registerBirthday2026Participant = async (
     if (config.settlement || getBirthday2026RegistrationState(config, now) !== "open") {
       return { ok: false, reason: "registration_closed" } as const;
     }
-    if (
-      config.teams.length === 0 ||
-      config.teams.some((team) => !team.identity || !team.persona)
-    ) {
+    if (config.teams.length === 0 || config.teams.some((team) => !team.identity || !team.persona)) {
       return { ok: false, reason: "teams_not_ready" } as const;
     }
-    if (
-      config.teams.some((team) => team.memberStates.some((m) => m.userId === userId))
-    ) {
+    if (config.teams.some((team) => team.memberStates.some((m) => m.userId === userId))) {
       return { ok: false, reason: "already_assigned" } as const;
     }
     const result = await tx.birthday2026Registration.createMany({
@@ -105,13 +98,9 @@ export const registerBirthday2026Participant = async (
       ],
       random,
     );
-    const assignment = plan.assignments.find(
-      (candidate) => candidate.userId === userId,
-    );
+    const assignment = plan.assignments.find((candidate) => candidate.userId === userId);
     if (!assignment) throw new Error("Failed to assign Birthday 2026 participant");
-    const team = config.teams.find(
-      (candidate) => candidate.id === assignment.teamConfigId,
-    );
+    const team = config.teams.find((candidate) => candidate.id === assignment.teamConfigId);
     if (!team) throw new Error("Assigned an unknown Birthday 2026 team");
 
     await tx.birthday2026MemberState.create({
@@ -180,9 +169,7 @@ const getActivityEstimates = async (
   analysisStartAt: Date,
   analysisEndAt: Date,
 ) => {
-  const rows = await prisma.$queryRaw<
-    { userId: string; activityEstimate: number }[]
-  >(Prisma.sql`
+  const rows = await prisma.$queryRaw<{ userId: string; activityEstimate: number }[]>(Prisma.sql`
     WITH participants AS (
       SELECT "userId"
       FROM "Birthday2026Registration"
@@ -317,9 +304,7 @@ export const finalizeBirthday2026Registration = async (
         analysisStartAt,
         analysisEndAt,
       );
-      const memberIds = new Set(
-        config.registrations.map((registration) => registration.userId),
-      );
+      const memberIds = new Set(config.registrations.map((registration) => registration.userId));
       for (const team of config.teams) {
         for (const member of team.memberStates) {
           memberIds.add(member.userId);
@@ -331,8 +316,7 @@ export const finalizeBirthday2026Registration = async (
         [...memberIds].map((userId) => {
           const fixedTeam = config.teams.find(
             (team) =>
-              team.identity?.captainUserId === userId ||
-              team.identity?.tucznikUserId === userId,
+              team.identity?.captainUserId === userId || team.identity?.tucznikUserId === userId,
           );
           return {
             userId,
@@ -365,16 +349,12 @@ export const finalizeBirthday2026Registration = async (
       return {
         ok: true,
         assignments: plan.assignments.map((assignment) => {
-          const team = config.teams.find(
-            (candidate) => candidate.id === assignment.teamConfigId,
-          );
+          const team = config.teams.find((candidate) => candidate.id === assignment.teamConfigId);
           if (!team) throw new Error("Planned an unknown Birthday 2026 team");
           return { ...assignment, roleId: team.roleId };
         }),
         teams: plan.teams.map((plannedTeam) => {
-          const team = config.teams.find(
-            (candidate) => candidate.id === plannedTeam.teamConfigId,
-          );
+          const team = config.teams.find((candidate) => candidate.id === plannedTeam.teamConfigId);
           if (!team) throw new Error("Planned an unknown Birthday 2026 team");
           return { ...plannedTeam, roleId: team.roleId };
         }),

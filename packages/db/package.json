@@ -1,12 +1,12 @@
 {
   "name": "@hashira/db",
+  "type": "module",
   "module": "index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./transaction": "./src/transaction.ts"
   },
-  "type": "module",
   "scripts": {
     "prisma-studio": "prisma studio",
     "prisma-generate": "prisma generate",
@@ -15,9 +15,6 @@
     "prisma-reset": "prisma migrate reset",
     "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --script --exit-code --from-schema ./prisma/ --to-config-datasource",
     "typecheck": "tsgo"
-  },
-  "devDependencies": {
-    "@faker-js/faker": "^10.0.0"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
@@ -30,5 +27,8 @@
     "pg": "^8.15.6",
     "postgres": "^3.4.5",
     "prisma": "^7.8.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.0.0"
   }
 }

@@ -7,10 +7,9 @@ import type {
 
 export type JSXRecord = { children?: JSXNode };
 
-export type ComponentFunction<
-  P extends JSXRecord = JSXRecord,
-  R extends JSXNode = JSXNode,
-> = (props: P) => R;
+export type ComponentFunction<P extends JSXRecord = JSXRecord, R extends JSXNode = JSXNode> = (
+  props: P,
+) => R;
 
 export const vnodeMarker = Symbol.for("vnode");
 
@@ -22,17 +21,15 @@ export interface VNode<P extends JSXRecord, R extends JSXNode> {
 }
 
 export function isVNode(value: unknown): value is VNode<JSXRecord, JSXNode> {
-  return (
-    typeof value === "object" && value !== null && Object.hasOwn(value, vnodeMarker)
-  );
+  return typeof value === "object" && value !== null && Object.hasOwn(value, vnodeMarker);
 }
 
 export const hostMarker = Symbol.for("host-component");
 
-export interface HostComponent<
-  P extends JSXRecord,
-  R extends JSXNode,
-> extends ComponentFunction<P, R> {
+export interface HostComponent<P extends JSXRecord, R extends JSXNode> extends ComponentFunction<
+  P,
+  R
+> {
   readonly [hostMarker]: true;
 }
 

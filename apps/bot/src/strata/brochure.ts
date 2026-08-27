@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { type GuildMember, type PartialGuildMember, userMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { BROCHURE_ROLES } from "../specializedConstants";
 import { getGuildSetting } from "../util/getGuildSetting";
 import { sendDirectMessage } from "../util/sendDirectMessage";
@@ -25,19 +27,13 @@ export const brochure = new Hashira({ name: "brochure" }).handle(
     if (!brochureRoles) return;
 
     if (addedRole(oldMember, newMember, brochureRoles.FEMALE)) {
-      const message = formatGenderChannelMessage(
-        newMember,
-        "https://i.imgur.com/qETLkML.png",
-      );
+      const message = formatGenderChannelMessage(newMember, "https://i.imgur.com/qETLkML.png");
       await sendDirectMessage(newMember.user, message);
       return;
     }
 
     if (addedRole(oldMember, newMember, brochureRoles.MALE)) {
-      const message = formatGenderChannelMessage(
-        newMember,
-        "https://i.imgur.com/h97Vub1.png",
-      );
+      const message = formatGenderChannelMessage(newMember, "https://i.imgur.com/h97Vub1.png");
       await sendDirectMessage(newMember.user, message);
       return;
     }

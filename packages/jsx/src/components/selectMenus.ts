@@ -9,6 +9,7 @@ import {
   StringSelectMenuOptionBuilder,
   UserSelectMenuBuilder,
 } from "discord.js";
+
 import { markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
 
@@ -105,9 +106,7 @@ export const StringSelectMenu = markAsHost(function StringSelectMenu(
 
   if (props.children) {
     if (!Array.isArray(props.children)) {
-      throw new Error(
-        "StringSelect children must be an array of StringSelectOption components",
-      );
+      throw new Error("StringSelect children must be an array of StringSelectOption components");
     }
 
     const options = props.children.filter(
@@ -122,9 +121,7 @@ export const StringSelectMenu = markAsHost(function StringSelectMenu(
 export const StringSelectOption = markAsHost(function StringSelectOption(
   props: OptionProps,
 ): StringSelectMenuOptionBuilder {
-  const option = new StringSelectMenuOptionBuilder()
-    .setLabel(props.label)
-    .setValue(props.value);
+  const option = new StringSelectMenuOptionBuilder().setLabel(props.label).setValue(props.value);
 
   if (props.description) option.setDescription(props.description);
   if (props.emoji) option.setEmoji(props.emoji);

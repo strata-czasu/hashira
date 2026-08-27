@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { numberToEmoji } from "../src/util/numberToEmoji";
 
 describe("numberToEmoji", () => {

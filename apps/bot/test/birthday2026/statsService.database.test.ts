@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient, type PrismaTransaction } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient, type PrismaTransaction } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
   feedBirthday2026Pig,
@@ -211,12 +213,8 @@ databaseTests("Birthday 2026 staff stats", () => {
     if (!result.ok) throw new Error(result.reason);
     const { stats } = result;
 
-    const alpha = stats.teams.find(
-      (team) => team.teamConfigId === alphaTeamResult.team.id,
-    );
-    const beta = stats.teams.find(
-      (team) => team.teamConfigId === betaTeamResult.team.id,
-    );
+    const alpha = stats.teams.find((team) => team.teamConfigId === alphaTeamResult.team.id);
+    const beta = stats.teams.find((team) => team.teamConfigId === betaTeamResult.team.id);
     expect(alpha).toMatchObject({
       memberCount: 1,
       permanentWeight: 0,

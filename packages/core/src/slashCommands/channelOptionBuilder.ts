@@ -7,6 +7,7 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandChannelOption,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 // ChannelType.GuildText, ChannelType.GuildVoice, ChannelType.GuildCategory, ChannelType.GuildAnnouncement, ChannelType.AnnouncementThread, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.GuildStageVoice, ChannelType.GuildForum, ChannelType.GuildMedia
@@ -29,9 +30,7 @@ export class ChannelOptionBuilder<
     return this as ReturnType<typeof this.setChannelType>;
   }
 
-  setDescription(
-    description: string,
-  ): ChannelOptionBuilder<ChannelType, true, Required> {
+  setDescription(description: string): ChannelOptionBuilder<ChannelType, true, Required> {
     this.#builder.setDescription(description);
     return this as ReturnType<typeof this.setDescription>;
   }
@@ -48,15 +47,10 @@ export class ChannelOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     if (interaction.isAutocomplete()) return null as this["_"]["type"];
-    return interaction.options.getChannel(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getChannel(name, this.#builder.required) as this["_"]["type"];
   }
 }

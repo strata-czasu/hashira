@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
 import {
@@ -188,9 +190,7 @@ databaseTests("Birthday 2026 text earning", () => {
       changed: true,
       channelIds: ["disabled-channel", "another-disabled-channel"],
     });
-    expect(await findBirthday2026DisabledTextChannels(prisma, fixture.guildId)).toEqual(
-      [],
-    );
+    expect(await findBirthday2026DisabledTextChannels(prisma, fixture.guildId)).toEqual([]);
   });
 
   it("awards one Pasza per fixed window exactly once", async () => {
@@ -247,9 +247,7 @@ databaseTests("Birthday 2026 text earning", () => {
         where: { configId: fixture.config.id, source: "textActivity" },
       }),
     ).toBe(2);
-    expect(
-      await getBirthday2026TextEarningDiagnostics(prisma, fixture.guildId),
-    ).toEqual({
+    expect(await getBirthday2026TextEarningDiagnostics(prisma, fixture.guildId)).toEqual({
       windowSeconds: 300,
       dailyCap: 24,
       awardedTransactions: 2,
@@ -264,9 +262,10 @@ databaseTests("Birthday 2026 text earning", () => {
         dailyCap: 12,
       }),
     ).toMatchObject({ ok: true, config: { windowSeconds: 600, dailyCap: 12 } });
-    expect(
-      await getBirthday2026TextEarningDiagnostics(prisma, fixture.guildId),
-    ).toMatchObject({ windowSeconds: 600, dailyCap: 12 });
+    expect(await getBirthday2026TextEarningDiagnostics(prisma, fixture.guildId)).toMatchObject({
+      windowSeconds: 600,
+      dailyCap: 12,
+    });
   });
 
   it("enforces the daily cap atomically across concurrent windows", async () => {
@@ -279,16 +278,12 @@ databaseTests("Birthday 2026 text earning", () => {
           guildId: fixture.guildId,
           userId: fixture.memberUserId,
           channelId: "general",
-          occurredAt: new Date(
-            new Date("2026-08-01T18:00:00Z").getTime() + index * 300_000,
-          ),
+          occurredAt: new Date(new Date("2026-08-01T18:00:00Z").getTime() + index * 300_000),
         }),
       ),
     );
 
-    expect(
-      results.filter((result) => result.ok && result.status === "awarded"),
-    ).toHaveLength(2);
+    expect(results.filter((result) => result.ok && result.status === "awarded")).toHaveLength(2);
     expect(
       results.filter((result) => !result.ok && result.reason === "daily_cap_reached"),
     ).toHaveLength(8);
@@ -331,12 +326,8 @@ databaseTests("Birthday 2026 text earning", () => {
       Array.from({ length: 10 }, () => awardBirthday2026TextPasza(prisma, input)),
     );
 
-    expect(
-      results.filter((result) => result.ok && result.status === "awarded"),
-    ).toHaveLength(1);
-    expect(
-      results.filter((result) => result.ok && result.status === "duplicate"),
-    ).toHaveLength(9);
+    expect(results.filter((result) => result.ok && result.status === "awarded")).toHaveLength(1);
+    expect(results.filter((result) => result.ok && result.status === "duplicate")).toHaveLength(9);
 
     const dailyState = await prisma.birthday2026DailyTextEarning.findUniqueOrThrow({
       where: {

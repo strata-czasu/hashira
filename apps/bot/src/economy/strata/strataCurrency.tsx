@@ -1,7 +1,3 @@
-import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
-import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
-import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
-import { PaginatorOrder } from "@hashira/paginate";
 import {
   bold,
   italic,
@@ -11,6 +7,12 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
+import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
+import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
@@ -34,15 +36,7 @@ function Field({ name, value }: FieldProps) {
   return <TextDisplay content={`${bold(name)}\n${value}`} />;
 }
 
-function BalanceCard({
-  title,
-  user,
-  wallet,
-}: {
-  title: string;
-  user: User;
-  wallet: Wallet;
-}) {
+function BalanceCard({ title, user, wallet }: { title: string; user: User; wallet: Wallet }) {
   return (
     <Container>
       <TextDisplay>
@@ -101,10 +95,7 @@ function BulkOperationReport({
       <TextDisplay>
         <H3>{heading}</H3>
       </TextDisplay>
-      <Field
-        name="Kwota na użytkownika"
-        value={formatBalance(amountPerUser, CURRENCY_SYMBOL)}
-      />
+      <Field name="Kwota na użytkownika" value={formatBalance(amountPerUser, CURRENCY_SYMBOL)} />
       {recipientCount > 1 && (
         <Field
           name={`Łącznie (${recipientCount} ${pluralizers.users(recipientCount)})`}
@@ -113,15 +104,9 @@ function BulkOperationReport({
       )}
       {reason && <Field name="Powód" value={italic(reason)} />}
       {remainingBalance !== null && (
-        <Field
-          name="Saldo po operacji"
-          value={formatBalance(remainingBalance, CURRENCY_SYMBOL)}
-        />
+        <Field name="Saldo po operacji" value={formatBalance(remainingBalance, CURRENCY_SYMBOL)} />
       )}
-      <Field
-        name={`Odbiorcy (${recipientCount})`}
-        value={recipientMentions.join(", ")}
-      />
+      <Field name={`Odbiorcy (${recipientCount})`} value={recipientMentions.join(", ")} />
     </Container>
   );
 }
@@ -136,9 +121,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
         command
           .setDescription("Sprawdź swoje punkty")
           .addUser("użytkownik", (option) =>
-            option
-              .setDescription("Użytkownik, którego punkty chcesz sprawdzić")
-              .setRequired(false),
+            option.setDescription("Użytkownik, którego punkty chcesz sprawdzić").setRequired(false),
           )
           .handle(async ({ prisma }, { użytkownik: user }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -171,9 +154,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
         command
           .setDescription("Sprawdź historię transakcji punktów")
           .addUser("użytkownik", (option) =>
-            option
-              .setDescription("Użytkownik, którego punkty chcesz sprawdzić")
-              .setRequired(false),
+            option.setDescription("Użytkownik, którego punkty chcesz sprawdzić").setRequired(false),
           )
           .handle(async ({ prisma }, { użytkownik: user }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -232,18 +213,13 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
-              const members = await fetchMembers(
-                itx.guild,
-                parseUserMentions(rawMembers),
-              );
+              const members = await fetchMembers(itx.guild, parseUserMentions(rawMembers));
               if (members.size === 0) {
                 await errorFollowUp(itx, "Nie znaleziono podanych użytkowników.");
                 return;
               }
 
-              const recipientIds = [...new Set(members.keys())].filter(
-                (id) => id !== itx.user.id,
-              );
+              const recipientIds = [...new Set(members.keys())].filter((id) => id !== itx.user.id);
               if (recipientIds.length === 0) {
                 await errorFollowUp(itx, "Nie możesz przekazać punktów samemu sobie.");
                 return;
@@ -347,9 +323,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
     command
       .setDescription("Dodaj punkty użytkownikowi/użytkownikom")
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
-      .addInteger("ilość", (option) =>
-        option.setDescription("Ilość punktów do dodania"),
-      )
+      .addInteger("ilość", (option) => option.setDescription("Ilość punktów do dodania"))
       .addString("użytkownicy", (option) =>
         option.setDescription("Użytkownicy, którym chcesz dodać punkty"),
       )
@@ -395,9 +369,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           );
 
           if (!confirmed) {
-            await itx.editReply(
-              render(<TextDisplay content="Anulowano dodawanie punktów." />),
-            );
+            await itx.editReply(render(<TextDisplay content="Anulowano dodawanie punktów." />));
             return;
           }
 

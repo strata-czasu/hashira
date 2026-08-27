@@ -71,9 +71,7 @@ export const guildScheduledEventsEvents = [
   "guildScheduledEventUserRemove",
 ] as const;
 
-export const autoModerationActionExecutionEvents = [
-  "autoModerationActionExecution",
-] as const;
+export const autoModerationActionExecutionEvents = ["autoModerationActionExecution"] as const;
 
 export const guildIntegrationsEvents = ["guildIntegrationsUpdate"] as const;
 export const guildMessageTypingEvents = ["typingStart"] as const;

@@ -1,4 +1,3 @@
-import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
   channelMention,
@@ -10,6 +9,9 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
@@ -19,9 +21,7 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
   .use(base)
   .command("donos", (command) =>
     command
-      .setDescription(
-        "Ciche zgłoszenie do moderacji (użyj na kanale, gdzie wystąpił problem)",
-      )
+      .setDescription("Ciche zgłoszenie do moderacji (użyj na kanale, gdzie wystąpił problem)")
       .setDMPermission(false)
       .handle(async (_ctx, _, itx) => {
         if (!itx.inCachedGuild()) return;
@@ -94,10 +94,7 @@ export const userComplaint = new Hashira({ name: "user-complaint" })
         const messageInfo = submitAction.fields.getTextInputValue("messageInfo");
 
         if (!content || !target || !messageInfo) {
-          return await errorFollowUp(
-            submitAction,
-            "Nie podano wszystkich wymaganych danych!",
-          );
+          return await errorFollowUp(submitAction, "Nie podano wszystkich wymaganych danych!");
         }
 
         const channel = await discordTry(

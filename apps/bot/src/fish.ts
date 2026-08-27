@@ -1,5 +1,3 @@
-import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
 import { sleep } from "bun";
 import { addMinutes, isAfter, secondsToMilliseconds } from "date-fns";
 import {
@@ -12,6 +10,10 @@ import {
   time,
 } from "discord.js";
 import { randomInt } from "es-toolkit";
+
+import { Hashira } from "@hashira/core";
+import type { ExtendedPrismaClient } from "@hashira/db";
+
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
@@ -48,10 +50,7 @@ export type ItemTableEntry = {
   readonly weight: number;
 };
 
-export const getItemById = (
-  table: readonly ItemTableEntry[],
-  id: number,
-): ItemRoll | null => {
+export const getItemById = (table: readonly ItemTableEntry[], id: number): ItemRoll | null => {
   const item = table.find((entry) => entry.id === id);
   if (!item) return null;
 
@@ -65,9 +64,8 @@ export const getItemById = (
   };
 };
 
-export const getRandomItem = <T extends readonly [ItemTableEntry, ...ItemTableEntry[]]>(
-  table: T,
-) => weightedRandom(table, (item) => item.weight);
+export const getRandomItem = <T extends readonly [ItemTableEntry, ...ItemTableEntry[]]>(table: T) =>
+  weightedRandom(table, (item) => item.weight);
 
 const eelTail = "<:we:1496502297331503225>";
 const eelBody = "<:go:1496502347579265055>";
@@ -80,8 +78,7 @@ const makeEel = (minAmount: number, maxAmount: number, amount: number) => {
   return eelTail + eelBody.repeat(length) + eelHead;
 };
 
-const lizardFish =
-  "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
+const lizardFish = "<:ryboszczurka1:1393271454547710223><:ryboszczurka2:1393271478111309834>";
 const catFish = "<:kotoryba1:1370101554425630821><:kotoryba2:1370109036279894108>";
 const halloweenCarp = "<:jpipbpipny:1431461464635342979><:karas:1431461466132840518>";
 const xmasCarp = "<:wigilijny:1445359371549802556><:karp:1445359373307347014>";
@@ -124,11 +121,7 @@ export const fish = new Hashira({ name: "fish" })
 
         await ensureUserExists(prisma, itx.user);
 
-        const [canFish, nextFishing] = await checkIfCanFish(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const [canFish, nextFishing] = await checkIfCanFish(prisma, itx.user.id, itx.guildId);
 
         if (!canFish) {
           await itx.editReply({

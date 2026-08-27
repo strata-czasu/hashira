@@ -1,6 +1,3 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
-import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
-import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
 import {
   type AutocompleteInteraction,
   type ButtonInteraction,
@@ -16,6 +13,11 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
+
 import { base } from "../base";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -278,8 +280,7 @@ const getEffectiveCurrencySymbol = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
   override?: string | null,
-): Promise<string | null> =>
-  override ? override : getGuildDefaultCurrencySymbol(prisma, guildId);
+): Promise<string | null> => (override ? override : getGuildDefaultCurrencySymbol(prisma, guildId));
 
 async function autocompleteCurrencies({
   prisma,
@@ -380,9 +381,7 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów w sklepie")
-          .addBoolean("id", (id) =>
-            id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
-          )
+          .addBoolean("id", (id) => id.setDescription("Wyświetl ID przedmiotów").setRequired(false))
           .addString("waluta", (waluta) =>
             waluta
               .setDescription("Waluta, w której chcesz zobaczyć sklep")
@@ -398,11 +397,7 @@ export const shop = new Hashira({ name: "shop" })
             await itx.deferReply();
 
             const showId = maybeShowId ?? false;
-            const currencySymbol = await getEffectiveCurrencySymbol(
-              prisma,
-              itx.guildId,
-              waluta,
-            );
+            const currencySymbol = await getEffectiveCurrencySymbol(prisma, itx.guildId, waluta);
 
             if (!currencySymbol) {
               await errorFollowUp(
@@ -438,11 +433,7 @@ export const shop = new Hashira({ name: "shop" })
               paginator,
               "Sklep",
               (shopItem, _idx, active) => (
-                <ShopItemComponent
-                  shopItem={shopItem}
-                  showId={showId}
-                  active={active}
-                />
+                <ShopItemComponent shopItem={shopItem} showId={showId} active={active} />
               ),
               false,
               null,
@@ -461,10 +452,7 @@ export const shop = new Hashira({ name: "shop" })
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
           .addInteger("ilość", (amount) =>
-            amount
-              .setDescription("Ilość przedmiotów")
-              .setRequired(false)
-              .setMinValue(1),
+            amount.setDescription("Ilość przedmiotów").setRequired(false).setMinValue(1),
           )
           .addString("waluta", (waluta) =>
             waluta
@@ -500,9 +488,7 @@ export const shop = new Hashira({ name: "shop" })
         command
           .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .addInteger("price", (price) =>
-            price.setDescription("Cena przedmiotu").setMinValue(0),
-          )
+          .addInteger("price", (price) => price.setDescription("Cena przedmiotu").setMinValue(0))
           .addInteger("global-stock", (stock) =>
             stock
               .setDescription("Globalny limit sztuk (puste = bez limitu)")
@@ -528,13 +514,7 @@ export const shop = new Hashira({ name: "shop" })
           .handle(
             async (
               { prisma },
-              {
-                id,
-                price,
-                "global-stock": globalStock,
-                "user-limit": userPurchaseLimit,
-                currency,
-              },
+              { id, price, "global-stock": globalStock, "user-limit": userPurchaseLimit, currency },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
@@ -603,10 +583,7 @@ export const shop = new Hashira({ name: "shop" })
               await itx.editReply(`Usunięto ${formatItem(shopItem.item)} ze sklepu`);
             } catch (error) {
               if (error instanceof ShopItemNotFoundError) {
-                await errorFollowUp(
-                  itx,
-                  "Nie znaleziono przedmiotu w sklepie o podanym ID",
-                );
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
               } else {
                 throw error;
               }
@@ -620,10 +597,7 @@ export const shop = new Hashira({ name: "shop" })
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
           .addInteger("price", (price) =>
-            price
-              .setDescription("Nowa cena przedmiotu")
-              .setRequired(false)
-              .setMinValue(0),
+            price.setDescription("Nowa cena przedmiotu").setRequired(false).setMinValue(0),
           )
           .addInteger("global-stock", (stock) =>
             stock
@@ -656,11 +630,7 @@ export const shop = new Hashira({ name: "shop" })
               await itx.deferReply();
 
               // Check if at least one field is being updated
-              if (
-                price === null &&
-                globalStock === null &&
-                userPurchaseLimit === null
-              ) {
+              if (price === null && globalStock === null && userPurchaseLimit === null) {
                 await errorFollowUp(itx, "Nie podano żadnych zmian do wprowadzenia");
                 return;
               }
@@ -680,10 +650,7 @@ export const shop = new Hashira({ name: "shop" })
                 );
               } catch (error) {
                 if (error instanceof ShopItemNotFoundError) {
-                  await errorFollowUp(
-                    itx,
-                    "Nie znaleziono przedmiotu w sklepie o podanym ID",
-                  );
+                  await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
                 } else if (error instanceof InvalidStockError) {
                   await errorFollowUp(
                     itx,
@@ -717,10 +684,7 @@ export const shop = new Hashira({ name: "shop" })
             });
 
             if (!shopItem) {
-              await errorFollowUp(
-                itx,
-                "Nie znaleziono przedmiotu w sklepie o podanym ID",
-              );
+              await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
               return;
             }
 

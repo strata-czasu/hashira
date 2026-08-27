@@ -1,10 +1,4 @@
-import {
-  channelMention,
-  EmbedBuilder,
-  escapeMarkdown,
-  type RGBTuple,
-} from "@discordjs/builders";
-import { Hashira } from "@hashira/core";
+import { channelMention, EmbedBuilder, escapeMarkdown, type RGBTuple } from "@discordjs/builders";
 import {
   ActionRowBuilder,
   ChannelType,
@@ -16,6 +10,9 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
 import {
@@ -167,44 +164,30 @@ export const propositions = new Hashira({ name: "propositions" })
             else if (type === "questions") change.questionsChannelId = channel.id;
             else return errorFollowUp(itx, "Nieprawidłowy typ kanału");
 
-            await prisma.$transaction((tx) =>
-              updateGuildSettingsMeta(tx, itx.guildId, change),
-            );
+            await prisma.$transaction((tx) => updateGuildSettingsMeta(tx, itx.guildId, change));
 
             const chanenlType =
-              type === "propositions"
-                ? "propozycji"
-                : type === "complaints"
-                  ? "skarg"
-                  : "pytań";
+              type === "propositions" ? "propozycji" : type === "complaints" ? "skarg" : "pytań";
 
-            await itx.reply(
-              `Kanał do ${chanenlType} ustawiony na ${channelMention(channel.id)}`,
-            );
+            await itx.reply(`Kanał do ${chanenlType} ustawiony na ${channelMention(channel.id)}`);
           }),
       )
       .addCommand("emojis", (cmd) =>
         cmd
           .setDescription("Ustaw emoji, którę będą używane pod propozycjami")
           .addString("text", (input) =>
-            input.setDescription(
-              "Wprowadź emoji po kolei, oddzielone przecinkami, np. 👍,👎",
-            ),
+            input.setDescription("Wprowadź emoji po kolei, oddzielone przecinkami, np. 👍,👎"),
           )
           .handle(async ({ prisma }, { text }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const emojis = text.split(",").map((emoji) => emoji.trim());
 
-            if (emojis.length === 0)
-              return errorFollowUp(itx, "Nie podano żadnych emoji");
+            if (emojis.length === 0) return errorFollowUp(itx, "Nie podano żadnych emoji");
             if (emojis.length >= 10) return errorFollowUp(itx, "Podano za dużo emoji");
             const message = await itx.channel?.send("Checking if emojis are valid...");
             if (!message)
-              return errorFollowUp(
-                itx,
-                "Couldn't send message to check emoji validity",
-              );
+              return errorFollowUp(itx, "Couldn't send message to check emoji validity");
 
             for (const emoji of emojis) {
               if (!(await isEmojiValid(emoji, message))) {
@@ -217,9 +200,7 @@ export const propositions = new Hashira({ name: "propositions" })
 
             const changes: GuildSettingsMetaUpdates = { propositionsEmojis: emojis };
 
-            await prisma.$transaction((tx) =>
-              updateGuildSettingsMeta(tx, itx.guildId, changes),
-            );
+            await prisma.$transaction((tx) => updateGuildSettingsMeta(tx, itx.guildId, changes));
 
             await itx.reply(`Emoji propozycji ustawione na ${emojis.join(", ")}`);
           }),
@@ -250,10 +231,7 @@ export const propositions = new Hashira({ name: "propositions" })
               !meta.questionsChannelId ||
               !meta.propositionsEmojis
             ) {
-              return errorFollowUp(
-                itx,
-                "To nie powinno się zdarzyć, ale coś poszło nie tak",
-              );
+              return errorFollowUp(itx, "To nie powinno się zdarzyć, ale coś poszło nie tak");
             }
             await itx.reply(
               [

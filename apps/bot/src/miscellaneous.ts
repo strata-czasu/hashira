@@ -1,11 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-  type Prisma,
-  type Task,
-} from "@hashira/db";
-import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -23,6 +15,11 @@ import {
   time,
 } from "discord.js";
 import { isNil, isNotNil } from "es-toolkit";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator, type ExtendedPrismaClient, type Prisma, type Task } from "@hashira/db";
+import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
+
 import { base } from "./base";
 import { WalletCreationError } from "./economy/economyError";
 import { getCurrency } from "./economy/managers/currencyManager";
@@ -81,9 +78,7 @@ const importWalletBalancesChunk = async (
       data: { default: true },
     });
 
-    const walletIdByUserId = new Map(
-      wallets.map((wallet) => [wallet.userId, wallet.id]),
-    );
+    const walletIdByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet.id]));
 
     const walletAmounts: { walletId: number; amount: number }[] = [];
     for (const { userId, amount } of rows) {
@@ -227,9 +222,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
       .addCommand("parse-statbot", (command) =>
         command
           .setDescription("Parse a Statbot output")
-          .addAttachment("csv", (option) =>
-            option.setDescription("The CSV file to parse"),
-          )
+          .addAttachment("csv", (option) => option.setDescription("The CSV file to parse"))
           .handle(async (_, { csv }, itx) => {
             if (csv.size > 100_000) return;
             const content = await fetch(csv.url).then((res) => res.text());
@@ -239,8 +232,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             if (!header) return errorFollowUp(itx, "Plik CSV jest pusty");
 
             const idIndex = header.split(",").indexOf("id");
-            if (idIndex === -1)
-              return errorFollowUp(itx, "Nie znaleziono kolumny 'id'");
+            if (idIndex === -1) return errorFollowUp(itx, "Nie znaleziono kolumny 'id'");
 
             const ids = lines.slice(1).map((line) => {
               const parts = line.split(",");
@@ -257,12 +249,8 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
       .addCommand("add-role", (command) =>
         command
           .setDescription("Add a role to a list of users")
-          .addAttachment("users", (option) =>
-            option.setDescription("The users to add the role to"),
-          )
-          .addRole("role", (option) =>
-            option.setDescription("The role to add to the user"),
-          )
+          .addAttachment("users", (option) => option.setDescription("The users to add the role to"))
+          .addRole("role", (option) => option.setDescription("The role to add to the user"))
           .handle(async (_, { users, role }, itx) => {
             // Don't allow for more than 10 kilobytes of users
             if (users.size > 20_000) return;
@@ -279,129 +267,105 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
           }),
       )
       .addCommand("last-mutes", (command) =>
-        command
-          .setDescription("Get the last mutes")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
+        command.setDescription("Get the last mutes").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const where = { guildId: itx.guildId };
+          const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
-              () => prisma.mute.count({ where }),
-              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
-            );
+          const paginate = new DatabasePaginator(
+            (props, createdAt) => prisma.mute.findMany({ where, ...props, orderBy: { createdAt } }),
+            () => prisma.mute.count({ where }),
+            { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+          );
 
-            const formatMute = createFormatMuteInList({ includeUser: true });
+          const formatMute = createFormatMuteInList({ includeUser: true });
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              "Ostatnie wyciszenia",
-              formatMute,
-              true,
-            );
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Ostatnie wyciszenia",
+            formatMute,
+            true,
+          );
 
-            await paginatedView.render(itx);
-          }),
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("show-pending-tasks", (command) =>
-        command
-          .setDescription("Show pending tasks")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
+        command.setDescription("Show pending tasks").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const where = { status: "pending" } as const;
+          const where = { status: "pending" } as const;
 
-            const paginate = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.task.findMany({ where, ...props, orderBy: { createdAt } }),
-              () => prisma.task.count({ where }),
-            );
+          const paginate = new DatabasePaginator(
+            (props, createdAt) => prisma.task.findMany({ where, ...props, orderBy: { createdAt } }),
+            () => prisma.task.count({ where }),
+          );
 
-            const formatTask = ({
-              id,
-              data,
-              createdAt,
-              handleAfter,
-              identifier,
-            }: Task) => {
-              const lines = [
-                heading(`Task ${id}`, HeadingLevel.Three),
-                `Created at: ${time(createdAt)}`,
-                `Handle after: ${time(handleAfter)}`,
-                `Identifier: ${identifier}`,
-                `Data: ${inlineCode(JSON.stringify(data))}`,
-              ];
+          const formatTask = ({ id, data, createdAt, handleAfter, identifier }: Task) => {
+            const lines = [
+              heading(`Task ${id}`, HeadingLevel.Three),
+              `Created at: ${time(createdAt)}`,
+              `Handle after: ${time(handleAfter)}`,
+              `Identifier: ${identifier}`,
+              `Data: ${inlineCode(JSON.stringify(data))}`,
+            ];
 
-              return lines.join("\n");
-            };
+            return lines.join("\n");
+          };
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              "Pending tasks",
-              formatTask,
-              true,
-            );
+          const paginatedView = new PaginatedView(paginate, "Pending tasks", formatTask, true);
 
-            await paginatedView.render(itx);
-          }),
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("last-warns", (command) =>
-        command
-          .setDescription("Get the last warns")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
+        command.setDescription("Get the last warns").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const where = { guildId: itx.guildId };
+          const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
-              () => prisma.warn.count({ where }),
-              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
-            );
+          const paginate = new DatabasePaginator(
+            (props, createdAt) => prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
+            () => prisma.warn.count({ where }),
+            { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+          );
 
-            const formatWarn = createWarnFormat({ includeUser: true });
+          const formatWarn = createWarnFormat({ includeUser: true });
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              "Ostatnie ostrzeżenia",
-              formatWarn,
-              true,
-            );
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Ostatnie ostrzeżenia",
+            formatWarn,
+            true,
+          );
 
-            await paginatedView.render(itx);
-          }),
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("last-added-channels", (command) =>
-        command
-          .setDescription("Get the last added channels")
-          .handle(async (_, __, itx) => {
-            if (!itx.inCachedGuild()) return;
+        command.setDescription("Get the last added channels").handle(async (_, __, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const channels = itx.guild.channels.cache;
+          const channels = itx.guild.channels.cache;
 
-            const paginator = new StaticPaginator({
-              items: [...channels.values()],
-              pageSize: 10,
-              compare: (a, b) => a.createdTimestamp ?? 0 - (b.createdTimestamp ?? 0),
-            });
+          const paginator = new StaticPaginator({
+            items: [...channels.values()],
+            pageSize: 10,
+            compare: (a, b) => a.createdTimestamp ?? 0 - (b.createdTimestamp ?? 0),
+          });
 
-            const formatChannel = (channel: GuildBasedChannel) =>
-              `${channel.name} (${channel.id}) - ${time(
-                channel.createdAt ?? new Date(),
-              )}`;
+          const formatChannel = (channel: GuildBasedChannel) =>
+            `${channel.name} (${channel.id}) - ${time(channel.createdAt ?? new Date())}`;
 
-            const paginatedView = new PaginatedView(
-              paginator,
-              "Ostatnio dodane kanały",
-              formatChannel,
-              true,
-            );
+          const paginatedView = new PaginatedView(
+            paginator,
+            "Ostatnio dodane kanały",
+            formatChannel,
+            true,
+          );
 
-            await paginatedView.render(itx);
-          }),
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("did-not-react", (command) =>
         command
@@ -501,9 +465,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             option.setDescription("CSV with user_id,guild_id,waluta"),
           )
           .addString("after-user", (option) =>
-            option.setDescription(
-              "Resume after this user id (from a previous failure report)",
-            ),
+            option.setDescription("Resume after this user id (from a previous failure report)"),
           )
           .handle(async (ctx, { csv, "after-user": afterUser }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -521,9 +483,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               rows.push({ userId, amount });
             }
 
-            rows.sort((a, b) =>
-              a.userId.localeCompare(b.userId, undefined, { numeric: true }),
-            );
+            rows.sort((a, b) => a.userId.localeCompare(b.userId, undefined, { numeric: true }));
 
             const chunkSize = 1_000;
             const chunks: { userId: string; amount: number }[][] = [];
@@ -580,9 +540,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             option.setDescription("CSV with user_id,guild_id,nazwa,opis,ilosc"),
           )
           .addString("after-user", (option) =>
-            option.setDescription(
-              "Resume after this user id (from a previous failure report)",
-            ),
+            option.setDescription("Resume after this user id (from a previous failure report)"),
           )
           .handle(async (ctx, { csv, "after-user": afterUser }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -606,9 +564,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               });
             }
 
-            rows.sort((a, b) =>
-              a.userId.localeCompare(b.userId, undefined, { numeric: true }),
-            );
+            rows.sort((a, b) => a.userId.localeCompare(b.userId, undefined, { numeric: true }));
 
             const chunkSize = 10;
             const chunks: ImportInventoryRow[][] = [];
@@ -801,8 +757,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               return;
             }
 
-            const strVal =
-              typeof result === "string" ? result : JSON.stringify(result, null, 2);
+            const strVal = typeof result === "string" ? result : JSON.stringify(result, null, 2);
 
             if (isNil(strVal)) {
               await responder({ content: "No result" });

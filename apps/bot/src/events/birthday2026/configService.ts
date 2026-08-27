@@ -1,4 +1,5 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+
 import { isValidTimeZone } from "./staffInput";
 
 export type Birthday2026ConfigInput = {
@@ -36,10 +37,7 @@ export const findBirthday2026Config = (prisma: PrismaTransaction, guildId: strin
  * sees everything committed while the claim was waiting (a fresh snapshot),
  * which is why the two steps must stay separate statements.
  */
-export const claimBirthday2026Config = async (
-  prisma: PrismaTransaction,
-  configId: number,
-) => {
+export const claimBirthday2026Config = async (prisma: PrismaTransaction, configId: number) => {
   await prisma.birthday2026Config.updateMany({
     where: { id: configId },
     data: { id: configId },

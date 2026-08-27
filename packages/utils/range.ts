@@ -1,15 +1,10 @@
-type BuildArray<
-  Length extends number,
-  Arr extends unknown[] = [],
-> = Arr["length"] extends Length ? Arr : BuildArray<Length, [...Arr, unknown]>;
+type BuildArray<Length extends number, Arr extends unknown[] = []> = Arr["length"] extends Length
+  ? Arr
+  : BuildArray<Length, [...Arr, unknown]>;
 
-type Sum<A extends number, B extends number> = [
-  ...BuildArray<A>,
-  ...BuildArray<B>,
-]["length"];
+type Sum<A extends number, B extends number> = [...BuildArray<A>, ...BuildArray<B>]["length"];
 
-type Add<A extends number, B extends number> =
-  Sum<A, B> extends number ? Sum<A, B> : never;
+type Add<A extends number, B extends number> = Sum<A, B> extends number ? Sum<A, B> : never;
 
 type Increment<N extends number> = Add<N, 1>;
 
