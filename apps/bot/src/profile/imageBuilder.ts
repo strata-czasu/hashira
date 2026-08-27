@@ -175,8 +175,7 @@ export class ProfileImageBuilder {
     const defaultTintColor = "#3C3E43";
     const elements = [
       // Left
-      // TODO)) Rename to just "Nick Background"
-      this.#svg('path[id="Nick + Title Background"]'),
+      this.#svg('path[id="Main Header Background"]'),
       this.#svg('rect[id="Stats Bar"]'),
       this.#svg('path[id="Stats Caps Icon"]'),
       this.#svg('path[id="Stats Rep Icon"]'),

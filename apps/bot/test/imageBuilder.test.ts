@@ -40,11 +40,11 @@ describe("imageBuilder", () => {
   describe("tint color", () => {
     const tintColor = "#aabbcc";
 
-    it("changes nick background fill", async () => {
+    it("changes main header background fill", async () => {
       const image = await getImageBuilder();
       image.tintColor(tintColor);
       const res = cheerio.load(image.result());
-      const backgroundFill = res("path[id='Nick + Title Background']").attr("fill");
+      const backgroundFill = res("path[id='Main Header Background']").attr("fill");
       expect(backgroundFill).toBe(tintColor);
     });
 
