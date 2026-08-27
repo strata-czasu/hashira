@@ -146,7 +146,6 @@ export const profile = new Hashira({ name: "profile" })
               .rep(0) // TODO)) Rep value
               .items(dbUser.inventoryItems.length)
               .textActivity(textActivity)
-              .accountCreationDate(user.createdAt)
               .exp(0, 0) // TODO)) Exp value
               .level(0); // TODO)) Level value
 
@@ -154,12 +153,6 @@ export const profile = new Hashira({ name: "profile" })
             image.voiceActivity(voiceActivityHours);
 
             // TODO)) Customizable background image
-
-            if (dbUser.profileSettings?.title) {
-              image.title(dbUser.profileSettings.title.name);
-            } else {
-              image.title("Użytkownik");
-            }
 
             const member = await discordTry(
               () => itx.guild.members.fetch(user.id),
@@ -213,6 +206,7 @@ export const profile = new Hashira({ name: "profile" })
               image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
             }
 
+            // TODO)) Migrate to achievements
             image.allShowcaseBadgesOpacity(0);
             const displayedBadges = await prisma.displayedProfileBadge.findMany({
               where: { userId: user.id },
