@@ -24,7 +24,7 @@
     "seed": "bun run --cwd apps/bot seed",
     "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
     "start": "bun run --cwd apps/bot start",
-    "typecheck": "bun --workspaces typecheck"
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@hashira/utils": "workspace:*",
@@ -36,13 +36,12 @@
   "devDependencies": {
     "@hashira/tsconfig": "workspace:*",
     "@types/bun": "^1.4.0",
-    "@typescript/native-preview": "^7.0.0-dev.20251228.1",
     "expect-type": "^1.2.2",
     "knip": "^5.64.3",
     "lefthook": "^1.13.6",
     "oxfmt": "^0.65.0",
     "oxlint": "^1.80.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "trustedDependencies": [
     "@prisma/client",

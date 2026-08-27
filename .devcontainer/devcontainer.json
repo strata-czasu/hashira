@@ -19,7 +19,6 @@
     "vscode": {
       "extensions": [
         "ms-vscode.vscode-typescript-next",
-        "TypeScriptTeam.native-preview",
         "oven.bun-vscode",
         "oxc.oxc-vscode",
         "Prisma.prisma",

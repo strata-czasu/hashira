@@ -14,7 +14,7 @@
     "prisma-push": "prisma db push",
     "prisma-reset": "prisma migrate reset",
     "prisma-check-migrations": "prisma migrate deploy && prisma migrate diff --script --exit-code --from-schema ./prisma/ --to-config-datasource",
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@hashira/env": "workspace:*",
