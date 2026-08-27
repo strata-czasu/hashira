@@ -5,8 +5,8 @@
 Hashira is a Bun/TypeScript workspace. The Discord bot lives in `apps/bot/src`; its
 tests are in `apps/bot/test`. Shared libraries are under `packages/` (`core`, `db`,
 `jsx`, `utils`, `yotei`, and others), with package tests in `packages/*/test`.
-Prisma models and migrations live in `packages/db/prisma`. Planning documents are
-kept in `plans/`, reusable scripts in `scripts/`, and static font assets in `fonts/`.
+Prisma models and migrations live in `packages/db/prisma`. Reusable scripts are
+kept in `scripts/`, and static font assets in `fonts/`.
 
 Keep feature code close to its domain. For example, Birthday event services,
 commands, and views belong in `apps/bot/src/events/birthday2026/`.
