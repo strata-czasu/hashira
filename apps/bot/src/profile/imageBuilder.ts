@@ -182,6 +182,7 @@ export class ProfileImageBuilder {
       this.#svg('path[id="Stats Items Icon"]'),
       this.#svg('g[id="Activity Voice Icon"] path'),
       this.#svg('g[id="Activity Text Icon"] path'),
+      this.#svg('path[id="Marriage Status Icon"]'),
       this.#svg(`g[id="Marriage Status Text"] tspan[fill="${defaultTintColor}"]`),
       this.#svg('text[id="Guild Join Value"]'),
       // Middle

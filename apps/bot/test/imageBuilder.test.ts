@@ -74,10 +74,12 @@ describe("imageBuilder", () => {
       expect(textFill).toBe(tintColor);
     });
 
-    it("changes marriage status text fill", async () => {
+    it("changes marriage status text and icon fill", async () => {
       const image = await getImageBuilder();
       image.tintColor(tintColor);
       const res = cheerio.load(image.result());
+      const iconFill = res("path[id='Marriage Status Icon']").attr("fill");
+      expect(iconFill).toBe(tintColor);
       const tintableTspans = res("g[id='Marriage Status Text'] tspan[fill='#3C3E43']");
       for (const tspan of tintableTspans) {
         // Because why not
