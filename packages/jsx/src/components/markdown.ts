@@ -12,6 +12,7 @@ import {
   time,
   underline,
 } from "discord.js";
+
 import { getTextContent, markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
 
@@ -35,9 +36,7 @@ export const Bold = markAsHost(function Bold(props: { children?: JSXNode }): str
   return content ? bold(content) : "";
 });
 
-export const Italic = markAsHost(function Italic(props: {
-  children?: JSXNode;
-}): string {
+export const Italic = markAsHost(function Italic(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
   return content ? italic(content) : "";
 });
@@ -49,16 +48,12 @@ export const Strikethrough = markAsHost(function Strikethrough(props: {
   return content ? strikethrough(content) : "";
 });
 
-export const Underline = markAsHost(function Underline(props: {
-  children?: JSXNode;
-}): string {
+export const Underline = markAsHost(function Underline(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
   return content ? underline(content) : "";
 });
 
-export const InlineCode = markAsHost(function InlineCode(props: {
-  children?: JSXNode;
-}): string {
+export const InlineCode = markAsHost(function InlineCode(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
   return content ? inlineCode(content) : "";
 });
@@ -75,16 +70,12 @@ export const CodeBlock = markAsHost(function CodeBlock(props: {
   return `${codeBlock(content)}\n`;
 });
 
-export const Spoiler = markAsHost(function Spoiler(props: {
-  children?: JSXNode;
-}): string {
+export const Spoiler = markAsHost(function Spoiler(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
   return content ? spoiler(content) : "";
 });
 
-export const Subtext = markAsHost(function Subtext(props: {
-  children?: JSXNode;
-}): string {
+export const Subtext = markAsHost(function Subtext(props: { children?: JSXNode }): string {
   const content = getTextContent(props.children);
   return content ? subtext(content) : "";
 });

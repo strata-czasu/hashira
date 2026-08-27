@@ -1,7 +1,8 @@
-import env from "@hashira/env";
-import { type Prisma, PrismaClient } from "@hashira/prisma-client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createClient } from "@redis/client";
+
+import env from "@hashira/env";
+import { type Prisma, PrismaClient } from "@hashira/prisma-client";
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 
@@ -14,9 +15,7 @@ export const redis = await createClient({
   socket: {
     reconnectStrategy: (retries) =>
       retries > 20
-        ? new Error(
-            "Could not connect to Redis. Is the server running and REDIS_URL correct?",
-          )
+        ? new Error("Could not connect to Redis. Is the server running and REDIS_URL correct?")
         : Math.min(retries * 50, 500),
   },
 })

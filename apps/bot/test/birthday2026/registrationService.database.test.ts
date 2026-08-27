@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
   finalizeBirthday2026Registration,
@@ -81,12 +83,10 @@ const setupReadyTeams = async (
       userId: tucznikUserId,
     });
     if (!tucznikMembership.ok) throw new Error(tucznikMembership.reason);
-    const identity = await createBirthday2026TeamIdentity(
-      prisma,
-      fixture.guildId,
-      team.team.id,
-      { captainUserId, tucznikUserId },
-    );
+    const identity = await createBirthday2026TeamIdentity(prisma, fixture.guildId, team.team.id, {
+      captainUserId,
+      tucznikUserId,
+    });
     if (!identity.ok) throw new Error(identity.reason);
     const persona = await configureBirthday2026Persona(prisma, {
       guildId: fixture.guildId,
@@ -129,33 +129,15 @@ databaseTests("Birthday 2026 registration", () => {
     const now = new Date("2026-08-01T18:00:00Z");
 
     expect(
-      await registerBirthday2026Participant(
-        prisma,
-        fixture.guildId,
-        participant,
-        now,
-        () => 0,
-      ),
+      await registerBirthday2026Participant(prisma, fixture.guildId, participant, now, () => 0),
     ).toEqual({ ok: false, reason: "teams_not_ready" });
 
     await setupReadyTeams(fixture, 4);
     expect(
-      await registerBirthday2026Participant(
-        prisma,
-        fixture.guildId,
-        participant,
-        now,
-        () => 0,
-      ),
+      await registerBirthday2026Participant(prisma, fixture.guildId, participant, now, () => 0),
     ).toEqual({ ok: true, assigned: false });
     expect(
-      await registerBirthday2026Participant(
-        prisma,
-        fixture.guildId,
-        participant,
-        now,
-        () => 0,
-      ),
+      await registerBirthday2026Participant(prisma, fixture.guildId, participant, now, () => 0),
     ).toEqual({ ok: false, reason: "already_registered" });
     expect(
       await withdrawBirthday2026Registration(prisma, fixture.guildId, participant, now),
@@ -255,21 +237,15 @@ databaseTests("Birthday 2026 registration", () => {
         },
       },
     });
-    const result = await finalizeBirthday2026Registration(
-      prisma,
-      fixture.guildId,
-      () => 0,
-    );
+    const result = await finalizeBirthday2026Registration(prisma, fixture.guildId, () => 0);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.reason);
     expect(result.assignments).toHaveLength(10);
     expect(
-      result.assignments.find((assignment) => assignment.userId === textUser)
-        ?.activityEstimate,
+      result.assignments.find((assignment) => assignment.userId === textUser)?.activityEstimate,
     ).toBe(4);
     expect(
-      result.assignments.find((assignment) => assignment.userId === voiceUser)
-        ?.activityEstimate,
+      result.assignments.find((assignment) => assignment.userId === voiceUser)?.activityEstimate,
     ).toBe(4);
     expect(
       await prisma.birthday2026MemberState.count({
@@ -281,9 +257,10 @@ databaseTests("Birthday 2026 registration", () => {
         where: { configId: fixture.config.id },
       }),
     ).not.toBeNull();
-    expect(
-      await finalizeBirthday2026Registration(prisma, fixture.guildId, () => 1),
-    ).toEqual({ ok: false, reason: "already_finalized" });
+    expect(await finalizeBirthday2026Registration(prisma, fixture.guildId, () => 1)).toEqual({
+      ok: false,
+      reason: "already_finalized",
+    });
 
     const lateUser = fixture.users[10];
     if (!lateUser) throw new Error("Missing fixture late participant");

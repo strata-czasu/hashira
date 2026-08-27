@@ -54,12 +54,7 @@ export type GetBirthday2026StatsResult =
   | { ok: true; stats: Birthday2026Stats }
   | { ok: false; reason: "config_not_found" | "economy_not_configured" };
 
-const EARNED_SOURCES = [
-  "staffGrant",
-  "textActivity",
-  "voiceActivity",
-  "encounter",
-] as const;
+const EARNED_SOURCES = ["staffGrant", "textActivity", "voiceActivity", "encounter"] as const;
 
 type EarnedBySource = {
   text: number;
@@ -103,9 +98,7 @@ export const getBirthday2026Stats = async (
 
   const teams = config.teams;
   const memberUserIds = [
-    ...new Set(
-      teams.flatMap((team) => team.memberStates.map((member) => member.userId)),
-    ),
+    ...new Set(teams.flatMap((team) => team.memberStates.map((member) => member.userId))),
   ];
 
   const [contributorRows, feedByUser, earnedRows, wallets] = await Promise.all([
@@ -167,9 +160,7 @@ export const getBirthday2026Stats = async (
     });
   }
 
-  const balanceByUser = new Map(
-    wallets.map((wallet) => [wallet.userId, wallet.balance] as const),
-  );
+  const balanceByUser = new Map(wallets.map((wallet) => [wallet.userId, wallet.balance] as const));
   const teamByUserId = new Map<string, number>();
   for (const team of teams) {
     for (const member of team.memberStates) {
@@ -178,14 +169,11 @@ export const getBirthday2026Stats = async (
   }
 
   const totalTeamPasza = teams.reduce(
-    (total, team) =>
-      total + (team.wallet ? team.wallet.permanentWeight + team.wallet.balance : 0),
+    (total, team) => total + (team.wallet ? team.wallet.permanentWeight + team.wallet.balance : 0),
     0,
   );
   const teamStats: Birthday2026TeamStats[] = teams.map((team) => {
-    const totalPasza = team.wallet
-      ? team.wallet.permanentWeight + team.wallet.balance
-      : 0;
+    const totalPasza = team.wallet ? team.wallet.permanentWeight + team.wallet.balance : 0;
     return {
       teamConfigId: team.id,
       teamName: team.team.name,
@@ -194,9 +182,7 @@ export const getBirthday2026Stats = async (
       permanentWeight: team.wallet?.permanentWeight ?? 0,
       troughBalance: team.wallet?.balance ?? 0,
       totalPasza,
-      contributorCount: team.wallet
-        ? (contributorCountByWallet.get(team.wallet.id) ?? 0)
-        : 0,
+      contributorCount: team.wallet ? (contributorCountByWallet.get(team.wallet.id) ?? 0) : 0,
       sharePercent: totalTeamPasza > 0 ? (totalPasza / totalTeamPasza) * 100 : 0,
     };
   });
@@ -232,14 +218,12 @@ export const getBirthday2026Stats = async (
         sourceTotals.staffGrant += earned.staffGrant;
       }
       const teamEarned = earnedTotal(sourceTotals);
-      const percent = (value: number) =>
-        teamEarned > 0 ? (value / teamEarned) * 100 : 0;
+      const percent = (value: number) => (teamEarned > 0 ? (value / teamEarned) * 100 : 0);
       return {
         teamConfigId: team.id,
         teamName: team.team.name,
         memberCount: team.memberStates.length,
-        avgPerMember:
-          team.memberStates.length > 0 ? teamEarned / team.memberStates.length : 0,
+        avgPerMember: team.memberStates.length > 0 ? teamEarned / team.memberStates.length : 0,
         text: sourceTotals.text,
         voice: sourceTotals.voice,
         encounter: sourceTotals.encounter,
@@ -268,10 +252,7 @@ export const getBirthday2026Stats = async (
       totalEarnedPasza: memberStats.reduce((total, member) => total + member.earned, 0),
       totalFedPasza: memberStats.reduce((total, member) => total + member.fed, 0),
       totalTeamPasza,
-      totalUnspentPasza: memberStats.reduce(
-        (total, member) => total + member.unspent,
-        0,
-      ),
+      totalUnspentPasza: memberStats.reduce((total, member) => total + member.unspent, 0),
     },
   };
 };
@@ -293,19 +274,10 @@ export const renderBirthday2026StatsFile = (
   sections.push(
     "1) DRUŻYNY - łączna Pasza w drużynie",
     tsv(
-      [
-        "druzyna",
-        "waga_stala",
-        "koryto",
-        "pasza_lacznie",
-        "udzial_pct",
-        "karmiacy",
-        "czlonkowie",
-      ],
+      ["druzyna", "waga_stala", "koryto", "pasza_lacznie", "udzial_pct", "karmiacy", "czlonkowie"],
       stats.teams
         .toSorted(
-          (a, b) =>
-            b.totalPasza - a.totalPasza || a.teamName.localeCompare(b.teamName, "pl"),
+          (a, b) => b.totalPasza - a.totalPasza || a.teamName.localeCompare(b.teamName, "pl"),
         )
         .map((team) => [
           team.teamName,

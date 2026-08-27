@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Effect, Random } from "effect";
+
 import {
   durationToSeconds,
   formatDuration,
@@ -129,9 +130,7 @@ describe("formatDuration", () => {
   });
 
   test("formats mixed duration", () => {
-    expect(formatDuration({ days: 1, hours: 2, minutes: 3, seconds: 4 })).toBe(
-      "1d 2h 3m 4s",
-    );
+    expect(formatDuration({ days: 1, hours: 2, minutes: 3, seconds: 4 })).toBe("1d 2h 3m 4s");
   });
 
   test("formats empty duration", () => {

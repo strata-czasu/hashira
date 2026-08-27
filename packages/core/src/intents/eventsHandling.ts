@@ -1,4 +1,5 @@
 import type { ButtonInteraction, Message } from "discord.js";
+
 import type * as events from "./events";
 import type { EventsToHandling } from "./util";
 
@@ -14,9 +15,7 @@ export type GuildEmojisAndStickersHandling = EventsToHandling<
   typeof events.guildEmojisAndStickersEvents
 >;
 
-export type GuildIntegrationsHandling = EventsToHandling<
-  typeof events.guildIntegrationsEvents
->;
+export type GuildIntegrationsHandling = EventsToHandling<typeof events.guildIntegrationsEvents>;
 
 export type GuildInvitesHandling = EventsToHandling<typeof events.guildInvitesEvents>;
 export type GuildMembersHandling = EventsToHandling<typeof events.guildMembersEvents>;
@@ -26,25 +25,17 @@ export type GuildMessageReactionsHandling = EventsToHandling<
   typeof events.guildMessageReactionsEvents
 >;
 
-export type GuildMessageTypingHandling = EventsToHandling<
-  typeof events.guildMessageTypingEvents
->;
+export type GuildMessageTypingHandling = EventsToHandling<typeof events.guildMessageTypingEvents>;
 
-export type GuildModerationHandling = EventsToHandling<
-  typeof events.guildModerationEvents
->;
+export type GuildModerationHandling = EventsToHandling<typeof events.guildModerationEvents>;
 
-export type GuildPresencesHandling = EventsToHandling<
-  typeof events.guildPresencesEvents
->;
+export type GuildPresencesHandling = EventsToHandling<typeof events.guildPresencesEvents>;
 
 export type GuildScheduledEventsHandling = EventsToHandling<
   typeof events.guildScheduledEventsEvents
 >;
 
-export type GuildVoiceStatesHandling = EventsToHandling<
-  typeof events.guildVoiceStatesEvents
->;
+export type GuildVoiceStatesHandling = EventsToHandling<typeof events.guildVoiceStatesEvents>;
 
 export type GuildWebhooksHandling = EventsToHandling<typeof events.guildWebhooksEvents>;
 
@@ -52,9 +43,7 @@ export type GuildMessagesHandling = EventsToHandling<typeof events.guildMessages
 
 export type ReadyHandling = EventsToHandling<typeof events.readyEvents>;
 
-export type InteractionCreateHandling = EventsToHandling<
-  typeof events.interactionCreate
->;
+export type InteractionCreateHandling = EventsToHandling<typeof events.interactionCreate>;
 
 export type DirectMessageCreateHandling = {
   directMessageCreate: (message: Message<false>) => Promise<void>;

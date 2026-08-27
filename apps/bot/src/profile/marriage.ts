@@ -1,5 +1,7 @@
-import { ConfirmationDialog, Hashira } from "@hashira/core";
 import { userMention } from "discord.js";
+
+import { ConfirmationDialog, Hashira } from "@hashira/core";
+
 import { base } from "../base";
 import { ensureUserExists, ensureUsersExist } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -24,10 +26,7 @@ export const marriage = new Hashira({ name: "marriage" })
         });
         if (!user) return;
         if (user.marriedTo) {
-          return await errorFollowUp(
-            itx,
-            `Jesteś już w związku z ${userMention(user.marriedTo)}!`,
-          );
+          return await errorFollowUp(itx, `Jesteś już w związku z ${userMention(user.marriedTo)}!`);
         }
 
         if (targetUserId === itx.user.id) {
@@ -43,17 +42,13 @@ export const marriage = new Hashira({ name: "marriage" })
         if (targetUser.marriedTo) {
           return await errorFollowUp(
             itx,
-            `${userMention(user.id)} jest już w związku z ${userMention(
-              targetUser.marriedTo,
-            )}!`,
+            `${userMention(user.id)} jest już w związku z ${userMention(targetUser.marriedTo)}!`,
           );
         }
 
         // TODO)) Add the target user to allowed mentions
         const dialog = new ConfirmationDialog(
-          `${userMention(targetUser.id)}, czy chcesz poślubić ${userMention(
-            user.id,
-          )}? :ring:`,
+          `${userMention(targetUser.id)}, czy chcesz poślubić ${userMention(user.id)}? :ring:`,
           "Tak",
           "Nie",
           async () => {
@@ -125,9 +120,7 @@ export const marriage = new Hashira({ name: "marriage" })
         if (!targetUser) return;
 
         const dialog = new ConfirmationDialog(
-          `Czy na pewno chcesz się rozwieść z ${userMention(
-            targetUser.id,
-          )}? :broken_heart:`,
+          `Czy na pewno chcesz się rozwieść z ${userMention(targetUser.id)}? :broken_heart:`,
           "Tak",
           "Nie",
           async () => {

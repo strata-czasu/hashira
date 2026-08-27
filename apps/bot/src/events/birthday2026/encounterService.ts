@@ -1,8 +1,10 @@
+import { addSeconds } from "date-fns";
+import { type Client, RESTJSONErrorCodes } from "discord.js";
+
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 import { render } from "@hashira/jsx";
-import { addSeconds } from "date-fns";
-import { type Client, RESTJSONErrorCodes } from "discord.js";
+
 import { addBalance } from "../../economy/managers/transferManager";
 import { discordTry } from "../../util/discordTry";
 import { claimBirthday2026Config } from "./configService";
@@ -132,19 +134,11 @@ export const spawnBirthday2026Encounter = async (
         kind: input.kind,
         sourceKey,
         startsAt: input.startsAt,
-        expiresAt: addSeconds(
-          input.startsAt,
-          config.encounterConfig.responseWindowSeconds,
-        ),
+        expiresAt: addSeconds(input.startsAt, config.encounterConfig.responseWindowSeconds),
       },
     });
     await Promise.all([
-      input.scheduleJob(
-        tx,
-        "birthday2026EncounterExpire",
-        encounter.id,
-        encounter.expiresAt,
-      ),
+      input.scheduleJob(tx, "birthday2026EncounterExpire", encounter.id, encounter.expiresAt),
       input.scheduleJob(
         tx,
         "birthday2026EncounterSpawn",
@@ -367,10 +361,7 @@ export const attachBirthday2026EncounterMessage = (
     update: { channelId, messageId },
   });
 
-export const inspectBirthday2026Encounters = (
-  prisma: PrismaTransaction,
-  guildId: string,
-) =>
+export const inspectBirthday2026Encounters = (prisma: PrismaTransaction, guildId: string) =>
   prisma.birthday2026Encounter.findMany({
     where: { config: { guildId } },
     include: {

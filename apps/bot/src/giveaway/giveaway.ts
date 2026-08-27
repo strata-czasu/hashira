@@ -1,5 +1,3 @@
-import { Hashira } from "@hashira/core";
-import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
 import { addSeconds, type Duration } from "date-fns";
 import {
   type APIContainerComponent,
@@ -14,6 +12,10 @@ import {
   time,
 } from "discord.js";
 import { round, shuffle } from "es-toolkit";
+
+import { Hashira } from "@hashira/core";
+import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
+
 import { base } from "../base";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -47,14 +49,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             ),
           )
           .addString("czas-trwania", (duration) =>
-            duration.setDescription(
-              "Czas trwania givka, np. 1d (1 dzień) lub 2h (2 godziny)",
-            ),
+            duration.setDescription("Czas trwania givka, np. 1d (1 dzień) lub 2h (2 godziny)"),
           )
           .addString("tytul", (tytul) =>
-            tytul
-              .setDescription("Tytuł giveawaya, domyślnie 'Giveaway'")
-              .setRequired(false),
+            tytul.setDescription("Tytuł giveawaya, domyślnie 'Giveaway'").setRequired(false),
           )
           .addAttachment("baner", (baner) =>
             baner
@@ -77,14 +75,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
               ),
           )
           .addRole("wymagana-rola", (whitelist) =>
-            whitelist
-              .setDescription("Wymagana rola do wzięcia udziału.")
-              .setRequired(false),
+            whitelist.setDescription("Wymagana rola do wzięcia udziału.").setRequired(false),
           )
           .addRole("zakazana-rola", (blacklist) =>
-            blacklist
-              .setDescription("Zakazana rola do wzięcia udziału.")
-              .setRequired(false),
+            blacklist.setDescription("Zakazana rola do wzięcia udziału.").setRequired(false),
           )
           .handle(
             async (
@@ -127,9 +121,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   );
                 }
 
-                const attachment = new AttachmentBuilder(buffer).setName(
-                  `banner.${ext}`,
-                );
+                const attachment = new AttachmentBuilder(buffer).setName(`banner.${ext}`);
                 files.push(attachment);
                 imageURL = `attachment://banner.${ext}`;
               } else {
@@ -175,9 +167,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               messageContainer
                 .setAccentColor(0x0099ff)
-                .addTextDisplayComponents((td) =>
-                  td.setContent(`# ${title || "Giveaway"}`),
-                )
+                .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
                 .addTextDisplayComponents((td) =>
                   td.setContent(`-# Host: ${itx.user}\n${roleRestriction.join("\n")}`),
                 )
@@ -193,15 +183,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 .addSeparatorComponents((s) => s)
                 .addTextDisplayComponents((td) =>
                   td
-                    .setContent(
-                      `-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`,
-                    )
+                    .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`)
                     .setId(1),
                 )
                 .addTextDisplayComponents((td) =>
-                  td
-                    .setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.")
-                    .setId(99),
+                  td.setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.").setId(99),
                 )
                 .addActionRowComponents((ar) => ar.setComponents([confirmButton]));
 
@@ -232,9 +218,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               itx.deleteReply();
 
-              messageContainer.addActionRowComponents(
-                createGiveawayButtonRow(false).setId(2),
-              );
+              messageContainer.addActionRowComponents(createGiveawayButtonRow(false).setId(2));
 
               const response = await itx.followUp({
                 components: [messageContainer],
@@ -299,16 +283,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             });
 
             if (!giveaway || giveaway.endAt < itx.createdAt)
-              return await errorFollowUp(
-                itx,
-                "Ten giveaway nie istnieje lub się zakończył!",
-              );
+              return await errorFollowUp(itx, "Ten giveaway nie istnieje lub się zakończył!");
 
             if (itx.user.id !== giveaway.authorId)
-              return await errorFollowUp(
-                itx,
-                "Nie masz uprawnień do edycji tego giveawaya!",
-              );
+              return await errorFollowUp(itx, "Nie masz uprawnień do edycji tego giveawaya!");
 
             const channel = await itx.client.channels.fetch(giveaway.channelId);
             if (!channel || !channel.isSendable()) {
@@ -346,11 +324,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
             await message.edit({ components: [container] });
 
-            await messageQueue.updateDelay(
-              "giveawayEnd",
-              giveaway.id.toString(),
-              newEndTime,
-            );
+            await messageQueue.updateDelay("giveawayEnd", giveaway.id.toString(), newEndTime);
 
             await prisma.giveaway.update({
               where: {
@@ -369,9 +343,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
       )
       .addCommand("reroll", (command) =>
         command
-          .setDescription(
-            "Losuje jednego użytkownika spośród tych którzy nie wygrali giveawaya.",
-          )
+          .setDescription("Losuje jednego użytkownika spośród tych którzy nie wygrali giveawaya.")
           .addInteger("id", (id) =>
             id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
@@ -386,14 +358,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
               },
             });
 
-            if (!giveaway)
-              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+            if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
 
             if (itx.user.id !== giveaway.authorId)
-              return await errorFollowUp(
-                itx,
-                "Nie masz uprawnień do rerollowania tego giveawaya!",
-              );
+              return await errorFollowUp(itx, "Nie masz uprawnień do rerollowania tego giveawaya!");
 
             const [participants, winners] = await prisma.$transaction([
               prisma.giveawayParticipant.findMany({
@@ -443,14 +411,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
               },
             });
 
-            if (!giveaway)
-              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+            if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
 
             if (itx.user.id !== giveaway.authorId)
-              return await errorFollowUp(
-                itx,
-                "Nie masz uprawnień do rerollowania tego giveawaya!",
-              );
+              return await errorFollowUp(itx, "Nie masz uprawnień do rerollowania tego giveawaya!");
 
             const [rewards, participants] = await prisma.$transaction([
               prisma.giveawayReward.findMany({
@@ -490,9 +454,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
             const resultContainer = new ContainerBuilder()
               .setAccentColor(0x00ff99)
-              .addTextDisplayComponents((td) =>
-                td.setContent("# :tada: Nowi zwycięzcy:"),
-              )
+              .addTextDisplayComponents((td) => td.setContent("# :tada: Nowi zwycięzcy:"))
               .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
               .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
 
@@ -505,9 +467,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
       )
       .addCommand("list-users", (command) =>
         command
-          .setDescription(
-            "Pokazuje liste użytkowników w giveawayu, w razie gdy się zakończy.",
-          )
+          .setDescription("Pokazuje liste użytkowników w giveawayu, w razie gdy się zakończy.")
           .addInteger("id", (id) =>
             id.setDescription("Id giveawaya.").setRequired(true).setAutocomplete(true),
           )
@@ -522,13 +482,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
               },
             });
 
-            if (!giveaway)
-              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+            if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
 
-            const participants: GiveawayParticipant[] =
-              await prisma.giveawayParticipant.findMany({
-                where: { giveawayId: giveaway.id, isRemoved: false },
-              });
+            const participants: GiveawayParticipant[] = await prisma.giveawayParticipant.findMany({
+              where: { giveawayId: giveaway.id, isRemoved: false },
+            });
 
             const fmtParticipants =
               participants.length > 0
@@ -561,24 +519,17 @@ export const giveaway = new Hashira({ name: "giveaway" })
               },
             });
 
-            if (!giveaway)
-              return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+            if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
 
             if (itx.user.id !== giveaway.authorId)
-              return await errorFollowUp(
-                itx,
-                "Nie masz uprawnień do edytowania tego giveawaya!",
-              );
+              return await errorFollowUp(itx, "Nie masz uprawnień do edytowania tego giveawaya!");
 
             const participant = await prisma.giveawayParticipant.findFirst({
               where: { giveawayId: giveaway.id, userId: userToRemove.id },
             });
 
             if (!participant)
-              return await errorFollowUp(
-                itx,
-                "Ten użytkownik nie bierze udziału w giveawayu!",
-              );
+              return await errorFollowUp(itx, "Ten użytkownik nie bierze udziału w giveawayu!");
 
             await prisma.giveawayParticipant.update({
               where: { id: participant.id },
@@ -647,10 +598,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
     }
 
     if (itx.customId.endsWith("list")) {
-      const participants: GiveawayParticipant[] =
-        await prisma.giveawayParticipant.findMany({
-          where: { giveawayId: giveaway.id, isRemoved: false },
-        });
+      const participants: GiveawayParticipant[] = await prisma.giveawayParticipant.findMany({
+        where: { giveawayId: giveaway.id, isRemoved: false },
+      });
 
       const fmtParticipants =
         participants.length > 0

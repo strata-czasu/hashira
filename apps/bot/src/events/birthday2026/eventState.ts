@@ -11,10 +11,7 @@ export type Birthday2026EventState =
   | "open"
   | "finished";
 
-export const getBirthday2026EventState = (
-  config: Birthday2026Config | null,
-  now: Date,
-) => {
+export const getBirthday2026EventState = (config: Birthday2026Config | null, now: Date) => {
   if (!config) return "not_configured" as const;
   if (!config.visible) return "hidden" as const;
   if (!config.enabled) return "disabled" as const;
@@ -23,10 +20,7 @@ export const getBirthday2026EventState = (
   return "open" as const;
 };
 
-export const getBirthday2026RegistrationState = (
-  config: Birthday2026Config | null,
-  now: Date,
-) => {
+export const getBirthday2026RegistrationState = (config: Birthday2026Config | null, now: Date) => {
   if (!config) return "not_configured";
   if (!config.visible) return "hidden";
   if (now >= config.eventEndAt) return "closed";
@@ -35,7 +29,5 @@ export const getBirthday2026RegistrationState = (
 
 export const getBirthday2026EventDayIndex = (config: Birthday2026Config, at: Date) => {
   if (at < config.eventStartAt || at >= config.eventEndAt) return null;
-  return Math.floor(
-    (at.getTime() - config.eventStartAt.getTime()) / MILLISECONDS_PER_EVENT_DAY,
-  );
+  return Math.floor((at.getTime() - config.eventStartAt.getTime()) / MILLISECONDS_PER_EVENT_DAY);
 };

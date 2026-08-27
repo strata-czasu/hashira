@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+
 import { strataDaily } from "./daily";
 import { strataCurrency } from "./strataCurrency";
 

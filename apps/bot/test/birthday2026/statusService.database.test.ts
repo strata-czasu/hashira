@@ -1,7 +1,9 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
 import type { Client } from "discord.js";
+
+import { PrismaClient } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
 import {
@@ -77,12 +79,10 @@ databaseTests("Birthday 2026 canonical status", () => {
       });
       if (!member.ok) throw new Error(member.reason);
     }
-    const identity = await createBirthday2026TeamIdentity(
-      prisma,
-      guildId,
-      team.team.id,
-      { captainUserId: actorUserId, tucznikUserId },
-    );
+    const identity = await createBirthday2026TeamIdentity(prisma, guildId, team.team.id, {
+      captainUserId: actorUserId,
+      tucznikUserId,
+    });
     if (!identity.ok) throw new Error(identity.reason);
     const economy = await setupBirthday2026Economy(prisma, {
       guildId,
@@ -93,11 +93,7 @@ databaseTests("Birthday 2026 canonical status", () => {
     });
     if (!economy.ok) throw new Error(economy.reason);
     currencyIds.push(economy.currencyId);
-    const milestones = await configureBirthday2026Milestones(
-      prisma,
-      guildId,
-      [10, 20, 30, 40],
-    );
+    const milestones = await configureBirthday2026Milestones(prisma, guildId, [10, 20, 30, 40]);
     if (!milestones.ok) throw new Error(milestones.reason);
     const persona = await configureBirthday2026Persona(prisma, {
       guildId,
@@ -117,16 +113,12 @@ databaseTests("Birthday 2026 canonical status", () => {
     if (!artwork.ok) throw new Error(artwork.reason);
 
     let nextMessageId = 1;
-    const messages = new Map<
-      string,
-      { id: string; edit: (data: unknown) => unknown }
-    >();
+    const messages = new Map<string, { id: string; edit: (data: unknown) => unknown }>();
     const sent: unknown[] = [];
     const channel = {
       isSendable: () => true,
       messages: {
-        fetch: async ({ message }: { message: string }) =>
-          messages.get(message) ?? null,
+        fetch: async ({ message }: { message: string }) => messages.get(message) ?? null,
       },
       send: async (data: unknown) => {
         sent.push(data);
@@ -161,11 +153,7 @@ databaseTests("Birthday 2026 canonical status", () => {
       where: { teamConfigId: team.team.id },
       data: { permanentWeight: 15 },
     });
-    const milestone = await reconcileBirthday2026StatusMessage(
-      client,
-      prisma,
-      team.team.id,
-    );
+    const milestone = await reconcileBirthday2026StatusMessage(client, prisma, team.team.id);
     expect(milestone).toEqual({
       ok: true,
       completedMilestones: 1,
@@ -176,14 +164,18 @@ databaseTests("Birthday 2026 canonical status", () => {
         where: { teamConfigId: team.team.id },
       }),
     ).toBe(1);
-    expect(
-      await reconcileBirthday2026StatusMessage(client, prisma, team.team.id),
-    ).toEqual({ ok: true, completedMilestones: 0, recreated: false });
+    expect(await reconcileBirthday2026StatusMessage(client, prisma, team.team.id)).toEqual({
+      ok: true,
+      completedMilestones: 0,
+      recreated: false,
+    });
 
     messages.delete(firstStatus.messageId);
-    expect(
-      await reconcileBirthday2026StatusMessage(client, prisma, team.team.id),
-    ).toEqual({ ok: true, completedMilestones: 0, recreated: true });
+    expect(await reconcileBirthday2026StatusMessage(client, prisma, team.team.id)).toEqual({
+      ok: true,
+      completedMilestones: 0,
+      recreated: true,
+    });
     const recovered = await prisma.birthday2026StatusMessage.findUniqueOrThrow({
       where: { teamConfigId: team.team.id },
     });

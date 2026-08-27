@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+
 import { Batcher, RedisBackend } from "../util/batcher";
 
 type Input = Prisma.EmojiUsageCreateInput;
@@ -20,9 +21,7 @@ export class EmojiCountingQueue {
 
     // NOTE: This may be even better with a .createMany call
     //       instead of splitting everything into single inserts.
-    await prisma.$transaction(
-      messages.map((data) => prisma.emojiUsage.create({ data })),
-    );
+    await prisma.$transaction(messages.map((data) => prisma.emojiUsage.create({ data })));
   }
 
   public start(prisma: ExtendedPrismaClient, redis: RedisClient) {

@@ -1,5 +1,3 @@
-import type { ExtractContext } from "@hashira/core";
-import type { ExtendedPrismaClient, Mute, PrismaTransaction } from "@hashira/db";
 import { formatDate, intervalToDuration } from "date-fns";
 import {
   bold,
@@ -11,6 +9,10 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import type { ExtractContext } from "@hashira/core";
+import type { ExtendedPrismaClient, Mute, PrismaTransaction } from "@hashira/db";
+
 import type { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
@@ -24,10 +26,7 @@ export const formatUserWithId = (user: User | GuildMember) => {
   return `${bold(tag)} (${inlineCode(user.id)})`;
 };
 
-export const getGuildRolesIds = async (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-) => {
+export const getGuildRolesIds = async (prisma: ExtendedPrismaClient, guildId: string) => {
   const settings = await prisma.guildSettings.findFirst({ where: { guildId } });
 
   if (!settings) {

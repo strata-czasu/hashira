@@ -1,6 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { ButtonStyle } from "discord.js";
+
 import { ActionRow, Button, reconcile, render, TextDisplay } from "../src";
 
 describe("JSX", () => {

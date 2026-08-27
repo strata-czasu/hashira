@@ -4,6 +4,7 @@ import type {
   PrismaTransaction,
 } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
+
 import { addBalance } from "../../economy/managers/transferManager";
 import { claimBirthday2026Config } from "./configService";
 import {
@@ -87,10 +88,7 @@ export const getBirthday2026VoiceEarningDiagnostics = async (
     }),
   ]);
   const counterTotal = dailyCounters._sum.awardedUnits ?? 0;
-  const awardedPasza = awards.reduce(
-    (total, award) => total + award.transaction.amount,
-    0,
-  );
+  const awardedPasza = awards.reduce((total, award) => total + award.transaction.amount, 0);
 
   return {
     awardedPasza,

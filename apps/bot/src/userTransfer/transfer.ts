@@ -1,5 +1,3 @@
-import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
-import { nestedTransaction } from "@hashira/db/transaction";
 import {
   ChannelType,
   type User as DiscordUser,
@@ -7,6 +5,10 @@ import {
   RESTJSONErrorCodes,
   userMention,
 } from "discord.js";
+
+import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
+
 import { transferBalance } from "../economy/managers/transferManager";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
@@ -25,12 +27,7 @@ type TransferOperationOptions = {
 };
 type TransferOperation = (options: TransferOperationOptions) => Promise<string | null>;
 
-export const transferRoles: TransferOperation = async ({
-  oldUser,
-  newUser,
-  guild,
-  moderator,
-}) => {
+export const transferRoles: TransferOperation = async ({ oldUser, newUser, guild, moderator }) => {
   const oldMember = await discordTry(
     async () => guild.members.fetch(oldUser.id),
     [RESTJSONErrorCodes.UnknownMember],
@@ -55,11 +52,7 @@ export const transferRoles: TransferOperation = async ({
   return `Skopiowano ${roles.length} ról`;
 };
 
-const transferVerification: TransferOperation = async ({
-  prisma,
-  oldDbUser,
-  newDbUser,
-}) => {
+const transferVerification: TransferOperation = async ({ prisma, oldDbUser, newDbUser }) => {
   if (!oldDbUser.verificationLevel) return null;
   await prisma.user.update({
     where: { id: newDbUser.id },
@@ -68,12 +61,7 @@ const transferVerification: TransferOperation = async ({
   return `Skopiowano poziom weryfikacji (${formatVerificationType(oldDbUser.verificationLevel)})`;
 };
 
-const transferTextActivity: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferTextActivity: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const { count } = await prisma.userTextActivity.updateMany({
     where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
@@ -82,12 +70,7 @@ const transferTextActivity: TransferOperation = async ({
   return `Przeniesiono aktywność tekstową (${count})`;
 };
 
-const transferVoiceActivity: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferVoiceActivity: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const { count } = await prisma.voiceSession.updateMany({
     where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
@@ -105,12 +88,7 @@ const transferInventory: TransferOperation = async ({ prisma, oldUser, newUser }
   return `Przeniesiono ${count} przedmioty`;
 };
 
-const transferWallets: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferWallets: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const oldWallet = await getDefaultWallet({
     prisma,
     userId: oldUser.id,
@@ -161,19 +139,11 @@ const transferWallets: TransferOperation = async ({
   });
 
   // TODO: Wallet transfer for custom currencies
-  const formattedBalance = formatBalance(
-    oldWallet.balance,
-    STRATA_CZASU_CURRENCY.symbol,
-  );
+  const formattedBalance = formatBalance(oldWallet.balance, STRATA_CZASU_CURRENCY.symbol);
   return `Przeniesiono ${formattedBalance} (${oldWalletTransactions} transakcji)`;
 };
 
-const transferUltimatum: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferUltimatum: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const { count } = await prisma.ultimatum.updateMany({
     where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
@@ -182,12 +152,7 @@ const transferUltimatum: TransferOperation = async ({
   return `Przeniesiono ${count} ultimatum`;
 };
 
-const transferMutes: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferMutes: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const { count } = await prisma.mute.updateMany({
     where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
@@ -196,12 +161,7 @@ const transferMutes: TransferOperation = async ({
   return `Przeniesiono ${count} wyciszeń`;
 };
 
-const transferWarns: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-  guild,
-}) => {
+const transferWarns: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
   const { count } = await prisma.warn.updateMany({
     where: { userId: oldUser.id, guildId: guild.id },
     data: { userId: newUser.id },
@@ -210,11 +170,7 @@ const transferWarns: TransferOperation = async ({
   return `Przeniesiono ${count} ostrzeżeń`;
 };
 
-const transferDmPollParticipations: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-}) => {
+const transferDmPollParticipations: TransferOperation = async ({ prisma, oldUser, newUser }) => {
   const { count } = await prisma.dmPollParticipant.updateMany({
     where: { userId: oldUser.id },
     data: { userId: newUser.id },
@@ -232,11 +188,7 @@ const transferDmPollVotes: TransferOperation = async ({ prisma, oldUser, newUser
   return `Przeniesiono głosy w ${count} ankietach`;
 };
 
-const transferDmPollExclusion: TransferOperation = async ({
-  prisma,
-  oldUser,
-  newUser,
-}) => {
+const transferDmPollExclusion: TransferOperation = async ({ prisma, oldUser, newUser }) => {
   const { count } = await prisma.dmPollExclusion.updateMany({
     where: { userId: oldUser.id },
     data: { userId: newUser.id },
@@ -297,16 +249,12 @@ const transferChannelRestrictions: TransferOperation = async ({
 
     await discordTry(
       () => channel.permissionOverwrites.delete(oldUser, reason),
-      [
-        RESTJSONErrorCodes.MissingPermissions,
-        RESTJSONErrorCodes.UnknownPermissionOverwrite,
-      ],
+      [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownPermissionOverwrite],
       () => null,
     );
 
     const permissionResult = await discordTry(
-      () =>
-        channel.permissionOverwrites.edit(newUser, { ViewChannel: false }, { reason }),
+      () => channel.permissionOverwrites.edit(newUser, { ViewChannel: false }, { reason }),
       [RESTJSONErrorCodes.MissingPermissions],
       (e) => {
         console.error(`Error transferring channel restriction ${restriction.id}:`, e);

@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "bun:test";
 import { Effect, Random } from "effect";
+
 import {
   initializeCombatState,
   type PlayerAbility,
@@ -313,12 +314,7 @@ describe("Combat System", () => {
         result: "monster_captured",
       } as const;
 
-      const result = processCombatTurn(
-        completedState,
-        createBasicAbilities(),
-        50,
-        random,
-      );
+      const result = processCombatTurn(completedState, createBasicAbilities(), 50, random);
 
       expect(result.isComplete).toBe(true);
       expect(result.result).toBe("monster_captured");
@@ -639,9 +635,7 @@ describe("Combat System", () => {
       player3.stats.hp = 20;
 
       const result = processCombatTurn(state, abilities, 50, random);
-      const healEvents = result.events.filter(
-        (e) => e.type === "heal" && e.actor === "user1",
-      );
+      const healEvents = result.events.filter((e) => e.type === "heal" && e.actor === "user1");
 
       const healMessages = healEvents.map((e) => e.message);
       expect(healMessages).toMatchInlineSnapshot(`

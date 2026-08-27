@@ -1,11 +1,3 @@
-import type { ExtractContext } from "@hashira/core";
-import type {
-  ExtendedPrismaClient,
-  Giveaway,
-  GiveawayParticipant,
-  GiveawayReward,
-  GiveawayWinner,
-} from "@hashira/db";
 import {
   ActionRowBuilder,
   type APIContainerComponent,
@@ -23,6 +15,16 @@ import {
 } from "discord.js";
 import { shuffle } from "es-toolkit";
 import sharp from "sharp";
+
+import type { ExtractContext } from "@hashira/core";
+import type {
+  ExtendedPrismaClient,
+  Giveaway,
+  GiveawayParticipant,
+  GiveawayReward,
+  GiveawayWinner,
+} from "@hashira/db";
+
 import type { base } from "../base";
 
 enum GiveawayBannerRatio {
@@ -68,20 +70,13 @@ export function parseRewards(input: string): GiveawayReward[] {
       const match = item.match(/^(\d+)x\s*(.+)$/i);
       if (match) {
         const [, num, reward] = match;
-        if (reward)
-          return { id: 0, giveawayId: 0, amount: Number(num), reward: reward.trim() };
+        if (reward) return { id: 0, giveawayId: 0, amount: Number(num), reward: reward.trim() };
       }
       return { id: 0, giveawayId: 0, amount: 1, reward: item };
     });
 }
 
-const allowedMimeTypes = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "image/avif",
-];
+const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"];
 const bannedMimeTypesFromFormatting = ["image/avif"];
 
 export function getExtension(mimeType: string | null) {
@@ -205,14 +200,11 @@ export async function updateGiveaway(
   prisma: ExtendedPrismaClient,
 ) {
   if (giveaway && message.components[0]) {
-    const participants: GiveawayParticipant[] =
-      await prisma.giveawayParticipant.findMany({
-        where: { giveawayId: giveaway.id, isRemoved: false },
-      });
+    const participants: GiveawayParticipant[] = await prisma.giveawayParticipant.findMany({
+      where: { giveawayId: giveaway.id, isRemoved: false },
+    });
 
-    const container = new ContainerBuilder(
-      message.components[0].toJSON() as APIContainerComponent,
-    );
+    const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
     const footerIndex = container.components.findIndex(
       (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
@@ -270,10 +262,7 @@ export async function selectAndSaveWinners(
   return winningUsers;
 }
 
-export async function endGiveaway(
-  message: Message<boolean>,
-  prisma: ExtendedPrismaClient,
-) {
+export async function endGiveaway(message: Message<boolean>, prisma: ExtendedPrismaClient) {
   if (!message.guildId) return;
 
   const giveaway = await prisma.giveaway.findFirst({
@@ -291,19 +280,12 @@ export async function endGiveaway(
     }),
   ]);
 
-  const winningUsers = await selectAndSaveWinners(
-    giveaway.id,
-    rewards,
-    participants,
-    prisma,
-  );
+  const winningUsers = await selectAndSaveWinners(giveaway.id, rewards, participants, prisma);
 
   const results = rewards.map(({ reward, id: rewardId }) => {
     const rewardWinners = winningUsers.filter((w) => w.rewardId === rewardId);
     const mention =
-      rewardWinners.length === 0
-        ? "nikt"
-        : rewardWinners.map((w) => `<@${w.userId}>`).join(" ");
+      rewardWinners.length === 0 ? "nikt" : rewardWinners.map((w) => `<@${w.userId}>`).join(" ");
     return `> ${reward} ${mention}`;
   });
 
@@ -320,9 +302,7 @@ export async function endGiveaway(
   });
 
   // Disable giveaway buttons
-  const container = new ContainerBuilder(
-    message.components[0].toJSON() as APIContainerComponent,
-  );
+  const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
   const actionRowIndex = container.components.findIndex(
     (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,

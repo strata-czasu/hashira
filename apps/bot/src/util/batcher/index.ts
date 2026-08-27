@@ -1,5 +1,6 @@
 import { sleep } from "bun";
 import type { Duration } from "date-fns";
+
 import { durationToMilliseconds } from "../duration";
 import type { BatcherBackend } from "./base";
 

@@ -1,4 +1,5 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+
 import {
   type Birthday2026EconomyErrorReason,
   type FeedBirthday2026PigInput,
@@ -20,13 +21,7 @@ export type Birthday2026PlayerHistoryEntry = {
   createdAt: Date;
   entryType: "credit" | "debit";
   reason: string | null;
-  source:
-    | "encounter"
-    | "feed"
-    | "settlement"
-    | "staffGrant"
-    | "textActivity"
-    | "voiceActivity";
+  source: "encounter" | "feed" | "settlement" | "staffGrant" | "textActivity" | "voiceActivity";
 };
 
 export type Birthday2026PublicTeam = {
@@ -152,10 +147,7 @@ export const getBirthday2026PlayerSnapshot = async (
         tucznikUserId: team.identity.tucznikUserId,
       };
     })
-    .sort(
-      (a, b) =>
-        b.permanentWeight - a.permanentWeight || a.name.localeCompare(b.name, "pl"),
-    );
+    .sort((a, b) => b.permanentWeight - a.permanentWeight || a.name.localeCompare(b.name, "pl"));
 
   return {
     ok: true,

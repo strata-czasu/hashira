@@ -1,4 +1,5 @@
 import type { Item } from "@hashira/db";
+
 import { durationToSeconds } from "./util/duration";
 
 export const TZ = "Europe/Warsaw";
@@ -53,8 +54,7 @@ export const DEFAULT_ITEMS: DefaultItem[] = [
   {
     type: "dynamicTintColorAccess",
     name: "Dostęp do koloru profilu z koloru nicku",
-    description:
-      "Daje możliwość ustawienia automatycznego koloru profilu z koloru nicku",
+    description: "Daje możliwość ustawienia automatycznego koloru profilu z koloru nicku",
     perUserLimit: 1,
   },
   {

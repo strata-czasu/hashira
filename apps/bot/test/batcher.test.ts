@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, type Mock, mock, test } from "bun:test";
 import { sleep } from "bun";
+import { beforeEach, describe, expect, type Mock, mock, test } from "bun:test";
+
 import { Batcher, InMemoryBackend } from "../src/util/batcher";
 
 describe("Batcher", () => {

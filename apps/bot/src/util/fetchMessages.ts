@@ -9,9 +9,7 @@ export async function* fetchMessages<T extends Message>(
   limit: number,
   before?: string,
 ): AsyncGenerator<Collection<string, T>> {
-  let messages = await channel.messages.fetch(
-    before ? { limit: 100, before } : { limit: 100 },
-  );
+  let messages = await channel.messages.fetch(before ? { limit: 100, before } : { limit: 100 });
 
   while (messages.size < limit) {
     const lastId = messages.lastKey();

@@ -3,6 +3,7 @@ import {
   isUniqueConstraintError,
   type PrismaTransaction,
 } from "@hashira/db";
+
 import { InsufficientBalanceError } from "../../economy/economyError";
 import { debitWallet } from "../../economy/managers/walletManager";
 import { claimBirthday2026Config } from "./configService";
@@ -133,9 +134,7 @@ export const finalizeBirthday2026Event = async (
           default: true,
           guildId: input.guildId,
           userId: {
-            in: config.teams.flatMap((team) =>
-              team.memberStates.map((member) => member.userId),
-            ),
+            in: config.teams.flatMap((team) => team.memberStates.map((member) => member.userId)),
           },
         },
         orderBy: { id: "asc" },
@@ -145,37 +144,33 @@ export const finalizeBirthday2026Event = async (
         0,
       );
 
-      const [teamContributions, contributorRows, userContributions, teams] =
-        await Promise.all([
-          tx.birthday2026FeedBatch.groupBy({
-            by: ["walletId"],
-            where: { configId: config.id },
-            _sum: { amount: true },
-          }),
-          tx.birthday2026FeedBatch.findMany({
-            where: { configId: config.id },
-            distinct: ["walletId", "userId"],
-            select: { userId: true, walletId: true },
-          }),
-          tx.birthday2026FeedBatch.groupBy({
-            by: ["userId"],
-            where: { configId: config.id },
-            _sum: { amount: true },
-          }),
-          tx.birthday2026TeamConfig.findMany({
-            where: { configId: config.id },
-            include: { wallet: true },
-          }),
-        ]);
+      const [teamContributions, contributorRows, userContributions, teams] = await Promise.all([
+        tx.birthday2026FeedBatch.groupBy({
+          by: ["walletId"],
+          where: { configId: config.id },
+          _sum: { amount: true },
+        }),
+        tx.birthday2026FeedBatch.findMany({
+          where: { configId: config.id },
+          distinct: ["walletId", "userId"],
+          select: { userId: true, walletId: true },
+        }),
+        tx.birthday2026FeedBatch.groupBy({
+          by: ["userId"],
+          where: { configId: config.id },
+          _sum: { amount: true },
+        }),
+        tx.birthday2026TeamConfig.findMany({
+          where: { configId: config.id },
+          include: { wallet: true },
+        }),
+      ]);
       const contributionByWallet = new Map(
         teamContributions.map((entry) => [entry.walletId, entry._sum.amount ?? 0]),
       );
       const contributorsByWallet = new Map<number, number>();
       for (const row of contributorRows) {
-        contributorsByWallet.set(
-          row.walletId,
-          (contributorsByWallet.get(row.walletId) ?? 0) + 1,
-        );
+        contributorsByWallet.set(row.walletId, (contributorsByWallet.get(row.walletId) ?? 0) + 1);
       }
       const rankedTeams = teams
         .map((team) => {
@@ -197,8 +192,7 @@ export const finalizeBirthday2026Event = async (
       await tx.birthday2026Settlement.create({
         data: {
           configId: config.id,
-          cutoffAt:
-            input.settledAt < config.eventEndAt ? input.settledAt : config.eventEndAt,
+          cutoffAt: input.settledAt < config.eventEndAt ? input.settledAt : config.eventEndAt,
           settledAt: input.settledAt,
           settledByUserId: input.settledByUserId,
           digestedPendingPasza,
@@ -312,12 +306,8 @@ export const getBirthday2026FinalizationDiagnostics = async (
   return {
     settledAt: config.settlement?.settledAt ?? null,
     pendingBatchCount: config.feedBatches.length,
-    pendingPasza: config.feedBatches.reduce(
-      (total, batch) => total + batch.remainingAmount,
-      0,
-    ),
-    overdueBatchCount: config.feedBatches.filter((batch) => batch.digestAt <= now)
-      .length,
+    pendingPasza: config.feedBatches.reduce((total, batch) => total + batch.remainingAmount, 0),
+    overdueBatchCount: config.feedBatches.filter((batch) => batch.digestAt <= now).length,
     missingTaskCount: config.feedBatches.filter(
       (batch) => !scheduledBatchIds.has(batch.id.toString()),
     ).length,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { getColor } from "../src/util/getColor";
 
 describe("getColor", () => {

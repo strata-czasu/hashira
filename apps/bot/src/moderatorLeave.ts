@@ -1,7 +1,4 @@
 import { TZDate } from "@date-fns/tz";
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
-import { DatabasePaginator, type Prisma } from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import { endOfDay, formatDate, startOfDay } from "date-fns";
 import {
   bold,
@@ -12,6 +9,11 @@ import {
   time,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "./base";
 import { TZ } from "./specializedConstants";
 import { parseDate } from "./util/dateParsing";
@@ -126,9 +128,7 @@ export const moderatorLeave = new Hashira({ name: "moderator-leave" })
       .addCommand("usuń", (command) =>
         command
           .setDescription("Usuń lub zakończ urlop")
-          .addNumber("urlop", (id) =>
-            id.setDescription("Urlop do usunięcia").setAutocomplete(true),
-          )
+          .addNumber("urlop", (id) => id.setDescription("Urlop do usunięcia").setAutocomplete(true))
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
             const results = await prisma.moderatorLeave.findMany({

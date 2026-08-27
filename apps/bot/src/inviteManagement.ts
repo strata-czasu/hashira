@@ -1,18 +1,13 @@
-import { ConfirmationDialog, Hashira } from "@hashira/core";
 import { differenceInWeeks } from "date-fns";
-import {
-  AttachmentBuilder,
-  type Collection,
-  type Invite,
-  PermissionFlagsBits,
-} from "discord.js";
+import { AttachmentBuilder, type Collection, type Invite, PermissionFlagsBits } from "discord.js";
+
+import { ConfirmationDialog, Hashira } from "@hashira/core";
+
 import { base } from "./base";
 
 const invitesToAttachment = (invites: Collection<string, Invite>) =>
   new AttachmentBuilder(
-    Buffer.from(
-      invites.map((invite) => `${invite.inviterId},${invite.code}`).join("\n"),
-    ),
+    Buffer.from(invites.map((invite) => `${invite.inviterId},${invite.code}`).join("\n")),
     {
       name: "invites.csv",
     },
@@ -44,9 +39,7 @@ export const inviteManagement = new Hashira({ name: "invite-management" })
               (invite) => !protectedInviteCodes.includes(invite.code),
             );
 
-            const invitesWithoutMetadata = excludedInvites.filter(
-              (invite) => !invite.createdAt,
-            );
+            const invitesWithoutMetadata = excludedInvites.filter((invite) => !invite.createdAt);
 
             if (invitesWithoutMetadata.size > 0) {
               await itx.editReply(

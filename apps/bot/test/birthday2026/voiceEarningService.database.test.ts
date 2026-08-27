@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import { setupBirthday2026Economy } from "../../src/events/birthday2026/economyService";
 import {
@@ -202,9 +204,7 @@ databaseTests("Birthday 2026 voice earning", () => {
         { isAlone: true, secondsSpent: 100 },
       ],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: first.id }),
-    ).toMatchObject({
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: first.id })).toMatchObject({
       ok: true,
       awardedUnits: 0,
       eligibleSeconds: 400,
@@ -218,9 +218,7 @@ databaseTests("Birthday 2026 voice earning", () => {
       leftAt: new Date("2026-08-03T18:13:20Z"),
       totals: [{ secondsSpent: 200 }],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: second.id }),
-    ).toMatchObject({
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: second.id })).toMatchObject({
       ok: true,
       awardedUnits: 1,
       dailyAwardedUnits: 1,
@@ -228,9 +226,7 @@ databaseTests("Birthday 2026 voice earning", () => {
       status: "awarded",
       walletBalance: 1,
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: second.id }),
-    ).toMatchObject({
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: second.id })).toMatchObject({
       ok: true,
       awardedUnits: 0,
       dailyAwardedUnits: 1,
@@ -245,9 +241,7 @@ databaseTests("Birthday 2026 voice earning", () => {
       leftAt: new Date("2026-08-03T18:40:00Z"),
       totals: [{ secondsSpent: 1_200 }],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: third.id }),
-    ).toMatchObject({
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: third.id })).toMatchObject({
       ok: true,
       awardedUnits: 2,
       dailyAwardedUnits: 3,
@@ -255,9 +249,7 @@ databaseTests("Birthday 2026 voice earning", () => {
       walletBalance: 3,
     });
 
-    expect(
-      await getBirthday2026VoiceEarningDiagnostics(prisma, fixture.guildId),
-    ).toMatchObject({
+    expect(await getBirthday2026VoiceEarningDiagnostics(prisma, fixture.guildId)).toMatchObject({
       awardedPasza: 3,
       awardedTransactions: 2,
       counterTotal: 3,
@@ -271,9 +263,10 @@ databaseTests("Birthday 2026 voice earning", () => {
         dailyCap: 9,
       }),
     ).toMatchObject({ ok: true, config: { unitSeconds: 300, dailyCap: 9 } });
-    expect(
-      await getBirthday2026VoiceEarningDiagnostics(prisma, fixture.guildId),
-    ).toMatchObject({ unitSeconds: 300, dailyCap: 9 });
+    expect(await getBirthday2026VoiceEarningDiagnostics(prisma, fixture.guildId)).toMatchObject({
+      unitSeconds: 300,
+      dailyCap: 9,
+    });
   });
 
   it("enforces the daily cap across concurrent completed sessions", async () => {
@@ -284,12 +277,8 @@ databaseTests("Birthday 2026 voice earning", () => {
         createVoiceSession({
           guildId: fixture.guildId,
           userId: fixture.memberUserId,
-          joinedAt: new Date(
-            new Date("2026-08-03T18:00:00Z").getTime() + index * 120_000,
-          ),
-          leftAt: new Date(
-            new Date("2026-08-03T18:01:00Z").getTime() + index * 120_000,
-          ),
+          joinedAt: new Date(new Date("2026-08-03T18:00:00Z").getTime() + index * 120_000),
+          leftAt: new Date(new Date("2026-08-03T18:01:00Z").getTime() + index * 120_000),
           totals: [{ secondsSpent: 60 }],
         }),
       ),
@@ -315,9 +304,7 @@ databaseTests("Birthday 2026 voice earning", () => {
       include: { transaction: true },
     });
     expect(dailyState.awardedUnits).toBe(2);
-    expect(awards.reduce((total, award) => total + award.transaction.amount, 0)).toBe(
-      2,
-    );
+    expect(awards.reduce((total, award) => total + award.transaction.amount, 0)).toBe(2);
   });
 
   it("enforces event, membership, and join-time eligibility", async () => {
@@ -331,9 +318,10 @@ databaseTests("Birthday 2026 voice earning", () => {
       leftAt: new Date("2026-08-03T18:10:00Z"),
       totals: [{ secondsSpent: 600 }],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: nonMember.id }),
-    ).toEqual({ ok: false, reason: "member_not_found" });
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: nonMember.id })).toEqual({
+      ok: false,
+      reason: "member_not_found",
+    });
 
     const beforeEvent = await createVoiceSession({
       guildId: fixture.guildId,
@@ -342,9 +330,10 @@ databaseTests("Birthday 2026 voice earning", () => {
       leftAt: new Date("2026-08-03T18:00:00Z"),
       totals: [{ secondsSpent: 600 }],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: beforeEvent.id }),
-    ).toEqual({ ok: false, reason: "event_not_open" });
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: beforeEvent.id })).toEqual({
+      ok: false,
+      reason: "event_not_open",
+    });
 
     await prisma.birthday2026MemberState.update({
       where: {
@@ -362,9 +351,10 @@ databaseTests("Birthday 2026 voice earning", () => {
       leftAt: new Date("2026-08-03T18:40:00Z"),
       totals: [{ secondsSpent: 600 }],
     });
-    expect(
-      await awardBirthday2026VoicePasza(prisma, { voiceSessionId: beforeJoin.id }),
-    ).toEqual({ ok: false, reason: "activity_before_join" });
+    expect(await awardBirthday2026VoicePasza(prisma, { voiceSessionId: beforeJoin.id })).toEqual({
+      ok: false,
+      reason: "activity_before_join",
+    });
   });
 
   it("resets the voice cap on the next event-anchored day", async () => {

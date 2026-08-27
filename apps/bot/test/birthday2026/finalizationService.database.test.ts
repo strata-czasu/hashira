@@ -1,7 +1,9 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, describe, expect, it } from "bun:test";
+
 import type { PrismaTransaction } from "@hashira/db";
 import { PrismaClient } from "@hashira/db";
-import { PrismaPg } from "@prisma/adapter-pg";
+
 import {
   setBirthday2026FeatureState,
   upsertBirthday2026Config,
@@ -33,10 +35,7 @@ const userIds: string[] = [];
 const currencyIds: number[] = [];
 const taskIds: number[] = [];
 
-const scheduleDigestion = async (
-  tx: PrismaTransaction,
-  batch: { id: number; digestAt: Date },
-) => {
+const scheduleDigestion = async (tx: PrismaTransaction, batch: { id: number; digestAt: Date }) => {
   const task = await tx.task.create({
     data: {
       identifier: batch.id.toString(),
@@ -75,9 +74,7 @@ databaseTests("Birthday 2026 final settlement", () => {
     const suffix = crypto.randomUUID();
     const guildId = `birthday-settlement-guild-${suffix}`;
     const actorUserId = `birthday-settlement-actor-${suffix}`;
-    const memberUserIds = [0, 1, 2].map(
-      (index) => `birthday-settlement-member-${index}-${suffix}`,
-    );
+    const memberUserIds = [0, 1, 2].map((index) => `birthday-settlement-member-${index}-${suffix}`);
     guildIds.push(guildId);
     userIds.push(actorUserId, ...memberUserIds);
 
@@ -223,9 +220,7 @@ databaseTests("Birthday 2026 final settlement", () => {
             contributorCount: 1,
           },
         ],
-        individualResults: [
-          { userId: firstMember, amount: 20, category: "topContributor" },
-        ],
+        individualResults: [{ userId: firstMember, amount: 20, category: "topContributor" }],
       },
     });
     expect(await finalizeBirthday2026Event(prisma, settlementInput)).toMatchObject({
@@ -254,11 +249,7 @@ databaseTests("Birthday 2026 final settlement", () => {
       }),
     ).toBe(3);
     expect(
-      await getBirthday2026FinalizationDiagnostics(
-        prisma,
-        guildId,
-        settlementInput.settledAt,
-      ),
+      await getBirthday2026FinalizationDiagnostics(prisma, guildId, settlementInput.settledAt),
     ).toMatchObject({
       pendingBatchCount: 0,
       pendingPasza: 0,

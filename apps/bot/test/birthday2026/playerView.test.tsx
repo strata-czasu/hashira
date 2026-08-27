@@ -1,6 +1,8 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
+
 import { render } from "@hashira/jsx";
+
 import type { Birthday2026PlayerSnapshot } from "../../src/events/birthday2026/playerService";
 import {
   BIRTHDAY_2026_FEED_ALL_CUSTOM_ID,

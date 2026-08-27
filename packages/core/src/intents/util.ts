@@ -18,9 +18,10 @@ export const createEventsToIntent = <
   events: Events,
   intents: Intents,
 ): EventsToIntents<Events, Intents> =>
-  Object.fromEntries(
-    events.map((event) => [event, intents] as const),
-  ) as EventsToIntents<Events, Intents>;
+  Object.fromEntries(events.map((event) => [event, intents] as const)) as EventsToIntents<
+    Events,
+    Intents
+  >;
 
 export const filterDisabledIntents = (
   intents: readonly GatewayIntentBits[],

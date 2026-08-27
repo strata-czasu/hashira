@@ -1,12 +1,3 @@
-import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type DiscordButtonStyle,
-  type DmPoll,
-  type DmPollExclusion,
-  type DmPollOption,
-} from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -26,6 +17,17 @@ import {
   time,
   userMention,
 } from "discord.js";
+
+import { ConfirmationDialog, Hashira, PaginatedView } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type DiscordButtonStyle,
+  type DmPoll,
+  type DmPollExclusion,
+  type DmPollOption,
+} from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 import { ensureUserExists, ensureUsersExist } from "./util/ensureUsersExist";
@@ -71,9 +73,7 @@ const getPollCreateOrUpdateActionRows = (poll: DMPollWithOptions | null = null) 
   if (poll) {
     titleInput.setValue(poll.title);
     contentInput.setValue(poll.content);
-    const firstRowOptions = poll.options
-      .filter((it) => it.row === 0)
-      .map(({ option }) => option);
+    const firstRowOptions = poll.options.filter((it) => it.row === 0).map(({ option }) => option);
     firstRowInput.setValue(firstRowOptions.join("\n"));
   }
 
@@ -146,15 +146,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const rawOptions = submitAction.fields.getTextInputValue("row1");
 
             if (!title || !content || !rawOptions) {
-              return await errorFollowUp(
-                submitAction,
-                "Nie podano wszystkich wymaganych danych!",
-              );
+              return await errorFollowUp(submitAction, "Nie podano wszystkich wymaganych danych!");
             }
 
-            const firstRowOptions = rawOptions
-              .split("\n")
-              .map((option) => option.trim());
+            const firstRowOptions = rawOptions.split("\n").map((option) => option.trim());
 
             if (firstRowOptions.length > 5) {
               return await errorFollowUp(
@@ -223,10 +218,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               return await errorFollowUp(itx, "Nie znaleziono głosowania o podanym ID");
             }
             if (poll.startedAt) {
-              return await errorFollowUp(
-                itx,
-                "Nie można edytować rozpoczętego głosowania",
-              );
+              return await errorFollowUp(itx, "Nie można edytować rozpoczętego głosowania");
             }
 
             const customId = `edit-poll-${poll.id}`;
@@ -254,15 +246,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             const rawFirstRowOptions = submitAction.fields.getTextInputValue("row1");
 
             if (!title || !content || !rawFirstRowOptions) {
-              return await errorFollowUp(
-                submitAction,
-                "Nie podano wszystkich wymaganych danych!",
-              );
+              return await errorFollowUp(submitAction, "Nie podano wszystkich wymaganych danych!");
             }
 
-            const firstRowOptions = rawFirstRowOptions
-              .split("\n")
-              .map((option) => option.trim());
+            const firstRowOptions = rawFirstRowOptions.split("\n").map((option) => option.trim());
 
             if (firstRowOptions.length > 5) {
               return await errorFollowUp(
@@ -315,9 +302,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             );
 
             const formatPoll = (poll: DMPollWithOptions, _idx: number) => {
-              const lines = [
-                `### ${poll.title} [${getDmPollStatus(poll)}] [${poll.id}]`,
-              ];
+              const lines = [`### ${poll.title} [${getDmPollStatus(poll)}] [${poll.id}]`];
               if (poll.startedAt) {
                 lines.push(
                   `**Rozpoczęto**: ${time(poll.startedAt, TimestampStyles.LongDateShortTime)}`,
@@ -349,12 +334,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               return lines.join("\n");
             };
 
-            const view = new PaginatedView(
-              paginator,
-              "Głosowania DM",
-              formatPoll,
-              true,
-            );
+            const view = new PaginatedView(paginator, "Głosowania DM", formatPoll, true);
             await view.render(itx);
           }),
       )
@@ -401,14 +381,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 ]);
               }
             } else if (poll.startedAt) {
-              const totalVotes = poll.options.reduce(
-                (acc, option) => acc + option.votes.length,
-                0,
-              );
+              const totalVotes = poll.options.reduce((acc, option) => acc + option.votes.length, 0);
               const optionResults: string[] = [];
               for (const option of poll.options) {
-                const percentage =
-                  totalVotes === 0 ? 0 : (option.votes.length / totalVotes) * 100;
+                const percentage = totalVotes === 0 ? 0 : (option.votes.length / totalVotes) * 100;
                 const votingUsersHastebinUrl = await hastebin(
                   option.votes.map(({ userId }) => userId).join("\n"),
                 );
@@ -424,9 +400,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               }
 
               // Is in the role and received the message
-              const eliglibleParticipants = poll.participants.filter(
-                (p) => p.messageId !== null,
-              );
+              const eliglibleParticipants = poll.participants.filter((p) => p.messageId !== null);
               const votedPercentage =
                 eliglibleParticipants.length === 0
                   ? 0
@@ -441,10 +415,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               if (totalVotes < eliglibleParticipants.length) {
                 // Eliglible (message was delivered), but not yet voted
                 const notYetVoted = eliglibleParticipants.filter(
-                  (p) =>
-                    !poll.options
-                      .flatMap((o) => o.votes)
-                      .some((v) => v.userId === p.userId),
+                  (p) => !poll.options.flatMap((o) => o.votes).some((v) => v.userId === p.userId),
                 );
                 const hastebinUrl = await hastebin(
                   notYetVoted.map(({ userId }) => userId).join("\n"),
@@ -460,9 +431,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               }
 
               // Is in the role, but failed to receive the message
-              const failedParticipants = poll.participants.filter(
-                (p) => p.messageId === null,
-              );
+              const failedParticipants = poll.participants.filter((p) => p.messageId === null);
               if (failedParticipants.length > 0) {
                 const hastebinUrl = await hastebin(
                   failedParticipants.map(({ userId }) => userId).join("\n"),
@@ -534,15 +503,15 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 .setLabel(option.option)
                 .setCustomId(`vote-option:${option.id}`)
                 .setStyle(parseButtonStyle(option.style))
-                .setEmoji(
-                  option.emoji ?? numberToEmoji(firstRowOptions.length + i + 1),
-                );
+                .setEmoji(option.emoji ?? numberToEmoji(firstRowOptions.length + i + 1));
             });
 
-            const firstRowActionRow =
-              new ActionRowBuilder<ButtonBuilder>().addComponents(...firstRowButtons);
-            const secondRowActionRow =
-              new ActionRowBuilder<ButtonBuilder>().addComponents(...secondRowButtons);
+            const firstRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              ...firstRowButtons,
+            );
+            const secondRowActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              ...secondRowButtons,
+            );
 
             await itx.deferReply();
             await itx.guild.members.fetch();
@@ -551,9 +520,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               role.members.map((m) => m.id),
             );
 
-            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map(
-              (e) => e.userId,
-            );
+            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map((e) => e.userId);
             const eliglibleParticipants = role.members.filter(
               (m) => !excludedUserIds.includes(m.id),
             );
@@ -621,9 +588,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             if (successfullySentMessages.length < messageSendStatuses.length) {
-              const failedToSendMessages = messageSendStatuses.filter(
-                (m) => m.messageId === null,
-              );
+              const failedToSendMessages = messageSendStatuses.filter((m) => m.messageId === null);
               lines.push(
                 `Nie udało się wysłać wiadomości do ${failedToSendMessages.length} użytkowników:`,
               );
@@ -650,14 +615,10 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
       )
       .addCommand("przypomnij", (command) =>
         command
-          .setDescription(
-            "Przypomnij o głosowaniu użytkownikom, którzy jeszcze nie zagłosowali",
-          )
+          .setDescription("Przypomnij o głosowaniu użytkownikom, którzy jeszcze nie zagłosowali")
           .addInteger("id", (id) => id.setDescription("ID głosowania"))
           .addString("content", (content) =>
-            content
-              .setDescription("Niestandardowa treść przypomnienia")
-              .setRequired(false),
+            content.setDescription("Niestandardowa treść przypomnienia").setRequired(false),
           )
           .handle(async ({ prisma }, { id, content: providedContent }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -676,10 +637,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             if (!poll.startedAt) {
-              return await errorFollowUp(
-                itx,
-                "Głosowanie nie zostało jeszcze rozpoczęte.",
-              );
+              return await errorFollowUp(itx, "Głosowanie nie zostało jeszcze rozpoczęte.");
             }
             if (poll.finishedAt) {
               return await errorFollowUp(
@@ -689,9 +647,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             await itx.deferReply();
-            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map(
-              (e) => e.userId,
-            );
+            const excludedUserIds = (await prisma.dmPollExclusion.findMany()).map((e) => e.userId);
             const members = await fetchMembers(
               itx.guild,
               poll.participants
@@ -700,9 +656,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                     // Skip users which never received the poll
                     p.messageId !== null &&
                     // Skip users who have already voted
-                    !poll.options
-                      .flatMap((o) => o.votes)
-                      .some((v) => v.userId === p.userId),
+                    !poll.options.flatMap((o) => o.votes).some((v) => v.userId === p.userId),
                 )
                 .filter((p) => !excludedUserIds.includes(p.userId))
                 .map((p) => p.userId),
@@ -746,9 +700,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             ];
 
             if (successfullySentMessages.length < messageSendStatuses.length) {
-              const failedToSendMessages = messageSendStatuses.filter(
-                (m) => m.messageId === null,
-              );
+              const failedToSendMessages = messageSendStatuses.filter((m) => m.messageId === null);
               lines.push(
                 `Nie udało się wysłać wiadomości do:\n${failedToSendMessages
                   .map(({ member }) => `${member.user.tag} ${member.user.id}`)
@@ -772,10 +724,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
               include: { participants: true },
             });
             if (poll === null) {
-              return await errorFollowUp(
-                itx,
-                "Nie znaleziono aktywnego głosowania o podanym ID",
-              );
+              return await errorFollowUp(itx, "Nie znaleziono aktywnego głosowania o podanym ID");
             }
 
             const dialog = new ConfirmationDialog(
@@ -811,9 +760,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                         RESTJSONErrorCodes.UnknownMessage,
                       ],
                       () => {
-                        console.log(
-                          `Failed to delete message ${messageId} for user ${userId}`,
-                        );
+                        console.log(`Failed to delete message ${messageId} for user ${userId}`);
                       },
                     );
                   }),
@@ -863,10 +810,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
             }
 
             if (poll.startedAt && !poll.finishedAt) {
-              return await errorFollowUp(
-                itx,
-                "Nie można usunąć rozpoczętego głosowania",
-              );
+              return await errorFollowUp(itx, "Nie można usunąć rozpoczętego głosowania");
             }
 
             await prisma.dmPoll.update({
@@ -919,10 +863,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const users = await fetchMembers(
-                  itx.guild,
-                  parseUserMentions(rawUsers),
-                );
+                const users = await fetchMembers(itx.guild, parseUserMentions(rawUsers));
                 await ensureUsersExist(
                   prisma,
                   users.map((u) => u.id),
@@ -950,10 +891,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const users = await fetchMembers(
-                  itx.guild,
-                  parseUserMentions(rawUsers),
-                );
+                const users = await fetchMembers(itx.guild, parseUserMentions(rawUsers));
                 await ensureUsersExist(
                   prisma,
                   users.map((u) => u.id),
@@ -995,9 +933,7 @@ export const dmVoting = new Hashira({ name: "dmVoting" })
                   }
                   await itx.editReply(lines.join("\n"));
                 } else {
-                  await itx.editReply(
-                    `${userMention(user.id)} nie jest wykluczony z głosowań DM`,
-                  );
+                  await itx.editReply(`${userMention(user.id)} nie jest wykluczony z głosowań DM`);
                 }
               }),
           ),

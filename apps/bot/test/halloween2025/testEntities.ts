@@ -1,7 +1,4 @@
-import type {
-  MonsterData,
-  PlayerData,
-} from "../../src/events/halloween2025/combatRepository";
+import type { MonsterData, PlayerData } from "../../src/events/halloween2025/combatRepository";
 import {
   MONSTER_TEMPLATES,
   type MonsterTemplate,

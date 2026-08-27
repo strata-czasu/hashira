@@ -5,16 +5,16 @@ import {
   SlashCommandUserOption,
   type User,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class UserOptionBuilder<
   HasDescription extends boolean = false,
   Required extends boolean = true,
-> implements OptionBuilder<Required, User>
-{
+> implements OptionBuilder<Required, User> {
   declare _: { type: If<Required, User, User | null> };
   // Enforce nominal typing
-  protected declare readonly nominal: [HasDescription, Required];
+  declare protected readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandUserOption().setRequired(true);
 
   setDescription(description: string): UserOptionBuilder<true, Required> {
@@ -34,15 +34,10 @@ export class UserOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     if (interaction.isAutocomplete()) return null as this["_"]["type"];
-    return interaction.options.getUser(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getUser(name, this.#builder.required) as this["_"]["type"];
   }
 }

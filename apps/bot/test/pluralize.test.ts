@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+
 import { pluralize, pluralizers } from "../src/util/pluralize";
 
 const forms = { one: "SINGULAR", few: "PAUCAL", many: "PLURAL" };

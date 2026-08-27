@@ -1,11 +1,7 @@
-import type {
-  ExtendedPrismaClient,
-  Prisma,
-  PrismaTransaction,
-  Task,
-} from "@hashira/db";
-import { nestedTransaction } from "@hashira/db/transaction";
 import { addSeconds } from "date-fns";
+
+import type { ExtendedPrismaClient, Prisma, PrismaTransaction, Task } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 
 export interface TaskFindOptions<T> {
   throwIfNotFound?: boolean;
@@ -83,9 +79,7 @@ const calculateHandleAfter = (delay: number | Date, createdAt: Date) => {
 
 type PersistenceTransaction = ExtendedPrismaClient | PrismaTransaction;
 
-export class PrismaMessageQueuePersistence
-  implements MessageQueuePersistence<PersistenceTransaction>
-{
+export class PrismaMessageQueuePersistence implements MessageQueuePersistence<PersistenceTransaction> {
   readonly #prisma: ExtendedPrismaClient;
 
   constructor(prisma: ExtendedPrismaClient) {

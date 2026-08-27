@@ -1,5 +1,3 @@
-/** @jsxImportSource @hashira/jsx */
-import { ActionRow, Button, type JSXNode, render } from "@hashira/jsx";
 import {
   type BaseMessageOptions,
   type ButtonInteraction,
@@ -8,6 +6,9 @@ import {
   ComponentType,
   type Message,
 } from "discord.js";
+
+/** @jsxImportSource @hashira/jsx */
+import { ActionRow, Button, type JSXNode, render } from "@hashira/jsx";
 
 type ConfirmationSendCallback = {
   send(components: BaseMessageOptions): Promise<Message<boolean>>;

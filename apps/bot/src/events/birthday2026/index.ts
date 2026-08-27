@@ -1,6 +1,3 @@
-import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
-import { render } from "@hashira/jsx";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -22,6 +19,11 @@ import {
   time,
   userMention,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+import { render } from "@hashira/jsx";
+
 import { base } from "../../base";
 import { discordTry } from "../../util/discordTry";
 import { ensureUserExists } from "../../util/ensureUsersExist";
@@ -50,10 +52,7 @@ import {
   spawnBirthday2026Encounter,
 } from "./encounterService";
 import { BIRTHDAY_2026_ENCOUNTER_CUSTOM_ID } from "./encounterView";
-import {
-  getBirthday2026EventState,
-  getBirthday2026RegistrationState,
-} from "./eventState";
+import { getBirthday2026EventState, getBirthday2026RegistrationState } from "./eventState";
 import {
   finalizeBirthday2026Event,
   getBirthday2026FinalizationDiagnostics,
@@ -115,12 +114,10 @@ import {
 const teamErrorMessages = {
   already_in_team: "Ten użytkownik jest już w tej drużynie.",
   captain_already_assigned: "Ten użytkownik jest już kapitanem innej drużyny.",
-  captain_move_requires_replacement:
-    "Najpierw wyznacz zastępstwo kapitana tej drużyny.",
+  captain_move_requires_replacement: "Najpierw wyznacz zastępstwo kapitana tej drużyny.",
   captain_not_member: "Kapitan musi należeć do wskazanej drużyny.",
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
-  identity_already_assigned:
-    "Tucznik albo kapitan jest już przypisany do innej drużyny.",
+  identity_already_assigned: "Tucznik albo kapitan jest już przypisany do innej drużyny.",
   identity_already_configured:
     "Tucznik i kapitan tej drużyny są już ustawieni. Zmieniaj ich osobno.",
   identity_not_configured: "Najpierw ustaw Tucznika i kapitana tej drużyny razem.",
@@ -131,8 +128,7 @@ const teamErrorMessages = {
   team_already_exists: "Drużyna o tej nazwie już istnieje na serwerze.",
   team_not_found: "Nie znaleziono wskazanej drużyny.",
   tucznik_already_assigned: "Ten użytkownik jest już Tucznikiem innej drużyny.",
-  tucznik_move_requires_replacement:
-    "Najpierw wyznacz innego Tucznika dla tej drużyny.",
+  tucznik_move_requires_replacement: "Najpierw wyznacz innego Tucznika dla tej drużyny.",
   tucznik_not_member: "Tucznik musi należeć do wskazanej drużyny.",
 };
 
@@ -148,8 +144,7 @@ const economyErrorMessages = {
   invalid_digestion_delay: "Czas trawienia musi być nieujemną liczbą sekund.",
   member_not_found: "Ten użytkownik nie należy do eventu.",
   target_team_not_found: "Nie znaleziono drużyny, do której chcesz przekazać Paszę.",
-  cross_feed_already_used:
-    "Możesz przypadkowo nakarmić drużynę tylko raz podczas całego eventu.",
+  cross_feed_already_used: "Możesz przypadkowo nakarmić drużynę tylko raz podczas całego eventu.",
   team_wallet_not_found: "Drużyna nie ma poprawnie skonfigurowanego portfela.",
 } satisfies Record<Birthday2026EconomyErrorReason, string>;
 
@@ -172,8 +167,7 @@ const registrationErrorMessages = {
   event_not_available: "Event nie jest teraz dostępny.",
   not_registered: "Twój udział w evencie nie jest zarejestrowany.",
   registration_closed: "Event już się zakończył.",
-  teams_not_ready:
-    "Wszystkie drużyny muszą najpierw mieć swoich Tuczników i zatwierdzone persony.",
+  teams_not_ready: "Wszystkie drużyny muszą najpierw mieć swoich Tuczników i zatwierdzone persony.",
 };
 
 const finalizationErrorMessages = {
@@ -181,8 +175,7 @@ const finalizationErrorMessages = {
   config_not_found: "Event urodzinowy nie jest jeszcze skonfigurowany.",
   earning_not_configured: "Najpierw skonfiguruj zdobywanie Paszy za tekst i głos.",
   event_enabled: "Wyłącz event przed przydzieleniem drużyn.",
-  teams_not_ready:
-    "Skonfiguruj co najmniej jedną drużynę, jej Tucznika i zatwierdzoną personę.",
+  teams_not_ready: "Skonfiguruj co najmniej jedną drużynę, jej Tucznika i zatwierdzoną personę.",
 };
 
 const getPlayerSnapshotOrReply = async (
@@ -255,9 +248,7 @@ const runBirthday2026FeedModal = async (
 
   await submitItx.deferReply({ flags: "Ephemeral" });
 
-  const rawAmount = submitItx.fields
-    .getTextInputValue(BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID)
-    .trim();
+  const rawAmount = submitItx.fields.getTextInputValue(BIRTHDAY_2026_FEED_AMOUNT_CUSTOM_ID).trim();
   const amount = Number(rawAmount);
   if (!Number.isSafeInteger(amount) || amount < 1) {
     await errorFollowUp(submitItx, "Podaj poprawną liczbę Paszy.");
@@ -360,11 +351,7 @@ const announceBirthday2026CrossFeed = async (
   );
 };
 
-const findTeamByRole = async (
-  prisma: PrismaTransaction,
-  guildId: string,
-  roleId: string,
-) => {
+const findTeamByRole = async (prisma: PrismaTransaction, guildId: string, roleId: string) => {
   const teams = await findBirthday2026Teams(prisma, guildId);
   return teams.find((team) => team.roleId === roleId) ?? null;
 };
@@ -640,9 +627,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             const configuredTucznicy = teams.filter((team) =>
               Boolean(team.identity?.tucznikUserId),
             ).length;
-            const configuredPersonas = teams.filter(
-              (team) => team.persona !== null,
-            ).length;
+            const configuredPersonas = teams.filter((team) => team.persona !== null).length;
             const tucznicyReady =
               teams.length > 0 &&
               configuredTucznicy === teams.length &&
@@ -666,10 +651,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `${bold("Zapisy:")} ${getBirthday2026RegistrationState(config, now)}`,
                 `${bold("Zapisani / przydział:")} ${registrationCount} / ${
                   rosterFinalization
-                    ? time(
-                        rosterFinalization.finalizedAt,
-                        TimestampStyles.ShortDateTime,
-                      )
+                    ? time(rosterFinalization.finalizedAt, TimestampStyles.ShortDateTime)
                     : "nie wykonano"
                 }`,
                 `${bold("Widoczny / aktywny:")} ${config.visible ? "tak" : "nie"} / ${
@@ -677,10 +659,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 }`,
                 `${bold("Rozliczenie:")} ${
                   settlementDiagnostics?.settledAt
-                    ? time(
-                        settlementDiagnostics.settledAt,
-                        TimestampStyles.ShortDateTime,
-                      )
+                    ? time(settlementDiagnostics.settledAt, TimestampStyles.ShortDateTime)
                     : "nie wykonano"
                 } — oczekujące batche=${settlementDiagnostics?.pendingBatchCount ?? 0}, Pasza=${settlementDiagnostics?.pendingPasza ?? 0}, przeterminowane=${settlementDiagnostics?.overdueBatchCount ?? 0}, bez zadania=${settlementDiagnostics?.missingTaskCount ?? 0}`,
                 `${bold("Start:")} ${time(config.eventStartAt, TimestampStyles.LongDateTime)}`,
@@ -708,21 +687,11 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("konfiguruj", (command) =>
         command
           .setDescription("Ustaw daty i prywatne flagi eventu")
-          .addString("start", (option) =>
-            option.setDescription("Np. 2026-08-01T20:00:00+02:00"),
-          )
-          .addString("koniec", (option) =>
-            option.setDescription("Np. 2026-08-08T20:00:00+02:00"),
-          )
-          .addString("strefa", (option) =>
-            option.setDescription("Strefa IANA, np. Europe/Warsaw"),
-          )
-          .addBoolean("widoczny", (option) =>
-            option.setDescription("Czy event jest widoczny"),
-          )
-          .addBoolean("aktywny", (option) =>
-            option.setDescription("Czy mechaniki są aktywne"),
-          )
+          .addString("start", (option) => option.setDescription("Np. 2026-08-01T20:00:00+02:00"))
+          .addString("koniec", (option) => option.setDescription("Np. 2026-08-08T20:00:00+02:00"))
+          .addString("strefa", (option) => option.setDescription("Strefa IANA, np. Europe/Warsaw"))
+          .addBoolean("widoczny", (option) => option.setDescription("Czy event jest widoczny"))
+          .addBoolean("aktywny", (option) => option.setDescription("Czy mechaniki są aktywne"))
           .handle(
             async (
               { prisma },
@@ -758,11 +727,9 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               });
               if (!result.ok) {
                 const messages = {
-                  invalid_event_window:
-                    "Koniec eventu musi przypadać po jego rozpoczęciu.",
+                  invalid_event_window: "Koniec eventu musi przypadać po jego rozpoczęciu.",
                   invalid_timezone: "Nieprawidłowa strefa czasowa.",
-                  roster_finalized:
-                    "Nie można zmienić konfiguracji po przydzieleniu drużyn.",
+                  roster_finalized: "Nie można zmienić konfiguracji po przydzieleniu drużyn.",
                 };
                 await errorFollowUp(itx, messages[result.reason]);
                 return;
@@ -795,10 +762,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
             if (!(await findBirthday2026Config(prisma, itx.guildId))) {
-              await errorFollowUp(
-                itx,
-                "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
-              );
+              await errorFollowUp(itx, "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.");
               return;
             }
 
@@ -828,11 +792,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
-            const result = await finalizeBirthday2026Registration(
-              prisma,
-              itx.guildId,
-              Math.random,
-            );
+            const result = await finalizeBirthday2026Registration(prisma, itx.guildId, Math.random);
             if (!result.ok) {
               await errorFollowUp(itx, finalizationErrorMessages[result.reason]);
               return;
@@ -848,9 +808,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 `Przydzielono ${result.assignments.length} uczestników.`,
                 ...teamLines,
                 `Role: ${roleSync.total - roleSync.failed}/${roleSync.total} zsynchronizowano${
-                  roleSync.failed > 0
-                    ? "; uruchom `synchronizuj-role`, aby ponowić błędy"
-                    : ""
+                  roleSync.failed > 0 ? "; uruchom `synchronizuj-role`, aby ponowić błędy" : ""
                 }.`,
               ].join("\n"),
             });
@@ -874,12 +832,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("ekonomia", (command) =>
         command
           .setDescription("Skonfiguruj walutę i czas trawienia")
-          .addString("nazwa", (option) =>
-            option.setDescription("Nazwa waluty eventowej"),
-          )
-          .addString("symbol", (option) =>
-            option.setDescription("Symbol waluty eventowej"),
-          )
+          .addString("nazwa", (option) => option.setDescription("Nazwa waluty eventowej"))
+          .addString("symbol", (option) => option.setDescription("Symbol waluty eventowej"))
           .addInteger("trawienie-sekundy", (option) =>
             option.setDescription("Czas trawienia w sekundach").setMinValue(0),
           )
@@ -940,10 +894,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               });
               if (!result.ok) {
                 const messages = {
-                  config_not_found:
-                    "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
-                  invalid_daily_cap:
-                    "Limit dzienny musi być dodatnią liczbą całkowitą.",
+                  config_not_found: "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
+                  invalid_daily_cap: "Limit dzienny musi być dodatnią liczbą całkowitą.",
                   invalid_window: "Okno aktywności musi być dodatnią liczbą minut.",
                 };
                 await errorFollowUp(itx, messages[result.reason]);
@@ -981,10 +933,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               });
               if (!result.ok) {
                 const messages = {
-                  config_not_found:
-                    "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
-                  invalid_daily_cap:
-                    "Limit dzienny musi być dodatnią liczbą całkowitą.",
+                  config_not_found: "Najpierw skonfiguruj daty eventu komendą `konfiguruj`.",
+                  invalid_daily_cap: "Limit dzienny musi być dodatnią liczbą całkowitą.",
                   invalid_unit: "Jednostka głosowa musi być dodatnią liczbą minut.",
                 };
                 await errorFollowUp(itx, messages[result.reason]);
@@ -1080,13 +1030,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               sourceKey: itx.id,
               startsAt: itx.createdAt,
               scheduleJob: (tx, type, encounterId, handleAfter) =>
-                messageQueue.push(
-                  type,
-                  { encounterId },
-                  handleAfter,
-                  `${type}:${encounterId}`,
-                  tx,
-                ),
+                messageQueue.push(type, { encounterId }, handleAfter, `${type}:${encounterId}`, tx),
             });
             if (!result.ok) {
               const messages = {
@@ -1129,52 +1073,36 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               itx.createdAt,
             );
             if (result.count === 0) {
-              await errorFollowUp(
-                itx,
-                "Wydarzenie nie istnieje albo już się skończyło.",
-              );
+              await errorFollowUp(itx, "Wydarzenie nie istnieje albo już się skończyło.");
               return;
             }
-            await reconcileBirthday2026EncounterMessage(
-              itx.client,
-              prisma,
-              id,
-              itx.createdAt,
-            );
+            await reconcileBirthday2026EncounterMessage(itx.client, prisma, id, itx.createdAt);
             await itx.editReply(`Anulowano wydarzenie #${id}.`);
           }),
       )
       .addCommand("wydarzenia-stan", (command) =>
-        command
-          .setDescription("Pokaż ostatnie wydarzenia")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply({ flags: "Ephemeral" });
-            const encounters = await inspectBirthday2026Encounters(prisma, itx.guildId);
-            await itx.editReply(
-              encounters.length > 0
-                ? encounters
-                    .map(
-                      (encounter) =>
-                        `#${encounter.id} ${encounter.kind} — wejścia=${encounter._count.entries}, zwycięzca=${encounter.winner ? userMention(encounter.winner.userId) : "brak"}, drużyny=${encounter.teamCompletions.length}, wiadomość=${encounter.message ? "tak" : "nie"}`,
-                    )
-                    .join("\n")
-                : "Brak wydarzeń.",
-            );
-          }),
+        command.setDescription("Pokaż ostatnie wydarzenia").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+          await itx.deferReply({ flags: "Ephemeral" });
+          const encounters = await inspectBirthday2026Encounters(prisma, itx.guildId);
+          await itx.editReply(
+            encounters.length > 0
+              ? encounters
+                  .map(
+                    (encounter) =>
+                      `#${encounter.id} ${encounter.kind} — wejścia=${encounter._count.entries}, zwycięzca=${encounter.winner ? userMention(encounter.winner.userId) : "brak"}, drużyny=${encounter.teamCompletions.length}, wiadomość=${encounter.message ? "tak" : "nie"}`,
+                  )
+                  .join("\n")
+              : "Brak wydarzeń.",
+          );
+        }),
       )
       .addCommand("progi", (command) =>
         command
           .setDescription("Ustaw cztery wspólne progi wagi")
-          .addInteger("pierwszy", (option) =>
-            option.setDescription("Pierwszy próg").setMinValue(1),
-          )
-          .addInteger("drugi", (option) =>
-            option.setDescription("Drugi próg").setMinValue(1),
-          )
-          .addInteger("trzeci", (option) =>
-            option.setDescription("Trzeci próg").setMinValue(1),
-          )
+          .addInteger("pierwszy", (option) => option.setDescription("Pierwszy próg").setMinValue(1))
+          .addInteger("drugi", (option) => option.setDescription("Drugi próg").setMinValue(1))
+          .addInteger("trzeci", (option) => option.setDescription("Trzeci próg").setMinValue(1))
           .addInteger("finalny", (option) =>
             option.setDescription("Próg formy finałowej").setMinValue(1),
           )
@@ -1192,8 +1120,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
                 config_not_found: "Najpierw skonfiguruj event.",
                 event_enabled: "Wyłącz event przed ustawieniem progów.",
                 invalid_thresholds: "Progi muszą być dodatnie i rosnąć bez powtórzeń.",
-                milestones_already_configured:
-                  "Progi są już skonfigurowane z innymi wartościami.",
+                milestones_already_configured: "Progi są już skonfigurowane z innymi wartościami.",
               };
               await errorFollowUp(itx, messages[result.reason]);
               return;
@@ -1207,12 +1134,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         command
           .setDescription("Zapisz zatwierdzoną personę Tucznika")
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
-          .addString("tytul", (option) =>
-            option.setDescription("Zatwierdzony tytuł persony"),
-          )
-          .addString("emoji", (option) =>
-            option.setDescription("Awaryjne emoji persony"),
-          )
+          .addString("tytul", (option) => option.setDescription("Zatwierdzony tytuł persony"))
+          .addString("emoji", (option) => option.setDescription("Awaryjne emoji persony"))
           .handle(async ({ prisma }, { druzyna: role, tytul: title, emoji }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
@@ -1302,8 +1225,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               const messages = {
                 channel_not_sendable: "Bot nie może wysyłać wiadomości na tym kanale.",
                 status_not_configured: "Nie wskazano kanału statusu.",
-                status_not_ready:
-                  "Skonfiguruj ekonomię, personę, Tucznika i portfel drużyny.",
+                status_not_ready: "Skonfiguruj ekonomię, personę, Tucznika i portfel drużyny.",
                 team_not_found: "Nie znaleziono drużyny.",
               };
               await errorFollowUp(itx, messages[result.reason]);
@@ -1319,9 +1241,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("wylacz-kanal-tekst", (command) =>
         command
           .setDescription("Wyklucz kanał ze zdobywania Paszy za tekst")
-          .addString("kanaly", (option) =>
-            option.setDescription("Kanały do wykluczenia"),
-          )
+          .addString("kanaly", (option) => option.setDescription("Kanały do wykluczenia"))
           .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
@@ -1332,11 +1252,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const result = await disableBirthday2026TextChannels(
-              prisma,
-              itx.guildId,
-              channelIds,
-            );
+            const result = await disableBirthday2026TextChannels(prisma, itx.guildId, channelIds);
             if (!result.ok) {
               await errorFollowUp(
                 itx,
@@ -1357,9 +1273,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       .addCommand("wlacz-kanal-tekst", (command) =>
         command
           .setDescription("Przywróć zdobywanie Paszy na kanale")
-          .addString("kanaly", (option) =>
-            option.setDescription("Kanały do przywrócenia"),
-          )
+          .addString("kanaly", (option) => option.setDescription("Kanały do przywrócenia"))
           .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
@@ -1370,11 +1284,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const result = await enableBirthday2026TextChannels(
-              prisma,
-              itx.guildId,
-              channelIds,
-            );
+            const result = await enableBirthday2026TextChannels(prisma, itx.guildId, channelIds);
             if (!result.ok) {
               await errorFollowUp(
                 itx,
@@ -1399,25 +1309,16 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
 
-            const channels = await findBirthday2026DisabledTextChannels(
-              prisma,
-              itx.guildId,
-            );
+            const channels = await findBirthday2026DisabledTextChannels(prisma, itx.guildId);
             if (!channels) {
-              await errorFollowUp(
-                itx,
-                "Event urodzinowy nie jest jeszcze skonfigurowany.",
-              );
+              await errorFollowUp(itx, "Event urodzinowy nie jest jeszcze skonfigurowany.");
               return;
             }
 
             await itx.editReply(
               channels.length > 0
                 ? channels
-                    .map(
-                      (channel) =>
-                        `${channelMention(channel.channelId)} (${channel.channelId})`,
-                    )
+                    .map((channel) => `${channelMention(channel.channelId)} (${channel.channelId})`)
                     .join("\n")
                 : "Brak wykluczonych kanałów.",
             );
@@ -1479,12 +1380,8 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         command
           .setDescription("Przyznaj uczestnikowi audytowaną Paszę")
           .addUser("user", (option) => option.setDescription("Uczestnik eventu"))
-          .addInteger("ilosc", (option) =>
-            option.setDescription("Ilość Paszy").setMinValue(1),
-          )
-          .addString("powod", (option) =>
-            option.setDescription("Powód przyznania Paszy"),
-          )
+          .addInteger("ilosc", (option) => option.setDescription("Ilość Paszy").setMinValue(1))
+          .addString("powod", (option) => option.setDescription("Powód przyznania Paszy"))
           .handle(async ({ prisma }, { user, ilosc: amount, powod: reason }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply({ flags: "Ephemeral" });
@@ -1512,61 +1409,51 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         command
           .setDescription("Przetestuj karmienie świni uczestnika")
           .addUser("user", (option) => option.setDescription("Uczestnik eventu"))
-          .addInteger("ilosc", (option) =>
-            option.setDescription("Ilość Paszy").setMinValue(1),
-          )
-          .addString("powod", (option) =>
-            option.setDescription("Powód testowego karmienia"),
-          )
-          .handle(
-            async (
-              { prisma, messageQueue },
-              { user, ilosc: amount, powod: reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply({ flags: "Ephemeral" });
+          .addInteger("ilosc", (option) => option.setDescription("Ilość Paszy").setMinValue(1))
+          .addString("powod", (option) => option.setDescription("Powód testowego karmienia"))
+          .handle(async ({ prisma, messageQueue }, { user, ilosc: amount, powod: reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
 
-              const memberState = await prisma.birthday2026MemberState.findFirst({
-                where: {
-                  userId: user.id,
-                  teamConfig: { config: { guildId: itx.guildId } },
-                },
-                select: { teamConfigId: true },
-              });
-              if (!memberState) {
-                await errorFollowUp(itx, economyErrorMessages.member_not_found);
-                return;
-              }
-
-              const result = await feedBirthday2026Pig(prisma, {
-                guildId: itx.guildId,
+            const memberState = await prisma.birthday2026MemberState.findFirst({
+              where: {
                 userId: user.id,
-                amount,
-                sourceKey: itx.id,
-                acceptedAt: itx.createdAt,
-                reason,
-                targetTeamConfigId: memberState.teamConfigId,
-                scheduleDigestion: (tx, batch) =>
-                  messageQueue.push(
-                    "birthday2026Digest",
-                    { batchId: batch.id },
-                    batch.digestAt,
-                    batch.id.toString(),
-                    tx,
-                  ),
-              });
-              if (!result.ok) {
-                await errorFollowUp(itx, economyErrorMessages[result.reason]);
-                return;
-              }
-              await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
+                teamConfig: { config: { guildId: itx.guildId } },
+              },
+              select: { teamConfigId: true },
+            });
+            if (!memberState) {
+              await errorFollowUp(itx, economyErrorMessages.member_not_found);
+              return;
+            }
 
-              await itx.editReply(
-                `${result.created ? "Nakarmiono" : "To karmienie było już zapisane:"} ${result.batch.amount} Paszy. Saldo osoby: ${result.personalBalance}, w korycie: ${result.teamBalance}, trawienie ${time(result.batch.digestAt, TimestampStyles.RelativeTime)}.`,
-              );
-            },
-          ),
+            const result = await feedBirthday2026Pig(prisma, {
+              guildId: itx.guildId,
+              userId: user.id,
+              amount,
+              sourceKey: itx.id,
+              acceptedAt: itx.createdAt,
+              reason,
+              targetTeamConfigId: memberState.teamConfigId,
+              scheduleDigestion: (tx, batch) =>
+                messageQueue.push(
+                  "birthday2026Digest",
+                  { batchId: batch.id },
+                  batch.digestAt,
+                  batch.id.toString(),
+                  tx,
+                ),
+            });
+            if (!result.ok) {
+              await errorFollowUp(itx, economyErrorMessages[result.reason]);
+              return;
+            }
+            await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
+
+            await itx.editReply(
+              `${result.created ? "Nakarmiono" : "To karmienie było już zapisane:"} ${result.batch.amount} Paszy. Saldo osoby: ${result.personalBalance}, w korycie: ${result.teamBalance}, trawienie ${time(result.batch.digestAt, TimestampStyles.RelativeTime)}.`,
+            );
+          }),
       )
       .addCommand("status-ekonomii", (command) =>
         command
@@ -1647,36 +1534,31 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
           .addString("kolor", (option) =>
             option.setDescription("Sześciocyfrowy kolor hex, np. #ff8800"),
           )
-          .handle(
-            async ({ prisma }, { nazwa: name, rola: role, kolor: rawColor }, itx) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply({ flags: "Ephemeral" });
+          .handle(async ({ prisma }, { nazwa: name, rola: role, kolor: rawColor }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply({ flags: "Ephemeral" });
 
-              const color = getColor(rawColor.trim());
-              if (color === null) {
-                await errorFollowUp(
-                  itx,
-                  "Kolor musi mieć dokładnie sześć cyfr hex, np. `#ff8800`.",
-                );
-                return;
-              }
+            const color = getColor(rawColor.trim());
+            if (color === null) {
+              await errorFollowUp(itx, "Kolor musi mieć dokładnie sześć cyfr hex, np. `#ff8800`.");
+              return;
+            }
 
-              const result = await createBirthday2026Team(prisma, {
-                guildId: itx.guildId,
-                name,
-                roleId: role.id,
-                color,
-              });
-              if (!result.ok) {
-                await errorFollowUp(itx, teamErrorMessages[result.reason]);
-                return;
-              }
+            const result = await createBirthday2026Team(prisma, {
+              guildId: itx.guildId,
+              name,
+              roleId: role.id,
+              color,
+            });
+            if (!result.ok) {
+              await errorFollowUp(itx, teamErrorMessages[result.reason]);
+              return;
+            }
 
-              await itx.editReply(
-                `Dodano drużynę ${bold(result.team.team.name)} (${roleMention(role.id)}).`,
-              );
-            },
-          ),
+            await itx.editReply(
+              `Dodano drużynę ${bold(result.team.team.name)} (${roleMention(role.id)}).`,
+            );
+          }),
       )
       .addCommand("przypisz", (command) =>
         command
@@ -1708,10 +1590,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
 
             const { previousRoleId } = result;
             if (previousRoleId && previousRoleId !== team.roleId) {
-              await targetMember.roles.remove(
-                previousRoleId,
-                "Zmiana drużyny Birthday 2026",
-              );
+              await targetMember.roles.remove(previousRoleId, "Zmiana drużyny Birthday 2026");
             }
             await targetMember.roles.add(team.roleId, "Przypisanie Birthday 2026");
 
@@ -1740,9 +1619,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               result.member.teamConfig.roleId,
               "Usunięcie z Birthday 2026",
             );
-            await itx.editReply(
-              `Usunięto ${userMention(user.id)} z drużyny eventowej.`,
-            );
+            await itx.editReply(`Usunięto ${userMention(user.id)} z drużyny eventowej.`);
           }),
       )
       .addCommand("tozsamosc", (command) =>
@@ -1761,15 +1638,10 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const result = await createBirthday2026TeamIdentity(
-              prisma,
-              itx.guildId,
-              team.id,
-              {
-                captainUserId: kapitan.id,
-                tucznikUserId: tucznik.id,
-              },
-            );
+            const result = await createBirthday2026TeamIdentity(prisma, itx.guildId, team.id, {
+              captainUserId: kapitan.id,
+              tucznikUserId: tucznik.id,
+            });
             if (!result.ok) {
               await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
@@ -1795,12 +1667,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
               return;
             }
 
-            const result = await setBirthday2026Captain(
-              prisma,
-              itx.guildId,
-              team.id,
-              user.id,
-            );
+            const result = await setBirthday2026Captain(prisma, itx.guildId, team.id, user.id);
             if (!result.ok) {
               await errorFollowUp(itx, teamErrorMessages[result.reason]);
               return;
@@ -1882,12 +1749,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
         await errorFollowUp(itx, messages[result.reason]);
         return;
       }
-      await reconcileBirthday2026EncounterMessage(
-        itx.client,
-        prisma,
-        encounterId,
-        itx.createdAt,
-      );
+      await reconcileBirthday2026EncounterMessage(itx.client, prisma, encounterId, itx.createdAt);
       if (result.status === "completed") {
         await updateBirthday2026Status(itx.client, prisma, result.teamConfigId);
       }
@@ -1900,9 +1762,7 @@ export const birthday2026 = new Hashira({ name: "birthday2026" })
       await itx.editReply(replies[result.status]);
       return;
     }
-    if (
-      itx.customId.startsWith(`${BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX}:`)
-    ) {
+    if (itx.customId.startsWith(`${BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX}:`)) {
       if (!itx.inCachedGuild()) return;
       const targetTeamConfigId = Number(itx.customId.split(":").at(1));
       if (!Number.isSafeInteger(targetTeamConfigId) || targetTeamConfigId <= 0) return;

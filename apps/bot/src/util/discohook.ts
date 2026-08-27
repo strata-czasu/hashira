@@ -156,8 +156,7 @@ export function toMessageCreateOptions(messageData: DiscohookMessageData) {
     result.embeds = messageData.embeds as unknown as DiscordJsAPIEmbed[];
   }
   if (messageData.components) {
-    result.components =
-      messageData.components as unknown as APIMessageTopLevelComponent[];
+    result.components = messageData.components as unknown as APIMessageTopLevelComponent[];
   }
 
   return result;

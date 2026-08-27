@@ -1,15 +1,10 @@
-import type {
-  ExtendedPrismaClient,
-  Item,
-  ItemType,
-  PrismaTransaction,
-} from "@hashira/db";
 import { bold, inlineCode } from "discord.js";
+
+import type { ExtendedPrismaClient, Item, ItemType, PrismaTransaction } from "@hashira/db";
+
 import { InvalidAmountError } from "./economyError";
 
-export type GetCurrencyConditionOptions =
-  | { currencySymbol: string }
-  | { currencyId: number };
+export type GetCurrencyConditionOptions = { currencySymbol: string } | { currencyId: number };
 
 /**
  * Resolve the guild's configured default currency symbol, or null when none is
@@ -42,11 +37,7 @@ export const getItem = (prisma: PrismaTransaction, id: number, guildId: string) 
     },
   });
 
-export const getShopItem = async (
-  prisma: PrismaTransaction,
-  id: number,
-  guildId: string,
-) =>
+export const getShopItem = async (prisma: PrismaTransaction, id: number, guildId: string) =>
   prisma.shopItem.findFirst({
     where: {
       id,
@@ -91,8 +82,7 @@ export const getInventoryItems = async (
     },
   });
 
-export const formatItem = ({ name, id }: Item) =>
-  `${bold(name)} [${inlineCode(id.toString())}]`;
+export const formatItem = ({ name, id }: Item) => `${bold(name)} [${inlineCode(id.toString())}]`;
 
 export const formatBalance = (balance: number, currencySymbol: string) =>
   inlineCode(`${balance.toLocaleString("pl-PL")}${currencySymbol}`);

@@ -1,6 +1,8 @@
+import { bold, inlineCode, italic, type User, userMention } from "discord.js";
+
 import { Hashira } from "@hashira/core";
 import type { Item } from "@hashira/db";
-import { bold, inlineCode, italic, type User, userMention } from "discord.js";
+
 import { formatBalance } from "../../economy/util";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { pluralizers } from "../../util/pluralize";
@@ -38,10 +40,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
   new Logger()
     .addMessageType(
       "currencyTransfer",
-      async (
-        { timestamp },
-        { fromUser, toUsers, amount, reason }: CurrencyTransferData,
-      ) => {
+      async ({ timestamp }, { fromUser, toUsers, amount, reason }: CurrencyTransferData) => {
         const formattedAmount = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
         const lines: string[] = [];
@@ -71,10 +70,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
     )
     .addMessageType(
       "currencyAdd",
-      async (
-        { timestamp },
-        { moderator, toUsers, amount, reason }: CurrencyAddData,
-      ) => {
+      async ({ timestamp }, { moderator, toUsers, amount, reason }: CurrencyAddData) => {
         const embed = getLogMessageEmbed(moderator, timestamp).setColor("Green");
         const formattedAmount = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
 
@@ -136,9 +132,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           parts.push(userMention(user.id));
         } else {
           const userMentions = users.map((user) => user.toString()).join(", ");
-          parts.push(
-            `${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`,
-          );
+          parts.push(`${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`);
         }
 
         embed.setDescription(parts.join(" "));
@@ -163,9 +157,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
           parts.push(userMention(user.id));
         } else {
           const userMentions = users.map((user) => user.toString()).join(", ");
-          parts.push(
-            `${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`,
-          );
+          parts.push(`${users.length} ${pluralizers.dativeUsers(users.length)}: ${userMentions}`);
         }
 
         embed.setDescription(parts.join(" "));

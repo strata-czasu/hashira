@@ -1,4 +1,3 @@
-import type { Prettify } from "@hashira/utils/types";
 import {
   ApplicationCommandType,
   type AutocompleteInteraction,
@@ -19,6 +18,9 @@ import {
   type UserContextMenuCommandInteraction,
 } from "discord.js";
 import { capitalize } from "es-toolkit";
+
+import type { Prettify } from "@hashira/utils/types";
+
 import { handleCustomEvent } from "./customEvents";
 import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
 import { filterDisabledIntents } from "./intents/util";
@@ -78,20 +80,12 @@ const takeIncomingOnConflict = <T>(_previous: T, current: T) => {
   return current;
 };
 
-const handleAutoCompleteConflict = (
-  _a: unknown,
-  _b: unknown,
-  autoCompleteName: string,
-) => {
-  throw new Error(
-    `There was a conflict with the autocomplete command ${autoCompleteName}`,
-  );
+const handleAutoCompleteConflict = (_a: unknown, _b: unknown, autoCompleteName: string) => {
+  throw new Error(`There was a conflict with the autocomplete command ${autoCompleteName}`);
 };
 
 type ExtractContext<T extends Hashira<HashiraDecorators, HashiraCommands>> =
-  T extends Hashira<infer Decorators, HashiraCommands>
-    ? HashiraContext<Decorators>
-    : never;
+  T extends Hashira<infer Decorators, HashiraCommands> ? HashiraContext<Decorators> : never;
 
 class Hashira<
   Decorators extends HashiraDecorators = typeof decoratorInitBase,
@@ -106,30 +100,21 @@ class Hashira<
     string,
     [
       HashiraSlashCommandOptions,
-      (
-        context: UnknownContext,
-        interaction: ChatInputCommandInteraction,
-      ) => Promise<void>,
+      (context: UnknownContext, interaction: ChatInputCommandInteraction) => Promise<void>,
     ]
   >;
   #userContextMenus: Map<
     string,
     [
       ContextMenuCommandBuilder,
-      (
-        context: UnknownContext,
-        interaction: UserContextMenuCommandInteraction,
-      ) => Promise<void>,
+      (context: UnknownContext, interaction: UserContextMenuCommandInteraction) => Promise<void>,
     ]
   >;
   #messageContextMenus: Map<
     string,
     [
       ContextMenuCommandBuilder,
-      (
-        context: UnknownContext,
-        interaction: MessageContextMenuCommandInteraction,
-      ) => Promise<void>,
+      (context: UnknownContext, interaction: MessageContextMenuCommandInteraction) => Promise<void>,
     ]
   >;
   #autocomplete: Map<
@@ -253,11 +238,7 @@ class Hashira<
       instance.#exceptionHandlers,
     );
     this.#methods = mergeMap((a, b) => [...a, ...b], this.#methods, instance.#methods);
-    this.#commands = mergeMap(
-      handleCommandConflict,
-      this.#commands,
-      instance.#commands,
-    );
+    this.#commands = mergeMap(handleCommandConflict, this.#commands, instance.#commands);
     this.#userContextMenus = mergeMap(
       handleContextMenuConflict,
       this.#userContextMenus,
@@ -433,9 +414,7 @@ class Hashira<
     }
   }
 
-  private async handleMessageContextMenu(
-    interaction: MessageContextMenuCommandInteraction,
-  ) {
+  private async handleMessageContextMenu(interaction: MessageContextMenuCommandInteraction) {
     const contextMenu = this.#messageContextMenus.get(interaction.commandName);
 
     if (!contextMenu) return;
@@ -477,8 +456,7 @@ class Hashira<
 
     discordClient.on("interactionCreate", async (interaction) => {
       if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
-      if (interaction.isUserContextMenuCommand())
-        return this.handleUserContextMenu(interaction);
+      if (interaction.isUserContextMenuCommand()) return this.handleUserContextMenu(interaction);
       if (interaction.isMessageContextMenuCommand())
         return this.handleMessageContextMenu(interaction);
       if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
@@ -501,11 +479,7 @@ class Hashira<
 
   async start(token: string, options: HashiraStartOptions = {}) {
     const intents = filterDisabledIntents(
-      [
-        ...new Set(
-          [...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]),
-        ),
-      ],
+      [...new Set([...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]))],
       options.disabledIntents ?? [],
     );
 
@@ -544,8 +518,7 @@ class Hashira<
       const commandsToDelete = currentCommands
         .filter(
           (command) =>
-            !this.#commands.has(command.name) &&
-            !this.#userContextMenus.has(command.name),
+            !this.#commands.has(command.name) && !this.#userContextMenus.has(command.name),
         )
         .map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
 

@@ -1,14 +1,7 @@
-/** @jsxImportSource @hashira/jsx */
-import {
-  ActionRow,
-  Br,
-  Button,
-  Container,
-  H1,
-  Separator,
-  TextDisplay,
-} from "@hashira/jsx";
 import { ButtonStyle, roleMention, userMention } from "discord.js";
+
+/** @jsxImportSource @hashira/jsx */
+import { ActionRow, Br, Button, Container, H1, Separator, TextDisplay } from "@hashira/jsx";
 
 export const BIRTHDAY_2026_ENCOUNTER_CUSTOM_ID = "birthday2026-encounter";
 
@@ -26,9 +19,7 @@ export const buildBirthday2026EncounterView = (input: {
 }) => (
   <Container accentColor={input.kind === "quickGrab" ? 0xffd700 : 0xf5a623}>
     <TextDisplay>
-      <H1>
-        {input.kind === "quickGrab" ? "⚡ Szybka Pasza" : "🤝 Drużynowy transport"}
-      </H1>
+      <H1>{input.kind === "quickGrab" ? "⚡ Szybka Pasza" : "🤝 Drużynowy transport"}</H1>
       <Br />
       {input.kind === "quickGrab" ? (
         input.winnerUserId ? (

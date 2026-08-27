@@ -1,4 +1,3 @@
-import { Hashira } from "@hashira/core";
 import { sleep } from "bun";
 import { addMinutes, secondsToMilliseconds } from "date-fns";
 import {
@@ -12,6 +11,9 @@ import {
   time,
 } from "discord.js";
 import { noop, randomInt } from "es-toolkit";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
@@ -97,22 +99,14 @@ export const jajo = new Hashira({ name: "jajo" })
         await itx.deferReply();
         await ensureUserExists(prisma, itx.user);
 
-        const [canFish, nextFishing] = await checkIfCanFish(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const [canFish, nextFishing] = await checkIfCanFish(prisma, itx.user.id, itx.guildId);
 
         if (!canFish) {
           await itx.editReply({
             content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await discordTry(
-            () => itx.deleteReply(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => itx.deleteReply(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return;
         }
 
@@ -196,22 +190,14 @@ export const jajo = new Hashira({ name: "jajo" })
         await itx.deferReply();
         await ensureUserExists(prisma, itx.user);
 
-        const [canFish, nextFishing] = await checkIfCanFish(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const [canFish, nextFishing] = await checkIfCanFish(prisma, itx.user.id, itx.guildId);
 
         if (!canFish) {
           await itx.editReply({
             content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await discordTry(
-            () => itx.deleteReply(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => itx.deleteReply(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return;
         }
 
@@ -260,11 +246,7 @@ export const jajo = new Hashira({ name: "jajo" })
         );
 
         if (!clickInfo.interaction) {
-          await discordTry(
-            () => mockResponse.delete(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => mockResponse.delete(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return await clickInfo.removeButton();
         }
 
@@ -292,11 +274,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         await sleep(secondsToMilliseconds(15));
 
-        await discordTry(
-          () => mockResponse.delete(),
-          [RESTJSONErrorCodes.UnknownMessage],
-          noop,
-        );
+        await discordTry(() => mockResponse.delete(), [RESTJSONErrorCodes.UnknownMessage], noop);
         await clickInfo.removeButton();
       }),
   )
@@ -309,9 +287,7 @@ export const jajo = new Hashira({ name: "jajo" })
         command
           .setDescription("Zmusza użytkownika do znalezienia jajka o konkretnym ID")
           .addUser("user", (option) =>
-            option
-              .setDescription("Użytkownik który ma znaleźć jajko")
-              .setRequired(true),
+            option.setDescription("Użytkownik który ma znaleźć jajko").setRequired(true),
           )
           .addInteger("egg-id", (option) =>
             option

@@ -1,5 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator, type Prisma } from "@hashira/db";
 import {
   ChannelType,
   channelMention,
@@ -9,6 +7,10 @@ import {
   RESTJSONErrorCodes,
 } from "discord.js";
 import { noop } from "es-toolkit";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator, type Prisma } from "@hashira/db";
+
 import { base } from "../base";
 import {
   createShareLink,
@@ -38,11 +40,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
             attachment.setDescription("Discohook share link or share ID"),
           )
           .handle(
-            async (
-              { prisma, stickyMessageCache },
-              { channel, "share-link": shareLink },
-              itx,
-            ) => {
+            async ({ prisma, stickyMessageCache }, { channel, "share-link": shareLink }, itx) => {
               if (!itx.inCachedGuild()) return;
 
               let shareId: string;
@@ -56,16 +54,13 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               try {
                 const result = await getShareLinkData(shareId);
                 if (!result.success) {
-                  const errorMessage = result.issues
-                    .map((err) => err.message)
-                    .join(", ");
+                  const errorMessage = result.issues.map((err) => err.message).join(", ");
                   throw new Error(`Invalid share link data: ${errorMessage}`);
                 }
 
                 shareData = result.output.data;
               } catch (e) {
-                const message =
-                  e instanceof Error ? e.message : "Failed to fetch share link";
+                const message = e instanceof Error ? e.message : "Failed to fetch share link";
                 return errorFollowUp(itx, message);
               }
 
@@ -143,8 +138,7 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
               const shareLink = await createShareLink(stickyMessage.content);
               await itx.reply({ content: shareLink.url });
             } catch (e) {
-              const message =
-                e instanceof Error ? e.message : "Failed to create share link";
+              const message = e instanceof Error ? e.message : "Failed to create share link";
               return errorFollowUp(itx, message);
             }
           }),
@@ -174,47 +168,43 @@ export const stickyMessage = new Hashira({ name: "sticky-message" })
             stickyMessageCache.invalidate(channel.id);
 
             await itx.reply(
-              `${channelMention(channel.id)}: ${
-                exists.enabled ? "disabled" : "enabled"
-              }`,
+              `${channelMention(channel.id)}: ${exists.enabled ? "disabled" : "enabled"}`,
             );
           }),
       )
       .addCommand("list", (command) =>
-        command
-          .setDescription("List all sticky messages")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
+        command.setDescription("List all sticky messages").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
 
-            const paginator = new DatabasePaginator(
-              (props) =>
-                prisma.stickyMessage.findMany({
-                  ...props,
-                  where: { guildId: itx.guildId },
-                }),
-              () => prisma.stickyMessage.count({ where: { guildId: itx.guildId } }),
-            );
+          const paginator = new DatabasePaginator(
+            (props) =>
+              prisma.stickyMessage.findMany({
+                ...props,
+                where: { guildId: itx.guildId },
+              }),
+            () => prisma.stickyMessage.count({ where: { guildId: itx.guildId } }),
+          );
 
-            const paginate = new PaginatedView(
-              paginator,
-              "sticky messages",
+          const paginate = new PaginatedView(
+            paginator,
+            "sticky messages",
 
-              (stickyMessage) => {
-                const mention = channelMention(stickyMessage.channelId);
-                const link = messageLink(
-                  stickyMessage.channelId,
-                  stickyMessage.lastMessageId,
-                  stickyMessage.guildId,
-                );
-                const enabled = stickyMessage.enabled ? "enabled" : "disabled";
-                const cached = stickyMessage.enabled ? "cached" : "not cached";
+            (stickyMessage) => {
+              const mention = channelMention(stickyMessage.channelId);
+              const link = messageLink(
+                stickyMessage.channelId,
+                stickyMessage.lastMessageId,
+                stickyMessage.guildId,
+              );
+              const enabled = stickyMessage.enabled ? "enabled" : "disabled";
+              const cached = stickyMessage.enabled ? "cached" : "not cached";
 
-                return `${mention}: ${link} - ${enabled} (${cached})`;
-              },
-            );
+              return `${mention}: ${link} - ${enabled} (${cached})`;
+            },
+          );
 
-            await paginate.render(itx);
-          }),
+          await paginate.render(itx);
+        }),
       )
       .addCommand("refresh", (command) =>
         command

@@ -1,5 +1,7 @@
-import type { $Enums, PrismaTransaction } from "@hashira/db";
 import { endOfDay, startOfDay } from "date-fns";
+
+import type { $Enums, PrismaTransaction } from "@hashira/db";
+
 import { getUsersTextActivity, getUsersVoiceActivity } from "../../userActivity/util";
 import type {
   ActionEffect,
@@ -51,10 +53,7 @@ export type SpawnData = {
   participants: PlayerData[];
 };
 
-const getModifiers = (
-  modifiers: Map<string, StatsModifiers>,
-  userId: string,
-): StatsModifiers => {
+const getModifiers = (modifiers: Map<string, StatsModifiers>, userId: string): StatsModifiers => {
   return (
     modifiers.get(userId) ?? {
       hpBonus: 0,
@@ -65,10 +64,7 @@ const getModifiers = (
   );
 };
 
-const addModifiers = (
-  base: StatsModifiers,
-  additional: StatsModifiers,
-): StatsModifiers => {
+const addModifiers = (base: StatsModifiers, additional: StatsModifiers): StatsModifiers => {
   const result: StatsModifiers = { ...base };
 
   for (const key of Object.keys(additional) as (keyof StatsModifiers)[]) {
@@ -103,10 +99,7 @@ export interface ICombatRepository {
     additionalModifiers?: Map<string, StatsModifiers>,
   ): Promise<SpawnData | null>;
   getDefaultPlayerAbilities(): Promise<PlayerAbility[]>;
-  getUserModifiersBatch(
-    userIds: string[],
-    guildId: string,
-  ): Promise<Map<string, StatsModifiers>>;
+  getUserModifiersBatch(userIds: string[], guildId: string): Promise<Map<string, StatsModifiers>>;
   saveCombatLog(spawnId: number, state: CombatState): Promise<void>;
   updateSpawnStatus(
     spawnId: number,
@@ -237,12 +230,8 @@ export class PrismaCombatRepository implements ICombatRepository {
       const voiceMinutes = voiceSeconds / 60;
 
       const hpBonus = Math.round(Math.min(textActivity / 25 + voiceMinutes / 3, 50));
-      const attackBonus = Math.round(
-        Math.min(textActivity / 250 + voiceMinutes / 30, 3),
-      );
-      const defenseBonus = Math.round(
-        Math.min(textActivity / 250 + voiceMinutes / 30, 4),
-      );
+      const attackBonus = Math.round(Math.min(textActivity / 250 + voiceMinutes / 30, 3));
+      const defenseBonus = Math.round(Math.min(textActivity / 250 + voiceMinutes / 30, 4));
 
       modifiersMap.set(userId, {
         hpBonus,
@@ -299,10 +288,7 @@ export class PrismaCombatRepository implements ICombatRepository {
     });
   }
 
-  async saveLootRecipients(
-    spawnId: number,
-    recipients: LootRecipient[],
-  ): Promise<void> {
+  async saveLootRecipients(spawnId: number, recipients: LootRecipient[]): Promise<void> {
     await this.prisma.halloween2025MonsterLoot.createMany({
       data: recipients.map((recipient) => ({
         spawnId,
@@ -366,10 +352,7 @@ export class MockCombatRepository implements ICombatRepository {
     this.updatedSpawns.push({ spawnId, status });
   }
 
-  async saveLootRecipients(
-    spawnId: number,
-    recipients: LootRecipient[],
-  ): Promise<void> {
+  async saveLootRecipients(spawnId: number, recipients: LootRecipient[]): Promise<void> {
     this.savedLootRecipients.push({ spawnId, recipients });
   }
 

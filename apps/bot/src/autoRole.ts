@@ -1,6 +1,8 @@
+import { PermissionFlagsBits, RESTJSONErrorCodes } from "discord.js";
+
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator } from "@hashira/db";
-import { PermissionFlagsBits, RESTJSONErrorCodes } from "discord.js";
+
 import { base } from "./base";
 import { discordTry } from "./util/discordTry";
 
@@ -34,9 +36,7 @@ export const autoRole = new Hashira({ name: "auto-role" })
         command
           .setDescription("Add an autorole")
           .addRole("role", (role) =>
-            role
-              .setDescription("Role that will be added to new users")
-              .setRequired(true),
+            role.setDescription("Role that will be added to new users").setRequired(true),
           )
           .handle(async ({ prisma }, { role }, itx) => {
             const added = await prisma.autoRole.createManyAndReturn({
@@ -81,24 +81,21 @@ export const autoRole = new Hashira({ name: "auto-role" })
           }),
       )
       .addCommand("list", (command) =>
-        command
-          .setDescription("List all autoroles")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.guildId) return;
-            const where = { guildId: itx.guildId };
+        command.setDescription("List all autoroles").handle(async ({ prisma }, _, itx) => {
+          if (!itx.guildId) return;
+          const where = { guildId: itx.guildId };
 
-            const paginate = new DatabasePaginator(
-              (props, roleId) =>
-                prisma.autoRole.findMany({ ...props, where, orderBy: { roleId } }),
-              () => prisma.autoRole.count({ where }),
-            );
+          const paginate = new DatabasePaginator(
+            (props, roleId) => prisma.autoRole.findMany({ ...props, where, orderBy: { roleId } }),
+            () => prisma.autoRole.count({ where }),
+          );
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              "Auto roles",
-              (item, idx) => `${idx}. <@&${item.roleId}>`,
-            );
-            await paginatedView.render(itx);
-          }),
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Auto roles",
+            (item, idx) => `${idx}. <@&${item.roleId}>`,
+          );
+          await paginatedView.render(itx);
+        }),
       ),
   );

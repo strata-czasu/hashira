@@ -1,6 +1,8 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { PrismaClient, type PrismaTransaction } from "@hashira/db";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, describe, expect, it } from "bun:test";
+
+import { PrismaClient, type PrismaTransaction } from "@hashira/db";
+
 import { upsertBirthday2026Config } from "../../src/events/birthday2026/configService";
 import {
   grantBirthday2026Pasza,
@@ -28,10 +30,7 @@ const userIds: string[] = [];
 const currencyIds: number[] = [];
 const taskIds: number[] = [];
 
-const scheduleDigestion = async (
-  tx: PrismaTransaction,
-  batch: { digestAt: Date; id: number },
-) => {
+const scheduleDigestion = async (tx: PrismaTransaction, batch: { digestAt: Date; id: number }) => {
   const task = await tx.task.create({
     data: {
       data: {
@@ -62,23 +61,13 @@ const createFixture = async () => {
     (_, index) => `birthday-player-captain-${index}-${suffix}`,
   );
   guildIds.push(guildId);
-  userIds.push(
-    actorUserId,
-    memberUserId,
-    nonMemberUserId,
-    ...captainUserIds,
-    ...tucznikUserIds,
-  );
+  userIds.push(actorUserId, memberUserId, nonMemberUserId, ...captainUserIds, ...tucznikUserIds);
 
   await prisma.guild.create({ data: { id: guildId } });
   await prisma.user.createMany({
-    data: [
-      actorUserId,
-      memberUserId,
-      nonMemberUserId,
-      ...captainUserIds,
-      ...tucznikUserIds,
-    ].map((id) => ({ id })),
+    data: [actorUserId, memberUserId, nonMemberUserId, ...captainUserIds, ...tucznikUserIds].map(
+      (id) => ({ id }),
+    ),
   });
 
   const configResult = await upsertBirthday2026Config(prisma, {
@@ -114,12 +103,10 @@ const createFixture = async () => {
       if (!assignment.ok) throw new Error(assignment.reason);
     }
 
-    const identity = await createBirthday2026TeamIdentity(
-      prisma,
-      guildId,
-      teamResult.team.id,
-      { captainUserId, tucznikUserId },
-    );
+    const identity = await createBirthday2026TeamIdentity(prisma, guildId, teamResult.team.id, {
+      captainUserId,
+      tucznikUserId,
+    });
     if (!identity.ok) throw new Error(identity.reason);
     const persona = await configureBirthday2026Persona(prisma, {
       guildId,
@@ -207,9 +194,7 @@ databaseTests("Birthday 2026 public player loop", () => {
     expect(before.snapshot.contributedPasza).toBe(0);
     expect(before.snapshot.membership?.teamConfigId).toBe(fixture.team.id);
     expect(before.snapshot.teams).toHaveLength(4);
-    expect(before.snapshot.history.map((entry) => entry.source)).toEqual([
-      "staffGrant",
-    ]);
+    expect(before.snapshot.history.map((entry) => entry.source)).toEqual(["staffGrant"]);
 
     const feed = await feedBirthday2026Player(prisma, {
       guildId: fixture.guildId,
@@ -233,13 +218,11 @@ databaseTests("Birthday 2026 public player loop", () => {
     if (!after.ok) return;
     expect(after.snapshot.balance).toBe(7);
     expect(after.snapshot.contributedPasza).toBe(5);
-    expect(after.snapshot.history.map((entry) => entry.source)).toEqual([
-      "feed",
-      "staffGrant",
-    ]);
-    expect(
-      after.snapshot.teams.find((team) => team.id === fixture.team.id),
-    ).toMatchObject({ contributorCount: 1, pendingPasza: 5 });
+    expect(after.snapshot.history.map((entry) => entry.source)).toEqual(["feed", "staffGrant"]);
+    expect(after.snapshot.teams.find((team) => team.id === fixture.team.id)).toMatchObject({
+      contributorCount: 1,
+      pendingPasza: 5,
+    });
   });
 
   it("gates public feeding by readiness, event window, and membership", async () => {

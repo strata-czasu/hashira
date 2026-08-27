@@ -8,7 +8,7 @@ This is a **TypeScript monorepo** using **Bun** as the runtime and package manag
 
 - **`apps/bot`**: Main Discord bot application consuming all packages
 - **`packages/core`**: Custom Discord bot framework with type-safe command builders, event handlers, and dependency injection
-- **`packages/db`**: Prisma-based database layer with Redis integration and custom pagination utilities  
+- **`packages/db`**: Prisma-based database layer with Redis integration and custom pagination utilities
 - **`packages/env`**: Centralized environment variable validation and typing
 - **`packages/jsx`**: JSX wrapper for building Discord message components using a React-like syntax
 - **`packages/paginate`**: Reusable pagination abstractions for database queries and static data
@@ -18,48 +18,53 @@ This is a **TypeScript monorepo** using **Bun** as the runtime and package manag
 ### Key Patterns
 
 **Hashira Framework Usage**: Every feature is built as a Hashira module using the builder pattern:
+
 ```typescript
 export const myFeature = new Hashira({ name: "feature" })
   .use(base) // Inject dependencies
-  .command("cmd", (command) => 
+  .command("cmd", (command) =>
     command.setDescription("...").handle(async (ctx, options, itx) => {
       // ctx contains injected dependencies (prisma, redis, etc.)
     })
   )
-  .group("admin", (group) => 
+  .group("admin", (group) =>
     group.setDefaultMemberPermissions("ManageGuild")
          .addCommand("subcmd", ...)
   );
 ```
 
 **Base Dependencies**: Always `.use(base)` which provides essential services:
+
 - `prisma`: Database client
-- `redis`: Redis client  
+- `redis`: Redis client
 - `messageQueue`: Background task scheduler
 - `moderationLog`: Structured logging
 - `lock`: Distributed locking
 
 **Command Structure**: Commands use strongly-typed options:
+
 ```typescript
 .addUser("user", (option) => option.setDescription("..."))
 .addInteger("amount", (option) => option.setMinValue(1))
 .handle(async (ctx, { user, amount }, itx) => { ... })
 ```
+
 Every option is required by default, contrary to discord.js, to make it optional use `.setRequired(false)`.
 
-
 **Error Handling**: Use `discordTry()` wrapper for Discord API calls that may fail:
+
 ```typescript
 await discordTry(
   async () => itx.guild.members.fetch(userId),
   [RESTJSONErrorCodes.UnknownMember],
-  () => null // fallback
+  () => null, // fallback
 );
 ```
 
 ## Development Workflow
 
 ### Setup Commands
+
 ```bash
 # Dev Container (recommended) - auto-installs dependencies
 bun install
@@ -73,7 +78,8 @@ bun reload-commands
 ```
 
 ### Running in host system of devcontainer
-If you are in a devcontainer, you should recognize that by checking if the current directory is `/workspaces/hashira`. If you are, you should just use `bun` or other tools directly instead of docker compose. 
+
+If you are in a devcontainer, you should recognize that by checking if the current directory is `/workspaces/hashira`. If you are, you should just use `bun` or other tools directly instead of docker compose.
 
 If you are not, you should recognize if you should start up the devcontainer by checking if the docker compose ps -a command shows the devcontainer containers. Otherwise, you should just use `bun` or other tools directly instead of docker compose.
 
@@ -91,14 +97,15 @@ docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compo
 docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compose.yml exec -it -w /workspaces/hashira app bun test
 ```
 
-
 ### Database Operations
+
 - **Migrations**: `bun prisma-migrate-dev` (development) or `bun prisma-migrate-deploy` (production)
 - **Schema changes**: Edit `packages/db/prisma/schema.prisma`, then migrate
 - **Database GUI**: `bun prisma-studio`
 - **Reset database**: `bun prisma-migrate-reset` (development only)
 
 ### Code Quality
+
 - **Linting/Formatting**: `bun fix` (uses Biome)
 - **Type checking**: `bun typecheck`
 - **Dead code detection**: Uses Knip configuration
@@ -107,7 +114,9 @@ docker compose --project-name hashira_devcontainer -f .devcontainer/docker-compo
 ## Project-Specific Conventions
 
 ### Database Patterns
+
 **Always ensure users exist** before operations:
+
 ```typescript
 await ensureUserExists(prisma, user);
 // or for multiple users
@@ -115,10 +124,11 @@ await ensureUsersExist(prisma, userIds);
 ```
 
 **Pagination**: Use `DatabasePaginator` for database queries, `StaticPaginator` for arrays:
+
 ```typescript
 const paginator = new DatabasePaginator(
   (props) => prisma.model.findMany({ ...props }),
-  () => prisma.model.count()
+  () => prisma.model.count(),
 );
 const view = new PaginatedView(paginator, "Title", formatter, true);
 await view.render(itx);
@@ -128,19 +138,23 @@ await view.render(itx);
 **Locks**: Use `ctx.lock.acquire(key)` for critical sections to prevent race conditions
 
 ### Discord Interaction Patterns
+
 **Guild-only commands**: Start handlers with `if (!itx.inCachedGuild()) return;`
 **Deferred replies**: Use `await itx.deferReply()` for long-running operations
 **Error responses**: Use `errorFollowUp(itx, message)` for consistent error formatting
 **Modal handling**: Set unique customIds like `modal-${itx.user.id}` and use `awaitModalSubmit()`
 
 ### File Organization
+
 - **Feature modules**: Each feature in `apps/bot/src/` as single file or directory
 - **Utilities**: Generic helpers in `apps/bot/src/util/`
 - **Constants**: Guild/user IDs in `specializedConstants.ts`
 - **Main registration**: Import and `.use()` all features in `apps/bot/src/index.ts`
 
 ### Testing
+
 Test files located in `*/test/` directories within each package. Run tests with:
+
 ```bash
 bun test                # Run all tests
 bun test apps/bot       # Bot-specific tests

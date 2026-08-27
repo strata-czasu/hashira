@@ -1,3 +1,5 @@
+import { ButtonStyle, roleMention, TimestampStyles, time, userMention } from "discord.js";
+
 /** @jsxImportSource @hashira/jsx */
 import {
   ActionRow,
@@ -12,13 +14,7 @@ import {
   Separator,
   TextDisplay,
 } from "@hashira/jsx";
-import {
-  ButtonStyle,
-  roleMention,
-  TimestampStyles,
-  time,
-  userMention,
-} from "discord.js";
+
 import type {
   Birthday2026PlayerHistoryEntry,
   Birthday2026PlayerSnapshot,
@@ -53,8 +49,7 @@ const formatPasza = (amount: number, symbol: string) =>
 
 const findPlayerTeam = (snapshot: Birthday2026PlayerSnapshot) =>
   snapshot.membership
-    ? (snapshot.teams.find((team) => team.id === snapshot.membership?.teamConfigId) ??
-      null)
+    ? (snapshot.teams.find((team) => team.id === snapshot.membership?.teamConfigId) ?? null)
     : null;
 
 const formatHistory = (history: Birthday2026PlayerHistoryEntry[], symbol: string) =>
@@ -78,9 +73,7 @@ const getRankingPositions = (teams: Birthday2026PublicTeam[]) => {
   });
 };
 
-export const buildBirthday2026InfoView = (
-  snapshot: Birthday2026PlayerSnapshot,
-): JSXNode => {
+export const buildBirthday2026InfoView = (snapshot: Birthday2026PlayerSnapshot): JSXNode => {
   const team = findPlayerTeam(snapshot);
 
   return (
@@ -115,10 +108,9 @@ export const buildBirthday2026InfoView = (
             <Br />
           </>
         ) : null}
-        Zdobywaj Paszę za aktywność, a następnie użyj{" "}
-        <InlineCode>/tucznik nakarm</InlineCode>, aby przekazać ją Tucznikowi swojej
-        drużyny. Pasza trafia najpierw do koryta, a po trawieniu zwiększa stałą wagę
-        eventową.
+        Zdobywaj Paszę za aktywność, a następnie użyj <InlineCode>/tucznik nakarm</InlineCode>, aby
+        przekazać ją Tucznikowi swojej drużyny. Pasza trafia najpierw do koryta, a po trawieniu
+        zwiększa stałą wagę eventową.
         <Br />
         Saldo sprawdzisz przez <InlineCode>/tucznik saldo</InlineCode>, a wyniki przez{" "}
         <InlineCode>/tucznik ranking</InlineCode>.
@@ -127,12 +119,9 @@ export const buildBirthday2026InfoView = (
   );
 };
 
-export const buildBirthday2026BalanceView = (
-  snapshot: Birthday2026PlayerSnapshot,
-): JSXNode => {
+export const buildBirthday2026BalanceView = (snapshot: Birthday2026PlayerSnapshot): JSXNode => {
   const team = findPlayerTeam(snapshot);
-  const canFeed =
-    Boolean(team) && snapshot.balance > 0 && snapshot.eventState === "open";
+  const canFeed = Boolean(team) && snapshot.balance > 0 && snapshot.eventState === "open";
 
   return (
     <Container accentColor={team?.color ?? 0xf5a623}>
@@ -166,9 +155,7 @@ export const buildBirthday2026BalanceView = (
   );
 };
 
-export const buildBirthday2026StatusView = (
-  snapshot: Birthday2026PlayerSnapshot,
-): JSXNode => (
+export const buildBirthday2026StatusView = (snapshot: Birthday2026PlayerSnapshot): JSXNode => (
   <Container accentColor={0xf5a623}>
     <TextDisplay>
       <H1>Stan Tuczników</H1>
@@ -187,8 +174,7 @@ export const buildBirthday2026StatusView = (
           <Br />
           <Bold>Stała waga:</Bold> {team.permanentWeight.toLocaleString("pl-PL")}
           <Br />
-          <Bold>W korycie:</Bold>{" "}
-          {formatPasza(team.pendingPasza, snapshot.currencySymbol)}
+          <Bold>W korycie:</Bold> {formatPasza(team.pendingPasza, snapshot.currencySymbol)}
           <Br />
           <Bold>Osoby karmiące:</Bold> {team.contributorCount.toLocaleString("pl-PL")}
         </TextDisplay>
@@ -197,9 +183,7 @@ export const buildBirthday2026StatusView = (
   </Container>
 );
 
-export const buildBirthday2026RankingView = (
-  snapshot: Birthday2026PlayerSnapshot,
-): JSXNode => (
+export const buildBirthday2026RankingView = (snapshot: Birthday2026PlayerSnapshot): JSXNode => (
   <Container accentColor={0xffd700}>
     <TextDisplay>
       <H1>Ranking Tuczników</H1>
@@ -227,28 +211,25 @@ export const buildBirthday2026FeedResultView = (
 
   return (
     <Container
-      accentColor={
-        isCrossFeed ? (targetTeam?.color ?? 0xf5a623) : (team?.color ?? 0xf5a623)
-      }
+      accentColor={isCrossFeed ? (targetTeam?.color ?? 0xf5a623) : (team?.color ?? 0xf5a623)}
     >
       <TextDisplay>
         <H1>{isCrossFeed ? "Pomyłka!" : "Tucznik nakarmiony!"}</H1>
         <Br />
         {isCrossFeed && targetTeam ? (
           <>
-            <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> trafiło do
-            koryta drużyny {roleMention(targetTeam.roleId)} zamiast Twojego Tucznika.
-            Taka wpadka zdarza się tylko raz, zostaje między nami... chyba.
+            <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> trafiło do koryta drużyny{" "}
+            {roleMention(targetTeam.roleId)} zamiast Twojego Tucznika. Taka wpadka zdarza się tylko
+            raz, zostaje między nami... chyba.
           </>
         ) : (
           <>
-            Przekazano <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> do
-            koryta Twojej drużyny.
+            Przekazano <Bold>{formatPasza(amount, snapshot.currencySymbol)}</Bold> do koryta Twojej
+            drużyny.
           </>
         )}
         <Br />
-        <Bold>Pozostałe saldo:</Bold>{" "}
-        {formatPasza(snapshot.balance, snapshot.currencySymbol)}
+        <Bold>Pozostałe saldo:</Bold> {formatPasza(snapshot.balance, snapshot.currencySymbol)}
         <Br />
         <Bold>Trawienie:</Bold> {time(digestAt, TimestampStyles.RelativeTime)}
       </TextDisplay>
@@ -273,12 +254,11 @@ export const buildBirthday2026CrossFeedAnnouncementView = (input: {
 }): JSXNode => (
   <Container accentColor={input.accentColor}>
     <TextDisplay>
-      Cudzy tucznik został nakarmiony przez {userMention(input.userId)} — do koryta
-      drużyny {roleMention(input.targetRoleId)} trafiło{" "}
-      <Bold>{input.amount} paszy</Bold>.
+      Cudzy tucznik został nakarmiony przez {userMention(input.userId)} — do koryta drużyny{" "}
+      {roleMention(input.targetRoleId)} trafiło <Bold>{input.amount} paszy</Bold>.
       <Br />
-      Gildia przypomina, że takie zachowanie jest niezgodne z wewnętrznymi ustaleniami
-      dla poszukiwaczy przygód.
+      Gildia przypomina, że takie zachowanie jest niezgodne z wewnętrznymi ustaleniami dla
+      poszukiwaczy przygód.
     </TextDisplay>
   </Container>
 );

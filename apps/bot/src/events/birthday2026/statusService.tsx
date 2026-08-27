@@ -1,3 +1,5 @@
+import { ButtonStyle, type Client, RESTJSONErrorCodes, roleMention, userMention } from "discord.js";
+
 /** @jsxImportSource @hashira/jsx */
 import {
   type ExtendedPrismaClient,
@@ -18,13 +20,7 @@ import {
   Separator,
   TextDisplay,
 } from "@hashira/jsx";
-import {
-  ButtonStyle,
-  type Client,
-  RESTJSONErrorCodes,
-  roleMention,
-  userMention,
-} from "discord.js";
+
 import { discordTry } from "../../util/discordTry";
 import { BIRTHDAY_2026_FEED_TEAM_BUTTON_CUSTOM_ID_PREFIX } from "./playerView";
 
@@ -47,8 +43,7 @@ export const configureBirthday2026Milestones = async (
     thresholds.length !== 4 ||
     thresholds.some((threshold) => !isPositiveInteger(threshold)) ||
     thresholds.some(
-      (threshold, index) =>
-        index > 0 && threshold <= (thresholds[index - 1] ?? threshold),
+      (threshold, index) => index > 0 && threshold <= (thresholds[index - 1] ?? threshold),
     )
   ) {
     return { ok: false, reason: "invalid_thresholds" } as const;
@@ -62,9 +57,7 @@ export const configureBirthday2026Milestones = async (
     if (!config) return { ok: false, reason: "config_not_found" } as const;
     const values = [0, ...thresholds];
     if (config.milestones.length > 0) {
-      return config.milestones.every(
-        (milestone, index) => milestone.threshold === values[index],
-      )
+      return config.milestones.every((milestone, index) => milestone.threshold === values[index])
         ? ({ ok: true, milestones: config.milestones } as const)
         : ({ ok: false, reason: "milestones_already_configured" } as const);
     }
@@ -206,9 +199,7 @@ const getBirthday2026TeamStatus = (prisma: PrismaTransaction, teamConfigId: numb
     },
   });
 
-type Birthday2026TeamStatus = NonNullable<
-  Awaited<ReturnType<typeof getBirthday2026TeamStatus>>
->;
+type Birthday2026TeamStatus = NonNullable<Awaited<ReturnType<typeof getBirthday2026TeamStatus>>>;
 
 export const buildBirthday2026TeamStatusView = (
   team: Birthday2026TeamStatus,
@@ -249,8 +240,7 @@ export const buildBirthday2026TeamStatusView = (
         <Br />
         <Bold>Stała waga:</Bold> {wallet.permanentWeight.toLocaleString("pl-PL")}
         <Br />
-        <Bold>W korycie:</Bold> {wallet.balance.toLocaleString("pl-PL")}{" "}
-        {economy.currency.symbol}
+        <Bold>W korycie:</Bold> {wallet.balance.toLocaleString("pl-PL")} {economy.currency.symbol}
         <Br />
         <Bold>Osoby karmiące:</Bold> {contributorCount.toLocaleString("pl-PL")}
         <Br />
@@ -258,8 +248,8 @@ export const buildBirthday2026TeamStatusView = (
         <Br />
         {nextMilestone ? (
           <>
-            <Bold>Następny próg:</Bold> {wallet.permanentWeight}/
-            {nextMilestone.threshold} — {nextMilestone.name}
+            <Bold>Następny próg:</Bold> {wallet.permanentWeight}/{nextMilestone.threshold} —{" "}
+            {nextMilestone.name}
           </>
         ) : (
           "Osiągnięto formę finałową."

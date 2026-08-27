@@ -3,6 +3,7 @@ import {
   type PartialTextBasedChannelFields,
   RESTJSONErrorCodes,
 } from "discord.js";
+
 import { discordTry } from "./discordTry";
 
 // HACK: New undocumented error code with message:
@@ -23,9 +24,6 @@ export const sendDirectMessage = async (
       await user.send(message);
       return true;
     },
-    [
-      RESTJSONErrorCodes.CannotSendMessagesToThisUser,
-      CannotSendMessagesToThisUserNoMutualGuids,
-    ],
+    [RESTJSONErrorCodes.CannotSendMessagesToThisUser, CannotSendMessagesToThisUserNoMutualGuids],
     async () => false,
   );

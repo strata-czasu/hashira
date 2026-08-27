@@ -1,7 +1,7 @@
 {
   "name": "@hashira/env",
-  "module": "index.ts",
   "type": "module",
+  "module": "index.ts",
   "scripts": {
     "typecheck": "tsgo"
   }

@@ -1,4 +1,3 @@
-import { Hashira } from "@hashira/core";
 import {
   ActionRowBuilder,
   AuditLogEvent,
@@ -16,6 +15,9 @@ import {
   TextInputStyle,
   type User,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "../base";
 import { GUILD_IDS, STRATA_CZASU } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
@@ -65,13 +67,9 @@ const applyBan = async (
           deleteMessageSeconds,
         });
       }
-      await itx.editReply(
-        `Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`,
-      );
+      await itx.editReply(`Zbanowano ${formatUserWithId(user)}.\nPowód: ${italic(reason)}`);
       if (!sentMessage) {
-        await moderator.send(
-          `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-        );
+        await moderator.send(`Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`);
       }
     },
     [RESTJSONErrorCodes.MissingPermissions],
@@ -81,11 +79,7 @@ const applyBan = async (
   );
 };
 
-const BAN_FIXUP_GUILDS: string[] = [
-  GUILD_IDS.Homik,
-  GUILD_IDS.Piwnica,
-  GUILD_IDS.StrataCzasu,
-];
+const BAN_FIXUP_GUILDS: string[] = [GUILD_IDS.Homik, GUILD_IDS.Piwnica, GUILD_IDS.StrataCzasu];
 
 const handleContextMenu = async ({
   itx,
@@ -138,10 +132,7 @@ const handleContextMenu = async ({
   const rawDeleteInterval = submitAction.fields.getTextInputValue("delete-interval");
 
   if (!reason) {
-    return await errorFollowUp(
-      submitAction,
-      "Nie podano wszystkich wymaganych danych!",
-    );
+    return await errorFollowUp(submitAction, "Nie podano wszystkich wymaganych danych!");
   }
 
   let deleteMessageSeconds: number | null = null;
@@ -167,9 +158,7 @@ export const bans = new Hashira({ name: "bans" })
       .setDMPermission(false)
       .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
       .addUser("user", (user) => user.setDescription("Użytkownik"))
-      .addString("reason", (reason) =>
-        reason.setDescription("Powód bana").setEscaped(true),
-      )
+      .addString("reason", (reason) => reason.setDescription("Powód bana").setEscaped(true))
       .addNumber("delete-interval", (deleteInterval) =>
         deleteInterval
           .setDescription("Przedział czasowy usuwania wiadomości")
@@ -184,27 +173,20 @@ export const bans = new Hashira({ name: "bans" })
             { name: "7 dni", value: BanDeleteInterval.SevenDays },
           ),
       )
-      .handle(
-        async (_ctx, { user, reason, "delete-interval": deleteInterval }, itx) => {
-          if (!itx.inCachedGuild()) return;
-          await itx.deferReply();
+      .handle(async (_ctx, { user, reason, "delete-interval": deleteInterval }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply();
 
-          const member = itx.guild.members.cache.get(user.id);
+        const member = itx.guild.members.cache.get(user.id);
 
-          if (member && hasHigherRole(member, itx.member)) {
-            return await errorFollowUp(
-              itx,
-              "Nie możesz zbanować użytkownika z wyższą rolą.",
-            );
-          }
+        if (member && hasHigherRole(member, itx.member)) {
+          return await errorFollowUp(itx, "Nie możesz zbanować użytkownika z wyższą rolą.");
+        }
 
-          const banDeleteSeconds = deleteInterval
-            ? getBanDeleteSeconds(deleteInterval)
-            : null;
+        const banDeleteSeconds = deleteInterval ? getBanDeleteSeconds(deleteInterval) : null;
 
-          await applyBan(itx, user, itx.member.user, reason, banDeleteSeconds);
-        },
-      ),
+        await applyBan(itx, user, itx.member.user, reason, banDeleteSeconds);
+      }),
   )
   .command("unban", (command) =>
     command
@@ -229,10 +211,7 @@ export const bans = new Hashira({ name: "bans" })
           },
           [RESTJSONErrorCodes.UnknownBan],
           async () => {
-            await errorFollowUp(
-              itx,
-              `Użytkownik ${formatUserWithId(user)} nie ma bana.`,
-            );
+            await errorFollowUp(itx, `Użytkownik ${formatUserWithId(user)} nie ma bana.`);
           },
         );
       }),
@@ -251,9 +230,7 @@ export const bans = new Hashira({ name: "bans" })
           async () => {
             const ban = await itx.guild.bans.fetch(user);
             await itx.editReply(
-              `${formatUserWithId(user)} ma bana.\nPowód: ${italic(
-                ban.reason ?? "Brak",
-              )}`,
+              `${formatUserWithId(user)} ma bana.\nPowód: ${italic(ban.reason ?? "Brak")}`,
             );
           },
           [RESTJSONErrorCodes.UnknownBan],
@@ -291,11 +268,7 @@ export const bans = new Hashira({ name: "bans" })
     if (!entry || entry.executor?.bot) return;
 
     await guild.members.unban(user, "Poprawienie powodu po manualnym zbanowaniu");
-    const reason = formatBanReason(
-      entry.reason ?? "Brak powodu",
-      entry.executor,
-      entry.createdAt,
-    );
+    const reason = formatBanReason(entry.reason ?? "Brak powodu", entry.executor, entry.createdAt);
 
     await guild.members.ban(user, { reason: reason });
   });

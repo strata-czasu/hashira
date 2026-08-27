@@ -1,11 +1,3 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type Easter2025Stage,
-  type Easter2025Team,
-  type ExtendedPrismaClient,
-  type PrismaTransaction,
-} from "@hashira/db";
 import { isAfter } from "date-fns";
 import {
   bold,
@@ -20,6 +12,16 @@ import {
   userMention,
 } from "discord.js";
 import { isNil, sample, take } from "es-toolkit";
+
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type Easter2025Stage,
+  type Easter2025Team,
+  type ExtendedPrismaClient,
+  type PrismaTransaction,
+} from "@hashira/db";
+
 import { base } from "../../base";
 import { discordTry } from "../../util/discordTry";
 import { ensureUserExists } from "../../util/ensureUsersExist";
@@ -75,11 +77,7 @@ const formatMilestoneProgress = (
   return `${totalPoints}/${bold(neededPoints.toString())} wiadomości${ending}`;
 };
 
-const updateMembership = async (
-  prisma: PrismaTransaction,
-  member: GuildMember,
-  teamId: number,
-) => {
+const updateMembership = async (prisma: PrismaTransaction, member: GuildMember, teamId: number) => {
   await ensureUserExists(prisma, member);
 
   const userId = member.user.id;
@@ -328,10 +326,7 @@ export const easter2025 = new Hashira({ name: "easter2025" })
             const result = await updateMembership(prisma, targetMember, newTeam.id);
 
             if (result.previousRoleId) {
-              await targetMember.roles.remove(
-                result.previousRoleId,
-                "Zmieniono drużynę",
-              );
+              await targetMember.roles.remove(result.previousRoleId, "Zmieniono drużynę");
             }
 
             await targetMember.roles.add(newTeam.roleId, "Zmieniono drużynę");
@@ -349,9 +344,7 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           .setDescription("Dodaj nową drużynę do eventu")
           .addString("nazwa", (option) => option.setDescription("Nazwa drużyny"))
           .addRole("rola", (option) => option.setDescription("Rola drużyny"))
-          .addChannel("kanal", (option) =>
-            option.setDescription("Kanal ze statusem drużyny"),
-          )
+          .addChannel("kanal", (option) => option.setDescription("Kanal ze statusem drużyny"))
           .addString("kolor", (option) => option.setDescription("Kolor drużyny (hex)"))
           .handle(
             async (
@@ -405,11 +398,7 @@ export const easter2025 = new Hashira({ name: "easter2025" })
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .addString("obrazek", (option) => option.setDescription("Link do obrazka"))
           .handle(
-            async (
-              { prisma },
-              { punkty: points, druzyna: teamRole, obrazek: image },
-              itx,
-            ) => {
+            async ({ prisma }, { punkty: points, druzyna: teamRole, obrazek: image }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -440,9 +429,7 @@ export const easter2025 = new Hashira({ name: "easter2025" })
       .addCommand("dodaj-wylaczone-kanal", (command) =>
         command
           .setDescription("Dodaj kanał, który nie będzie liczony do eventu")
-          .addString("kanaly", (option) =>
-            option.setDescription("Kanał do wykluczenia"),
-          )
+          .addString("kanaly", (option) => option.setDescription("Kanał do wykluczenia"))
           .handle(async ({ prisma }, { kanaly: rawChannels }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();

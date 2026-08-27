@@ -5,16 +5,16 @@ import {
   type ChatInputCommandInteraction,
   SlashCommandAttachmentOption,
 } from "discord.js";
+
 import type { If, OptionBuilder } from "../types";
 
 export class AttachmentOptionBuilder<
   HasDescription extends boolean = false,
   Required extends boolean = true,
-> implements OptionBuilder<Required, Attachment>
-{
+> implements OptionBuilder<Required, Attachment> {
   declare _: { type: If<Required, Attachment, Attachment | null> };
   // Enforce nominal typing
-  protected declare readonly nominal: [HasDescription, Required];
+  declare protected readonly nominal: [HasDescription, Required];
   #builder = new SlashCommandAttachmentOption().setRequired(true);
 
   setDescription(description: string): AttachmentOptionBuilder<true, Required> {
@@ -34,15 +34,10 @@ export class AttachmentOptionBuilder<
   }
 
   async transform(
-    interaction:
-      | ChatInputCommandInteraction<CacheType>
-      | AutocompleteInteraction<CacheType>,
+    interaction: ChatInputCommandInteraction<CacheType> | AutocompleteInteraction<CacheType>,
     name: string,
   ) {
     if (interaction.isAutocomplete()) return null as this["_"]["type"];
-    return interaction.options.getAttachment(
-      name,
-      this.#builder.required,
-    ) as this["_"]["type"];
+    return interaction.options.getAttachment(name, this.#builder.required) as this["_"]["type"];
   }
 }

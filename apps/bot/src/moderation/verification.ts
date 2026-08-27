@@ -1,18 +1,3 @@
-import {
-  type ExtractContext,
-  Hashira,
-  PaginatedView,
-  waitForConfirmation,
-} from "@hashira/core";
-import {
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-  type PrismaTransaction,
-  VerificationLevel,
-  VerificationStatus,
-  VerificationType,
-} from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import { addSeconds } from "date-fns";
 import {
   type ChatInputCommandInteraction,
@@ -27,6 +12,18 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { type ExtractContext, Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type PrismaTransaction,
+  VerificationLevel,
+  VerificationStatus,
+  VerificationType,
+} from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
@@ -48,10 +45,7 @@ const get16PlusVerificationEnd = (createdAt: Date) => {
   return addSeconds(createdAt, STRATA_CZASU.VERIFICATION_DURATION);
 };
 
-const satisfiesVerificationLevel = (
-  level: VerificationLevel | null,
-  target: VerificationLevel,
-) => {
+const satisfiesVerificationLevel = (level: VerificationLevel | null, target: VerificationLevel) => {
   if (level === null) return false;
 
   const levels = { plus13: 0, plus16: 1, plus18: 2 };
@@ -113,9 +107,7 @@ type AcceptVerificationResultError = {
   error: "user_not_found" | "already_verified";
 };
 
-type AcceptVerificationResult =
-  | AcceptVerificationResultOk
-  | AcceptVerificationResultError;
+type AcceptVerificationResult = AcceptVerificationResultOk | AcceptVerificationResultError;
 
 const acceptVerification = async ({
   prisma,
@@ -139,11 +131,7 @@ const acceptVerification = async ({
   const currentVerificationLevel = dbUser.verificationLevel;
 
   const active16PlusVerification = await prisma.$transaction(async (tx) => {
-    const active16PlusVerification = await getActive16PlusVerification(
-      tx,
-      guild.id,
-      member.id,
-    );
+    const active16PlusVerification = await getActive16PlusVerification(tx, guild.id, member.id);
 
     if (active16PlusVerification) {
       await tx.verification.update({
@@ -151,11 +139,7 @@ const acceptVerification = async ({
         data: { status: "accepted", acceptedAt },
       });
 
-      await messageQueue.cancel(
-        "verificationEnd",
-        active16PlusVerification.id.toString(),
-        { tx },
-      );
+      await messageQueue.cancel("verificationEnd", active16PlusVerification.id.toString(), { tx });
       await cancelVerificationReminders(tx, messageQueue, active16PlusVerification.id);
     } else {
       await tx.verification.create({
@@ -200,9 +184,7 @@ const acceptVerification = async ({
         () => member.roles.remove(muteRoleId, reason),
         [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownMember],
         () =>
-          moderator.send(
-            `Nie udało się zdjąć roli wyciszenia z ${member.user.tag} po weryfikacji`,
-          ),
+          moderator.send(`Nie udało się zdjąć roli wyciszenia z ${member.user.tag} po weryfikacji`),
       );
     }
   }
@@ -215,10 +197,7 @@ const acceptVerification = async ({
       await discordTry(
         () => member.roles.add(plus18RoleId, reason),
         [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownMember],
-        () =>
-          moderator.send(
-            `Nie udało się dodać roli 18+ do ${member.user.tag} po weryfikacji`,
-          ),
+        () => moderator.send(`Nie udało się dodać roli 18+ do ${member.user.tag} po weryfikacji`),
       );
     }
   }
@@ -276,8 +255,7 @@ export const verification = new Hashira({ name: "verification" })
             await itx.deferReply();
 
             const member = await readMember(itx, user);
-            if (!member)
-              return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
+            if (!member) return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
 
             await ensureUsersExist(prisma, [member, itx.user]);
             const dbUser = await prisma.user.findFirst({ where: { id: member.id } });
@@ -301,9 +279,7 @@ export const verification = new Hashira({ name: "verification" })
             if (verificationInProgress) {
               return await errorFollowUp(
                 itx,
-                `${userMention(
-                  member.id,
-                )} jest już w trakcie weryfikacji przez ${userMention(
+                `${userMention(member.id)} jest już w trakcie weryfikacji przez ${userMention(
                   verificationInProgress.moderatorId,
                 )}\nData rozpoczęcia: ${time(
                   verificationInProgress.createdAt,
@@ -368,9 +344,7 @@ export const verification = new Hashira({ name: "verification" })
               )}** (musisz kliknąć przycisk "Wiek"). Po utworzeniu ticketa musisz przejść pozytywnie przez proces weryfikacji. Najczęściej sprowadza się to do wysłania jednego zdjęcia. Instrukcje co masz wysłać znajdziesz w na kanale z linka. Brak weryfikacji w ciągu 72 godzin **zakończy się banem**, dlatego proszę nie ignoruj tej wiadomości. Pozdrawiam!`,
             );
 
-            await itx.editReply(
-              `Rozpoczęto weryfikację 16+ dla ${userMention(member.id)}`,
-            );
+            await itx.editReply(`Rozpoczęto weryfikację 16+ dla ${userMention(member.id)}`);
             if (!sentMessage) {
               await errorFollowUp(
                 itx,
@@ -380,39 +354,37 @@ export const verification = new Hashira({ name: "verification" })
           }),
       )
       .addCommand("lista", (command) =>
-        command
-          .setDescription("Sprawdź aktywne weryfikacje")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            const where = {
-              guildId: itx.guildId,
-              type: VerificationType.plus16,
-              status: VerificationStatus.in_progress,
-            };
+        command.setDescription("Sprawdź aktywne weryfikacje").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+          const where = {
+            guildId: itx.guildId,
+            type: VerificationType.plus16,
+            status: VerificationStatus.in_progress,
+          };
 
-            const paginate = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.verification.findMany({
-                  where,
-                  ...props,
-                  orderBy: { createdAt },
-                }),
-              () => prisma.verification.count({ where }),
-              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
-            );
+          const paginate = new DatabasePaginator(
+            (props, createdAt) =>
+              prisma.verification.findMany({
+                where,
+                ...props,
+                orderBy: { createdAt },
+              }),
+            () => prisma.verification.count({ where }),
+            { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+          );
 
-            const paginatedView = new PaginatedView(
-              paginate,
-              "Aktywne weryfikacje 16+",
-              ({ createdAt, userId, moderatorId }) =>
-                `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.LongDateShortTime)}\nKoniec: ${time(
-                  get16PlusVerificationEnd(createdAt),
-                  TimestampStyles.RelativeTime,
-                )}`,
-              true,
-            );
-            await paginatedView.render(itx);
-          }),
+          const paginatedView = new PaginatedView(
+            paginate,
+            "Aktywne weryfikacje 16+",
+            ({ createdAt, userId, moderatorId }) =>
+              `### ${userMention(userId)} (${inlineCode(userId)})\nModerator: ${userMention(moderatorId)}\nData rozpoczęcia: ${time(createdAt, TimestampStyles.LongDateShortTime)}\nKoniec: ${time(
+                get16PlusVerificationEnd(createdAt),
+                TimestampStyles.RelativeTime,
+              )}`,
+            true,
+          );
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("przyjmij", (command) =>
         command
@@ -511,16 +483,10 @@ export const verification = new Hashira({ name: "verification" })
                   data: { status: "rejected", rejectedAt: itx.createdAt },
                 });
 
-                await messageQueue.cancel(
-                  "verificationEnd",
-                  verificationInProgress.id.toString(),
-                  { tx },
-                );
-                await cancelVerificationReminders(
+                await messageQueue.cancel("verificationEnd", verificationInProgress.id.toString(), {
                   tx,
-                  messageQueue,
-                  verificationInProgress.id,
-                );
+                });
+                await cancelVerificationReminders(tx, messageQueue, verificationInProgress.id);
 
                 return verificationInProgress.id;
               }
@@ -555,9 +521,7 @@ export const verification = new Hashira({ name: "verification" })
               () => false,
             );
 
-            await itx.editReply(
-              `Odrzucono weryfikację 16+ dla ${userMention(user.id)}`,
-            );
+            await itx.editReply(`Odrzucono weryfikację 16+ dla ${userMention(user.id)}`);
             if (!sentMessage) {
               await errorFollowUp(
                 itx,
@@ -565,10 +529,7 @@ export const verification = new Hashira({ name: "verification" })
               );
             }
             if (!banned) {
-              await errorFollowUp(
-                itx,
-                `Nie udało się zbanować ${formatUserWithId(user)}`,
-              );
+              await errorFollowUp(itx, `Nie udało się zbanować ${formatUserWithId(user)}`);
             }
           }),
       )
@@ -581,8 +542,7 @@ export const verification = new Hashira({ name: "verification" })
             await itx.deferReply();
 
             const member = await readMember(itx, user);
-            if (!member)
-              return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
+            if (!member) return errorFollowUp(itx, "Nie znaleziono użytkownika na serwerze");
 
             await ensureUsersExist(prisma, [member, itx.user]);
 
@@ -593,23 +553,19 @@ export const verification = new Hashira({ name: "verification" })
                 member.id,
               );
 
-              if (!verificationInProgress)
-                return { status: "not_in_progress" as const };
+              if (!verificationInProgress) return { status: "not_in_progress" as const };
 
               await prisma.verification.update({
                 where: { id: verificationInProgress.id },
                 data: { status: "cancelled", cancelledAt: itx.createdAt },
               });
 
-              await messageQueue.cancel(
-                "verificationEnd",
-                verificationInProgress.id.toString(),
-                { tx },
-              );
+              await messageQueue.cancel("verificationEnd", verificationInProgress.id.toString(), {
+                tx,
+              });
 
               const guildRoles = await getGuildRolesIds(prisma, itx.guildId);
-              if (!guildRoles.muteRoleId)
-                return { status: "mute_role_not_set" as const };
+              if (!guildRoles.muteRoleId) return { status: "mute_role_not_set" as const };
               return { status: "success" as const, muteRoleId: guildRoles.muteRoleId };
             });
 
@@ -629,9 +585,7 @@ export const verification = new Hashira({ name: "verification" })
 
             await removeMute(member, result.muteRoleId, "Wycofanie weryfikacji 16+");
 
-            await itx.editReply(
-              `Wycofano weryfikację 16+ dla ${userMention(member.id)}`,
-            );
+            await itx.editReply(`Wycofano weryfikację 16+ dla ${userMention(member.id)}`);
           }),
       ),
   )
@@ -681,17 +635,10 @@ export const verification = new Hashira({ name: "verification" })
       }),
   )
   .handle("guildMemberAdd", async ({ prisma }, member) => {
-    const { muteRoleId, plus18RoleId } = await getGuildRolesIds(
-      prisma,
-      member.guild.id,
-    );
+    const { muteRoleId, plus18RoleId } = await getGuildRolesIds(prisma, member.guild.id);
 
     const dbUser = await prisma.user.findFirst({ where: { id: member.user.id } });
-    if (
-      dbUser &&
-      satisfiesVerificationLevel(dbUser.verificationLevel, "plus18") &&
-      plus18RoleId
-    ) {
+    if (dbUser && satisfiesVerificationLevel(dbUser.verificationLevel, "plus18") && plus18RoleId) {
       await discordTry(
         () => member.roles.add(plus18RoleId, "Przywrócenie roli za weryfikację 18+"),
         [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownMember],

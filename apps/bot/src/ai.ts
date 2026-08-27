@@ -1,8 +1,10 @@
-import { Hashira } from "@hashira/core";
-import env from "@hashira/env";
 import { format } from "date-fns";
 import { ChannelType, type Message, RESTJSONErrorCodes, userMention } from "discord.js";
 import OpenAI from "openai";
+
+import { Hashira } from "@hashira/core";
+import env from "@hashira/env";
+
 import {
   createFetchMessage,
   createGetLatestMutes,
@@ -58,16 +60,11 @@ const extractAudioFromMessage = (message: Message) => {
   return audio;
 };
 
-const transcribeAudio = async (
-  ai: OpenAI,
-  audioFile: AudioFile,
-): Promise<string | null> => {
+const transcribeAudio = async (ai: OpenAI, audioFile: AudioFile): Promise<string | null> => {
   try {
     const response = await fetch(audioFile.url);
     if (!response.ok) {
-      console.error(
-        `Failed to fetch audio from ${audioFile.url}: ${response.statusText}`,
-      );
+      console.error(`Failed to fetch audio from ${audioFile.url}: ${response.statusText}`);
       return null;
     }
 
@@ -93,10 +90,7 @@ export const ai = new Hashira({ name: "ai" })
   .const("ai", env.OPENAI_KEY ? new OpenAI({ apiKey: env.OPENAI_KEY }) : null)
   .handle(
     "messageCreate",
-    async (
-      { ai, prisma, messageQueue, moderationLog, privilegedIntentsEnabled },
-      message,
-    ) => {
+    async ({ ai, prisma, messageQueue, moderationLog, privilegedIntentsEnabled }, message) => {
       if (!ai) return;
       if (message.author.bot) return;
       if (!message.inGuild()) return;
@@ -163,9 +157,7 @@ export const ai = new Hashira({ name: "ai" })
           },
         ];
 
-        const transcriptions = await Promise.all(
-          repliedAudio.map((a) => transcribeAudio(ai, a)),
-        );
+        const transcriptions = await Promise.all(repliedAudio.map((a) => transcribeAudio(ai, a)));
 
         for (const [index, text] of transcriptions.entries()) {
           if (text) {
