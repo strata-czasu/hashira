@@ -50,10 +50,12 @@ export class ProfileImageBuilder {
     this.combineTextElements("g[id='Marriage Status Text Top'] > text", {
       sortTspanElements: true,
     });
-    this.combineTextElements("g[id='Marriage Status Text Bottom'] > text");
+    this.combineTextElements("g[id='Marriage Status Text Bottom'] > text", {
+      sortTspanElements: true,
+    });
     // HACK)) Should this whitespace even be there?
     // FIXME)) If possible, fix in Figma and remove this hack
-    this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:nth(1)").remove();
+    this.#svg("g[id='Marriage Status Text Bottom'] > text > tspan:last").remove();
 
     // Fix text alignment for 'Exp Value'
     this.createTextBoundingBox(
@@ -74,7 +76,7 @@ export class ProfileImageBuilder {
    * Combine text elements matching a selector into a single element
    * with multiple <tspan> children.
    *
-   * Move the `x` and `y` attributes from the first matched <text> element,
+   * Move the `x` and `y` attributes from the leftmost <text> element,
    * but remove them from all <tspan> elements afterwards.
    *
    * Move values of `font-size` and `fill` to individual <tspan> elements
@@ -86,23 +88,29 @@ export class ProfileImageBuilder {
     selector: string,
     options?: { sortTspanElements?: boolean },
   ) {
-    // All <text> elements matching the selector
     const allTextElements = this.#svg(selector);
+    const allTspanElements = allTextElements.children("tspan");
 
     // First <text> element - all <tspan> elements will be moved here
     const firstTextElement = allTextElements.first();
 
-    // First <tspan> element - we keep its position
-    // FIXME)) This could be incorrect when <text> or <tspan> elements
-    //         aren't ordered correctly.
+    // Find the `x` and `y` of the leftmost <tspan> element
     const firstTspan = firstTextElement.children("tspan").first();
+    let x = firstTspan.attr("x");
+    let y = firstTspan.attr("y");
+    for (const element of allTspanElements) {
+      const tspan = this.#svg(element);
+      const elemX = tspan.attr("x");
+      const elemY = tspan.attr("y");
+      if (!x || !elemX) continue;
+      if (Number(elemX) < Number(x)) {
+        x = elemX;
+        y = elemY;
+      }
+    }
 
-    // Copy the position from <tspan> to <text>
-    const x = firstTspan.attr("x");
-    const y = firstTspan.attr("y");
+    // Copy the leftmost <tspan>'s position to the first <text> element
     firstTextElement.attr("x", x).attr("y", y);
-
-    const allTspanElements = allTextElements.children("tspan");
 
     // Move `font-size` and `fill` attrs to individual <tspan> elements
     for (const element of allTspanElements) {
@@ -166,25 +174,25 @@ export class ProfileImageBuilder {
     const defaultTintColor = "#3C3E43";
     const elements = [
       // Left
+      // TODO)) Rename to just "Nick Background"
       this.#svg('path[id="Nick + Title Background"]'),
       this.#svg('rect[id="Stats Bar"]'),
       this.#svg('path[id="Stats Caps Icon"]'),
+      this.#svg('path[id="Stats Rep Icon"]'),
       this.#svg('path[id="Stats Items Icon"]'),
       this.#svg('g[id="Activity Voice Icon"] path'),
       this.#svg('g[id="Activity Text Icon"] path'),
       this.#svg(`g[id="Marriage Status Text"] tspan[fill="${defaultTintColor}"]`),
-      this.#svg('text[id="Account Creation Value"]'),
       this.#svg('text[id="Guild Join Value"]'),
       // Middle
-      this.#svg('text[id="Exp Value"]'),
-      this.#svg('path[id="Exp Icon"]'),
-      this.#svg('text[id="Exp Text"]'),
       this.#svg('path[id="Level Background Wave 1 Level"]'),
       this.#svg('path[id="Level Background Wave 1 Mask"]'),
       this.#svg('path[id="Level Background Wave 2 Level"]'),
       this.#svg('path[id="Level Background Wave 2 Mask"]'),
       // Right
       this.#svg('rect[id="Showcase Header Background"]'),
+      // TODO)) Showcase item stars
+      // TODO)) Showcase item text?
     ];
 
     const color = Bun.color(value, "hex");
@@ -200,11 +208,6 @@ export class ProfileImageBuilder {
 
   public nickname(value: string) {
     this.#svg("text[id='Nickname Value'] > tspan").text(value);
-    return this;
-  }
-
-  public title(value: string) {
-    this.#svg("text[id='Title Value'] > tspan").text(value);
     return this;
   }
 
@@ -224,22 +227,20 @@ export class ProfileImageBuilder {
   }
 
   public voiceActivity(value: number) {
-    const group = "g[id='Activity Voice Value']";
-    this.#svg(`${group} > text > tspan:nth(0)`).text(value.toString());
+    this.#svg("text[id='Activity Voice Value'] > tspan").text(value.toString());
     return this;
   }
 
   public textActivity(value: number) {
-    const group = "g[id='Activity Text Value']";
-    this.#svg(`${group} > text > tspan:nth(0)`).text(value.toString());
+    this.#svg("text[id='Activity Text Value'] > tspan").text(value.toString());
     return this;
   }
 
   public marriageStatusDays(value: number) {
     const group = this.#svg("g[id='Marriage Status Text Top'] > text");
-    group.children("tspan:nth(1)").text(value.toString());
+    group.children("tspan:nth(0)").text(value.toString());
     // Leave a space between day amount and text
-    group.children("tspan:nth(2)").text(` ${pluralizers.genitiveDays(value)}`);
+    group.children("tspan:nth(1)").text(` ${pluralizers.days(value)}`);
     return this;
   }
 
@@ -256,13 +257,6 @@ export class ProfileImageBuilder {
 
   public guildJoinDate(value: Date) {
     this.#svg("text[id='Guild Join Value'] > tspan").text(
-      formatDate(value, PROFILE_DATE_FORMAT),
-    );
-    return this;
-  }
-
-  public accountCreationDate(value: Date) {
-    this.#svg("text[id='Account Creation Value'] > tspan").text(
       formatDate(value, PROFILE_DATE_FORMAT),
     );
     return this;
