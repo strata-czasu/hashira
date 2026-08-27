@@ -5,7 +5,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@hashira/db": "workspace:*",

@@ -7,7 +7,7 @@
     "./paginate": "./src/paginate.ts"
   },
   "scripts": {
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@hashira/jsx": "workspace:*",
