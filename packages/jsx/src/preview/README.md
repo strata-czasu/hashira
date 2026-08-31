@@ -12,7 +12,7 @@ view(state) ──► JSXNode
                  │  render() + builder.toJSON()        (existing)
                  ▼
      APIMessageTopLevelComponent[]                     ◄── hand-built payloads work too
-                 │  renderComponentsToHtml()            (pure, deterministic, snapshot-testable)
+                 │  renderPage()                        (pure, deterministic, snapshot-testable)
                  ▼
      self-contained HTML document                      ◄── arbitrary HTML can enter here
                  │  screenshotHtml()                    (headless Chrome)
@@ -26,29 +26,33 @@ entrypoint.
 ## Usage
 
 ```tsx
-import { renderViewToHtml, renderViewToPng, renderViewComparisonToPng } from "@hashira/jsx/preview";
+import { viewToHtml, viewToPng, compareViewsToPng } from "@hashira/jsx/preview";
 
 // Pure HTML (no browser needed) - great for snapshot tests:
-const html = renderViewToHtml(<PlayerView state={snapshot} />);
+const html = viewToHtml(<PlayerView state={snapshot} />);
 
 // Single view -> PNG:
-const { data } = await renderViewToPng(<PlayerView state={snapshot} />);
+const { data } = await viewToPng(<PlayerView state={snapshot} />);
 
 // Before/after in one labeled image:
-const cmp = await renderViewComparisonToPng({
+const cmp = await compareViewsToPng({
   before: <OldView state={snapshot} />,
   after: <NewView state={snapshot} />,
   layout: "side-by-side", // or "stacked"
 });
 
 // Arbitrary HTML:
-import { renderHtmlToPng } from "@hashira/jsx/preview";
-const png = await renderHtmlToPng("<h1>anything</h1>");
+import { screenshotHtml } from "@hashira/jsx/preview";
+const png = await screenshotHtml("<h1>anything</h1>");
 ```
 
 `attachment://` URLs used by `File` / `MediaGallery` / `Thumbnail` are
 resolved from the view's own `files` automatically (buffers become data
-URIs), or via the `attachments` option.
+URIs); the `attachments` option overrides them per filename.
+
+Pages render at Discord's message column width (520px + padding) and the
+screenshot viewport resizes to fit the document, so no width options exist.
+Documents without intrinsic width (plain HTML fragments) render at 800px.
 
 ## Browser setup
 

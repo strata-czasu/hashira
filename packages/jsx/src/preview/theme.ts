@@ -66,13 +66,13 @@ const LIGHT_VARIABLES = `
 
 export const PREVIEW_CSS = `
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: var(--d-page-bg); }
 [data-d-theme="dark"] { ${DARK_VARIABLES} }
 [data-d-theme="light"] { ${LIGHT_VARIABLES} }
-
-.d-page {
-  padding: 16px;
-  background: var(--d-chat-bg);
+body {
+  margin: 0;
+  /* Shrink-wrap so screenshots hug the content. */
+  width: max-content;
+  background: var(--d-page-bg);
   color: var(--d-text);
   font-family: "gg sans", "Noto Sans", -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -80,15 +80,20 @@ body { margin: 0; background: var(--d-page-bg); }
   line-height: 1.375;
 }
 
+.d-page {
+  padding: 16px;
+  background: var(--d-chat-bg);
+}
+
+/* Discord's message column width. */
 .d-components {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 520px;
+  width: 520px;
 }
 
 .d-page a { color: var(--d-link); text-decoration: none; }
-.d-page img.d-media { display: block; }
 
 /* --- Container (type 17) ------------------------------------------------ */
 .d-container {
@@ -102,7 +107,6 @@ body { margin: 0; background: var(--d-page-bg); }
   border: 1px solid var(--d-container-border);
   border-radius: 8px;
 }
-.d-container .d-components { max-width: none; }
 .d-container .d-md { font-size: 14px; }
 .d-container.d-accent::before {
   content: "";
@@ -264,9 +268,6 @@ body { margin: 0; background: var(--d-page-bg); }
   align-items: flex-start;
   gap: 24px;
   padding: 16px;
-  background: var(--d-page-bg);
-  font-family: "gg sans", "Noto Sans", -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
 }
 .d-compare.d-stacked { flex-direction: column; }
 .d-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }

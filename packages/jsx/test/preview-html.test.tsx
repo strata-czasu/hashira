@@ -18,8 +18,8 @@ import {
   TextDisplay,
   Thumbnail,
 } from "../src";
-import { viewToApiComponents } from "../src/preview/compare";
-import { renderComponentsToBody, renderComponentsToHtml } from "../src/preview/html";
+import { renderComponents, renderPage } from "../src/preview/html";
+import { viewToComponents } from "../src/preview/views";
 
 const sample: JSXNode = (
   <>
@@ -59,23 +59,20 @@ const sample: JSXNode = (
 
 describe("preview html renderer", () => {
   it("renders containers, buttons and selects to markup", () => {
-    const body = renderComponentsToBody(viewToApiComponents(sample));
+    const body = renderComponents(viewToComponents(sample));
     expect(body).toMatchSnapshot();
   });
 
   it("produces a complete document shell", () => {
-    const doc = renderComponentsToHtml(viewToApiComponents(<TextDisplay content="hi" />), {
-      theme: "dark",
-      width: 480,
-    });
+    const doc = renderPage(viewToComponents(<TextDisplay content="hi" />));
     expect(doc).toContain('<body data-d-theme="dark">');
-    expect(doc).toContain('style="width:480px"');
+    expect(doc).toContain('<div class="d-page">');
     expect(doc).toContain("<style>");
   });
 
   it("resolves attachment:// urls from the attachments map", () => {
-    const body = renderComponentsToBody(
-      viewToApiComponents(
+    const body = renderComponents(
+      viewToComponents(
         <MediaGallery>
           <MediaGalleryItem url="attachment://chart.png" />
         </MediaGallery>,

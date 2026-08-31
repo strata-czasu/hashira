@@ -1,3 +1,9 @@
+/**
+ * Renders Discord API message components (the JSON produced by discord.js
+ * builders' toJSON()) to static HTML approximating the client's Components V2
+ * display. Inspired by discohook's preview components. See README.md.
+ */
+
 import {
   type APIActionRowComponent,
   type APIButtonComponent,
@@ -6,6 +12,7 @@ import {
   type APIFileComponent,
   type APIMediaGalleryComponent,
   type APIMediaGalleryItem,
+  type APIMessageComponentEmoji,
   type APIMessageTopLevelComponent,
   type APISectionComponent,
   type APISelectMenuComponent,
@@ -17,33 +24,16 @@ import {
   SeparatorSpacingSize,
 } from "discord.js";
 
-import { type MarkdownRenderOptions, renderDiscordMarkdown } from "./markdown";
+import { escapeHtml, type MarkdownOptions, renderMarkdown } from "./markdown";
 import { PREVIEW_CSS, type PreviewTheme } from "./theme";
 
-/**
- * Renders Discord API message components (the JSON produced by discord.js
- * builders' toJSON()) into a self-contained HTML document that approximates
- * how the client displays Components V2. Inspired by discohook's preview
- * components, but producing static server-side HTML instead of React.
- */
-
-export interface HtmlRenderOptions {
+export interface PreviewOptions {
   /** Visual theme (default: `dark`). */
-  theme?: PreviewTheme | undefined;
-  /** Width of the rendered page in CSS pixels (default: `600`). */
-  width?: number | undefined;
-  /**
-   * Resolves `attachment://filename` URLs used by thumbnails, galleries and
-   * files. Values are usually data URIs built from the view's files.
-   */
-  attachments?: Record<string, string> | undefined;
+  theme?: PreviewTheme;
+  /** Maps `attachment://` filenames to URLs (usually data URIs from view files). */
+  attachments?: Record<string, string>;
   /** Options forwarded to the markdown renderer (mentions, locale, ...). */
-  markdown?: MarkdownRenderOptions | undefined;
-}
-
-interface RenderContext {
-  attachments: Record<string, string>;
-  markdown: MarkdownRenderOptions;
+  markdown?: MarkdownOptions;
 }
 
 const CHEVRON_SVG =
@@ -52,90 +42,69 @@ const CHEVRON_SVG =
 const FILE_ICON_SVG =
   '<svg class="d-file-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 7V3.5L18.5 9z"/></svg>';
 
-// --- Helpers ----------------------------------------------------------------
-
-// Bun.escapeHTML escapes &, <, >, " and ' — safe for double-quoted attributes.
-const escapeAttr = Bun.escapeHTML;
-
-function resolveMediaUrl(url: string, context: RenderContext): string {
+function resolveMediaUrl(url: string, options: PreviewOptions): string {
   if (!url.startsWith("attachment://")) return url;
-  const name = url.slice("attachment://".length);
-  return context.attachments[name] ?? url;
+  return options.attachments?.[url.slice("attachment://".length)] ?? url;
 }
 
 function fileNameFromUrl(url: string): string {
   try {
-    const path = new URL(url).pathname;
-    return decodeURIComponent(path.split("/").pop() ?? "file");
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "file");
   } catch {
     return url;
   }
 }
 
-function renderComponentEmoji(
-  emoji: { name?: string; id?: string; animated?: boolean } | undefined,
-): string {
-  if (!emoji) return "";
-  if (emoji.id) {
-    const url = `https://cdn.discordapp.com/emojis/${emoji.id}.${emoji.animated ? "gif" : "png"}?size=32`;
-    return `<img class="d-emoji" alt="${escapeAttr(emoji.name ?? "")}" src="${escapeAttr(url)}">`;
-  }
-  if (emoji.name) return escapeAttr(emoji.name);
-  return "";
+function renderComponentEmoji(emoji: APIMessageComponentEmoji | undefined): string {
+  if (!emoji?.name) return "";
+  if (!emoji.id) return escapeHtml(emoji.name);
+  const url = `https://cdn.discordapp.com/emojis/${emoji.id}.${emoji.animated ? "gif" : "png"}?size=32`;
+  return `<img class="d-emoji" alt="${escapeHtml(emoji.name)}" src="${escapeHtml(url)}">`;
 }
 
 // --- Leaf renderers ---------------------------------------------------------
 
-function renderTextDisplay(component: APITextDisplayComponent, context: RenderContext): string {
-  return `<div class="d-md">${renderDiscordMarkdown(component.content, context.markdown)}</div>`;
+function renderTextDisplay(component: APITextDisplayComponent, options: PreviewOptions): string {
+  return `<div class="d-md">${renderMarkdown(component.content, options.markdown)}</div>`;
 }
 
+const BUTTON_STYLE_CLASSES: Record<ButtonStyle, string> = {
+  [ButtonStyle.Primary]: "d-btn-primary",
+  [ButtonStyle.Secondary]: "d-btn-secondary",
+  [ButtonStyle.Success]: "d-btn-success",
+  [ButtonStyle.Danger]: "d-btn-danger",
+  [ButtonStyle.Link]: "d-btn-secondary",
+  [ButtonStyle.Premium]: "d-btn-premium",
+};
+
 function renderButton(component: APIButtonComponent): string {
-  const styles = {
-    [ButtonStyle.Primary]: "d-btn-primary",
-    [ButtonStyle.Secondary]: "d-btn-secondary",
-    [ButtonStyle.Success]: "d-btn-success",
-    [ButtonStyle.Danger]: "d-btn-danger",
-    [ButtonStyle.Link]: "d-btn-secondary",
-    [ButtonStyle.Premium]: "d-btn-premium",
-  };
-  const styleClass = styles[component.style as ButtonStyle] ?? "d-btn-secondary";
-  const disabled = "disabled" in component && component.disabled ? " d-disabled" : "";
+  const styleClass = BUTTON_STYLE_CLASSES[component.style];
+  const disabled = component.disabled ? " d-disabled" : "";
+  // SKU (premium) buttons carry neither label nor emoji; Discord shows "SKU".
   const emoji = renderComponentEmoji("emoji" in component ? component.emoji : undefined);
-  const label = "label" in component && component.label ? escapeAttr(component.label) : "";
-
+  const label = "label" in component && component.label ? escapeHtml(component.label) : "";
   const inner = `${emoji}${label}` || "SKU";
-
   return `<span class="d-btn ${styleClass}${disabled}">${inner}</span>`;
 }
 
-function selectFallbackLabel(type: ComponentType): string {
-  switch (type) {
-    case ComponentType.UserSelect:
-      return "@user";
-    case ComponentType.RoleSelect:
-      return "@role";
-    case ComponentType.ChannelSelect:
-      return "#channel";
-    default:
-      return "Make a selection";
-  }
-}
+const SELECT_PLACEHOLDERS: Partial<Record<ComponentType, string>> = {
+  [ComponentType.UserSelect]: "@user",
+  [ComponentType.RoleSelect]: "@role",
+  [ComponentType.ChannelSelect]: "#channel",
+};
 
 function renderSelectMenu(component: APISelectMenuComponent): string {
-  const disabled = "disabled" in component && component.disabled ? " d-disabled" : "";
-
-  let label: string;
-  if (component.type === ComponentType.StringSelect) {
-    const selected = component.options
-      .filter((option) => option.default)
-      .map((option) => option.label);
-    label = selected.join(", ") || component.placeholder || selectFallbackLabel(component.type);
-  } else {
-    label = component.placeholder || selectFallbackLabel(component.type);
-  }
-
-  return `<span class="d-select${disabled}"><span class="d-select-label">${escapeAttr(label)}</span>${CHEVRON_SVG}</span>`;
+  const disabled = component.disabled ? " d-disabled" : "";
+  const selected =
+    component.type === ComponentType.StringSelect
+      ? component.options
+          .filter((option) => option.default)
+          .map((option) => option.label)
+          .join(", ")
+      : "";
+  const label =
+    selected || component.placeholder || SELECT_PLACEHOLDERS[component.type] || "Make a selection";
+  return `<span class="d-select${disabled}"><span class="d-select-label">${escapeHtml(label)}</span>${CHEVRON_SVG}</span>`;
 }
 
 function renderActionRow(component: APIActionRowComponent<APIComponentInMessageActionRow>): string {
@@ -147,20 +116,19 @@ function renderActionRow(component: APIActionRowComponent<APIComponentInMessageA
   return `<div class="d-row">${children}</div>`;
 }
 
-function renderThumbnail(thumbnail: APIThumbnailComponent, context: RenderContext): string {
-  const url = resolveMediaUrl(thumbnail.media.url, context);
+function renderThumbnail(thumbnail: APIThumbnailComponent, options: PreviewOptions): string {
+  const url = resolveMediaUrl(thumbnail.media.url, options);
   const spoiled = thumbnail.spoiler ? " d-spoilered" : "";
-  return `<img class="d-thumbnail${spoiled}" src="${escapeAttr(url)}" alt="${escapeAttr(thumbnail.description ?? "")}">`;
+  return `<img class="d-thumbnail${spoiled}" src="${escapeHtml(url)}" alt="${escapeHtml(thumbnail.description ?? "")}">`;
 }
 
-function renderSection(component: APISectionComponent, context: RenderContext): string {
-  const body = component.components.map((child) => renderTextDisplay(child, context)).join("");
-  const { accessory } = component;
-  const renderedAccessory =
-    accessory.type === ComponentType.Button
-      ? renderButton(accessory)
-      : renderThumbnail(accessory, context);
-  return `<div class="d-section"><div class="d-section-body">${body}</div><div class="d-accessory">${renderedAccessory}</div></div>`;
+function renderSection(component: APISectionComponent, options: PreviewOptions): string {
+  const body = component.components.map((child) => renderTextDisplay(child, options)).join("");
+  const accessory =
+    component.accessory.type === ComponentType.Button
+      ? renderButton(component.accessory)
+      : renderThumbnail(component.accessory, options);
+  return `<div class="d-section"><div class="d-section-body">${body}</div><div class="d-accessory">${accessory}</div></div>`;
 }
 
 function renderSeparator(component: APISeparatorComponent): string {
@@ -169,181 +137,121 @@ function renderSeparator(component: APISeparatorComponent): string {
   return `<hr class="d-separator${divided}${spacing}">`;
 }
 
-function galleryColumns(count: number): number {
-  if (count <= 1) return 1;
-  if (count === 2 || count === 4) return 2;
-  return 3;
-}
-
-function galleryRowHeight(columns: number): number {
-  return columns <= 2 ? 200 : 140;
-}
-
-function renderMediaGallery(component: APIMediaGalleryComponent, context: RenderContext): string {
-  const columns = galleryColumns(component.items.length);
-  const height = galleryRowHeight(columns);
+function renderMediaGallery(component: APIMediaGalleryComponent, options: PreviewOptions): string {
+  const count = component.items.length;
+  const columns = count <= 1 ? 1 : count === 2 || count === 4 ? 2 : 3;
+  const height = columns <= 2 ? 200 : 140;
   const items = component.items
     .map((item: APIMediaGalleryItem) => {
-      const url = resolveMediaUrl(item.media.url, context);
+      const url = resolveMediaUrl(item.media.url, options);
       const spoiled = item.spoiler ? " d-spoilered" : "";
-      return `<div class="d-gallery-item${spoiled}" style="height:${height}px"><img src="${escapeAttr(url)}" alt="${escapeAttr(item.description ?? "")}"></div>`;
+      return `<div class="d-gallery-item${spoiled}" style="height:${height}px"><img src="${escapeHtml(url)}" alt="${escapeHtml(item.description ?? "")}"></div>`;
     })
     .join("");
   return `<div class="d-gallery" style="grid-template-columns:repeat(${columns}, minmax(0, 1fr))">${items}</div>`;
 }
 
-function renderFile(component: APIFileComponent, context: RenderContext): string {
-  const url = resolveMediaUrl(component.file.url, context);
-  const name = escapeAttr(fileNameFromUrl(url));
+function renderFile(component: APIFileComponent, options: PreviewOptions): string {
+  const name = escapeHtml(fileNameFromUrl(resolveMediaUrl(component.file.url, options)));
   return `<div class="d-file-card">${FILE_ICON_SVG}<span class="d-file-name">${name}</span></div>`;
 }
 
-function renderContainer(component: APIContainerComponent, context: RenderContext): string {
-  const children = componentsToFragment(component.components, context);
-  const accent =
-    component.accent_color != null
-      ? ` style="--d-accent:#${component.accent_color.toString(16).padStart(6, "0")}"`
-      : "";
-  const classes = [
-    "d-container",
-    ...(component.accent_color != null ? ["d-accent"] : []),
-    ...(component.spoiler ? ["d-spoiler-wrap"] : []),
-  ].join(" ");
+function renderContainer(component: APIContainerComponent, options: PreviewOptions): string {
+  const children = renderComponentList(component.components, options);
+  const accent = component.accent_color;
+  const cls = accent == null ? "d-container" : "d-container d-accent";
+  const style =
+    accent == null ? "" : ` style="--d-accent:#${accent.toString(16).padStart(6, "0")}"`;
   const inner = component.spoiler ? `<div class="d-spoiled">${children}</div>` : children;
-  return `<div class="${classes}"${accent}>${inner}</div>`;
+  return `<div class="${cls}"${style}>${inner}</div>`;
 }
 
 // --- Public surface ---------------------------------------------------------
 
-function createContext(options: HtmlRenderOptions): RenderContext & {
-  theme: PreviewTheme;
-  width: number;
-} {
-  return {
-    theme: options.theme ?? "dark",
-    width: options.width ?? 600,
-    attachments: options.attachments ?? {},
-    markdown: options.markdown ?? {},
-  };
+function renderComponent(component: APIMessageTopLevelComponent, options: PreviewOptions): string {
+  switch (component.type) {
+    case ComponentType.ActionRow:
+      return renderActionRow(component);
+    case ComponentType.Container:
+      return renderContainer(component, options);
+    case ComponentType.Section:
+      return renderSection(component, options);
+    case ComponentType.TextDisplay:
+      return renderTextDisplay(component, options);
+    case ComponentType.MediaGallery:
+      return renderMediaGallery(component, options);
+    case ComponentType.File:
+      return renderFile(component, options);
+    case ComponentType.Separator:
+      return renderSeparator(component);
+    default:
+      return "";
+  }
 }
 
-function componentsToFragment(
+function renderComponentList(
   components: readonly APIMessageTopLevelComponent[],
-  context: RenderContext,
+  options: PreviewOptions,
 ): string {
-  return components
-    .map((component) => {
-      switch (component.type) {
-        case ComponentType.ActionRow:
-          return renderActionRow(component);
-        case ComponentType.Container:
-          return renderContainer(component, context);
-        case ComponentType.Section:
-          return renderSection(component, context);
-        case ComponentType.TextDisplay:
-          return renderTextDisplay(component, context);
-        case ComponentType.MediaGallery:
-          return renderMediaGallery(component, context);
-        case ComponentType.File:
-          return renderFile(component, context);
-        case ComponentType.Separator:
-          return renderSeparator(component);
-        default:
-          // Unsupported component types are skipped silently.
-          return "";
-      }
-    })
-    .join("");
+  return components.map((component) => renderComponent(component, options)).join("");
 }
 
-function componentsToBodyWithContext(
+/** Renders components to the `.d-components` fragment (no page shell). */
+export function renderComponents(
   components: readonly APIMessageTopLevelComponent[],
-  context: RenderContext,
+  options: PreviewOptions = {},
 ): string {
-  return `<div class="d-components">${componentsToFragment(components, context)}</div>`;
-}
-
-/** Renders components to the inner `.d-components` fragment (no page shell). */
-export function renderComponentsToBody(
-  components: readonly APIMessageTopLevelComponent[],
-  options: HtmlRenderOptions = {},
-): string {
-  return componentsToBodyWithContext(components, createContext(options));
+  return `<div class="d-components">${renderComponentList(components, options)}</div>`;
 }
 
 /** Renders components to a complete, self-contained HTML document. */
-export function renderComponentsToHtml(
+export function renderPage(
   components: readonly APIMessageTopLevelComponent[],
-  options: HtmlRenderOptions = {},
+  options: PreviewOptions = {},
 ): string {
-  const context = createContext(options);
-  const body = componentsToBodyWithContext(components, context);
-  return documentShell(body, context);
+  return shell(
+    "preview",
+    `<div class="d-page">${renderComponents(components, options)}</div>`,
+    options.theme,
+  );
 }
 
-export function documentShell(
-  bodyInner: string,
-  context: RenderContext & {
-    theme: PreviewTheme;
-    width: number;
-  },
-): string {
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>preview</title>
-<style>${PREVIEW_CSS}</style>
-</head>
-<body data-d-theme="${context.theme}">
-<div class="d-page" style="width:${context.width}px">${bodyInner}</div>
-</body>
-</html>`;
-}
-
-export interface ComparisonPanelInput {
+export interface ComparisonPanel {
   label: string;
   /** Tone picks the label color. */
   tone: "before" | "after";
-  /** Pre-rendered `.d-components` fragment. */
+  /** Pre-rendered components fragment, e.g. from {@link renderComponents}. */
   body: string;
 }
 
-export interface ComparisonHtmlOptions extends HtmlRenderOptions {
-  layout?: "side-by-side" | "stacked";
-  /** Width of each individual panel (default: 520). */
-  panelWidth?: number;
-}
-
 /** Renders labeled panels side by side (or stacked) into one document. */
-export function renderPanelsToHtml(
-  panels: readonly ComparisonPanelInput[],
-  options: ComparisonHtmlOptions = {},
+export function renderComparison(
+  panels: readonly ComparisonPanel[],
+  options: PreviewOptions & { layout?: "side-by-side" | "stacked" } = {},
 ): string {
-  const context = createContext(options);
-  const stacked = options.layout === "stacked" ? " d-stacked" : "";
-  const panelWidth = options.panelWidth ?? 520;
-
   const columns = panels
     .map(
       (panel) => `
 <div class="d-col">
-  <span class="d-label d-label-${panel.tone}">${escapeAttr(panel.label)}</span>
-  <div class="d-page d-panel" style="width:${panelWidth}px">${panel.body}</div>
+  <span class="d-label d-label-${panel.tone}">${escapeHtml(panel.label)}</span>
+  <div class="d-page d-panel">${panel.body}</div>
 </div>`,
     )
     .join("\n");
+  const stacked = options.layout === "stacked" ? " d-stacked" : "";
+  return shell("comparison", `<div class="d-compare${stacked}">${columns}\n</div>`, options.theme);
+}
 
+function shell(title: string, body: string, theme: PreviewTheme = "dark"): string {
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>comparison</title>
+<title>${title}</title>
 <style>${PREVIEW_CSS}</style>
 </head>
-<body data-d-theme="${context.theme}">
-<div class="d-compare${stacked}">${columns}
-</div>
+<body data-d-theme="${theme}">
+${body}
 </body>
 </html>`;
 }

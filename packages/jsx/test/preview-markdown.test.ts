@@ -1,16 +1,18 @@
 import { describe, expect, it } from "bun:test";
 
-import { renderDiscordMarkdown } from "../src/preview/markdown";
+import { renderMarkdown } from "../src/preview/markdown";
 
 const FIXED_NOW = new Date("2026-08-24T12:00:00Z");
 
-const render = (source: string) =>
-  renderDiscordMarkdown(source, { now: FIXED_NOW, locale: "en-US" });
+const render = (source: string) => renderMarkdown(source, { now: FIXED_NOW, locale: "en-US" });
 
-describe("renderDiscordMarkdown", () => {
+describe("renderMarkdown", () => {
   it("escapes raw html", () => {
     expect(render("<script>alert(1)</script>")).toBe(
       "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
+    );
+    expect(render("<script>\nalert(1)\n</script>")).toBe(
+      "<p>&lt;script&gt;<br>alert(1)<br>&lt;/script&gt;</p>",
     );
   });
 
@@ -28,23 +30,26 @@ describe("renderDiscordMarkdown", () => {
     expect(html).toContain("<em>em</em>");
     expect(html).toContain("<u>under</u>");
     expect(html).toContain("<s>strike</s>");
-    expect(html).toContain("<strong><em>both</em></strong>");
+    expect(html).toContain("<em><strong>both</strong></em>");
   });
 
   it("does not transform markdown inside code", () => {
-    const html = render("`**not bold**` ```js\n**block**\n```");
-    expect(html).toContain('<code class="d-code-inline">**not bold**</code>');
-    expect(html).toContain("**block**");
-    expect(html).not.toContain("<strong>block</strong>");
+    const html = render("`**bold** ||spoiler|| <@123>`\n\n```js\n__block__ <t:0:F>\n```");
+    expect(html).toContain('<code class="d-code-inline">**bold** ||spoiler|| &lt;@123&gt;</code>');
+    expect(html).toContain("__block__ &lt;t:0:F&gt;");
+    expect(html).not.toContain("<u>block</u>");
+    expect(html).not.toContain("d-timestamp");
   });
 
   it("renders spoilers", () => {
-    expect(render("||secret||")).toContain('<span class="d-spoiler">secret</span>');
+    expect(render("||**secret**||")).toContain(
+      '<span class="d-spoiler"><strong>secret</strong></span>',
+    );
   });
 
   it("groups quotes and lists", () => {
     const html = render("> line one\n> line two\n- a\n- b\n1. one\n2. two");
-    expect(html).toContain("<blockquote>line one<br>line two</blockquote>");
+    expect(html).toContain("<blockquote><p>line one<br>line two</p></blockquote>");
     expect(html).toContain("<ul><li>a</li><li>b</li></ul>");
     expect(html).toContain("<ol><li>one</li><li>two</li></ol>");
   });
@@ -55,19 +60,18 @@ describe("renderDiscordMarkdown", () => {
 
   it("renders masked links and blocks unsafe urls", () => {
     expect(render("[click](https://example.com)")).toContain('<a href="https://example.com"');
-    // javascript: urls are not matched by the link patterns
-    expect(render("[x](javascript:alert(1))")).toBe("<p>[x](javascript:alert(1))</p>");
+    expect(render("[x](javascript:alert(1))")).toBe("<p>x</p>");
   });
 
   it("renders mentions as pills with fallback labels", () => {
     const html = render("hi <@123> <#456> <@&789>");
     expect(html).toContain('data-kind="user" title="123">@user');
     expect(html).toContain('data-kind="channel" title="456">#channel');
-    expect(html).toContain('data-kind="role" title="789">@user');
+    expect(html).toContain('data-kind="role" title="789">@role');
   });
 
   it("uses resolved mention names", () => {
-    const html = renderDiscordMarkdown("hey <@42>", {
+    const html = renderMarkdown("hey <@42>", {
       now: FIXED_NOW,
       resolveMention: (kind, id) => (kind === "user" && id === "42" ? "kasia" : null),
     });

@@ -13,10 +13,11 @@ const enabled = process.env.SCREENSHOT_TESTS === "1";
 describe.skipIf(!enabled)("screenshotHtml", () => {
   it("sizes the png to the rendered content", async () => {
     const result = await screenshotHtml(
-      `<!doctype html><html><body style="margin:0"><div style="width:200px;height:120px;background:#5865f2"></div></body></html>`,
-      { width: 300, scale: 1 },
+      `<!doctype html><html><body style="margin:0;width:200px"><div style="width:200px;height:120px;background:#5865f2"></div></body></html>`,
+      { scale: 1 },
     );
-    expect(result.width).toBe(300);
+    expect(result.width).toBe(200);
+    expect(result.height).toBe(120);
     // PNG magic number
     expect([...result.data.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
