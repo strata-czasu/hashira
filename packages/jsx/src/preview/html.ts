@@ -70,8 +70,7 @@ function renderButton(component: APIButtonComponent): string {
   const disabled = component.disabled ? " d-disabled" : "";
   const emoji = renderComponentEmoji("emoji" in component ? component.emoji : undefined);
   const label = "label" in component && component.label ? escapeHtml(component.label) : "";
-  // Premium buttons carry neither label nor emoji; Discord shows "SKU".
-  const inner = `${emoji}${label}` || "SKU";
+  const inner = `${emoji}${label}` || ("sku_id" in component ? "SKU" : "");
   return `<span class="d-btn ${styleClass}${disabled}">${inner}</span>`;
 }
 
@@ -139,8 +138,11 @@ function renderMediaGallery(component: APIMediaGalleryComponent, options: Previe
   return `<div class="d-gallery" style="grid-template-columns:repeat(${columns}, minmax(0, 1fr))">${items}</div>`;
 }
 
-function renderFile(component: APIFileComponent, options: PreviewOptions): string {
-  const name = escapeHtml(fileNameFromUrl(resolveMediaUrl(component.file.url, options)));
+function renderFile(component: APIFileComponent): string {
+  const url = component.file.url;
+  const name = escapeHtml(
+    url.startsWith("attachment://") ? url.slice("attachment://".length) : fileNameFromUrl(url),
+  );
   return `<div class="d-file-card">${FILE_ICON_SVG}<span class="d-file-name">${name}</span></div>`;
 }
 
@@ -167,7 +169,7 @@ function renderComponent(component: APIMessageTopLevelComponent, options: Previe
     case ComponentType.MediaGallery:
       return renderMediaGallery(component, options);
     case ComponentType.File:
-      return renderFile(component, options);
+      return renderFile(component);
     case ComponentType.Separator:
       return renderSeparator(component);
     default:

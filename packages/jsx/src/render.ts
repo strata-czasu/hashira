@@ -1,14 +1,5 @@
 import type { APIMessageTopLevelComponent, JSONEncodable } from "discord.js";
-import {
-  ActionRowBuilder,
-  AttachmentBuilder,
-  ContainerBuilder,
-  FileBuilder,
-  MediaGalleryBuilder,
-  SectionBuilder,
-  SeparatorBuilder,
-  TextDisplayBuilder,
-} from "discord.js";
+import { AttachmentBuilder, TextDisplayBuilder } from "discord.js";
 
 import { reconcile } from "./reconciler";
 import type { JSXNode } from "./types";
@@ -26,18 +17,16 @@ export function render(element: JSXNode) {
     if (typeof child === "string" || typeof child === "number") {
       const text = new TextDisplayBuilder().setContent(String(child));
       components.push(text);
-    } else if (child instanceof AttachmentBuilder) {
-      files.push(child);
+      continue;
+    }
+    // Duck-typed so builders from another worktree's discord.js copy still pass.
+    if (typeof child === "object" && "attachment" in child) {
+      files.push(child as AttachmentBuilder);
     } else if (
-      child instanceof ActionRowBuilder ||
-      child instanceof SectionBuilder ||
-      child instanceof TextDisplayBuilder ||
-      child instanceof MediaGalleryBuilder ||
-      child instanceof FileBuilder ||
-      child instanceof SeparatorBuilder ||
-      child instanceof ContainerBuilder
+      typeof child === "object" &&
+      typeof (child as { toJSON?: unknown }).toJSON === "function"
     ) {
-      components.push(child);
+      components.push(child as JSONEncodable<APIMessageTopLevelComponent>);
     } else {
       throw new Error(`Unsupported child type: ${typeof child}`);
     }

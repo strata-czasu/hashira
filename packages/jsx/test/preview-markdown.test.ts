@@ -22,6 +22,13 @@ describe("renderMarkdown", () => {
     );
   });
 
+  it("renders subtext per line and respects escapes", () => {
+    expect(render("line1\n-# line2\nline3")).toBe(
+      '<p>line1</p><div class="d-subtext">line2</div><p>line3</p>',
+    );
+    expect(render("\\-# escaped")).toBe("<p>-# escaped</p>");
+  });
+
   it("renders emphasis", () => {
     expect(render("**bold** *em* __under__ ~~strike~~ ***both***")).toMatchInlineSnapshot(
       `"<p><strong>bold</strong> <em>em</em> <u>under</u> <s>strike</s> <em><strong>both</strong></em></p>"`,
@@ -40,6 +47,19 @@ describe("renderMarkdown", () => {
     expect(render("||**secret**||")).toMatchInlineSnapshot(
       `"<p><span class="d-spoiler"><strong>secret</strong></span></p>"`,
     );
+  });
+
+  it("spans spoilers over soft line breaks but not block boundaries", () => {
+    expect(render("||a\nb||")).toBe('<p><span class="d-spoiler">a<br>b</span></p>');
+    expect(render("||a\n\nb||")).toBe("<p>||a</p><p>b||</p>");
+    expect(render("- a __one\n- b__ two")).toBe("<ul><li>a __one</li><li>b__ two</li></ul>");
+  });
+
+  it("strips private-use sentinel characters from input", () => {
+    expect(render("icon \uE101 font ||spoiler||")).toBe(
+      '<p>icon  font <span class="d-spoiler">spoiler</span></p>',
+    );
+    expect(render("a \uE000 3 \uE001 b")).toBe("<p>a  3  b</p>");
   });
 
   it("groups quotes and lists", () => {
@@ -83,6 +103,15 @@ describe("renderMarkdown", () => {
     // 2025-12-24T12:00:00Z is ~8 months before FIXED_NOW
     expect(render("<t:1766577600:R>")).toMatchInlineSnapshot(
       `"<p><span class="d-timestamp">8 months ago</span></p>"`,
+    );
+  });
+
+  it("survives out-of-range timestamps", () => {
+    expect(render("<t:99999999999999:F>")).toBe(
+      '<p><span class="d-timestamp">Invalid Date</span></p>',
+    );
+    expect(render("<t:99999999999999:R>")).toBe(
+      '<p><span class="d-timestamp">Invalid Date</span></p>',
     );
   });
 

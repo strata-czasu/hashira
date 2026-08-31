@@ -14,10 +14,14 @@ const TOKEN_START = "\uE000";
 const TOKEN_END = "\uE001";
 const UNDERLINE = "\uE100";
 const SPOILER = "\uE101";
+const SUBTEXT = "\uE102";
+const SENTINELS_RE = /[\uE000\uE001\uE100-\uE102]/g;
 const CODE = /(```[\s\S]*?```|`[^`\n]+`)/g;
 const TOKEN_RE = new RegExp(`${TOKEN_START}(\\d+)${TOKEN_END}`, "g");
-const UNDERLINE_RE = new RegExp(`${UNDERLINE}([\\s\\S]+?)${UNDERLINE}`, "g");
-const SPOILER_RE = new RegExp(`${SPOILER}([\\s\\S]+?)${SPOILER}`, "g");
+// Pairs must not cross block boundaries, or the emitted HTML nests invalidly.
+const IN_BLOCK = "((?:(?!</(?:p|li|h[1-6]|blockquote|pre|div)>)[\\s\\S])+?)";
+const UNDERLINE_RE = new RegExp(`${UNDERLINE}${IN_BLOCK}${UNDERLINE}`, "g");
+const SPOILER_RE = new RegExp(`${SPOILER}${IN_BLOCK}${SPOILER}`, "g");
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 24 * 3600],
@@ -36,6 +40,7 @@ interface Timing {
 
 function formatTimestamp(unixSeconds: number, style: string, timing: Timing): string {
   const date = new Date(unixSeconds * 1000);
+  if (!Number.isFinite(date.getTime())) return "Invalid Date";
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(timing.locale, {
       ...options,
@@ -118,13 +123,14 @@ function preprocess(
           keep(renderEmoji(name, id, animated === "a")),
       );
 
+      part = part.replace(/(^|\n)-# /g, `$1${SUBTEXT}`);
       return part.replaceAll("__", UNDERLINE).replaceAll("||", SPOILER);
     })
     .join("");
 }
 
 function restoreDelimiters(text: string): string {
-  return text.replaceAll(UNDERLINE, "__").replaceAll(SPOILER, "||");
+  return text.replaceAll(UNDERLINE, "__").replaceAll(SPOILER, "||").replaceAll(SUBTEXT, "-# ");
 }
 
 const PARSER_OPTIONS = {
@@ -148,14 +154,26 @@ export function renderMarkdown(source: string, options: MarkdownOptions = {}): s
   };
 
   let html = Bun.markdown.render(
-    preprocess(source, options, timing, keep),
+    preprocess(source.replace(SENTINELS_RE, ""), options, timing, keep),
     {
       text: escapeHtml,
       paragraph: (children) => {
-        const body = children.replaceAll("\n", "<br>");
-        return body.startsWith("-# ")
-          ? `<div class="d-subtext">${body.slice(3)}</div>`
-          : `<p>${body}</p>`;
+        let out = "";
+        let lines: string[] = [];
+        const flush = () => {
+          if (lines.length) out += `<p>${lines.join("<br>")}</p>`;
+          lines = [];
+        };
+        for (const line of children.split("\n")) {
+          if (line.startsWith(SUBTEXT)) {
+            flush();
+            out += `<div class="d-subtext">${line.slice(1)}</div>`;
+          } else {
+            lines.push(line);
+          }
+        }
+        flush();
+        return out;
       },
       heading: (children, { level }) =>
         level <= 3
