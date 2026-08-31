@@ -87,6 +87,9 @@ strings are revived into `Date` instances), `--out <path>` (default:
 
 ## Notes
 
+- Markdown is parsed with Discord's official [`@discord/markdown-wasm`](https://www.npmjs.com/package/@discord/markdown-wasm)
+  parser, so text semantics (spoilers, subtext, escapes, mentions) match the
+  client exactly; this module only renders the resulting AST to HTML.
 - Timestamps render in UTC with a fixed 24-hour cycle and default locale
   `pl-PL` so the same state always produces identical pixels. Override via
   the `markdown` option (`locale`, `timeZone`, `now`).

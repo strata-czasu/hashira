@@ -31,7 +31,7 @@ describe("renderMarkdown", () => {
 
   it("renders emphasis", () => {
     expect(render("**bold** *em* __under__ ~~strike~~ ***both***")).toMatchInlineSnapshot(
-      `"<p><strong>bold</strong> <em>em</em> <u>under</u> <s>strike</s> <em><strong>both</strong></em></p>"`,
+      `"<p><strong>bold</strong> <em>em</em> <u>under</u> <s>strike</s> <strong><em>both</em></strong></p>"`,
     );
   });
 
@@ -49,17 +49,17 @@ describe("renderMarkdown", () => {
     );
   });
 
-  it("spans spoilers over soft line breaks but not block boundaries", () => {
+  it("spans spoilers over line breaks like Discord does", () => {
     expect(render("||a\nb||")).toBe('<p><span class="d-spoiler">a<br>b</span></p>');
-    expect(render("||a\n\nb||")).toBe("<p>||a</p><p>b||</p>");
+    expect(render("||a\n\nb||")).toBe('<p><span class="d-spoiler">a<br><br>b</span></p>');
     expect(render("- a __one\n- b__ two")).toBe("<ul><li>a __one</li><li>b__ two</li></ul>");
   });
 
-  it("strips private-use sentinel characters from input", () => {
+  it("preserves private-use characters instead of corrupting output", () => {
     expect(render("icon \uE101 font ||spoiler||")).toBe(
-      '<p>icon  font <span class="d-spoiler">spoiler</span></p>',
+      '<p>icon \uE101 font <span class="d-spoiler">spoiler</span></p>',
     );
-    expect(render("a \uE000 3 \uE001 b")).toBe("<p>a  3  b</p>");
+    expect(render("a \uE000 3 \uE001 b")).toBe("<p>a \uE000 3 \uE001 b</p>");
   });
 
   it("groups quotes and lists", () => {
@@ -74,9 +74,9 @@ describe("renderMarkdown", () => {
 
   it("renders masked links and blocks unsafe urls", () => {
     expect(render("[click](https://example.com)")).toMatchInlineSnapshot(
-      `"<p><a href="https://example.com" target="_blank" rel="noreferrer noopener">click</a></p>"`,
+      `"<p><a href="https://example.com/" target="_blank" rel="noreferrer noopener">click</a></p>"`,
     );
-    expect(render("[x](javascript:alert(1))")).toBe("<p>x</p>");
+    expect(render("[x](javascript:alert(1))")).toBe("<p>[x](javascript:alert(1))</p>");
   });
 
   it("renders mentions as pills with fallback labels", () => {

@@ -1,3 +1,14 @@
+import type {
+  Block,
+  Inline,
+  Link,
+  ListItem,
+  Mention,
+  Paragraph,
+  Text,
+} from "@discord/markdown-types";
+import { parse, unparse } from "@discord/markdown-wasm/sync";
+
 type MentionKind = "user" | "channel" | "role";
 
 export interface MarkdownOptions {
@@ -9,19 +20,9 @@ export interface MarkdownOptions {
 
 export const escapeHtml = Bun.escapeHTML;
 
-// Invisible private-use sentinels smuggle pre-rendered HTML and __/|| through the parser.
-const TOKEN_START = "\uE000";
-const TOKEN_END = "\uE001";
-const UNDERLINE = "\uE100";
-const SPOILER = "\uE101";
-const SUBTEXT = "\uE102";
-const SENTINELS_RE = /[\uE000\uE001\uE100-\uE102]/g;
-const CODE = /(```[\s\S]*?```|`[^`\n]+`)/g;
-const TOKEN_RE = new RegExp(`${TOKEN_START}(\\d+)${TOKEN_END}`, "g");
-// Pairs must not cross block boundaries, or the emitted HTML nests invalidly.
-const IN_BLOCK = "((?:(?!</(?:p|li|h[1-6]|blockquote|pre|div)>)[\\s\\S])+?)";
-const UNDERLINE_RE = new RegExp(`${UNDERLINE}${IN_BLOCK}${UNDERLINE}`, "g");
-const SPOILER_RE = new RegExp(`${SPOILER}${IN_BLOCK}${SPOILER}`, "g");
+// The published types omit paragraph/text from the unions, but parse() emits them.
+type BlockNode = Block | Paragraph;
+type InlineNode = Inline | Text;
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 24 * 3600],
@@ -82,129 +83,170 @@ const MENTION_LABELS: Record<MentionKind, string> = {
   role: "@role",
 };
 
-function renderMention(kind: MentionKind, id: string, options: MarkdownOptions): string {
+function renderIdMention(kind: MentionKind, id: string, options: MarkdownOptions): string {
   const label = options.resolveMention?.(kind, id) ?? MENTION_LABELS[kind];
   return `<span class="d-mention" data-kind="${kind}" title="${id}">${escapeHtml(label)}</span>`;
 }
 
-function renderEmoji(name: string, id: string, animated: boolean): string {
+function renderCustomEmoji(name: string, id: string, animated: boolean): string {
   const url = `https://cdn.discordapp.com/emojis/${id}.${animated ? "gif" : "png"}?size=44`;
   return `<img class="d-emoji" alt=":${escapeHtml(name)}:" src="${url}">`;
 }
 
-function preprocess(
-  source: string,
-  options: MarkdownOptions,
-  timing: Timing,
-  keep: (html: string) => string,
-): string {
-  return source
-    .split(CODE)
-    .map((part, index) => {
-      if (index % 2 === 1) return part;
-
-      part = part.replace(/<t:(-?\d+)(?::([a-zA-Z]))?>/g, (_, seconds: string, style?: string) =>
-        keep(
-          `<span class="d-timestamp">${escapeHtml(formatTimestamp(Number(seconds), style ?? "f", timing))}</span>`,
-        ),
-      );
-      part = part.replace(/<@&(\d+)>/g, (_, id: string) =>
-        keep(renderMention("role", id, options)),
-      );
-      part = part.replace(/<@!?(\d+)>/g, (_, id: string) =>
-        keep(renderMention("user", id, options)),
-      );
-      part = part.replace(/<#(\d+)>/g, (_, id: string) =>
-        keep(renderMention("channel", id, options)),
-      );
-      part = part.replace(
-        /<(a?):([a-zA-Z0-9_]+):(\d+)>/g,
-        (_, animated: string, name: string, id: string) =>
-          keep(renderEmoji(name, id, animated === "a")),
-      );
-
-      part = part.replace(/(^|\n)-# /g, `$1${SUBTEXT}`);
-      return part.replaceAll("__", UNDERLINE).replaceAll("||", SPOILER);
-    })
-    .join("");
+interface Context {
+  options: MarkdownOptions;
+  timing: Timing;
 }
 
-function restoreDelimiters(text: string): string {
-  return text.replaceAll(UNDERLINE, "__").replaceAll(SPOILER, "||").replaceAll(SUBTEXT, "-# ");
+// Renders a node back to its (escaped) markdown source; the safety net for
+// node types this renderer does not handle.
+function renderAsSource(node: InlineNode | BlockNode): string {
+  try {
+    return escapeHtml(unparse([{ type: "paragraph", value: [node] }] as never).trimEnd());
+  } catch {
+    return "";
+  }
 }
 
-const PARSER_OPTIONS = {
-  tables: false,
-  tasklists: false,
-  autolinks: { url: true },
-  // TODO: Use hardSoftBreaks once oven-sh/bun#39491 is available in the pinned Bun version.
-  // TODO: Use `underline: true` for __text__ instead of the sentinel once it works.
-  noHtmlBlocks: true,
-  noHtmlSpans: true,
-  noIndentedCodeBlocks: true,
-} satisfies Bun.markdown.Options;
+function renderMention(node: Mention, ctx: Context): string {
+  const mention = node.value;
+  switch (mention.type) {
+    case "user":
+    case "channel":
+    case "role":
+      return renderIdMention(mention.type, String(mention.value), ctx.options);
+    case "everyone":
+    case "here":
+      return `<span class="d-mention" data-kind="${mention.type}">@${mention.type}</span>`;
+    case "command":
+      return `<span class="d-mention" data-kind="command" title="${mention.value.id}">/${escapeHtml(mention.value.name)}</span>`;
+    default:
+      return renderAsSource(node);
+  }
+}
+
+function renderLink(node: Link, ctx: Context): string {
+  const { text, target } = node.value;
+  const label = text ? renderInlines(text as InlineNode[], ctx) : null;
+  if (target.type === "url" && /^https?:\/\//i.test(target.value)) {
+    const href = escapeHtml(target.value);
+    return `<a href="${href}" target="_blank" rel="noreferrer noopener">${label ?? href}</a>`;
+  }
+  return label ?? renderAsSource(node);
+}
+
+function renderInline(node: InlineNode, ctx: Context): string {
+  switch (node.type) {
+    case "text":
+      return escapeHtml(node.value).replaceAll("\n", "<br>");
+    case "bold":
+      return `<strong>${renderInlines(node.value as InlineNode[], ctx)}</strong>`;
+    case "italic":
+      return `<em>${renderInlines(node.value as InlineNode[], ctx)}</em>`;
+    case "underline":
+      return `<u>${renderInlines(node.value as InlineNode[], ctx)}</u>`;
+    case "strikethrough":
+      return `<s>${renderInlines(node.value as InlineNode[], ctx)}</s>`;
+    case "spoiler":
+      return `<span class="d-spoiler">${renderInlines(node.value as InlineNode[], ctx)}</span>`;
+    case "code":
+      return `<code class="d-code-inline">${escapeHtml(node.value)}</code>`;
+    case "code_block":
+      return `<pre class="d-pre"><code>${escapeHtml(node.value.content)}</code></pre>`;
+    case "timestamp":
+      return `<span class="d-timestamp">${escapeHtml(
+        formatTimestamp(Number(node.value.value), node.value.style ?? "f", ctx.timing),
+      )}</span>`;
+    case "mention":
+      return renderMention(node, ctx);
+    case "emoji":
+      return node.value.type === "custom"
+        ? renderCustomEmoji(
+            node.value.value.name,
+            String(node.value.value.id),
+            node.value.value.animated,
+          )
+        : escapeHtml(node.value.value);
+    case "link":
+      return renderLink(node, ctx);
+    default:
+      return renderAsSource(node);
+  }
+}
+
+function renderInlines(nodes: InlineNode[], ctx: Context): string {
+  return nodes.map((node) => renderInline(node, ctx)).join("");
+}
+
+function renderListItem(item: ListItem, ctx: Context): string {
+  const parts = item.content.map((block) =>
+    block.type === "paragraph"
+      ? renderInlines(block.value as InlineNode[], ctx)
+      : renderBlock(block, ctx),
+  );
+  return `<li>${parts.join("")}</li>`;
+}
+
+function renderBlock(node: BlockNode, ctx: Context): string {
+  switch (node.type) {
+    case "heading":
+      return `<h${node.value.level}>${renderInlines(node.value.content as InlineNode[], ctx)}</h${node.value.level}>`;
+    case "small":
+      return `<div class="d-subtext">${renderInlines(node.value.content as InlineNode[], ctx)}</div>`;
+    case "quote":
+      return `<blockquote>${renderBlocks(node.value as BlockNode[], ctx)}</blockquote>`;
+    case "list": {
+      const tag = node.value.type === "ordered" ? "ol" : "ul";
+      const start = node.value.value;
+      const startAt = tag === "ol" && start !== undefined && start !== 1 ? ` start="${start}"` : "";
+      const items = node.value.items.map((item) => renderListItem(item, ctx)).join("");
+      return `<${tag}${startAt}>${items}</${tag}>`;
+    }
+    case "paragraph":
+      return `<p>${renderInlines(node.value as InlineNode[], ctx)}</p>`;
+    case "empty":
+      return "";
+    default:
+      return `<p>${renderAsSource(node)}</p>`;
+  }
+}
+
+// Every source line parses as its own block; consecutive paragraph lines are
+// joined with <br> into one <p>, matching Discord's tight line spacing.
+function renderBlocks(blocks: BlockNode[], ctx: Context): string {
+  let out = "";
+  let lines: string[] = [];
+  const flush = () => {
+    if (lines.length) out += `<p>${lines.join("<br>")}</p>`;
+    lines = [];
+  };
+  for (const block of blocks) {
+    if (block.type === "paragraph") {
+      const inlines = block.value as InlineNode[];
+      // A fenced code block parses as a paragraph's sole inline; <pre> cannot live in <p>.
+      if (inlines.length === 1 && inlines[0]?.type === "code_block") {
+        flush();
+        out += renderInline(inlines[0], ctx);
+      } else {
+        lines.push(renderInlines(inlines, ctx));
+      }
+      continue;
+    }
+    flush();
+    out += renderBlock(block, ctx);
+  }
+  flush();
+  return out;
+}
 
 export function renderMarkdown(source: string, options: MarkdownOptions = {}): string {
-  const fragments: string[] = [];
-  const keep = (html: string) => `${TOKEN_START}${fragments.push(html) - 1}${TOKEN_END}`;
-  const timing: Timing = {
-    locale: options.locale ?? "pl-PL",
-    timeZone: options.timeZone ?? "UTC",
-    now: options.now ?? new Date(),
-  };
-
-  let html = Bun.markdown.render(
-    preprocess(source.replace(SENTINELS_RE, ""), options, timing, keep),
-    {
-      text: escapeHtml,
-      paragraph: (children) => {
-        let out = "";
-        let lines: string[] = [];
-        const flush = () => {
-          if (lines.length) out += `<p>${lines.join("<br>")}</p>`;
-          lines = [];
-        };
-        for (const line of children.split("\n")) {
-          if (line.startsWith(SUBTEXT)) {
-            flush();
-            out += `<div class="d-subtext">${line.slice(1)}</div>`;
-          } else {
-            lines.push(line);
-          }
-        }
-        flush();
-        return out;
-      },
-      heading: (children, { level }) =>
-        level <= 3
-          ? `<h${level}>${children}</h${level}>`
-          : `<p>${"#".repeat(level)} ${children}</p>`,
-      blockquote: (children) => `<blockquote>${children}</blockquote>`,
-      list: (children, { ordered, start }) => {
-        const tag = ordered ? "ol" : "ul";
-        const startAt = ordered && start !== undefined && start !== 1 ? ` start="${start}"` : "";
-        return `<${tag}${startAt}>${children}</${tag}>`;
-      },
-      listItem: (children) => `<li>${children}</li>`,
-      hr: () => "<hr>",
-      strong: (children) => `<strong>${children}</strong>`,
-      emphasis: (children) => `<em>${children}</em>`,
-      strikethrough: (children) => `<s>${children}</s>`,
-      codespan: (children) => `<code class="d-code-inline">${children}</code>`,
-      code: (children) => `<pre class="d-pre"><code>${children}</code></pre>`,
-      link: (children, { href }) => {
-        href = restoreDelimiters(href);
-        return /^https?:\/\//i.test(href)
-          ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer noopener">${children}</a>`
-          : children;
-      },
-      image: (children) => children,
+  const ctx: Context = {
+    options,
+    timing: {
+      locale: options.locale ?? "pl-PL",
+      timeZone: options.timeZone ?? "UTC",
+      now: options.now ?? new Date(),
     },
-    PARSER_OPTIONS,
-  );
-
-  html = html.replaceAll(UNDERLINE_RE, "<u>$1</u>");
-  html = html.replaceAll(SPOILER_RE, '<span class="d-spoiler">$1</span>');
-  html = restoreDelimiters(html);
-  return html.replaceAll(TOKEN_RE, (_, index) => fragments[Number(index)] ?? "");
+  };
+  return renderBlocks(parse(source) as BlockNode[], ctx);
 }
