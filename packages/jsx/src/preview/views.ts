@@ -3,41 +3,17 @@
  * suitable for before/after comparisons. See README.md for usage.
  */
 
-import { type APIMessageTopLevelComponent, AttachmentBuilder } from "discord.js";
+import type { APIMessageTopLevelComponent, AttachmentBuilder } from "discord.js";
 
 import { render } from "../render";
 import type { JSXNode } from "../types";
-import {
-  type ComparisonPanel,
-  type PreviewOptions,
-  renderComparison,
-  renderComponents,
-  renderPage,
-} from "./html";
-import { type ScreenshotOptions, type ScreenshotResult, screenshotHtml } from "./screenshot";
+import { type PreviewOptions, renderComparison, renderComponents, renderPage } from "./html";
+import { type ScreenshotResult, screenshotHtml, type ScreenshotOptions } from "./screenshot";
 
 /** Reconciles a JSX view into plain Discord API component JSON. */
 export function viewToComponents(view: JSXNode): APIMessageTopLevelComponent[] {
-  return toApiComponents(render(view).components);
+  return render(view).components.map((component) => component.toJSON());
 }
-
-// render() always produces builders; the declared union also admits plain
-// data shapes, which never occur here.
-function toApiComponents(
-  components: ReturnType<typeof render>["components"],
-): APIMessageTopLevelComponent[] {
-  return (components as { toJSON(): APIMessageTopLevelComponent }[]).map((component) =>
-    component.toJSON(),
-  );
-}
-
-const IMAGE_MIME_TYPES: Record<string, string> = {
-  gif: "image/gif",
-  jpeg: "image/jpeg",
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
 
 function attachmentToUrl(
   name: string,
@@ -48,21 +24,17 @@ function attachmentToUrl(
     return /^https?:\/\//.test(attachment) ? attachment : undefined;
   }
   if (Buffer.isBuffer(attachment)) {
-    const mime =
-      IMAGE_MIME_TYPES[name.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
-    return `data:${mime};base64,${attachment.toString("base64")}`;
+    // Bun.file() infers the MIME type from the name alone; no disk access.
+    return `data:${Bun.file(name).type};base64,${attachment.toString("base64")}`;
   }
   return undefined;
 }
 
 /** Inlines the view's own files as data URIs; explicit attachments win per key. */
-function withAttachments(
-  files: ReturnType<typeof render>["files"],
-  options: PreviewOptions,
-): PreviewOptions {
+function withAttachments(files: AttachmentBuilder[], options: PreviewOptions): PreviewOptions {
   const attachments: Record<string, string> = {};
   for (const file of files) {
-    if (!(file instanceof AttachmentBuilder) || !file.name) continue;
+    if (!file.name) continue;
     const url = attachmentToUrl(file.name, file.attachment);
     if (url !== undefined) attachments[file.name] = url;
   }
@@ -72,7 +44,10 @@ function withAttachments(
 /** Renders a JSX view to a complete HTML document (no browser required). */
 export function viewToHtml(view: JSXNode, options: PreviewOptions = {}): string {
   const { components, files } = render(view);
-  return renderPage(toApiComponents(components), withAttachments(files, options));
+  return renderPage(
+    components.map((component) => component.toJSON()),
+    withAttachments(files, options),
+  );
 }
 
 /** Renders a JSX view to PNG via headless Chrome. */
@@ -88,31 +63,26 @@ export interface ViewComparison extends PreviewOptions {
   after: JSXNode;
   beforeLabel?: string;
   afterLabel?: string;
-  /** Side-by-side (default) or stacked vertically. */
-  layout?: "side-by-side" | "stacked";
+  /** Stack vertically instead of side by side. */
+  stacked?: boolean;
 }
 
-function viewPanel(
-  view: JSXNode,
-  label: string,
-  tone: ComparisonPanel["tone"],
-  options: PreviewOptions,
-): ComparisonPanel {
+function viewPanel(view: JSXNode, label: string, options: PreviewOptions) {
   const { components, files } = render(view);
   return {
     label,
-    tone,
-    body: renderComponents(toApiComponents(components), withAttachments(files, options)),
+    body: renderComponents(
+      components.map((component) => component.toJSON()),
+      withAttachments(files, options),
+    ),
   };
 }
 
 /** Renders two JSX views into one labeled comparison document. */
 export function compareViewsToHtml(input: ViewComparison): string {
   return renderComparison(
-    [
-      viewPanel(input.before, input.beforeLabel ?? "before", "before", input),
-      viewPanel(input.after, input.afterLabel ?? "after", "after", input),
-    ],
+    viewPanel(input.before, input.beforeLabel ?? "before", input),
+    viewPanel(input.after, input.afterLabel ?? "after", input),
     input,
   );
 }

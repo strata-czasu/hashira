@@ -9,32 +9,20 @@ export interface MarkdownOptions {
   now?: Date;
   /** Resolve `<@id>` / `<#id>` / `<@&id>` mentions to display names. */
   resolveMention?: (kind: MentionKind, id: string) => string | null | undefined;
-  /** Resolve custom emoji to an image URL (default: the public Discord CDN). */
-  resolveEmojiUrl?: (name: string, id: string, animated: boolean) => string;
 }
 
 export const escapeHtml = Bun.escapeHTML;
 
+// Pre-rendered HTML fragments and __/|| delimiters are smuggled through the
+// markdown parser as private-use sentinels and restored afterwards.
 const TOKEN_START = "\uE000";
 const TOKEN_END = "\uE001";
 const UNDERLINE = "\uE100";
 const SPOILER = "\uE101";
 const CODE = /(```[\s\S]*?```|`[^`\n]+`)/g;
-
-function createTokenStore() {
-  const fragments: string[] = [];
-  return {
-    keep(html: string): string {
-      return `${TOKEN_START}${fragments.push(html) - 1}${TOKEN_END}`;
-    },
-    restore(text: string): string {
-      return text.replaceAll(
-        new RegExp(`${TOKEN_START}(\\d+)${TOKEN_END}`, "g"),
-        (_, index) => fragments[Number(index)] ?? "",
-      );
-    },
-  };
-}
+const TOKEN_RE = new RegExp(`${TOKEN_START}(\\d+)${TOKEN_END}`, "g");
+const UNDERLINE_RE = new RegExp(`${UNDERLINE}([\\s\\S]+?)${UNDERLINE}`, "g");
+const SPOILER_RE = new RegExp(`${SPOILER}([\\s\\S]+?)${SPOILER}`, "g");
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 24 * 3600],
@@ -99,16 +87,9 @@ function renderMention(kind: MentionKind, id: string, options: MarkdownOptions):
   return `<span class="d-mention" data-kind="${kind}" title="${id}">${escapeHtml(label)}</span>`;
 }
 
-function renderEmoji(
-  name: string,
-  id: string,
-  animated: boolean,
-  options: MarkdownOptions,
-): string {
-  const url =
-    options.resolveEmojiUrl?.(name, id, animated) ??
-    `https://cdn.discordapp.com/emojis/${id}.${animated ? "gif" : "png"}?size=44`;
-  return `<img class="d-emoji" alt=":${escapeHtml(name)}:" src="${escapeHtml(url)}">`;
+function renderEmoji(name: string, id: string, animated: boolean): string {
+  const url = `https://cdn.discordapp.com/emojis/${id}.${animated ? "gif" : "png"}?size=44`;
+  return `<img class="d-emoji" alt=":${escapeHtml(name)}:" src="${url}">`;
 }
 
 function preprocess(
@@ -139,7 +120,7 @@ function preprocess(
       part = part.replace(
         /<(a?):([a-zA-Z0-9_]+):(\d+)>/g,
         (_, animated: string, name: string, id: string) =>
-          keep(renderEmoji(name, id, animated === "a", options)),
+          keep(renderEmoji(name, id, animated === "a")),
       );
 
       return part.replaceAll("__", UNDERLINE).replaceAll("||", SPOILER);
@@ -156,13 +137,15 @@ const PARSER_OPTIONS = {
   tasklists: false,
   autolinks: { url: true },
   // TODO: Use hardSoftBreaks once oven-sh/bun#39491 is available in the pinned Bun version.
+  // TODO: Use `underline: true` for __text__ instead of the sentinel once it works.
   noHtmlBlocks: true,
   noHtmlSpans: true,
   noIndentedCodeBlocks: true,
 } satisfies Bun.markdown.Options;
 
 export function renderMarkdown(source: string, options: MarkdownOptions = {}): string {
-  const store = createTokenStore();
+  const fragments: string[] = [];
+  const keep = (html: string) => `${TOKEN_START}${fragments.push(html) - 1}${TOKEN_END}`;
   const timing: Timing = {
     locale: options.locale ?? "pl-PL",
     timeZone: options.timeZone ?? "UTC",
@@ -170,7 +153,7 @@ export function renderMarkdown(source: string, options: MarkdownOptions = {}): s
   };
 
   let html = Bun.markdown.render(
-    preprocess(source, options, timing, store.keep),
+    preprocess(source, options, timing, keep),
     {
       text: escapeHtml,
       paragraph: (children) => {
@@ -207,11 +190,8 @@ export function renderMarkdown(source: string, options: MarkdownOptions = {}): s
     PARSER_OPTIONS,
   );
 
-  html = html.replaceAll(new RegExp(`${UNDERLINE}([\\s\\S]+?)${UNDERLINE}`, "g"), "<u>$1</u>");
-  html = html.replaceAll(
-    new RegExp(`${SPOILER}([\\s\\S]+?)${SPOILER}`, "g"),
-    '<span class="d-spoiler">$1</span>',
-  );
+  html = html.replaceAll(UNDERLINE_RE, "<u>$1</u>");
+  html = html.replaceAll(SPOILER_RE, '<span class="d-spoiler">$1</span>');
   html = restoreDelimiters(html);
-  return store.restore(html);
+  return html.replaceAll(TOKEN_RE, (_, index) => fragments[Number(index)] ?? "");
 }

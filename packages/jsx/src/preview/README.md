@@ -38,7 +38,7 @@ const { data } = await viewToPng(<PlayerView state={snapshot} />);
 const cmp = await compareViewsToPng({
   before: <OldView state={snapshot} />,
   after: <NewView state={snapshot} />,
-  layout: "side-by-side", // or "stacked"
+  stacked: false, // true stacks the panels vertically
 });
 
 // Arbitrary HTML:
@@ -57,14 +57,9 @@ Documents without intrinsic width (plain HTML fragments) render at 800px.
 ## Browser setup
 
 Screenshots need Chrome, driven by Bun's built-in `Bun.WebView` (no browser
-automation dependency). Resolution order:
-
-1. `executablePath` option
-2. `CHROME_PATH` or `BUN_CHROME_PATH` env var
-3. `$PATH` (`google-chrome`, `chromium`, ...) and standard install locations
-4. Playwright's cache (`~/.cache/ms-playwright`) for `chrome-headless-shell`
-
-Point `CHROME_PATH` at any Chrome/Chromium, or install a managed
+automation dependency). Chrome is found via the `CHROME_PATH` env var, falling
+back to Bun's own search (`$PATH`, standard install locations, Playwright's
+cache). Point `CHROME_PATH` at any Chrome/Chromium, or install a managed
 chrome-headless-shell:
 
 ```sh

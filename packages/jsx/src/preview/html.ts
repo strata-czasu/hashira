@@ -216,29 +216,25 @@ export function renderPage(
   );
 }
 
-export interface ComparisonPanel {
+interface ComparisonPanel {
   label: string;
-  /** Tone picks the label color. */
-  tone: "before" | "after";
   /** Pre-rendered components fragment, e.g. from {@link renderComponents}. */
   body: string;
 }
 
-/** Renders labeled panels side by side (or stacked) into one document. */
+/** Renders labeled before/after panels side by side (or stacked) into one document. */
 export function renderComparison(
-  panels: readonly ComparisonPanel[],
-  options: PreviewOptions & { layout?: "side-by-side" | "stacked" } = {},
+  before: ComparisonPanel,
+  after: ComparisonPanel,
+  options: PreviewOptions & { stacked?: boolean } = {},
 ): string {
-  const columns = panels
-    .map(
-      (panel) => `
+  const column = (panel: ComparisonPanel, tone: "before" | "after") => `
 <div class="d-col">
-  <span class="d-label d-label-${panel.tone}">${escapeHtml(panel.label)}</span>
+  <span class="d-label d-label-${tone}">${escapeHtml(panel.label)}</span>
   <div class="d-page d-panel">${panel.body}</div>
-</div>`,
-    )
-    .join("\n");
-  const stacked = options.layout === "stacked" ? " d-stacked" : "";
+</div>`;
+  const stacked = options.stacked ? " d-stacked" : "";
+  const columns = `${column(before, "before")}\n${column(after, "after")}`;
   return shell("comparison", `<div class="d-compare${stacked}">${columns}\n</div>`, options.theme);
 }
 

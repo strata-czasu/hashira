@@ -27,7 +27,6 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@hashira/jsx": "workspace:*",
     "@hashira/utils": "workspace:*",
     "discord.js": "^14.23.2",
     "effect": "^3.18.4",
@@ -35,6 +34,7 @@
     "valibot": "^1.0.0"
   },
   "devDependencies": {
+    "@hashira/jsx": "workspace:*",
     "@hashira/tsconfig": "workspace:*",
     "@types/bun": "^1.4.0",
     "expect-type": "^1.2.2",
