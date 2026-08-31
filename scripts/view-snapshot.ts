@@ -16,7 +16,6 @@
  *   --state <json>        State passed to the view function.
  *   --state-file <path>   Read state from a JSON file instead.
  *   --out <path>          Output PNG path (default: snapshots/<name>-<timestamp>.png).
- *   --theme <dark|light>  Preview theme (default: dark).
  *   --stacked             Stack before/after vertically instead of side by side.
  *   --scale <n>           Device scale factor (default: 2).
  */
@@ -39,7 +38,6 @@ const { values, positionals } = parseArgs({
     state: { type: "string" },
     "state-file": { type: "string" },
     out: { type: "string" },
-    theme: { type: "string" },
     stacked: { type: "boolean" },
     scale: { type: "string" },
   },
@@ -79,7 +77,6 @@ async function loadState(): Promise<unknown> {
 }
 
 const state = await loadState();
-const theme = values.theme as "dark" | "light" | undefined;
 const scale = values.scale === undefined ? undefined : Number(values.scale);
 const timestamp = new Date().toISOString().replaceAll(":", "-");
 
@@ -95,13 +92,12 @@ try {
       beforeLabel: before.label,
       afterLabel: after.label,
       stacked: values.stacked,
-      theme,
       scale,
     });
     name = `comparison-${before.label}`;
   } else {
     const { view, label } = await loadView(positionals[0]);
-    result = await viewToPng(view(state), { theme, scale });
+    result = await viewToPng(view(state), { scale });
     name = label;
   }
 

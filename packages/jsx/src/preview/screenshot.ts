@@ -2,10 +2,11 @@
  * HTML -> PNG rendering via headless Chrome, driven by `Bun.WebView`
  * (experimental, built into Bun — no browser automation dependency).
  *
- * Chrome is located via the CHROME_PATH environment variable or Bun's own
- * search. The viewport is resized to fit the rendered document, so width is
- * owned by the document's CSS (documents without intrinsic width render at
- * 800px).
+ * Chrome is located by Bun's own search (BUN_CHROME_PATH, $PATH, standard
+ * install locations), falling back to Playwright's chromium-headless-shell
+ * cache — installable with `bun run install-browser`. The viewport is
+ * resized to fit the rendered document, so width is owned by the document's
+ * CSS (documents without intrinsic width render at 800px).
  */
 
 export interface ScreenshotOptions {
@@ -28,16 +29,32 @@ const CHROME_ARGS = [
   "--hide-scrollbars",
 ];
 
+// Bun's own Chrome search skips Playwright's chromium_headless_shell-*
+// directory layout (it only knows chrome-headless-shell), so glob for the
+// binary that `bun run install-browser` puts there.
+// ponytail: Linux/macOS cache path only; add %LOCALAPPDATA% if Windows devs appear.
+function findHeadlessShell(): string | undefined {
+  const glob = new Bun.Glob(
+    "chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell",
+  );
+  const matches = glob.scanSync({
+    cwd: `${process.env.HOME}/.cache/ms-playwright`,
+    absolute: true,
+  });
+  return [...matches].sort().pop();
+}
+
 function spawnView(): InstanceType<typeof Bun.WebView> {
-  const path = process.env.CHROME_PATH;
   try {
-    return new Bun.WebView({
-      backend: { type: "chrome", ...(path ? { path } : {}), argv: CHROME_ARGS },
-    });
+    // Passing argv forces spawn mode, so this never attaches to a running
+    // desktop Chrome. Bun searches BUN_CHROME_PATH, $PATH, etc. itself.
+    return new Bun.WebView({ backend: { type: "chrome", argv: CHROME_ARGS } });
   } catch (cause) {
+    const path = findHeadlessShell();
+    if (path) return new Bun.WebView({ backend: { type: "chrome", path, argv: CHROME_ARGS } });
     throw new Error(
-      "Could not spawn a Chrome executable for `Bun.WebView`. " +
-        "Install Chrome/Chromium or set CHROME_PATH.",
+      "No Chrome executable found for `Bun.WebView`. " +
+        "Run `bun run install-browser`, install Chrome/Chromium, or set BUN_CHROME_PATH.",
       { cause },
     );
   }

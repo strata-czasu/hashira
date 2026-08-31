@@ -65,7 +65,7 @@ describe("preview html renderer", () => {
 
   it("produces a complete document shell", () => {
     const doc = renderPage(viewToComponents(<TextDisplay content="hi" />));
-    expect(doc).toContain('<body data-d-theme="dark">');
+    expect(doc).toContain("<body>");
     expect(doc).toContain('<div class="d-page">');
     expect(doc).toContain("<style>");
   });

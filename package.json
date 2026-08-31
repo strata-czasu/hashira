@@ -12,6 +12,7 @@
     "fix": "oxlint --fix && oxfmt",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "install-browser": "bunx playwright-core install chromium-headless-shell",
     "lint": "oxlint",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
     "prisma-generate": "bun run --cwd packages/db prisma generate",

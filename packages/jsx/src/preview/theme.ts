@@ -1,14 +1,12 @@
 /**
- * CSS for preview documents. Values mirror Discord's Components V2
- * rendering (dark + light themes), cross-checked against discohook's
- * preview implementation (github.com/discohook/discohook,
- * packages/site/app/components/preview). They are approximations good
- * enough for visual diffs, not pixel-perfect replicas.
+ * CSS for preview documents. Values mirror Discord's dark-theme Components V2
+ * rendering, cross-checked against discohook's preview implementation
+ * (github.com/discohook/discohook, packages/site/app/components/preview).
+ * They are approximations good enough for visual diffs, not pixel-perfect
+ * replicas.
  */
 
-export type PreviewTheme = "dark" | "light";
-
-const DARK_VARIABLES = `
+const VARIABLES = `
   --d-page-bg: #1e1f22;
   --d-chat-bg: #313338;
   --d-container-bg: #37373d;
@@ -36,38 +34,9 @@ const DARK_VARIABLES = `
   --d-label-after: #35cc6d;
 `;
 
-const LIGHT_VARIABLES = `
-  --d-page-bg: #ebedef;
-  --d-chat-bg: #ffffff;
-  --d-container-bg: #ffffff;
-  --d-container-border: #e2e2e4;
-  --d-text: #2e3338;
-  --d-muted: #5c5e66;
-  --d-link: #006ce7;
-  --d-btn-text: #ffffff;
-  --d-btn-primary-bg: #5865f2;
-  --d-btn-secondary-bg: rgba(151, 151, 159, 0.16);
-  --d-btn-secondary-text: #0c0c0e;
-  --d-btn-secondary-border: rgba(151, 151, 159, 0.2);
-  --d-btn-success-bg: #00863a;
-  --d-btn-danger-bg: #d22d39;
-  --d-select-bg: #ebebeb;
-  --d-code-bg: #f2f3f5;
-  --d-code-border: #e3e5e8;
-  --d-spoiler-bg: #d4d7dc;
-  --d-quote-border: #c4c9ce;
-  --d-divider: rgba(96, 96, 105, 0.2);
-  --d-mention-bg: rgba(88, 101, 242, 0.15);
-  --d-mention-text: #505cdc;
-  --d-frame-border: rgba(6, 6, 7, 0.08);
-  --d-label-before: #d83c3e;
-  --d-label-after: #1a8b49;
-`;
-
 export const PREVIEW_CSS = `
 *, *::before, *::after { box-sizing: border-box; }
-[data-d-theme="dark"] { ${DARK_VARIABLES} }
-[data-d-theme="light"] { ${LIGHT_VARIABLES} }
+:root { ${VARIABLES} }
 body {
   margin: 0;
   /* Shrink-wrap so screenshots hug the content. */

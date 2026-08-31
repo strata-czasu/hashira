@@ -6,7 +6,6 @@ export {
   type ScreenshotOptions,
   type ScreenshotResult,
 } from "./screenshot";
-export type { PreviewTheme } from "./theme";
 export {
   compareViewsToHtml,
   compareViewsToPng,

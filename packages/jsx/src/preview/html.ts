@@ -25,11 +25,9 @@ import {
 } from "discord.js";
 
 import { escapeHtml, type MarkdownOptions, renderMarkdown } from "./markdown";
-import { PREVIEW_CSS, type PreviewTheme } from "./theme";
+import { PREVIEW_CSS } from "./theme";
 
 export interface PreviewOptions {
-  /** Visual theme (default: `dark`). */
-  theme?: PreviewTheme;
   /** Maps `attachment://` filenames to URLs (usually data URIs from view files). */
   attachments?: Record<string, string>;
   /** Options forwarded to the markdown renderer (mentions, locale, ...). */
@@ -209,11 +207,7 @@ export function renderPage(
   components: readonly APIMessageTopLevelComponent[],
   options: PreviewOptions = {},
 ): string {
-  return shell(
-    "preview",
-    `<div class="d-page">${renderComponents(components, options)}</div>`,
-    options.theme,
-  );
+  return shell("preview", `<div class="d-page">${renderComponents(components, options)}</div>`);
 }
 
 interface ComparisonPanel {
@@ -235,10 +229,10 @@ export function renderComparison(
 </div>`;
   const stacked = options.stacked ? " d-stacked" : "";
   const columns = `${column(before, "before")}\n${column(after, "after")}`;
-  return shell("comparison", `<div class="d-compare${stacked}">${columns}\n</div>`, options.theme);
+  return shell("comparison", `<div class="d-compare${stacked}">${columns}\n</div>`);
 }
 
-function shell(title: string, body: string, theme: PreviewTheme = "dark"): string {
+function shell(title: string, body: string): string {
   return `<!doctype html>
 <html>
 <head>
@@ -246,7 +240,7 @@ function shell(title: string, body: string, theme: PreviewTheme = "dark"): strin
 <title>${title}</title>
 <style>${PREVIEW_CSS}</style>
 </head>
-<body data-d-theme="${theme}">
+<body>
 ${body}
 </body>
 </html>`;

@@ -57,15 +57,17 @@ Documents without intrinsic width (plain HTML fragments) render at 800px.
 ## Browser setup
 
 Screenshots need Chrome, driven by Bun's built-in `Bun.WebView` (no browser
-automation dependency). Chrome is found via the `CHROME_PATH` env var, falling
-back to Bun's own search (`$PATH`, standard install locations, Playwright's
-cache). Point `CHROME_PATH` at any Chrome/Chromium, or install a managed
-chrome-headless-shell:
+automation dependency). Any installed Chrome/Chromium/Edge/Brave is found
+automatically (Bun searches `BUN_CHROME_PATH`, `$PATH`, and standard install
+locations). Without one, install Playwright's headless shell (~100 MB, no
+system-wide install) once:
 
 ```sh
-bunx @puppeteer/browsers install chrome-headless-shell --path ~/.cache/browsers
-# then: export CHROME_PATH=~/.cache/browsers/chrome-headless-shell/.../chrome-headless-shell
+bun run install-browser
 ```
+
+It lands in `~/.cache/ms-playwright` and is picked up with no further
+configuration. `BUN_CHROME_PATH` overrides everything if set.
 
 ## CLI
 
