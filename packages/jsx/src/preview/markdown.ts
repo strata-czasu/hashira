@@ -135,20 +135,22 @@ function renderLink(node: Link, ctx: Context): string {
   return label ?? renderAsSource(node);
 }
 
+const WRAPPERS: Record<string, [string, string]> = {
+  bold: ["<strong>", "</strong>"],
+  italic: ["<em>", "</em>"],
+  underline: ["<u>", "</u>"],
+  strikethrough: ["<s>", "</s>"],
+  spoiler: ['<span class="d-spoiler">', "</span>"],
+};
+
 function renderInline(node: InlineNode, ctx: Context): string {
+  const wrapper = WRAPPERS[node.type];
+  if (wrapper) {
+    return `${wrapper[0]}${renderInlines(node.value as InlineNode[], ctx)}${wrapper[1]}`;
+  }
   switch (node.type) {
     case "text":
       return escapeHtml(node.value).replaceAll("\n", "<br>");
-    case "bold":
-      return `<strong>${renderInlines(node.value as InlineNode[], ctx)}</strong>`;
-    case "italic":
-      return `<em>${renderInlines(node.value as InlineNode[], ctx)}</em>`;
-    case "underline":
-      return `<u>${renderInlines(node.value as InlineNode[], ctx)}</u>`;
-    case "strikethrough":
-      return `<s>${renderInlines(node.value as InlineNode[], ctx)}</s>`;
-    case "spoiler":
-      return `<span class="d-spoiler">${renderInlines(node.value as InlineNode[], ctx)}</span>`;
     case "code":
       return `<code class="d-code-inline">${escapeHtml(node.value)}</code>`;
     case "code_block":
@@ -159,14 +161,12 @@ function renderInline(node: InlineNode, ctx: Context): string {
       )}</span>`;
     case "mention":
       return renderMention(node, ctx);
-    case "emoji":
-      return node.value.type === "custom"
-        ? renderCustomEmoji(
-            node.value.value.name,
-            String(node.value.value.id),
-            node.value.value.animated,
-          )
-        : escapeHtml(node.value.value);
+    case "emoji": {
+      const emoji = node.value;
+      return emoji.type === "custom"
+        ? renderCustomEmoji(emoji.value.name, String(emoji.value.id), emoji.value.animated)
+        : escapeHtml(emoji.value);
+    }
     case "link":
       return renderLink(node, ctx);
     default:
