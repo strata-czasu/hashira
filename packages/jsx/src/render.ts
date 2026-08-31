@@ -1,15 +1,4 @@
-import type {
-  ActionRowData,
-  APIAttachment,
-  APIMessageTopLevelComponent,
-  Attachment,
-  AttachmentPayload,
-  BufferResolvable,
-  JSONEncodable,
-  MessageActionRowComponentBuilder,
-  MessageActionRowComponentData,
-  TopLevelComponentData,
-} from "discord.js";
+import type { APIMessageTopLevelComponent, JSONEncodable } from "discord.js";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -24,29 +13,12 @@ import {
 import { reconcile } from "./reconciler";
 import type { JSXNode } from "./types";
 
-// Extracted from BaseMessageOptions["components"] to be mutable
-type Components = (
-  | JSONEncodable<APIMessageTopLevelComponent>
-  | TopLevelComponentData
-  | ActionRowData<MessageActionRowComponentData | MessageActionRowComponentBuilder>
-  | APIMessageTopLevelComponent
-)[];
-
-// Extracted from BaseMessageOptions["files"] to be mutable
-type Files = (
-  | BufferResolvable
-  | JSONEncodable<APIAttachment>
-  | Attachment
-  | AttachmentBuilder
-  | AttachmentPayload
-)[];
-
 export function render(element: JSXNode) {
   // reconcile() is idempotent - already resolved nodes pass through unchanged
   const children = reconcile(element);
 
-  const components: Components = [];
-  const files: Files = [];
+  const components: JSONEncodable<APIMessageTopLevelComponent>[] = [];
+  const files: AttachmentBuilder[] = [];
 
   for (const child of children) {
     if (child == null || child === false || child === true) continue;

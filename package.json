@@ -12,6 +12,7 @@
     "fix": "oxlint --fix && oxfmt",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "install-browser": "bunx playwright-core install chromium-headless-shell",
     "lint": "oxlint",
     "prisma-check-migrations": "bun run --cwd packages/db prisma-check-migrations",
     "prisma-generate": "bun run --cwd packages/db prisma generate",
@@ -34,6 +35,7 @@
     "valibot": "^1.0.0"
   },
   "devDependencies": {
+    "@hashira/jsx": "workspace:*",
     "@hashira/tsconfig": "workspace:*",
     "@types/bun": "^1.4.0",
     "expect-type": "^1.2.2",
