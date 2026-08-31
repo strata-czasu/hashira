@@ -18,7 +18,6 @@ const CHROME_ARGS = [
   "--hide-scrollbars",
 ];
 
-// Mirrors playwright-core's registry directory so `bun run install-browser` and we agree.
 function browsersDir(): string {
   if (process.env.PLAYWRIGHT_BROWSERS_PATH) return process.env.PLAYWRIGHT_BROWSERS_PATH;
   const home = homedir();

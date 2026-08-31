@@ -86,8 +86,6 @@ interface Context {
   timing: Timing;
 }
 
-// Renders a node back to its (escaped) markdown source; the safety net for
-// node types this renderer does not handle.
 function renderAsSource(node: AnyNode): string {
   try {
     const blocks: AnyNode[] = [{ type: "paragraph", value: [node] }];
@@ -140,8 +138,6 @@ function renderInline(node: AnyNode, ctx: Context): string {
       return escapeHtml(node.value).replaceAll("\n", "<br>");
     case "code":
       return `<code class="d-code-inline">${escapeHtml(node.value)}</code>`;
-    // <code> is phrasing content, so a code block is valid anywhere in a <p>;
-    // the CSS makes it display as a block.
     case "code_block":
       return `<code class="d-pre">${escapeHtml(node.value.content)}</code>`;
     case "timestamp":

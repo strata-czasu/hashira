@@ -19,7 +19,6 @@ export function render(element: JSXNode) {
       components.push(text);
       continue;
     }
-    // Duck-typed so builders from another worktree's discord.js copy still pass.
     if (typeof child === "object" && "attachment" in child) {
       files.push(child as AttachmentBuilder);
     } else if (
