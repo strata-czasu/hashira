@@ -1,5 +1,4 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
 
 export interface ScreenshotOptions {
   scale?: number;
@@ -18,23 +17,14 @@ const CHROME_ARGS = [
   "--hide-scrollbars",
 ];
 
-function browsersDir(): string {
-  if (process.env.PLAYWRIGHT_BROWSERS_PATH) return process.env.PLAYWRIGHT_BROWSERS_PATH;
-  const home = homedir();
-  if (process.platform === "darwin") return join(home, "Library", "Caches", "ms-playwright");
-  if (process.platform === "win32") {
-    return join(process.env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "ms-playwright");
-  }
-  return join(home, ".cache", "ms-playwright");
-}
-
 function findHeadlessShell(): string {
-  const binary =
-    process.platform === "win32" ? "chrome-headless-shell.exe" : "chrome-headless-shell";
-  const glob = new Bun.Glob(`chromium_headless_shell-*/chrome-headless-shell-*/${binary}`);
-  const revision = (path: string) => Number(/chromium_headless_shell-(\d+)/.exec(path)?.[1] ?? 0);
-  const matches = [...glob.scanSync({ cwd: browsersDir(), absolute: true })];
-  const path = matches.sort((a, b) => revision(a) - revision(b)).pop();
+  const dir =
+    process.env.PLAYWRIGHT_BROWSERS_PATH ??
+    `${homedir()}/${process.platform === "darwin" ? "Library/Caches" : ".cache"}/ms-playwright`;
+  const glob = new Bun.Glob(
+    "chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell",
+  );
+  const path = [...glob.scanSync({ cwd: dir, absolute: true })].sort().pop();
   if (!path) {
     throw new Error("chromium-headless-shell not found; run `bun run install-browser`.");
   }
