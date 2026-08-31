@@ -24,7 +24,9 @@ function findHeadlessShell(): string {
   const glob = new Bun.Glob(
     "chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell",
   );
-  const path = [...glob.scanSync({ cwd: dir, absolute: true })].sort().pop();
+  const path = Array.from(glob.scanSync({ cwd: dir, absolute: true }))
+    .toSorted()
+    .pop();
   if (!path) {
     throw new Error("chromium-headless-shell not found; run `bun run install-browser`.");
   }
