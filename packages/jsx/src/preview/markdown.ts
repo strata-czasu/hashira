@@ -202,41 +202,23 @@ function renderBlock(node: BlockNode, ctx: Context): string {
       const items = node.value.items.map((item) => renderListItem(item, ctx)).join("");
       return `<${tag}${startAt}>${items}</${tag}>`;
     }
-    case "paragraph":
-      return `<p>${renderInlines(node.value as InlineNode[], ctx)}</p>`;
+    case "paragraph": {
+      const inlines = node.value as InlineNode[];
+      // A fenced code block parses as a paragraph's sole inline; <pre> cannot live in <p>.
+      if (inlines.length === 1 && inlines[0]?.type === "code_block") {
+        return renderInline(inlines[0], ctx);
+      }
+      return `<p>${renderInlines(inlines, ctx)}</p>`;
+    }
     case "empty":
-      return "";
+      return "<br>";
     default:
       return `<p>${renderAsSource(node)}</p>`;
   }
 }
 
-// Every source line parses as its own block; consecutive paragraph lines are
-// joined with <br> into one <p>, matching Discord's tight line spacing.
 function renderBlocks(blocks: BlockNode[], ctx: Context): string {
-  let out = "";
-  let lines: string[] = [];
-  const flush = () => {
-    if (lines.length) out += `<p>${lines.join("<br>")}</p>`;
-    lines = [];
-  };
-  for (const block of blocks) {
-    if (block.type === "paragraph") {
-      const inlines = block.value as InlineNode[];
-      // A fenced code block parses as a paragraph's sole inline; <pre> cannot live in <p>.
-      if (inlines.length === 1 && inlines[0]?.type === "code_block") {
-        flush();
-        out += renderInline(inlines[0], ctx);
-      } else {
-        lines.push(renderInlines(inlines, ctx));
-      }
-      continue;
-    }
-    flush();
-    out += renderBlock(block, ctx);
-  }
-  flush();
-  return out;
+  return blocks.map((block) => renderBlock(block, ctx)).join("");
 }
 
 export function renderMarkdown(source: string, options: MarkdownOptions = {}): string {

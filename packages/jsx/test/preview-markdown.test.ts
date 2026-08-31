@@ -12,7 +12,7 @@ describe("renderMarkdown", () => {
       "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
     );
     expect(render("<script>\nalert(1)\n</script>")).toBe(
-      "<p>&lt;script&gt;<br>alert(1)<br>&lt;/script&gt;</p>",
+      "<p>&lt;script&gt;</p><p>alert(1)</p><p>&lt;/script&gt;</p>",
     );
   });
 
@@ -38,7 +38,7 @@ describe("renderMarkdown", () => {
   it("does not transform markdown inside code", () => {
     expect(render("`**bold** ||spoiler|| <@123>`\n\n```js\n__block__ <t:0:F>\n```"))
       .toMatchInlineSnapshot(`
-      "<p><code class="d-code-inline">**bold** ||spoiler|| &lt;@123&gt;</code></p><pre class="d-pre"><code>__block__ &lt;t:0:F&gt;
+      "<p><code class="d-code-inline">**bold** ||spoiler|| &lt;@123&gt;</code></p><br><pre class="d-pre"><code>__block__ &lt;t:0:F&gt;
       </code></pre>"
     `);
   });
@@ -64,12 +64,13 @@ describe("renderMarkdown", () => {
 
   it("groups quotes and lists", () => {
     expect(render("> line one\n> line two\n- a\n- b\n1. one\n2. two")).toMatchInlineSnapshot(
-      `"<blockquote><p>line one<br>line two</p></blockquote><ul><li>a</li><li>b</li></ul><ol><li>one</li><li>two</li></ol>"`,
+      `"<blockquote><p>line one</p><p>line two</p></blockquote><ul><li>a</li><li>b</li></ul><ol><li>one</li><li>two</li></ol>"`,
     );
   });
 
-  it("joins consecutive lines in a paragraph with <br>", () => {
-    expect(render("a\nb")).toBe("<p>a<br>b</p>");
+  it("renders each line as its own paragraph and blank lines as gaps", () => {
+    expect(render("a\nb")).toBe("<p>a</p><p>b</p>");
+    expect(render("a\n\nb")).toBe("<p>a</p><br><p>b</p>");
   });
 
   it("renders masked links and blocks unsafe urls", () => {
