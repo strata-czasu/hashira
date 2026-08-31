@@ -17,8 +17,6 @@ export function render(element: JSXNode) {
   // reconcile() is idempotent - already resolved nodes pass through unchanged
   const children = reconcile(element);
 
-  // Narrower than BaseMessageOptions["components"] / ["files"]: only builders
-  // are ever pushed, and narrower stays assignable at every call site.
   const components: JSONEncodable<APIMessageTopLevelComponent>[] = [];
   const files: AttachmentBuilder[] = [];
 

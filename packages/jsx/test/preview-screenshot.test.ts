@@ -1,9 +1,4 @@
-/**
- * Browser-based screenshot tests. These are skipped unless a Chrome
- * executable is available, e.g. by setting:
- *
- *   SCREENSHOT_TESTS=1 bun test packages/jsx
- */
+// Opt-in: SCREENSHOT_TESTS=1 bun test packages/jsx (needs `bun run install-browser`).
 import { describe, expect, it } from "bun:test";
 
 import { screenshotHtml } from "../src/preview/screenshot";
@@ -18,7 +13,6 @@ describe.skipIf(!enabled)("screenshotHtml", () => {
     );
     expect(result.width).toBe(200);
     expect(result.height).toBe(120);
-    // PNG magic number
     expect([...result.data.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
   });
 

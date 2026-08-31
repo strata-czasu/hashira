@@ -1,20 +1,15 @@
 type MentionKind = "user" | "channel" | "role";
 
 export interface MarkdownOptions {
-  /** BCP-47 locale for timestamp formatting (default: `pl-PL`). */
   locale?: string;
-  /** Timezone for absolute timestamps (default: `UTC`, keeps snapshots stable). */
   timeZone?: string;
-  /** Reference time for relative timestamps (default: now at render time). */
   now?: Date;
-  /** Resolve `<@id>` / `<#id>` / `<@&id>` mentions to display names. */
   resolveMention?: (kind: MentionKind, id: string) => string | null | undefined;
 }
 
 export const escapeHtml = Bun.escapeHTML;
 
-// Pre-rendered HTML fragments and __/|| delimiters are smuggled through the
-// markdown parser as private-use sentinels and restored afterwards.
+// Invisible private-use sentinels smuggle pre-rendered HTML and __/|| through the parser.
 const TOKEN_START = "\uE000";
 const TOKEN_END = "\uE001";
 const UNDERLINE = "\uE100";

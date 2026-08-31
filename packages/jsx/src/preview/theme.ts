@@ -1,11 +1,4 @@
-/**
- * CSS for preview documents. Values mirror Discord's dark-theme Components V2
- * rendering, cross-checked against discohook's preview implementation
- * (github.com/discohook/discohook, packages/site/app/components/preview).
- * They are approximations good enough for visual diffs, not pixel-perfect
- * replicas.
- */
-
+// Approximates Discord's dark theme; cross-checked against discohook's preview components.
 const VARIABLES = `
   --d-page-bg: #1e1f22;
   --d-chat-bg: #313338;
@@ -64,7 +57,6 @@ body {
 
 .d-page a { color: var(--d-link); text-decoration: none; }
 
-/* --- Container (type 17) ------------------------------------------------ */
 .d-container {
   position: relative;
   display: flex;
@@ -87,7 +79,6 @@ body {
 .d-spoiled > * { filter: blur(10px); pointer-events: none; }
 .d-spoilered img, img.d-spoilered { filter: blur(24px); }
 
-/* --- Text + markdown ---------------------------------------------------- */
 .d-md p { margin: 0; }
 .d-md h1 { font-size: 1.5em; font-weight: 600; margin: 8px 0 4px; }
 .d-md h2 { font-size: 1.25em; font-weight: 600; margin: 6px 0 4px; }
@@ -141,7 +132,6 @@ body {
   vertical-align: bottom;
 }
 
-/* --- Action rows / buttons (types 1-2) ---------------------------------- */
 .d-row { display: flex; gap: 8px; align-items: center; }
 .d-btn {
   display: inline-flex;
@@ -187,7 +177,6 @@ body {
 .d-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-chevron { flex: none; opacity: 0.7; }
 
-/* --- Section (type 9) --------------------------------------------------- */
 .d-section { display: flex; gap: 12px; }
 .d-section-body {
   display: flex;
@@ -204,12 +193,10 @@ body {
   border-radius: 8px;
 }
 
-/* --- Separator (type 14) ------------------------------------------------ */
 .d-separator { margin: 0; border: none; border-radius: 999px; }
 .d-separator.d-divided { border-top: 1px solid var(--d-divider); }
 .d-separator.d-spacing-large { margin-block: 8px; }
 
-/* --- Media gallery (type 12) / file (type 13) --------------------------- */
 .d-gallery { display: grid; gap: 4px; }
 .d-gallery-item {
   position: relative;
@@ -231,7 +218,6 @@ body {
 .d-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-file-icon { flex: none; color: var(--d-muted); }
 
-/* --- Comparison layout -------------------------------------------------- */
 .d-compare {
   display: flex;
   align-items: flex-start;

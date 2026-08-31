@@ -1,24 +1,6 @@
 #!/usr/bin/env bun
-/**
- * Render a view module to a PNG (or a before/after comparison PNG).
- *
- * A view module is any TS/TSX file exporting a function that takes a state
- * object and returns JSX (a JSXNode). Pass state as inline JSON or via file.
- *
- * Usage:
- *   bun scripts/view-snapshot.ts ./apps/bot/src/economy/shop.tsx#renderShop \
- *     --state '{"userId": "123"}' --out shop.png
- *
- *   bun scripts/view-snapshot.ts old.tsx#view new.tsx#view --state-file s.json
- *   -> writes snapshots/comparison-<label>-<timestamp>.png
- *
- * Options:
- *   --state <json>        State passed to the view function.
- *   --state-file <path>   Read state from a JSON file instead.
- *   --out <path>          Output PNG path (default: snapshots/<name>-<timestamp>.png).
- *   --stacked             Stack before/after vertically instead of side by side.
- *   --scale <n>           Device scale factor (default: 2).
- */
+// Renders a view module (TS/TSX exporting state => JSXNode) to a PNG; two
+// modules produce a before/after comparison. See packages/jsx/src/preview/README.md.
 
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -57,13 +39,10 @@ async function loadView(specifier: string): Promise<{ view: ViewFunction; label:
   const exported = (await import(resolved))[exportName];
   if (exported == null) throw new Error(`No view exported as "${exportName}" in ${modulePath}`);
 
-  // Views may export a plain element instead of a function.
   const view = typeof exported === "function" ? exported : () => exported;
   return { view: view as ViewFunction, label: basename(modulePath) };
 }
 
-// ISO date strings are revived into Date instances so views can pass them
-// straight to discord.js time() helpers.
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/;
 
 async function loadState(): Promise<unknown> {

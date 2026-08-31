@@ -1,9 +1,3 @@
-/**
- * Renders Discord API message components (the JSON produced by discord.js
- * builders' toJSON()) to static HTML approximating the client's Components V2
- * display. Inspired by discohook's preview components. See README.md.
- */
-
 import {
   type APIActionRowComponent,
   type APIButtonComponent,
@@ -28,9 +22,7 @@ import { escapeHtml, type MarkdownOptions, renderMarkdown } from "./markdown";
 import { PREVIEW_CSS } from "./theme";
 
 export interface PreviewOptions {
-  /** Maps `attachment://` filenames to URLs (usually data URIs from view files). */
   attachments?: Record<string, string>;
-  /** Options forwarded to the markdown renderer (mentions, locale, ...). */
   markdown?: MarkdownOptions;
 }
 
@@ -60,8 +52,6 @@ function renderComponentEmoji(emoji: APIMessageComponentEmoji | undefined): stri
   return `<img class="d-emoji" alt="${escapeHtml(emoji.name)}" src="${escapeHtml(url)}">`;
 }
 
-// --- Leaf renderers ---------------------------------------------------------
-
 function renderTextDisplay(component: APITextDisplayComponent, options: PreviewOptions): string {
   return `<div class="d-md">${renderMarkdown(component.content, options.markdown)}</div>`;
 }
@@ -78,9 +68,9 @@ const BUTTON_STYLE_CLASSES: Record<ButtonStyle, string> = {
 function renderButton(component: APIButtonComponent): string {
   const styleClass = BUTTON_STYLE_CLASSES[component.style];
   const disabled = component.disabled ? " d-disabled" : "";
-  // SKU (premium) buttons carry neither label nor emoji; Discord shows "SKU".
   const emoji = renderComponentEmoji("emoji" in component ? component.emoji : undefined);
   const label = "label" in component && component.label ? escapeHtml(component.label) : "";
+  // Premium buttons carry neither label nor emoji; Discord shows "SKU".
   const inner = `${emoji}${label}` || "SKU";
   return `<span class="d-btn ${styleClass}${disabled}">${inner}</span>`;
 }
@@ -164,8 +154,6 @@ function renderContainer(component: APIContainerComponent, options: PreviewOptio
   return `<div class="${cls}"${style}>${inner}</div>`;
 }
 
-// --- Public surface ---------------------------------------------------------
-
 function renderComponent(component: APIMessageTopLevelComponent, options: PreviewOptions): string {
   switch (component.type) {
     case ComponentType.ActionRow:
@@ -194,7 +182,6 @@ function renderComponentList(
   return components.map((component) => renderComponent(component, options)).join("");
 }
 
-/** Renders components to the `.d-components` fragment (no page shell). */
 export function renderComponents(
   components: readonly APIMessageTopLevelComponent[],
   options: PreviewOptions = {},
@@ -202,7 +189,6 @@ export function renderComponents(
   return `<div class="d-components">${renderComponentList(components, options)}</div>`;
 }
 
-/** Renders components to a complete, self-contained HTML document. */
 export function renderPage(
   components: readonly APIMessageTopLevelComponent[],
   options: PreviewOptions = {},
@@ -212,11 +198,9 @@ export function renderPage(
 
 interface ComparisonPanel {
   label: string;
-  /** Pre-rendered components fragment, e.g. from {@link renderComponents}. */
   body: string;
 }
 
-/** Renders labeled before/after panels side by side (or stacked) into one document. */
 export function renderComparison(
   before: ComparisonPanel,
   after: ComparisonPanel,

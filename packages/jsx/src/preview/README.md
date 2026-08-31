@@ -56,18 +56,14 @@ Documents without intrinsic width (plain HTML fragments) render at 800px.
 
 ## Browser setup
 
-Screenshots need Chrome, driven by Bun's built-in `Bun.WebView` (no browser
-automation dependency). Any installed Chrome/Chromium/Edge/Brave is found
-automatically (Bun searches `BUN_CHROME_PATH`, `$PATH`, and standard install
-locations). Without one, install Playwright's headless shell (~100 MB, no
-system-wide install) once:
+Screenshots are driven by Bun's built-in `Bun.WebView` against Playwright's
+chromium-headless-shell (~100 MB, no system-wide install). Install it once:
 
 ```sh
 bun run install-browser
 ```
 
-It lands in `~/.cache/ms-playwright` and is picked up with no further
-configuration. `BUN_CHROME_PATH` overrides everything if set.
+It lands in `~/.cache/ms-playwright`; no further configuration.
 
 ## CLI
 
@@ -84,8 +80,10 @@ bun scripts/view-snapshot.ts ../old/apps/bot/src/.../playerView.tsx#buildBirthda
   --state-file state.json
 ```
 
-State is JSON; ISO date strings are revived into `Date` instances.
-Output defaults to `snapshots/` (gitignored).
+Options: `--state <json>` / `--state-file <path>` (view input; ISO date
+strings are revived into `Date` instances), `--out <path>` (default:
+`snapshots/<name>-<timestamp>.png`, gitignored), `--stacked`, `--scale <n>`
+(default: 2).
 
 ## Notes
 
