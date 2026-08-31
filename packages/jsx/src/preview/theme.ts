@@ -99,6 +99,7 @@ body {
   font-size: 0.85em;
 }
 .d-pre {
+  display: block;
   width: fit-content;
   max-width: 100%;
   margin: 4px 0;
@@ -109,8 +110,6 @@ body {
   border: 1px solid var(--d-code-border);
   border-radius: 8px;
   font-size: 0.85em;
-}
-.d-pre code {
   font-family: Consolas, "Andale Mono WT", "Courier New", monospace;
 }
 .d-spoiler {

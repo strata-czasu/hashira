@@ -38,9 +38,13 @@ describe("renderMarkdown", () => {
   it("does not transform markdown inside code", () => {
     expect(render("`**bold** ||spoiler|| <@123>`\n\n```js\n__block__ <t:0:F>\n```"))
       .toMatchInlineSnapshot(`
-      "<p><code class="d-code-inline">**bold** ||spoiler|| &lt;@123&gt;</code></p><br><pre class="d-pre"><code>__block__ &lt;t:0:F&gt;
-      </code></pre>"
+      "<p><code class="d-code-inline">**bold** ||spoiler|| &lt;@123&gt;</code></p><br><p><code class="d-pre">__block__ &lt;t:0:F&gt;
+      </code></p>"
     `);
+  });
+
+  it("renders code blocks mid-paragraph as valid html", () => {
+    expect(render("a ```x``` b")).toBe('<p>a <code class="d-pre">x</code> b</p>');
   });
 
   it("renders spoilers", () => {
@@ -52,7 +56,9 @@ describe("renderMarkdown", () => {
   it("spans spoilers over line breaks like Discord does", () => {
     expect(render("||a\nb||")).toBe('<p><span class="d-spoiler">a<br>b</span></p>');
     expect(render("||a\n\nb||")).toBe('<p><span class="d-spoiler">a<br><br>b</span></p>');
-    expect(render("- a __one\n- b__ two")).toBe("<ul><li>a __one</li><li>b__ two</li></ul>");
+    expect(render("- a __one\n- b__ two")).toBe(
+      "<ul><li><p>a __one</p></li><li><p>b__ two</p></li></ul>",
+    );
   });
 
   it("preserves private-use characters instead of corrupting output", () => {
@@ -64,7 +70,7 @@ describe("renderMarkdown", () => {
 
   it("groups quotes and lists", () => {
     expect(render("> line one\n> line two\n- a\n- b\n1. one\n2. two")).toMatchInlineSnapshot(
-      `"<blockquote><p>line one</p><p>line two</p></blockquote><ul><li>a</li><li>b</li></ul><ol><li>one</li><li>two</li></ol>"`,
+      `"<blockquote><p>line one</p><p>line two</p></blockquote><ul><li><p>a</p></li><li><p>b</p></li></ul><ol><li><p>one</p></li><li><p>two</p></li></ol>"`,
     );
   });
 

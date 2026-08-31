@@ -1,12 +1,4 @@
-import type {
-  Block,
-  Inline,
-  Link,
-  ListItem,
-  Mention,
-  Paragraph,
-  Text,
-} from "@discord/markdown-types";
+import type { AnyNode } from "@discord/markdown-types";
 import { parse, unparse } from "@discord/markdown-wasm/sync";
 
 type MentionKind = "user" | "channel" | "role";
@@ -19,10 +11,6 @@ export interface MarkdownOptions {
 }
 
 export const escapeHtml = Bun.escapeHTML;
-
-// The published types omit paragraph/text from the unions, but parse() emits them.
-type BlockNode = Block | Paragraph;
-type InlineNode = Inline | Text;
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 24 * 3600],
@@ -100,15 +88,16 @@ interface Context {
 
 // Renders a node back to its (escaped) markdown source; the safety net for
 // node types this renderer does not handle.
-function renderAsSource(node: InlineNode | BlockNode): string {
+function renderAsSource(node: AnyNode): string {
   try {
-    return escapeHtml(unparse([{ type: "paragraph", value: [node] }] as never).trimEnd());
+    const blocks: AnyNode[] = [{ type: "paragraph", value: [node] }];
+    return escapeHtml(unparse(blocks as never).trimEnd());
   } catch {
     return "";
   }
 }
 
-function renderMention(node: Mention, ctx: Context): string {
+function renderMention(node: AnyNode, ctx: Context): string {
   const mention = node.value;
   switch (mention.type) {
     case "user":
@@ -125,9 +114,9 @@ function renderMention(node: Mention, ctx: Context): string {
   }
 }
 
-function renderLink(node: Link, ctx: Context): string {
+function renderLink(node: AnyNode, ctx: Context): string {
   const { text, target } = node.value;
-  const label = text ? renderInlines(text as InlineNode[], ctx) : null;
+  const label = text ? renderInlines(text, ctx) : null;
   if (target.type === "url" && /^https?:\/\//i.test(target.value)) {
     const href = escapeHtml(target.value);
     return `<a href="${href}" target="_blank" rel="noreferrer noopener">${label ?? href}</a>`;
@@ -143,18 +132,18 @@ const WRAPPERS: Record<string, [string, string]> = {
   spoiler: ['<span class="d-spoiler">', "</span>"],
 };
 
-function renderInline(node: InlineNode, ctx: Context): string {
+function renderInline(node: AnyNode, ctx: Context): string {
   const wrapper = WRAPPERS[node.type];
-  if (wrapper) {
-    return `${wrapper[0]}${renderInlines(node.value as InlineNode[], ctx)}${wrapper[1]}`;
-  }
+  if (wrapper) return `${wrapper[0]}${renderInlines(node.value, ctx)}${wrapper[1]}`;
   switch (node.type) {
     case "text":
       return escapeHtml(node.value).replaceAll("\n", "<br>");
     case "code":
       return `<code class="d-code-inline">${escapeHtml(node.value)}</code>`;
+    // <code> is phrasing content, so a code block is valid anywhere in a <p>;
+    // the CSS makes it display as a block.
     case "code_block":
-      return `<pre class="d-pre"><code>${escapeHtml(node.value.content)}</code></pre>`;
+      return `<code class="d-pre">${escapeHtml(node.value.content)}</code>`;
     case "timestamp":
       return `<span class="d-timestamp">${escapeHtml(
         formatTimestamp(Number(node.value.value), node.value.style ?? "f", ctx.timing),
@@ -174,42 +163,29 @@ function renderInline(node: InlineNode, ctx: Context): string {
   }
 }
 
-function renderInlines(nodes: InlineNode[], ctx: Context): string {
+function renderInlines(nodes: AnyNode[], ctx: Context): string {
   return nodes.map((node) => renderInline(node, ctx)).join("");
 }
 
-function renderListItem(item: ListItem, ctx: Context): string {
-  const parts = item.content.map((block) =>
-    block.type === "paragraph"
-      ? renderInlines(block.value as InlineNode[], ctx)
-      : renderBlock(block, ctx),
-  );
-  return `<li>${parts.join("")}</li>`;
-}
-
-function renderBlock(node: BlockNode, ctx: Context): string {
+function renderBlock(node: AnyNode, ctx: Context): string {
   switch (node.type) {
     case "heading":
-      return `<h${node.value.level}>${renderInlines(node.value.content as InlineNode[], ctx)}</h${node.value.level}>`;
+      return `<h${node.value.level}>${renderInlines(node.value.content, ctx)}</h${node.value.level}>`;
     case "small":
-      return `<div class="d-subtext">${renderInlines(node.value.content as InlineNode[], ctx)}</div>`;
+      return `<div class="d-subtext">${renderInlines(node.value.content, ctx)}</div>`;
     case "quote":
-      return `<blockquote>${renderBlocks(node.value as BlockNode[], ctx)}</blockquote>`;
+      return `<blockquote>${renderBlocks(node.value, ctx)}</blockquote>`;
     case "list": {
       const tag = node.value.type === "ordered" ? "ol" : "ul";
       const start = node.value.value;
       const startAt = tag === "ol" && start !== undefined && start !== 1 ? ` start="${start}"` : "";
-      const items = node.value.items.map((item) => renderListItem(item, ctx)).join("");
+      const items = node.value.items
+        .map((item: { content: AnyNode[] }) => `<li>${renderBlocks(item.content, ctx)}</li>`)
+        .join("");
       return `<${tag}${startAt}>${items}</${tag}>`;
     }
-    case "paragraph": {
-      const inlines = node.value as InlineNode[];
-      // A fenced code block parses as a paragraph's sole inline; <pre> cannot live in <p>.
-      if (inlines.length === 1 && inlines[0]?.type === "code_block") {
-        return renderInline(inlines[0], ctx);
-      }
-      return `<p>${renderInlines(inlines, ctx)}</p>`;
-    }
+    case "paragraph":
+      return `<p>${renderInlines(node.value, ctx)}</p>`;
     case "empty":
       return "<br>";
     default:
@@ -217,7 +193,7 @@ function renderBlock(node: BlockNode, ctx: Context): string {
   }
 }
 
-function renderBlocks(blocks: BlockNode[], ctx: Context): string {
+function renderBlocks(blocks: AnyNode[], ctx: Context): string {
   return blocks.map((block) => renderBlock(block, ctx)).join("");
 }
 
@@ -230,5 +206,5 @@ export function renderMarkdown(source: string, options: MarkdownOptions = {}): s
       now: options.now ?? new Date(),
     },
   };
-  return renderBlocks(parse(source) as BlockNode[], ctx);
+  return renderBlocks(parse(source), ctx);
 }
