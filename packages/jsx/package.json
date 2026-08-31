@@ -11,6 +11,10 @@
   "scripts": {
     "typecheck": "tsc"
   },
+  "dependencies": {
+    "@discord/markdown-types": "0.4.0",
+    "@discord/markdown-wasm": "0.4.0"
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "discord.js": "^14.0.0"

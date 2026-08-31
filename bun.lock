@@ -5,7 +5,6 @@
     "": {
       "name": "hashira",
       "dependencies": {
-        "@hashira/jsx": "workspace:*",
         "@hashira/utils": "workspace:*",
         "discord.js": "^14.23.2",
         "effect": "^3.18.4",
@@ -13,6 +12,7 @@
         "valibot": "^1.0.0",
       },
       "devDependencies": {
+        "@hashira/jsx": "workspace:*",
         "@hashira/tsconfig": "workspace:*",
         "@types/bun": "^1.4.0",
         "expect-type": "^1.2.2",
@@ -77,6 +77,10 @@
     "packages/jsx": {
       "name": "@hashira/jsx",
       "version": "0.0.1",
+      "dependencies": {
+        "@discord/markdown-types": "0.4.0",
+        "@discord/markdown-wasm": "0.4.0",
+      },
       "devDependencies": {
         "@types/node": "^25.0.3",
         "discord.js": "^14.0.0",
@@ -120,6 +124,10 @@
   ],
   "packages": {
     "@date-fns/tz": ["@date-fns/tz@1.5.0", "", {}, "sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg=="],
+
+    "@discord/markdown-types": ["@discord/markdown-types@0.4.0", "", {}, "sha512-OTwc9CzjtCdtqpNsxZ6rbrVGVYUZAgyzl18EqiXVh4doWaktC0IhczSXnOTiuPniUz4IQZhJyZEGS81pPahnyg=="],
+
+    "@discord/markdown-wasm": ["@discord/markdown-wasm@0.4.0", "", {}, "sha512-CEFJikEbNRQLrRqU5pH++Iy7tczmdDWJqGFNNzmgWS+r75m1Hgd1GwVh4pgSrefvETFPTQ6FsMRAqzv8iVLHKA=="],
 
     "@discordjs/builders": ["@discordjs/builders@1.14.1", "", { "dependencies": { "@discordjs/formatters": "^0.6.2", "@discordjs/util": "^1.2.0", "@sapphire/shapeshift": "^4.0.0", "discord-api-types": "^0.38.40", "fast-deep-equal": "^3.1.3", "ts-mixer": "^6.0.4", "tslib": "^2.6.3" } }, "sha512-gSKkhXLqs96TCzk66VZuHHl8z2bQMJFGwrXC0f33ngK+FLNau4hU1PYny3DNJfNdSH+gVMzE85/d5FQ2BpcNwQ=="],
 

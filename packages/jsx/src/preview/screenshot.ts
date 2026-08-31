@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+
 export interface ScreenshotOptions {
   scale?: number;
 }
@@ -16,14 +18,15 @@ const CHROME_ARGS = [
 ];
 
 function findHeadlessShell(): string {
+  const dir =
+    process.env.PLAYWRIGHT_BROWSERS_PATH ??
+    `${homedir()}/${process.platform === "darwin" ? "Library/Caches" : ".cache"}/ms-playwright`;
   const glob = new Bun.Glob(
     "chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell",
   );
-  const matches = glob.scanSync({
-    cwd: `${process.env.HOME}/.cache/ms-playwright`,
-    absolute: true,
-  });
-  const path = [...matches].sort().pop();
+  const path = Array.from(glob.scanSync({ cwd: dir, absolute: true }))
+    .toSorted()
+    .pop();
   if (!path) {
     throw new Error("chromium-headless-shell not found; run `bun run install-browser`.");
   }

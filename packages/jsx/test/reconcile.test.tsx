@@ -234,4 +234,13 @@ describe("reconcile", () => {
     expect(reconcile(true)).toEqual([]);
     expect(reconcile(false)).toEqual([]);
   });
+
+  it("accepts builders from a foreign discord.js copy (no instanceof)", () => {
+    const component = { toJSON: () => ({ type: 10, content: "hi" }) };
+    const attachment = { attachment: Buffer.from("x"), name: "f.txt" };
+    const result = render([component, attachment] as never);
+
+    expect(result.components).toEqual([component as never]);
+    expect(result.files).toEqual([attachment as never]);
+  });
 });

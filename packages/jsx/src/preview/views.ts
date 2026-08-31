@@ -1,4 +1,5 @@
 import type { APIMessageTopLevelComponent, AttachmentBuilder } from "discord.js";
+import { readFileSync } from "node:fs";
 
 import { render } from "../render";
 import type { JSXNode } from "../types";
@@ -9,25 +10,23 @@ export function viewToComponents(view: JSXNode): APIMessageTopLevelComponent[] {
   return render(view).components.map((component) => component.toJSON());
 }
 
-function attachmentToUrl(
-  name: string,
-  attachment: AttachmentBuilder["attachment"],
-): string | undefined {
+function attachmentToUrl(name: string, attachment: AttachmentBuilder["attachment"]): string {
+  const toDataUri = (data: Buffer) =>
+    `data:${Bun.file(name).type};base64,${data.toString("base64")}`;
   if (typeof attachment === "string") {
-    return /^https?:\/\//.test(attachment) ? attachment : undefined;
+    return /^https?:\/\//.test(attachment) ? attachment : toDataUri(readFileSync(attachment));
   }
-  if (Buffer.isBuffer(attachment)) {
-    return `data:${Bun.file(name).type};base64,${attachment.toString("base64")}`;
-  }
-  return undefined;
+  if (Buffer.isBuffer(attachment)) return toDataUri(attachment);
+  throw new Error(
+    `Attachment "${name}" must be a Buffer, file path, or http(s) URL to be previewed.`,
+  );
 }
 
 function withAttachments(files: AttachmentBuilder[], options: PreviewOptions): PreviewOptions {
   const attachments: Record<string, string> = {};
   for (const file of files) {
     if (!file.name) continue;
-    const url = attachmentToUrl(file.name, file.attachment);
-    if (url !== undefined) attachments[file.name] = url;
+    attachments[file.name] = attachmentToUrl(file.name, file.attachment);
   }
   return { ...options, attachments: { ...attachments, ...options.attachments } };
 }
