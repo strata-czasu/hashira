@@ -7,6 +7,7 @@ import {
   isMuteReward,
   levenshtein,
   parseMuteDuration,
+  toPersistedReward,
 } from "../../src/giveaway/rewardAnalyzer";
 
 describe("analyzeCurrencyReward", () => {
@@ -195,5 +196,107 @@ describe("formatFixedReward", () => {
         matchedItem: null,
       }),
     ).toEqual({ amount: 1, reward: "nieznane", type: null });
+  });
+});
+
+describe("toPersistedReward", () => {
+  it("keeps original reward text when fixed=false", () => {
+    const analyzed = {
+      reward: "1k pkt",
+      amount: 2,
+      type: "currency" as const,
+      parsedValue: 1000,
+      parsedDuration: null,
+      matchedItem: null,
+    };
+
+    expect(toPersistedReward(analyzed, false)).toEqual({
+      amount: 2,
+      reward: "1k pkt",
+      type: "currency",
+      currencyValue: 1000,
+      muteDurationSeconds: null,
+      itemId: null,
+    });
+  });
+
+  it("uses corrected reward text when fixed=true", () => {
+    const analyzed = {
+      reward: "1k pkt",
+      amount: 2,
+      type: "currency" as const,
+      parsedValue: 1000,
+      parsedDuration: null,
+      matchedItem: null,
+    };
+
+    expect(toPersistedReward(analyzed, true)).toEqual({
+      amount: 2,
+      reward: "1000 pkt",
+      type: "currency",
+      currencyValue: 1000,
+      muteDurationSeconds: null,
+      itemId: null,
+    });
+  });
+
+  it("defaults to fixed=true when parameter omitted", () => {
+    const analyzed = {
+      reward: "1k pkt",
+      amount: 1,
+      type: "currency" as const,
+      parsedValue: 1000,
+      parsedDuration: null,
+      matchedItem: null,
+    };
+
+    expect(toPersistedReward(analyzed)).toEqual({
+      amount: 1,
+      reward: "1000 pkt",
+      type: "currency",
+      currencyValue: 1000,
+      muteDurationSeconds: null,
+      itemId: null,
+    });
+  });
+
+  it("handles mute rewards correctly", () => {
+    const analyzed = {
+      reward: "wyciszenie 1d",
+      amount: 1,
+      type: "mute" as const,
+      parsedValue: null,
+      parsedDuration: { days: 1 },
+      matchedItem: null,
+    };
+
+    expect(toPersistedReward(analyzed, false)).toEqual({
+      amount: 1,
+      reward: "wyciszenie 1d",
+      type: "mute",
+      currencyValue: null,
+      muteDurationSeconds: 86400,
+      itemId: null,
+    });
+  });
+
+  it("handles item rewards correctly", () => {
+    const analyzed = {
+      reward: "bal",
+      amount: 1,
+      type: "item" as const,
+      parsedValue: null,
+      parsedDuration: null,
+      matchedItem: { id: 3, name: "Ball" } as never,
+    };
+
+    expect(toPersistedReward(analyzed, false)).toEqual({
+      amount: 1,
+      reward: "bal",
+      type: "item",
+      currencyValue: null,
+      muteDurationSeconds: null,
+      itemId: 3,
+    });
   });
 });

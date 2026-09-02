@@ -9,6 +9,7 @@ import {
   ComponentType,
   ContainerBuilder,
   MessageFlags,
+  PermissionFlagsBits,
   SeparatorSpacingSize,
   TextDisplayBuilder,
   time,
@@ -18,14 +19,18 @@ import { base } from "../base";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { fetchMembers } from "../util/fetchMembers";
+import { sendDirectMessage } from "../util/sendDirectMessage";
 import { waitForButtonClick } from "../util/singleUseButton";
 import {
   analyzeRewards,
-  formatFixedReward,
   formatRewardPreview,
+  toPersistedReward,
 } from "./rewardAnalyzer";
+import { distributeEconomyReward, distributeMuteReward } from "./rewardDistribution";
 import {
   autocompleteGiveawayId,
+  autocompleteGiveawayIdForStaff,
   createGiveawayButtonRow,
   createLeaveButtonRow,
   formatBanner,
@@ -250,10 +255,19 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               if (!confirmation.interaction) return;
 
-              const finalRewards =
-                confirmation.interaction.customId === "confirm-fixed"
-                  ? analyzedRewards.map(formatFixedReward)
-                  : parsedRewards;
+              // Determine which button was clicked:
+              // - "Potwierdź poprawność" (confirm): the moderator confirms the
+              //   preview is correct — parse/structure the rewards but keep the
+              //   original display text.
+              // - "Potwierdź z poprawkami" (confirm-fixed): the moderator
+              //   accepts the analyzer's corrected text (e.g. "1,5k pkt" →
+              //   "1500 pkt" mute "3d").
+              const useFixedText =
+                confirmation.interaction.customId === "confirm-fixed";
+
+              const paidRewards = analyzedRewards.map((reward) =>
+                toPersistedReward(reward, useFixedText),
+              );
 
               itx.deleteReply();
 
@@ -263,7 +277,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
               if (rewardsIndex !== -1) {
                 messageContainer.components[rewardsIndex] =
                   new TextDisplayBuilder().setContent(
-                    `${finalRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`,
+                    `${paidRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`,
                   );
               }
 
@@ -293,10 +307,11 @@ export const giveaway = new Hashira({ name: "giveaway" })
                   roleBlacklist: blacklist ? [blacklist.id] : [],
                   participants: { create: [] },
                   rewards: {
-                    create: finalRewards.map(({ amount, reward, type }) => ({
+                    create: paidRewards.map(({ amount, reward, type, ...payout }) => ({
                       amount,
                       reward,
                       type,
+                      ...payout,
                     })),
                   },
                   totalRewards: totalRewards,
@@ -638,6 +653,191 @@ export const giveaway = new Hashira({ name: "giveaway" })
             await updateGiveaway(message, giveaway, prisma);
           }),
       ),
+  )
+  .command("givek-rozdaj-nagrody", (command) =>
+    command
+      .setDescription("Rozdaje zwycięzcom nagrody z giveawayu (punkty i przedmioty)")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .addInteger("id", (id) =>
+        id.setDescription("Id giveawaya").setRequired(true).setAutocomplete(true),
+      )
+      .autocomplete(async ({ prisma }, _, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await autocompleteGiveawayIdForStaff({ prisma, itx });
+      })
+      .handle(async ({ prisma, economyLog }, { id }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply();
+
+        const giveaway = await prisma.giveaway.findFirst({
+          where: { id, guildId: itx.guildId },
+        });
+        if (!giveaway) {
+          return await errorFollowUp(itx, "Nie znaleziono giveawaya o takim id.");
+        }
+        if (giveaway.endAt > itx.createdAt) {
+          return await errorFollowUp(
+            itx,
+            "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyłonieni.",
+          );
+        }
+
+        const rewards = await prisma.giveawayReward.findMany({
+          where: { giveawayId: giveaway.id },
+          include: { winners: true, item: true },
+        });
+
+        const payoutRewards = rewards.filter(
+          (reward) => reward.type === "currency" || reward.type === "item",
+        );
+        const lines: string[] = [];
+        const wonByUser = new Map<string, string[]>();
+        const outcomeless: string[] = [];
+
+        for (const reward of payoutRewards) {
+          const outcome = await distributeEconomyReward({
+            prisma,
+            economyLog,
+            guild: itx.guild,
+            moderator: itx.user,
+            giveawayId: giveaway.id.toString(),
+            reward,
+          });
+
+          if (outcome.failure) {
+            outcomeless.push(`${reward.reward}: ${outcome.failure}`);
+            continue;
+          }
+
+          if (
+            outcome.grantedUserIds.length === 0 &&
+            outcome.overLimitUserIds.length === 0
+          ) {
+            continue;
+          }
+
+          for (const userId of outcome.grantedUserIds) {
+            const userWins = wonByUser.get(userId) ?? [];
+            userWins.push(reward.reward);
+            wonByUser.set(userId, userWins);
+          }
+
+          const granted = outcome.grantedUserIds.map((userId) => `<@${userId}>`);
+          const overLimit = outcome.overLimitUserIds.map((userId) => `<@${userId}>`);
+          const parts: string[] = [];
+          if (granted.length > 0) {
+            parts.push(`**${reward.reward}** → ${granted.join(" ")}`);
+          }
+          if (overLimit.length > 0) {
+            parts.push(`${reward.reward} (limit przedmiotu) → ${overLimit.join(" ")}`);
+          }
+          lines.push(parts.join("\n"));
+        }
+
+        const winners = await fetchMembers(itx.guild, [...wonByUser.keys()]);
+        for (const [userId, rewardsList] of wonByUser) {
+          const member = winners.get(userId);
+          if (!member) continue;
+          await sendDirectMessage(
+            member.user,
+            `Gratulacje! Wygrałeśx w giveawayu #${giveaway.id}: ${rewardsList.join(", ")}`,
+          );
+        }
+
+        if (lines.length === 0 && outcomeless.length === 0) {
+          await itx.editReply(
+            "Wszystkie nagrody dla tego giveawaya zostały już rozdane lub brak nagród.",
+          );
+          return;
+        }
+
+        const content = [
+          `# Nagrody z giveawayu #${giveaway.id}`,
+          ...lines,
+          ...(outcomeless.length > 0
+            ? ["", ...outcomeless.map((line) => `⚠️ ${line}`)]
+            : []),
+        ].join("\n");
+
+        await itx.editReply(content);
+      }),
+  )
+  .command("givek-rozdaj-mute", (command) =>
+    command
+      .setDescription("Nakłada na zwycięzców nagrody (mute) z giveawayu")
+      .setDMPermission(false)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .addInteger("id", (id) =>
+        id.setDescription("Id giveawaya").setRequired(true).setAutocomplete(true),
+      )
+      .autocomplete(async ({ prisma }, _, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await autocompleteGiveawayIdForStaff({ prisma, itx });
+      })
+      .handle(async ({ prisma, messageQueue, moderationLog }, { id }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply();
+
+        const giveaway = await prisma.giveaway.findFirst({
+          where: { id, guildId: itx.guildId },
+        });
+        if (!giveaway) {
+          return await errorFollowUp(itx, "Nie znaleziono giveawaya o takim id.");
+        }
+        if (giveaway.endAt > itx.createdAt) {
+          return await errorFollowUp(
+            itx,
+            "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyznaczeni.",
+          );
+        }
+
+        const rewards = await prisma.giveawayReward.findMany({
+          where: { giveawayId: giveaway.id, type: "mute" },
+          include: { winners: true },
+        });
+
+        const lines: string[] = [];
+        const notices: string[] = [];
+
+        for (const reward of rewards) {
+          const outcome = await distributeMuteReward({
+            prisma,
+            messageQueue,
+            log: moderationLog,
+            guild: itx.guild,
+            moderator: itx.user,
+            giveawayId: giveaway.id.toString(),
+            reward,
+          });
+
+          if (outcome.mutedUserIds.length > 0) {
+            const mentions = outcome.mutedUserIds
+              .map((userId) => `<@${userId}>`)
+              .join(" ");
+            lines.push(`**${reward.reward}** → ${mentions}`);
+          }
+          for (const failed of outcome.failedUsers) {
+            notices.push(`⚠️ <@${failed.userId}>: ${failed.reason}`);
+          }
+          notices.push(...outcome.notes);
+        }
+
+        if (lines.length === 0 && notices.length === 0) {
+          await itx.editReply(
+            "Ten giveaway nie ma nagród typu mute, albo wszystkie już nałożono.",
+          );
+          return;
+        }
+
+        await itx.editReply(
+          [
+            `# Mute z giveawayu #${giveaway.id}`,
+            ...lines,
+            ...(notices.length > 0 ? ["", ...notices] : []),
+          ].join("\n"),
+        );
+      }),
   )
   .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
     // giveaway-option:optionId

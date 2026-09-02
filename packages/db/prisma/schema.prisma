@@ -165,6 +165,7 @@ model User {
   receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
   giveawayParticipations            GiveawayParticipant[]
   giveawayWinnings                  GiveawayWinner[]
+  giveawayRewardDistributions       GiveawayRewardDistribution[]
   createdGiveaways                  Giveaway[]
   moderatorLeaves                   ModeratorLeave[]
   halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]

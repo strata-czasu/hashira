@@ -75,9 +75,21 @@ export function parseRewards(input: string): GiveawayReward[] {
             amount: Number(num),
             reward: reward.trim(),
             type: null,
+            currencyValue: null,
+            muteDurationSeconds: null,
+            itemId: null,
           };
       }
-      return { id: 0, giveawayId: 0, amount: 1, reward: item, type: null };
+      return {
+        id: 0,
+        giveawayId: 0,
+        amount: 1,
+        reward: item,
+        type: null,
+        currencyValue: null,
+        muteDurationSeconds: null,
+        itemId: null,
+      };
     });
 }
 
@@ -195,6 +207,36 @@ export const autocompleteGiveawayId = async ({
     },
     orderBy: { endAt: "desc" },
     take: 5,
+  });
+
+  return itx.respond(
+    results.map(({ id }) => ({
+      value: id,
+      name: `${id}`,
+    })),
+  );
+};
+
+/**
+ * Autocomplete for staff giveaway commands. Lists giveaways of the current
+ * guild ordered by id descending so the latest (highest id) giveaway is
+ * always the first option, e.g. for `/givek-rozdaj-nagrody`.
+ */
+export const autocompleteGiveawayIdForStaff = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction<"cached">;
+}) => {
+  const focused = Number(itx.options.getFocused());
+  const results = await prisma.giveaway.findMany({
+    where: {
+      guildId: itx.guildId,
+      ...(Number.isNaN(focused) ? {} : { id: { gte: focused } }),
+    },
+    orderBy: { id: "desc" },
+    take: 25,
   });
 
   return itx.respond(

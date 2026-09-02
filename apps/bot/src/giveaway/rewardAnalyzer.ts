@@ -1,6 +1,6 @@
 import type { ExtendedPrismaClient, GiveawayRewardType, Item } from "@hashira/db";
 import type { Duration } from "date-fns";
-import { formatDuration, parseDuration } from "../util/duration";
+import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 
 export type RewardType = Exclude<GiveawayRewardType, null>;
 
@@ -227,4 +227,42 @@ export const formatFixedReward = (
           : reward.reward;
 
   return { amount: reward.amount, reward: fixedText, type: reward.type };
+};
+
+/**
+ * Serialized shape persisted for each giveaway reward. Structured payout values
+ * are resolved here (at creation) so distributing the reward doesn't need to
+ * parse the display text or fuzzy-match items again at payout time.
+ */
+export type PersistedReward = {
+  amount: number;
+  reward: string;
+  type: RewardType | null;
+  currencyValue: number | null;
+  muteDurationSeconds: number | null;
+  itemId: number | null;
+};
+
+export const toPersistedReward = (
+  reward: AnalyzedReward,
+  fixed: boolean = true,
+): PersistedReward => {
+  const formatted = formatFixedReward(reward);
+
+  // When `fixed` is false, the caller has confirmed the reward is already
+  // correct — keep the original display text. When `fixed` is true, the
+  // caller accepts the analyzer's corrected text (e.g. "1,5k pkt" -> "1500 pkt").
+  const rewardText = fixed ? formatted.reward : reward.reward;
+
+  return {
+    amount: formatted.amount,
+    reward: rewardText,
+    type: formatted.type,
+    currencyValue: reward.type === "currency" ? (reward.parsedValue ?? null) : null,
+    muteDurationSeconds:
+      reward.type === "mute" && reward.parsedDuration
+        ? durationToSeconds(reward.parsedDuration)
+        : null,
+    itemId: reward.type === "item" ? (reward.matchedItem?.id ?? null) : null,
+  };
 };
