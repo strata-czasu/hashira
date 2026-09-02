@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1772151523,
-        "narHash": "sha256-XVtt9nY3Orhy+/nEUuBOmi/3supV6eBboBkgTozHjAI=",
+        "lastModified": 1787235501,
+        "narHash": "sha256-GeXUjwFVozvX7wCSt0GVH+lUeZQ6dQusENVJU3c3xCQ=",
         "owner": "Daste745",
         "repo": "nix-bun",
-        "rev": "8403d1eb41c05dfab10debc1bfa8c842a420a19f",
+        "rev": "b9a222a6564b0bd3b3e28e9a4bc4f46873db46a4",
         "type": "github"
       },
       "original": {

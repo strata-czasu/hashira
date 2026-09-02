@@ -1,9 +1,8 @@
 import { ComponentBuilder } from "discord.js";
+
 import { type HostComponent, hostMarker, type JSXNode, type JSXRecord } from "../types";
 
-export function markAsHost<P extends JSXRecord, R extends JSXNode>(
-  fn: (props: P) => R,
-) {
+export function markAsHost<P extends JSXRecord, R extends JSXNode>(fn: (props: P) => R) {
   return Object.assign(fn, { [hostMarker]: true }) as HostComponent<P, R>;
 }
 

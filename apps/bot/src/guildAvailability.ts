@@ -1,6 +1,8 @@
-import { type ExtractContext, Hashira } from "@hashira/core";
-import { type ExtendedPrismaClient, Prisma } from "@hashira/db";
 import { DiscordAPIError, type Guild } from "discord.js";
+
+import { type ExtractContext, Hashira } from "@hashira/core";
+import { type ExtendedPrismaClient, isUniqueConstraintError } from "@hashira/db";
+
 import { base } from "./base";
 import type { Logger, LogMessageType } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
@@ -14,8 +16,7 @@ async function createGuildSettings(prisma: ExtendedPrismaClient, guildId: string
       data: { id: guildId, guildSettings: { create: {} } },
     });
   } catch (e) {
-    // P2002: Unique constraint
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return;
+    if (isUniqueConstraintError(e)) return;
     throw e;
   }
 }
@@ -26,8 +27,7 @@ async function registerGuildLogger<T extends LogMessageType>(
   channelId: string,
 ) {
   const channel = await guild.channels.fetch(channelId);
-  if (!channel)
-    throw new Error(`Log channel ${channelId} not found for guild ${guild.id}`);
+  if (!channel) throw new Error(`Log channel ${channelId} not found for guild ${guild.id}`);
   if (!channel.isTextBased())
     throw new Error(`Log channel ${channelId} for guild ${guild.id} is not text based`);
 
@@ -44,23 +44,11 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
 
   // TODO)) Generalize logger registration
   if (settings.logSettings.messageLogChannelId)
-    await registerGuildLogger(
-      ctx.messageLog,
-      guild,
-      settings.logSettings.messageLogChannelId,
-    );
+    await registerGuildLogger(ctx.messageLog, guild, settings.logSettings.messageLogChannelId);
   if (settings.logSettings.memberLogChannelId)
-    await registerGuildLogger(
-      ctx.memberLog,
-      guild,
-      settings.logSettings.memberLogChannelId,
-    );
+    await registerGuildLogger(ctx.memberLog, guild, settings.logSettings.memberLogChannelId);
   if (settings.logSettings.roleLogChannelId)
-    await registerGuildLogger(
-      ctx.roleLog,
-      guild,
-      settings.logSettings.roleLogChannelId,
-    );
+    await registerGuildLogger(ctx.roleLog, guild, settings.logSettings.roleLogChannelId);
   if (settings.logSettings.moderationLogChannelId)
     await registerGuildLogger(
       ctx.moderationLog,
@@ -68,17 +56,9 @@ async function registerGuildLoggers(ctx: BaseContext, guild: Guild) {
       settings.logSettings.moderationLogChannelId,
     );
   if (settings.logSettings.profileLogChannelId)
-    await registerGuildLogger(
-      ctx.profileLog,
-      guild,
-      settings.logSettings.profileLogChannelId,
-    );
+    await registerGuildLogger(ctx.profileLog, guild, settings.logSettings.profileLogChannelId);
   if (settings.logSettings.economyLogChannelId)
-    await registerGuildLogger(
-      ctx.economyLog,
-      guild,
-      settings.logSettings.economyLogChannelId,
-    );
+    await registerGuildLogger(ctx.economyLog, guild, settings.logSettings.economyLogChannelId);
 }
 
 async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
@@ -91,9 +71,7 @@ async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
     await guild.members.fetch();
   } catch (e) {
     if (!(e instanceof DiscordAPIError)) throw e;
-    console.error(
-      `Failed to prefetch members for guild ${guild.id}: ${e.code} - ${e.message}`,
-    );
+    console.error(`Failed to prefetch members for guild ${guild.id}: ${e.code} - ${e.message}`);
   }
 }
 
@@ -115,19 +93,13 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
     if (guild.id === STRATA_CZASU.GUILD_ID) {
       // TODO: Decouple logger registration from guild creation, we should not rely on try/catch
       try {
-        await registerGuildLogger(
-          ctx.strataCzasuLog,
-          guild,
-          STRATA_CZASU.MOD_LOG_CHANNEL_ID,
-        );
+        await registerGuildLogger(ctx.strataCzasuLog, guild, STRATA_CZASU.MOD_LOG_CHANNEL_ID);
         ctx.strataCzasuLog.start(guild.client);
       } catch (e) {
         if (!(e instanceof DiscordAPIError)) {
           console.error("Failed to register Strata Czasu logger", e);
         } else {
-          console.error(
-            `Failed to register Strata Czasu logger: ${e.code} - ${e.message}`,
-          );
+          console.error(`Failed to register Strata Czasu logger: ${e.code} - ${e.message}`);
         }
       }
     }

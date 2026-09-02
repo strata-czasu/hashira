@@ -124,10 +124,7 @@ export const getTeamTotalPoints = async (
   return userPoints.reduce((sum, u) => sum + u.totalPoints, 0);
 };
 
-export const applyCap = (
-  activities: DailyActivity[],
-  dailyCap: number,
-): UserPoints[] => {
+export const applyCap = (activities: DailyActivity[], dailyCap: number): UserPoints[] => {
   const userTotals = new Map<string, number>();
 
   for (const activity of activities) {

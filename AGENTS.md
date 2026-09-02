@@ -5,8 +5,8 @@
 Hashira is a Bun/TypeScript workspace. The Discord bot lives in `apps/bot/src`; its
 tests are in `apps/bot/test`. Shared libraries are under `packages/` (`core`, `db`,
 `jsx`, `utils`, `yotei`, and others), with package tests in `packages/*/test`.
-Prisma models and migrations live in `packages/db/prisma`. Planning documents are
-kept in `plans/`, reusable scripts in `scripts/`, and static font assets in `fonts/`.
+Prisma models and migrations live in `packages/db/prisma`. Reusable scripts are
+kept in `scripts/`, and static font assets in `fonts/`.
 
 Keep feature code close to its domain. For example, Birthday event services,
 commands, and views belong in `apps/bot/src/events/birthday2026/`.
@@ -17,7 +17,9 @@ commands, and views belong in `apps/bot/src/events/birthday2026/`.
 - `bun start` / `bun debug`: run the bot normally or with the inspector.
 - `bun run typecheck`: type-check every workspace.
 - `bun test`: run all Bun tests; database tests require `DATABASE_TEST_URL`.
-- `bun run fix`: format, lint, and organize imports with Biome.
+- `bun run fix`: lint-fix with oxlint, then format (and sort imports) with oxfmt.
+- `bun run lint`: lint with oxlint.
+- `bun run format` / `bun run format:check`: format (or verify) with oxfmt.
 - `bun prisma-generate`: regenerate the Prisma client after schema changes.
 - `bun prisma-migrate-dev --name <name>`: generate and apply a development
   migration. Put unsupported constraints or backfills in a separate follow-up
@@ -27,8 +29,8 @@ commands, and views belong in `apps/bot/src/events/birthday2026/`.
 
 ## Coding Style & Naming Conventions
 
-Biome enforces space indentation, organized imports, recommended lint rules, and an
-88-character line width. Use TypeScript, `camelCase` for values/functions,
+Oxfmt enforces formatting and import sorting (see `.oxfmtrc.json`). Oxlint enforces
+lint rules (see `.oxlintrc.json`). Use TypeScript, `camelCase` for values/functions,
 `PascalCase` for types/classes/components, and descriptive domain filenames such as
 `inventoryService.ts`. Prefer existing managers and transaction helpers over
 feature-local copies. Do not add new Prisma `map:` attributes; existing mappings are

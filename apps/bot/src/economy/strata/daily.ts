@@ -1,8 +1,10 @@
-import { Hashira } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
 import { isSameDay, subDays } from "date-fns";
 import { bold, userMention } from "discord.js";
 import { randomInt } from "es-toolkit";
+
+import { Hashira } from "@hashira/core";
+import type { ExtendedPrismaClient } from "@hashira/db";
+
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUsersExist } from "../../util/ensureUsersExist";
@@ -58,9 +60,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
       .setDefaultMemberPermissions(0)
       .setDescription("Odbierz lub przekaż swoje codzienne punkty")
       .addUser("użytkownik", (option) =>
-        option
-          .setDescription("Użytkownik, któremu chcesz przekazać punkty")
-          .setRequired(false),
+        option.setDescription("Użytkownik, któremu chcesz przekazać punkty").setRequired(false),
       )
       .handle(async ({ prisma }, { użytkownik: user }, itx) => {
         if (!itx.inCachedGuild()) return;
@@ -74,11 +74,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           select: { marriedTo: true },
         });
 
-        const dailyStreak = await calculateDailyStreak(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const dailyStreak = await calculateDailyStreak(prisma, itx.user.id, itx.guildId);
 
         if (dailyStreak === -1) {
           await itx.editReply("Twoje dzisiejsze punkty zostały już odebrane!");
@@ -88,10 +84,7 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         const shouldApplyMarriageBonus = invokerMarriage?.marriedTo === targetUser.id;
         const shouldApplyTargetNotSelf = itx.user.id !== targetUser.id;
 
-        const amount = calculateDailyAmount(
-          shouldApplyMarriageBonus,
-          shouldApplyTargetNotSelf,
-        );
+        const amount = calculateDailyAmount(shouldApplyMarriageBonus, shouldApplyTargetNotSelf);
 
         const streakBonus = Math.min(dailyStreak, 20) / 100;
         const totalAmount = Math.floor(amount * (1 + streakBonus));

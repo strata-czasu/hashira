@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-
 import * as cheerio from "cheerio";
 import sharp from "sharp";
+
 import { ProfileImageBuilder } from "../src/profile/imageBuilder";
 
 const templateSVG = Bun.file(`${__dirname}/../src/profile/res/profile.svg`);
@@ -78,7 +78,7 @@ describe("imageBuilder", () => {
       const res = cheerio.load(image.result());
       const tintableTspans = res("g[id='Marriage Status Text'] tspan[fill='#3C3E43']");
       for (const tspan of tintableTspans) {
-        // biome-ignore lint/complexity/useLiteralKeys: Because why not
+        // Because why not
         const fill = tspan.attribs["fill"];
         expect(fill).toBe(tintColor);
       }
@@ -252,9 +252,7 @@ describe("imageBuilder", () => {
       const avatarImage = await getDummyImage();
       image.marriageAvatarImage(avatarImage);
       const res = cheerio.load(image.result());
-      const imageHref = res(
-        "image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']",
-      ).attr("href");
+      const imageHref = res("image[data-name='a831eb63836997d89e8e670b147f6a19.jpg']").attr("href");
       expect(imageHref).toContain(avatarImage.toString("base64"));
     });
 

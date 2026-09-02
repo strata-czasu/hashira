@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "sortImports": {
+    "internalPattern": ["@hashira/"],
+    "groups": [
+      ["builtin", "external"],
+      "internal",
+      ["sibling", "parent", "index", "subpath"],
+      "unknown"
+    ]
+  },
+  "ignorePatterns": ["packages/prisma-client/src"]
+}

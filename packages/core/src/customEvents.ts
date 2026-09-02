@@ -1,4 +1,5 @@
 import type { ClientEvents } from "discord.js";
+
 import type { CustomEventMethodName } from "./intents";
 
 const customEventToInternalEvent = {

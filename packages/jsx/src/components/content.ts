@@ -5,6 +5,7 @@ import {
   TextDisplayBuilder,
   ThumbnailBuilder,
 } from "discord.js";
+
 import { getTextContent, markAsHost } from "../internal/utils";
 import type { JSXNode } from "../types";
 
@@ -68,9 +69,7 @@ export const TextDisplay = markAsHost(function TextDisplay(
   return text;
 });
 
-export const Thumbnail = markAsHost(function Thumbnail(
-  props: ThumbnailProps,
-): ThumbnailBuilder {
+export const Thumbnail = markAsHost(function Thumbnail(props: ThumbnailProps): ThumbnailBuilder {
   const thumb = new ThumbnailBuilder();
   thumb.setURL(props.url);
 
@@ -87,14 +86,10 @@ export const MediaGallery = markAsHost(function MediaGallery(
 
   if (props.children) {
     if (!Array.isArray(props.children)) {
-      throw new Error(
-        "MediaGallery children must be an array of MediaGalleryItem components",
-      );
+      throw new Error("MediaGallery children must be an array of MediaGalleryItem components");
     }
 
-    const items = props.children.filter(
-      (value) => value instanceof MediaGalleryItemBuilder,
-    );
+    const items = props.children.filter((value) => value instanceof MediaGalleryItemBuilder);
     gallery.addItems(items);
   }
 

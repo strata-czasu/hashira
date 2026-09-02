@@ -1,20 +1,25 @@
 {
   "name": "@hashira/jsx",
   "version": "0.0.1",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
+    "./preview": "./src/preview/index.ts"
   },
-  "type": "module",
   "scripts": {
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@discord/markdown-types": "0.4.0",
+    "@discord/markdown-wasm": "0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "discord.js": "^14.0.0"
   },
   "peerDependencies": {
     "discord.js": "^14.0.0"
-  },
-  "devDependencies": {
-    "discord.js": "^14.0.0",
-    "@types/node": "^25.0.3"
   }
 }

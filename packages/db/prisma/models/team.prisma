@@ -6,7 +6,8 @@ model Team {
   members TeamMember[]
   guild   Guild        @relation(fields: [guildId], references: [id])
 
-  easter2026TeamConfig Easter2026TeamConfig?
+  easter2026TeamConfig   Easter2026TeamConfig?
+  birthday2026TeamConfig Birthday2026TeamConfig?
 
   @@unique([name, guildId])
 }

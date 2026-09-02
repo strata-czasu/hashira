@@ -1,4 +1,5 @@
 import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import {
   InsufficientBalanceError,
@@ -15,6 +16,7 @@ const getDefaultWalletName = (guildId: string) => {
 };
 
 type DebitTransaction = {
+  createdAt?: Date;
   relatedUserId?: string | null;
   relatedWalletId?: number | null;
   reason: string | null;
@@ -37,7 +39,7 @@ export const debitWallet = async ({
   walletId,
   amount,
   transaction,
-}: DebitWalletOptions): Promise<void> => {
+}: DebitWalletOptions) => {
   validateNonNegativeAmount(amount);
 
   const result = await prisma.wallet.updateMany({
@@ -52,7 +54,7 @@ export const debitWallet = async ({
 
   if (result.count === 0) throw new InsufficientBalanceError();
 
-  await prisma.transaction.create({
+  return prisma.transaction.create({
     data: {
       walletId,
       amount,
@@ -216,9 +218,7 @@ export const getDefaultWallets = async ({
     });
     const walletsByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet]));
 
-    const missingUserIds = uniqueUserIds.filter(
-      (userId) => !walletsByUserId.has(userId),
-    );
+    const missingUserIds = uniqueUserIds.filter((userId) => !walletsByUserId.has(userId));
 
     if (missingUserIds.length > 0) {
       const name = getDefaultWalletName(guildId);
@@ -247,9 +247,7 @@ export const getDefaultWallets = async ({
       for (const wallet of ensuredWallets) walletsByUserId.set(wallet.userId, wallet);
     }
 
-    const usersWithoutWallets = uniqueUserIds.filter(
-      (userId) => !walletsByUserId.has(userId),
-    );
+    const usersWithoutWallets = uniqueUserIds.filter((userId) => !walletsByUserId.has(userId));
 
     if (usersWithoutWallets.length > 0) {
       throw new WalletCreationError(usersWithoutWallets);

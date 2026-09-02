@@ -1,5 +1,6 @@
-import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 import type { Message, TextBasedChannel } from "discord.js";
+
+import { type Paginator, PaginatorOrder } from "@hashira/paginate";
 
 interface TextChannelPaginatorOptions {
   channel: TextBasedChannel;
@@ -59,10 +60,7 @@ export class TextChannelPaginator implements Paginator<Message> {
       return await this.#channel.messages.fetch({ limit: this.#pageSize });
     }
 
-    const previousPage = this.#items.slice(
-      this.currentOffset - this.#pageSize,
-      this.currentOffset,
-    );
+    const previousPage = this.#items.slice(this.currentOffset - this.#pageSize, this.currentOffset);
     if (previousPage.length < this.#pageSize) {
       throw new Error("Previous page was not full, can't fetch more messages");
     }

@@ -6,6 +6,6 @@
     "./range": "./range.ts"
   },
   "scripts": {
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
   }
 }

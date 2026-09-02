@@ -1,6 +1,3 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
-import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
-import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
 import {
   type AutocompleteInteraction,
   type ButtonInteraction,
@@ -16,8 +13,12 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { DatabasePaginator, type ExtendedPrismaClient } from "@hashira/db";
+import { Button, H3, Section, TextDisplay } from "@hashira/jsx";
+
 import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import {
@@ -39,7 +40,13 @@ import {
   type ShopItemWithDetails,
   updateShopItem,
 } from "./managers/shopService";
-import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
+import {
+  formatBalance,
+  formatItem,
+  getGuildDefaultCurrencySymbol,
+  getItem,
+  getTypeNameForList,
+} from "./util";
 
 /**
  * Format amount to K/M, keeping up to one decimal if needed
@@ -265,12 +272,52 @@ async function handleShopPurchaseButtonClick({
   });
 }
 
-async function autocompleteShopItems({
+/**
+ * Resolve the currency used by a shop command: an explicit override, or the
+ * guild's configured default currency (null when none is configured).
+ */
+const getEffectiveCurrencySymbol = async (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  override?: string | null,
+): Promise<string | null> => (override ? override : getGuildDefaultCurrencySymbol(prisma, guildId));
+
+async function autocompleteCurrencies({
   prisma,
   itx,
 }: {
   prisma: ExtendedPrismaClient;
   itx: AutocompleteInteraction<"cached">;
+}) {
+  const focused = itx.options.getFocused().toLowerCase();
+
+  const currencies = await prisma.currency.findMany({
+    where: {
+      guildId: itx.guildId,
+      OR: [
+        { name: { contains: focused, mode: "insensitive" } },
+        { symbol: { contains: focused, mode: "insensitive" } },
+      ],
+    },
+    take: 25,
+  });
+
+  await itx.respond(
+    currencies.map((currency) => ({
+      name: `${currency.name} (${currency.symbol})`,
+      value: currency.symbol,
+    })),
+  );
+}
+
+async function autocompleteShopItems({
+  prisma,
+  itx,
+  currencySymbol,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+  currencySymbol?: string | null;
 }) {
   const shopItems = await prisma.shopItem.findMany({
     where: {
@@ -282,6 +329,7 @@ async function autocompleteShopItems({
           mode: "insensitive",
         },
       },
+      ...(currencySymbol ? { currency: { symbol: currencySymbol } } : {}),
     },
     include: { item: true, currency: true },
     take: 25,
@@ -289,9 +337,39 @@ async function autocompleteShopItems({
   await itx.respond(
     shopItems.map(({ id, price, item, currency }) => ({
       value: id,
-      name: `${item.name} - ${formatAmount(price)}${currency.symbol} ${getTypeNameForList(item.type)}`,
+      name: `${item.name} - ${formatAmount(price)} ${currency.symbol} ${getTypeNameForList(item.type)}`,
     })),
   );
+}
+
+/**
+ * Shared autocomplete handler for shop commands with a currency selector and an
+ * item selector.
+ */
+async function handleShopAutocomplete({
+  prisma,
+  itx,
+}: {
+  prisma: ExtendedPrismaClient;
+  itx: AutocompleteInteraction<"cached">;
+}) {
+  if (itx.options.getFocused(true).name === "waluta") {
+    await autocompleteCurrencies({ prisma, itx });
+    return;
+  }
+
+  const currencySymbol = await getEffectiveCurrencySymbol(
+    prisma,
+    itx.guildId,
+    itx.options.getString("waluta"),
+  );
+
+  if (!currencySymbol) {
+    await itx.respond([]);
+    return;
+  }
+
+  await autocompleteShopItems({ prisma, itx, currencySymbol });
 }
 
 export const shop = new Hashira({ name: "shop" })
@@ -303,26 +381,51 @@ export const shop = new Hashira({ name: "shop" })
       .addCommand("lista", (command) =>
         command
           .setDescription("Wyświetl listę przedmiotów w sklepie")
-          .addBoolean("id", (id) =>
-            id.setDescription("Wyświetl ID przedmiotów").setRequired(false),
+          .addBoolean("id", (id) => id.setDescription("Wyświetl ID przedmiotów").setRequired(false))
+          .addString("waluta", (waluta) =>
+            waluta
+              .setDescription("Waluta, w której chcesz zobaczyć sklep")
+              .setRequired(false)
+              .setAutocomplete(true),
           )
-          .handle(async ({ prisma }, { id: maybeShowId }, itx) => {
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await handleShopAutocomplete({ prisma, itx });
+          })
+          .handle(async ({ prisma }, { id: maybeShowId, waluta }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
             const showId = maybeShowId ?? false;
+            const currencySymbol = await getEffectiveCurrencySymbol(prisma, itx.guildId, waluta);
+
+            if (!currencySymbol) {
+              await errorFollowUp(
+                itx,
+                "Nie ustawiono domyślnej waluty serwera. Użyj /settings default-currency",
+              );
+              return;
+            }
 
             const paginator = new DatabasePaginator(
               (props, price) =>
                 prisma.shopItem.findMany({
                   ...props,
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: currencySymbol },
+                  },
                   orderBy: { price },
                   include: { item: true, currency: true },
                 }),
               () =>
                 prisma.shopItem.count({
-                  where: { deletedAt: null, item: { guildId: itx.guildId } },
+                  where: {
+                    deletedAt: null,
+                    item: { guildId: itx.guildId },
+                    currency: { symbol: currencySymbol },
+                  },
                 }),
             );
 
@@ -330,11 +433,7 @@ export const shop = new Hashira({ name: "shop" })
               paginator,
               "Sklep",
               (shopItem, _idx, active) => (
-                <ShopItemComponent
-                  shopItem={shopItem}
-                  showId={showId}
-                  active={active}
-                />
+                <ShopItemComponent shopItem={shopItem} showId={showId} active={active} />
               ),
               false,
               null,
@@ -353,14 +452,17 @@ export const shop = new Hashira({ name: "shop" })
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
           .addInteger("ilość", (amount) =>
-            amount
-              .setDescription("Ilość przedmiotów")
+            amount.setDescription("Ilość przedmiotów").setRequired(false).setMinValue(1),
+          )
+          .addString("waluta", (waluta) =>
+            waluta
+              .setDescription("Waluta, w której kupujesz")
               .setRequired(false)
-              .setMinValue(1),
+              .setAutocomplete(true),
           )
           .autocomplete(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            await autocompleteShopItems({ prisma, itx });
+            await handleShopAutocomplete({ prisma, itx });
           })
           .handle(async ({ prisma }, { przedmiot: id, ilość: rawAmount }, itx) => {
             if (!itx.inCachedGuild()) return;
@@ -386,9 +488,7 @@ export const shop = new Hashira({ name: "shop" })
         command
           .setDescription("Wystaw przedmiot w sklepie")
           .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-          .addInteger("price", (price) =>
-            price.setDescription("Cena przedmiotu").setMinValue(0),
-          )
+          .addInteger("price", (price) => price.setDescription("Cena przedmiotu").setMinValue(0))
           .addInteger("global-stock", (stock) =>
             stock
               .setDescription("Globalny limit sztuk (puste = bez limitu)")
@@ -401,15 +501,20 @@ export const shop = new Hashira({ name: "shop" })
               .setRequired(false)
               .setMinValue(1),
           )
+          .addString("currency", (currency) =>
+            currency
+              .setDescription("Waluta ceny (domyślnie waluta serwera)")
+              .setRequired(false)
+              .setAutocomplete(true),
+          )
+          .autocomplete(async ({ prisma }, _, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await handleShopAutocomplete({ prisma, itx });
+          })
           .handle(
             async (
               { prisma },
-              {
-                id,
-                price,
-                "global-stock": globalStock,
-                "user-limit": userPurchaseLimit,
-              },
+              { id, price, "global-stock": globalStock, "user-limit": userPurchaseLimit, currency },
               itx,
             ) => {
               if (!itx.inCachedGuild()) return;
@@ -422,11 +527,26 @@ export const shop = new Hashira({ name: "shop" })
               }
 
               await ensureUserExists(prisma, itx.user);
+
+              const currencySymbol = await getEffectiveCurrencySymbol(
+                prisma,
+                itx.guildId,
+                currency,
+              );
+
+              if (!currencySymbol) {
+                await errorFollowUp(
+                  itx,
+                  "Nie ustawiono domyślnej waluty serwera. Użyj /settings default-currency",
+                );
+                return;
+              }
+
               const shopItem = await createShopItem({
                 prisma,
                 itemId: id,
                 guildId: itx.guildId,
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+                currencySymbol,
                 price,
                 createdBy: itx.user.id,
                 globalStock,
@@ -463,10 +583,7 @@ export const shop = new Hashira({ name: "shop" })
               await itx.editReply(`Usunięto ${formatItem(shopItem.item)} ze sklepu`);
             } catch (error) {
               if (error instanceof ShopItemNotFoundError) {
-                await errorFollowUp(
-                  itx,
-                  "Nie znaleziono przedmiotu w sklepie o podanym ID",
-                );
+                await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
               } else {
                 throw error;
               }
@@ -480,10 +597,7 @@ export const shop = new Hashira({ name: "shop" })
             przedmiot.setDescription("Przedmiotu ze sklepu").setAutocomplete(true),
           )
           .addInteger("price", (price) =>
-            price
-              .setDescription("Nowa cena przedmiotu")
-              .setRequired(false)
-              .setMinValue(0),
+            price.setDescription("Nowa cena przedmiotu").setRequired(false).setMinValue(0),
           )
           .addInteger("global-stock", (stock) =>
             stock
@@ -516,11 +630,7 @@ export const shop = new Hashira({ name: "shop" })
               await itx.deferReply();
 
               // Check if at least one field is being updated
-              if (
-                price === null &&
-                globalStock === null &&
-                userPurchaseLimit === null
-              ) {
+              if (price === null && globalStock === null && userPurchaseLimit === null) {
                 await errorFollowUp(itx, "Nie podano żadnych zmian do wprowadzenia");
                 return;
               }
@@ -540,10 +650,7 @@ export const shop = new Hashira({ name: "shop" })
                 );
               } catch (error) {
                 if (error instanceof ShopItemNotFoundError) {
-                  await errorFollowUp(
-                    itx,
-                    "Nie znaleziono przedmiotu w sklepie o podanym ID",
-                  );
+                  await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
                 } else if (error instanceof InvalidStockError) {
                   await errorFollowUp(
                     itx,
@@ -577,10 +684,7 @@ export const shop = new Hashira({ name: "shop" })
             });
 
             if (!shopItem) {
-              await errorFollowUp(
-                itx,
-                "Nie znaleziono przedmiotu w sklepie o podanym ID",
-              );
+              await errorFollowUp(itx, "Nie znaleziono przedmiotu w sklepie o podanym ID");
               return;
             }
 

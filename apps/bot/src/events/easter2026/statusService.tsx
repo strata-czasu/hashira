@@ -1,11 +1,9 @@
+import { bold, type Client, RESTJSONErrorCodes, roleMention, userMention } from "discord.js";
+import { isNil } from "es-toolkit";
+
 // somehow required for tests 🙄
 /** @jsxImportSource @hashira/jsx */
-import type {
-  Easter2026Stage,
-  Easter2026TeamConfig,
-  PrismaTransaction,
-  Team,
-} from "@hashira/db";
+import type { Easter2026Stage, Easter2026TeamConfig, PrismaTransaction, Team } from "@hashira/db";
 import {
   Bold,
   Br,
@@ -17,14 +15,7 @@ import {
   render,
   TextDisplay,
 } from "@hashira/jsx";
-import {
-  bold,
-  type Client,
-  RESTJSONErrorCodes,
-  roleMention,
-  userMention,
-} from "discord.js";
-import { isNil } from "es-toolkit";
+
 import { discordTry } from "../../util/discordTry";
 import { getTeamPointsByUser, type UserPoints } from "./pointsService";
 

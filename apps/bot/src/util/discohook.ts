@@ -97,7 +97,7 @@ export function parseShareId(input: string): string {
   if (shareParam) return shareParam;
   const pathMatch = input.match(/share[=/]([A-Za-z0-9_-]+)/);
 
-  // biome-ignore lint/style/noNonNullAssertion: we check for the existence of pathMatch before accessing it
+  // we check for the existence of pathMatch before accessing it
   if (pathMatch) return pathMatch[1]!;
   return input.trim();
 }
@@ -156,8 +156,7 @@ export function toMessageCreateOptions(messageData: DiscohookMessageData) {
     result.embeds = messageData.embeds as unknown as DiscordJsAPIEmbed[];
   }
   if (messageData.components) {
-    result.components =
-      messageData.components as unknown as APIMessageTopLevelComponent[];
+    result.components = messageData.components as unknown as APIMessageTopLevelComponent[];
   }
 
   return result;

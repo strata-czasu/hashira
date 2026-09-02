@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+
 import { brochure } from "./brochure";
 import { colorRoles } from "./colorRoles";
 import { embedPermissions } from "./embedPermissions";

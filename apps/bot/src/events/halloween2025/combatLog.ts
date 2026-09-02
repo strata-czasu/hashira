@@ -1,5 +1,7 @@
-import type { $Enums } from "@hashira/db";
 import { sumBy } from "es-toolkit";
+
+import type { $Enums } from "@hashira/db";
+
 import { weightedRandom } from "../../util/weightedRandom";
 import type { MonsterData, PlayerData, StatsModifiers } from "./combatRepository";
 export type CombatantId = "monster" | (string & {});
@@ -53,13 +55,7 @@ export type CombatMonster = {
 
 export type Combatant = CombatUser | CombatMonster;
 
-export type TargetType =
-  | "self"
-  | "ally"
-  | "enemy"
-  | "all_allies"
-  | "all_enemies"
-  | "all";
+export type TargetType = "self" | "ally" | "enemy" | "all_allies" | "all_enemies" | "all";
 
 export type ActionEffect = {
   burn?: number;
@@ -265,15 +261,11 @@ const translatedStatusEffect = (effect: StatusEffect) => {
   }
 };
 
-const processStatusEffects = (
-  combatant: Combatant,
-  events: CombatEvent[],
-  turn: number,
-): void => {
+const processStatusEffects = (combatant: Combatant, events: CombatEvent[], turn: number): void => {
   const effectsToRemove: number[] = [];
 
   for (let i = 0; i < combatant.statusEffects.length; i++) {
-    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    // used with index check
     const effect = combatant.statusEffects[i]!;
 
     switch (effect.type) {
@@ -316,7 +308,7 @@ const processStatusEffects = (
   }
 
   for (let i = effectsToRemove.length - 1; i >= 0; i--) {
-    // biome-ignore lint/style/noNonNullAssertion: used with index check
+    // used with index check
     combatant.statusEffects.splice(effectsToRemove[i]!, 1);
   }
 };
@@ -349,7 +341,7 @@ const selectRandomTarget = (candidates: Combatant[], random: () => number) =>
 const selectRandom = <T>(items: T[], random: () => number): T | null => {
   if (items.length === 0) return null;
   const randomIndex = Math.floor(random() * items.length);
-  // biome-ignore lint/style/noNonNullAssertion: items is non-empty
+  // items is non-empty
   return items[randomIndex]!;
 };
 
@@ -386,9 +378,7 @@ const selectPlayerAction = (
   }
 
   if (player.stats.hp < player.stats.maxHp * 0.3) {
-    const healAbility = usableAbilities.find(
-      (a) => a.abilityType === "heal" && a.canTargetSelf,
-    );
+    const healAbility = usableAbilities.find((a) => a.abilityType === "heal" && a.canTargetSelf);
     if (healAbility) {
       return { ability: healAbility, targetType: "self" };
     }
@@ -437,10 +427,7 @@ const executeMonsterAction = (
   if (action.isAoe) {
     targets = action.canTargetSelf ? [monster, ...players] : players;
   } else {
-    if (
-      action.canTargetSelf &&
-      (action.actionType === "heal" || action.actionType === "buff")
-    ) {
+    if (action.canTargetSelf && (action.actionType === "heal" || action.actionType === "buff")) {
       targets = [monster];
     } else {
       const target = selectRandomTarget(
@@ -564,7 +551,7 @@ const executePlayerAction = (
   player.abilityCooldowns.set(ability.name, ability.cooldown);
 
   const targets: Combatant[] = [];
-  // biome-ignore lint/style/noNonNullAssertion: monster must exist
+  // monster must exist
   const monster = combatants.get("monster")!;
   const alivePlayers = getAliveCombatants(
     combatants,
@@ -858,10 +845,7 @@ const decrementCooldowns = (combatant: Combatant): void => {
   }
 };
 
-const createTurnSnapshot = (
-  state: CombatState,
-  turnEvents: CombatEvent[],
-): TurnSnapshot => {
+const createTurnSnapshot = (state: CombatState, turnEvents: CombatEvent[]): TurnSnapshot => {
   const combatantSnapshots: CombatantSnapshot[] = [];
 
   for (const combatant of state.combatants.values()) {
@@ -959,13 +943,7 @@ export const processCombatTurn = (
     } else {
       const decision = selectPlayerAction(combatant, playerAbilities, random);
       if (decision) {
-        executePlayerAction(
-          state,
-          combatant,
-          decision.ability,
-          decision.targetType,
-          random,
-        );
+        executePlayerAction(state, combatant, decision.ability, decision.targetType, random);
       } else {
         state.events.push({
           turn: state.currentTurn,

@@ -52,9 +52,7 @@ export function jsx<P extends JSXRecord, R extends JSXNode>(
   key?: string | number,
 ): JSXNode {
   if (typeof tag !== "function") {
-    throw new Error(
-      `Unsupported tag type: ${typeof tag}. Did you mean to use a component?`,
-    );
+    throw new Error(`Unsupported tag type: ${typeof tag}. Did you mean to use a component?`);
   }
 
   const flatChildren = flattenJSXNodes(props?.children).filter(

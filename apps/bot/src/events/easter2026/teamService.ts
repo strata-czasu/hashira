@@ -1,9 +1,4 @@
-import type {
-  Easter2026TeamConfig,
-  PrismaTransaction,
-  Team,
-  TeamMember,
-} from "@hashira/db";
+import type { Easter2026TeamConfig, PrismaTransaction, Team, TeamMember } from "@hashira/db";
 
 export type TeamWithConfig = Team & {
   easter2026TeamConfig: Easter2026TeamConfig;

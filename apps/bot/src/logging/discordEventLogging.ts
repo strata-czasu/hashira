@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { AuditLogEvent, type GuildAuditLogsEntry, GuildMember } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "../base";
 
 const isAuditLogsEntryAction = <T extends AuditLogEvent>(
@@ -9,10 +11,7 @@ const isAuditLogsEntryAction = <T extends AuditLogEvent>(
 
 const warnMissingAuditLogEntryTarget = (entry: GuildAuditLogsEntry) => {
   // NOTE: While unlikely, the `target` property is marked as null
-  console.warn(
-    `Possible audit log issue: action_type: ${entry.action} without target`,
-    entry,
-  );
+  console.warn(`Possible audit log issue: action_type: ${entry.action} without target`, entry);
 };
 
 // Logging for Discord events
@@ -33,8 +32,7 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
     if (!ctx.privilegedIntentsEnabled) return;
     const log = ctx.messageLog;
     if (!oldMessage.inGuild() || !newMessage.inGuild()) return;
-    if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild))
-      return;
+    if (!log.isRegistered(oldMessage.guild) || !log.isRegistered(newMessage.guild)) return;
     if (oldMessage.author.bot || newMessage.author.bot) return;
 
     log.push("messageUpdate", newMessage.guild, {
@@ -54,9 +52,7 @@ export const discordEventLogging = new Hashira({ name: "discordEventLogging" })
     if (!(member instanceof GuildMember)) return;
     if (!log.isRegistered(member.guild)) return;
 
-    const roles = member.roles.cache
-      .filter((r) => r !== member.guild.roles.everyone)
-      .map((r) => r);
+    const roles = member.roles.cache.filter((r) => r !== member.guild.roles.everyone).map((r) => r);
     log.push("guildMemberRemove", member.guild, { member, roles });
   })
   .handle("guildMemberUpdate", async ({ profileLog: log }, oldMember, newMember) => {

@@ -1,5 +1,7 @@
-import type { Prettify } from "@hashira/utils/types";
 import type { Client, EmbedBuilder, Guild, TextBasedChannel } from "discord.js";
+
+import type { Prettify } from "@hashira/utils/types";
+
 import { Batcher, InMemoryBackend } from "../../util/batcher";
 
 type LogMessageData = Record<string, unknown>;
@@ -10,9 +12,7 @@ type HandlerProps = { client: Client; timestamp: Date };
 type Handler<T> = (props: HandlerProps, data: T) => Promise<EmbedBuilder>;
 type Message<T> = { type: T; data: LogMessageData; timestamp: Date };
 
-export class Logger<
-  const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes,
-> {
+export class Logger<const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes> {
   #messageTypes: Map<string, Handler<unknown>> = new Map();
   #batcher: Batcher<string, Message<keyof LogMessageTypes>>;
   #logChannels: Map<string, TextBasedChannel> = new Map();
@@ -53,19 +53,12 @@ export class Logger<
    * @param guild {Guild} Guild where the log message originated
    * @param data {unknown} Data for the log message
    */
-  push<T extends keyof LogMessageTypes>(
-    type: T,
-    guild: Guild,
-    data: LogMessageTypes[T],
-  ) {
+  push<T extends keyof LogMessageTypes>(type: T, guild: Guild, data: LogMessageTypes[T]) {
     if (typeof type !== "string") throw new Error("Type must be a string");
     this.#batcher.push(guild.id, { type, data, timestamp: new Date() });
   }
 
-  private async formatLogMessage<T>(
-    client: Client,
-    { type, data, timestamp }: Message<T>,
-  ) {
+  private async formatLogMessage<T>(client: Client, { type, data, timestamp }: Message<T>) {
     if (typeof type !== "string") throw new Error("Type must be a string");
     const handler = this.#messageTypes.get(type);
     if (!handler) throw new Error(`Handler not found for ${type}`);
@@ -80,18 +73,13 @@ export class Logger<
     return logChannel;
   }
 
-  private async processBatch(
-    guildId: string,
-    messages: Array<Message<keyof LogMessageTypes>>,
-  ) {
+  private async processBatch(guildId: string, messages: Array<Message<keyof LogMessageTypes>>) {
     const client = this.#client;
     if (!client) throw new Error("Client not initialized");
     const guild = await client.guilds.fetch(guildId);
 
     const channel = await this.getLogChannel(guild);
-    const formatted = await Promise.all(
-      messages.map((m) => this.formatLogMessage(client, m)),
-    );
+    const formatted = await Promise.all(messages.map((m) => this.formatLogMessage(client, m)));
 
     await channel.send({ embeds: formatted });
   }

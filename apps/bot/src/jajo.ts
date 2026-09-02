@@ -1,4 +1,3 @@
-import { Hashira } from "@hashira/core";
 import { sleep } from "bun";
 import { addMinutes, secondsToMilliseconds } from "date-fns";
 import {
@@ -12,6 +11,9 @@ import {
   time,
 } from "discord.js";
 import { noop, randomInt } from "es-toolkit";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
 import { formatBalance } from "./economy/util";
@@ -69,14 +71,14 @@ const EGG_TABLE = [
 ] as const satisfies ItemTableEntry[];
 
 const WEDKA_MOCK_MESSAGES = [
-  "Zapomniałeś, że łowisko jest zamknięte na wielkanoc?",
+  "Łowisko zamknięte na wielkanoc — czy o tym nie pamiętasz?",
   "Łowisko nieczynne — wielkanocna przerwa!",
   "Ryby mają wolne na święta!",
   "PZW ogłosiło wielkanocny zakaz połowu!",
   "Zamiast moczyć kij, poszukaj lepiej jajek!",
   "Ryby malują pisanki, nie mają czasu na branie.",
   "Królik wielkanocny zarekwirował wszystkie wędki!",
-  "Zarzuciłeś spławik, ale wyłowiłeś tylko mokrą rzeżuchę.",
+  "Zarzucony spławik przyniósł tylko mokrą rzeżuchę.",
   "Państwowa Straż Rybacka sprawdza dzisiaj tylko koszyczki ze święconką.",
   "Szczupak poszedł święcić koszyczki, wraca po świętach.",
   "Wędka zaplątała się w koszyczek. Odpuść sobie i idź szukać pisanek!",
@@ -97,27 +99,19 @@ export const jajo = new Hashira({ name: "jajo" })
         await itx.deferReply();
         await ensureUserExists(prisma, itx.user);
 
-        const [canFish, nextFishing] = await checkIfCanFish(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const [canFish, nextFishing] = await checkIfCanFish(prisma, itx.user.id, itx.guildId);
 
         if (!canFish) {
           await itx.editReply({
-            content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
+            content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await discordTry(
-            () => itx.deleteReply(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => itx.deleteReply(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return;
         }
 
         const { id } = getRandomItem(EGG_TABLE);
-        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find an egg
+        // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
 
         await addBalance({
@@ -196,27 +190,19 @@ export const jajo = new Hashira({ name: "jajo" })
         await itx.deferReply();
         await ensureUserExists(prisma, itx.user);
 
-        const [canFish, nextFishing] = await checkIfCanFish(
-          prisma,
-          itx.user.id,
-          itx.guildId,
-        );
+        const [canFish, nextFishing] = await checkIfCanFish(prisma, itx.user.id, itx.guildId);
 
         if (!canFish) {
           await itx.editReply({
-            content: `Już szukałeś jajek! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
+            content: `Jajka już pozbierane! Zając schowa nowe ${time(nextFishing, TimestampStyles.RelativeTime)}`,
           });
           await sleep(secondsToMilliseconds(5));
-          await discordTry(
-            () => itx.deleteReply(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => itx.deleteReply(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return;
         }
 
         const { id } = getRandomItem(EGG_TABLE);
-        // biome-ignore lint/style/noNonNullAssertion: This is guaranteed to find an egg
+        // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
 
         await addBalance({
@@ -234,7 +220,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
         const mockMessage =
-          // biome-ignore lint/style/noNonNullAssertion: this is guaranteed to find an egg
+          // this is guaranteed to find an egg
           WEDKA_MOCK_MESSAGES[randomInt(0, WEDKA_MOCK_MESSAGES.length)]!;
         const eggMessage = formatEggMessage(id, name, balance);
 
@@ -260,11 +246,7 @@ export const jajo = new Hashira({ name: "jajo" })
         );
 
         if (!clickInfo.interaction) {
-          await discordTry(
-            () => mockResponse.delete(),
-            [RESTJSONErrorCodes.UnknownMessage],
-            noop,
-          );
+          await discordTry(() => mockResponse.delete(), [RESTJSONErrorCodes.UnknownMessage], noop);
           return await clickInfo.removeButton();
         }
 
@@ -292,11 +274,7 @@ export const jajo = new Hashira({ name: "jajo" })
 
         await sleep(secondsToMilliseconds(15));
 
-        await discordTry(
-          () => mockResponse.delete(),
-          [RESTJSONErrorCodes.UnknownMessage],
-          noop,
-        );
+        await discordTry(() => mockResponse.delete(), [RESTJSONErrorCodes.UnknownMessage], noop);
         await clickInfo.removeButton();
       }),
   )
@@ -309,9 +287,7 @@ export const jajo = new Hashira({ name: "jajo" })
         command
           .setDescription("Zmusza użytkownika do znalezienia jajka o konkretnym ID")
           .addUser("user", (option) =>
-            option
-              .setDescription("Użytkownik który ma znaleźć jajko")
-              .setRequired(true),
+            option.setDescription("Użytkownik który ma znaleźć jajko").setRequired(true),
           )
           .addInteger("egg-id", (option) =>
             option

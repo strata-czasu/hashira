@@ -1,11 +1,3 @@
-import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-  type PrismaTransaction,
-  type Warn,
-} from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import { sub } from "date-fns";
 import {
   ActionRowBuilder,
@@ -28,6 +20,16 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type PrismaTransaction,
+  type Warn,
+} from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -55,15 +57,10 @@ export const createWarnFormat =
       HeadingLevel.Three,
     );
 
-    const lines = [
-      deletedAt ? strikethrough(header) : header,
-      `Powód: ${italic(reason)}`,
-    ];
+    const lines = [deletedAt ? strikethrough(header) : header, `Powód: ${italic(reason)}`];
 
     if (deletedAt) {
-      lines.push(
-        `Data usunięcia: ${time(deletedAt, TimestampStyles.LongDateShortTime)}`,
-      );
+      lines.push(`Data usunięcia: ${time(deletedAt, TimestampStyles.LongDateShortTime)}`);
     }
 
     if (deleteReason) {
@@ -86,21 +83,14 @@ const getUserWarnsPaginatedView = (
   };
 
   const paginate = new DatabasePaginator(
-    (props, createdAt) =>
-      prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
+    (props, createdAt) => prisma.warn.findMany({ where, ...props, orderBy: { createdAt } }),
     () => prisma.warn.count({ where }),
     { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
   );
 
   const formatWarn = createWarnFormat({ includeUser: false });
 
-  return new PaginatedView(
-    paginate,
-    `Ostrzeżenia ${user.tag}`,
-    formatWarn,
-    true,
-    `ID: ${user.id}`,
-  );
+  return new PaginatedView(paginate, `Ostrzeżenia ${user.tag}`, formatWarn, true, `ID: ${user.id}`);
 };
 
 const handleRecentWarns = async (
@@ -123,9 +113,7 @@ const handleRecentWarns = async (
   });
   if (recentWarns.length === 0) return;
 
-  const recentWarnsFormatted = recentWarns.map(
-    createWarnFormat({ includeUser: false }),
-  );
+  const recentWarnsFormatted = recentWarns.map(createWarnFormat({ includeUser: false }));
   await replyToModerator(
     `Użytkownik ${user.tag} ma ${recentWarns.length} ${pluralizers.warns(recentWarns.length)} w ciągu ostatnich ${days} dni:\n${recentWarnsFormatted.join("\n")}`,
   );
@@ -178,9 +166,7 @@ const universalAddWarn = async ({
   );
 
   if (!sentMessage) {
-    await replyToModerator(
-      `Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`,
-    );
+    await replyToModerator(`Nie udało się wysłać wiadomości do ${formatUserWithId(user)}.`);
   }
 
   await handleRecentWarns(prisma, warn, user, replyToModerator);
@@ -277,8 +263,7 @@ export const warns = new Hashira({ name: "warns" })
               guild: itx.guild,
               reason,
               reply: (content) => itx.followUp(content),
-              replyToModerator: (content) =>
-                itx.followUp({ content, flags: "Ephemeral" }),
+              replyToModerator: (content) => itx.followUp({ content, flags: "Ephemeral" }),
             });
           }),
       )
@@ -328,63 +313,55 @@ export const warns = new Hashira({ name: "warns" })
         command
           .setDescription("Edytuj ostrzeżenie")
           .addInteger("id", (id) => id.setDescription("ID ostrzeżenia").setMinValue(0))
-          .addString("nowy-powód", (reason) =>
-            reason.setDescription("Nowy powód ostrzeżenia"),
-          )
-          .handle(
-            async (
-              { prisma, moderationLog: log },
-              { id, "nowy-powód": reason },
-              itx,
-            ) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
+          .addString("nowy-powód", (reason) => reason.setDescription("Nowy powód ostrzeżenia"))
+          .handle(async ({ prisma, moderationLog: log }, { id, "nowy-powód": reason }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-              const warn = await prisma.$transaction(async (tx) => {
-                const warn = await getWarn(tx, id, itx.guildId);
-                if (!warn) {
-                  await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
-                  return null;
-                }
-                const originalReason = warn.reason;
-                await tx.warn.update({
-                  where: { id },
-                  data: { reason },
-                });
-                log.push("warnEdit", itx.guild, {
-                  warn,
-                  moderator: itx.user,
-                  oldReason: originalReason,
-                  newReason: reason,
-                });
-
-                await discordTry(
-                  async () => {
-                    const member = await itx.guild.members.fetch(warn.userId);
-                    await sendDirectMessage(
-                      member.user,
-                      `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
-                        itx.user.id,
-                      )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
-                        originalReason,
-                      )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
-                    );
-                  },
-                  [RESTJSONErrorCodes.UnknownMember],
-                  async () => {},
-                );
-
-                return warn;
+            const warn = await prisma.$transaction(async (tx) => {
+              const warn = await getWarn(tx, id, itx.guildId);
+              if (!warn) {
+                await errorFollowUp(itx, "Nie znaleziono ostrzeżenia o podanym ID");
+                return null;
+              }
+              const originalReason = warn.reason;
+              await tx.warn.update({
+                where: { id },
+                data: { reason },
               });
-              if (!warn) return;
+              log.push("warnEdit", itx.guild, {
+                warn,
+                moderator: itx.user,
+                oldReason: originalReason,
+                newReason: reason,
+              });
 
-              await itx.editReply(
-                `Zaktualizowano ostrzeżenie ${inlineCode(
-                  id.toString(),
-                )}. Nowy powód: ${italic(reason)}`,
+              await discordTry(
+                async () => {
+                  const member = await itx.guild.members.fetch(warn.userId);
+                  await sendDirectMessage(
+                    member.user,
+                    `Twoje ostrzeżenie zostało zedytowane przez ${userMention(
+                      itx.user.id,
+                    )} (${itx.user.tag}).\n\nPoprzedni powód ostrzeżenia: ${italic(
+                      originalReason,
+                    )}\nNowy powód ostrzeżenia: ${italic(reason)}`,
+                  );
+                },
+                [RESTJSONErrorCodes.UnknownMember],
+                async () => {},
               );
-            },
-          ),
+
+              return warn;
+            });
+            if (!warn) return;
+
+            await itx.editReply(
+              `Zaktualizowano ostrzeżenie ${inlineCode(
+                id.toString(),
+              )}. Nowy powód: ${italic(reason)}`,
+            );
+          }),
       ),
   )
   .group("warns", (group) =>
@@ -401,12 +378,7 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ prisma }, { user, deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const paginatedView = getUserWarnsPaginatedView(
-              prisma,
-              user,
-              itx.guildId,
-              deleted,
-            );
+            const paginatedView = getUserWarnsPaginatedView(prisma, user, itx.guildId, deleted);
             await paginatedView.render(itx);
           }),
       )
@@ -419,12 +391,7 @@ export const warns = new Hashira({ name: "warns" })
           .handle(async ({ prisma }, { deleted }, itx) => {
             if (!itx.inCachedGuild()) return;
 
-            const paginatedView = getUserWarnsPaginatedView(
-              prisma,
-              itx.user,
-              itx.guildId,
-              deleted,
-            );
+            const paginatedView = getUserWarnsPaginatedView(prisma, itx.user, itx.guildId, deleted);
             await paginatedView.render(itx);
           }),
       ),

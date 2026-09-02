@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { bold, PermissionFlagsBits, roleMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "./base";
 import { fetchMembers } from "./util/fetchMembers";
 import { modifyMembers } from "./util/modifyMembers";
@@ -82,10 +84,7 @@ export const roles = new Hashira({ name: "roles" }).use(base).group("rola", (gro
           });
 
           const results = await modifyMembers(toRemove, (m) =>
-            m.roles.remove(
-              role,
-              `Usunięto rolę przez ${itx.user.tag} (${itx.user.id})`,
-            ),
+            m.roles.remove(role, `Usunięto rolę przez ${itx.user.tag} (${itx.user.id})`),
           );
           const removed = results.filter((r) => r).length;
 

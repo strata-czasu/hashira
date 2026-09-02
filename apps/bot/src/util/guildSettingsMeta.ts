@@ -1,5 +1,6 @@
-import type { Prisma } from "@hashira/db";
 import * as v from "valibot";
+
+import type { Prisma } from "@hashira/db";
 
 const GuildSettingsMetaV1 = v.object({
   propositionsChannelId: v.optional(v.string()),
@@ -21,10 +22,7 @@ const tryUpdateMeta = (meta: AnyVersionGuildSettingsMeta): GuildSettingsMeta => 
   return meta;
 };
 
-export const getGuildSettingsMeta = async (
-  prisma: Prisma.TransactionClient,
-  guildId: string,
-) => {
+export const getGuildSettingsMeta = async (prisma: Prisma.TransactionClient, guildId: string) => {
   const settings = await prisma.guildSettings.upsert({
     where: { guildId },
     create: { guildId, meta: DEFAULT },

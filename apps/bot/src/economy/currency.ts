@@ -1,15 +1,14 @@
+import { PermissionFlagsBits, TimestampStyles, time } from "discord.js";
+
 import { Hashira, PaginatedView } from "@hashira/core";
 import { type Currency, DatabasePaginator, Prisma } from "@hashira/db";
 import { PaginatorOrder } from "@hashira/paginate";
-import { PermissionFlagsBits, TimestampStyles, time } from "discord.js";
+
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { formatBalance } from "./util";
 
-const formatCurrency = (
-  { name, symbol, createdAt, createdBy }: Currency,
-  showOwner = false,
-) => {
+const formatCurrency = ({ name, symbol, createdAt, createdBy }: Currency, showOwner = false) => {
   const formattedTime = time(createdAt, TimestampStyles.FullDateShortTime);
   const base = `${name} - ${symbol} - ${formattedTime}`;
 
@@ -32,9 +31,7 @@ export const currency = new Hashira({ name: "currency" })
       .addCommand("create", (createCommand) =>
         createCommand
           .setDescription("Create a new currency")
-          .addString("name", (nameOption) =>
-            nameOption.setDescription("The name of the currency"),
-          )
+          .addString("name", (nameOption) => nameOption.setDescription("The name of the currency"))
           .addString("symbol", (symbolOption) =>
             symbolOption.setDescription("The symbol of the currency"),
           )
@@ -70,9 +67,7 @@ export const currency = new Hashira({ name: "currency" })
             userCommand
               .setDescription("List all currencies of certain user")
               .addUser("user", (userOption) =>
-                userOption
-                  .setDescription("The user to get stats for")
-                  .setRequired(false),
+                userOption.setDescription("The user to get stats for").setRequired(false),
               )
               .handle(async ({ prisma }, { user }, itx) => {
                 if (!itx.inCachedGuild()) return;

@@ -1,4 +1,5 @@
 import { Hashira } from "@hashira/core";
+
 import { access } from "./access";
 import { bans } from "./bans";
 import { mutes } from "./mutes";

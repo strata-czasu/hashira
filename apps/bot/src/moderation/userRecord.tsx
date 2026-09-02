@@ -1,14 +1,3 @@
-import { Hashira } from "@hashira/core";
-import type { PrismaClient } from "@hashira/db";
-import {
-  Container,
-  H3,
-  type JSXNode,
-  render,
-  Separator,
-  Subtext,
-  TextDisplay,
-} from "@hashira/jsx";
 import { secondsToHours, sub } from "date-fns";
 import {
   bold,
@@ -23,6 +12,11 @@ import {
   time,
   type User,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+import type { PrismaClient } from "@hashira/db";
+import { Container, H3, type JSXNode, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
+
 import { base } from "../base";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
@@ -46,10 +40,7 @@ async function formatVerification(prisma: PrismaClient, guild: Guild, user: User
 }
 
 const formatActivities = (voiceActivitySeconds: number, textActivity: number) => {
-  const parts = [
-    `🎙️ ${secondsToHours(voiceActivitySeconds)}h`,
-    `🗨️ ${textActivity} wiad.`,
-  ];
+  const parts = [`🎙️ ${secondsToHours(voiceActivitySeconds)}h`, `🗨️ ${textActivity} wiad.`];
   return parts.join(" | ");
 };
 
@@ -124,9 +115,7 @@ async function getMemberFields(
         return cr.deletedAt ? strikethrough(line) : line;
       })
       .join("\n");
-    fields.push(
-      <Field name="🚫 Ostatnio odebrane dostępy" value={joinedRestrictions} />,
-    );
+    fields.push(<Field name="🚫 Ostatnio odebrane dostępy" value={joinedRestrictions} />);
   }
 
   // Ultimatum
@@ -205,9 +194,7 @@ export const userRecord = new Hashira({ name: "user-record" })
           [RESTJSONErrorCodes.UnknownMember],
           () => null,
         );
-        const memberFields = member
-          ? await getMemberFields(prisma, member, itx.createdAt)
-          : [];
+        const memberFields = member ? await getMemberFields(prisma, member, itx.createdAt) : [];
 
         const opts = render(
           <Container>

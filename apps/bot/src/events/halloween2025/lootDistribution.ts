@@ -40,8 +40,7 @@ export const calculatePlayerDamage = (events: CombatEvent[]): Map<string, number
 
 export const getLootDropCount = (participantCount: number): number => {
   const rule = LOOT_DISTRIBUTION_RULES.find(
-    (r) =>
-      participantCount >= r.minParticipants && participantCount <= r.maxParticipants,
+    (r) => participantCount >= r.minParticipants && participantCount <= r.maxParticipants,
   );
   return rule?.drops ?? 1;
 };

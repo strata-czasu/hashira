@@ -1,15 +1,3 @@
-import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
-import { DatabasePaginator, type PrismaTransaction } from "@hashira/db";
-import {
-  Bold,
-  Br,
-  Container,
-  H1,
-  InlineCode,
-  Italic,
-  render,
-  TextDisplay,
-} from "@hashira/jsx";
 import { isAfter, isBefore } from "date-fns";
 import {
   bold,
@@ -19,6 +7,11 @@ import {
   PermissionFlagsBits,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView, waitForConfirmation } from "@hashira/core";
+import { DatabasePaginator, type PrismaTransaction } from "@hashira/db";
+import { Bold, Br, Container, H1, InlineCode, Italic, render, TextDisplay } from "@hashira/jsx";
+
 import { base } from "../../base";
 import { parseDate } from "../../util/dateParsing";
 import { ensureUserExists } from "../../util/ensureUsersExist";
@@ -26,11 +19,7 @@ import { errorFollowUp } from "../../util/errorFollowUp";
 import { fetchMembers } from "../../util/fetchMembers";
 import safeSendCode from "../../util/safeSendCode";
 import { getTeamPointsByUser, getTeamTotalPoints } from "./pointsService";
-import {
-  buildTeamEmbed,
-  type TeamWithFullConfig,
-  updateTeamStatusMessage,
-} from "./statusService";
+import { buildTeamEmbed, type TeamWithFullConfig, updateTeamStatusMessage } from "./statusService";
 import {
   findMembershipForEaster2026,
   joinRandomTeam,
@@ -115,8 +104,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             if (!result.ok) {
               if (result.reason === "already_in_team") {
                 await itx.editReply({
-                  content:
-                    "Jesteś już członkiem drużyny! Nie możesz dołączyć ponownie.",
+                  content: "Jesteś już członkiem drużyny! Nie możesz dołączyć ponownie.",
                 });
                 return;
               }
@@ -143,12 +131,11 @@ export const easter2026 = new Hashira({ name: "easter2026" })
                 <TextDisplay>
                   <H1> 🥚 Event Wielkanocny </H1>
                   <Br />
-                  Trwa event wielkanocny! Dołącz do jednej z drużyn i zdobywajcie punkty
-                  razem! Każda wiadomość wysłana na serwerze przez członka drużyny liczy
-                  się do ogólnego wyniku.
+                  Trwa event wielkanocny! Dołącz do jednej z drużyn i zdobywajcie punkty razem!
+                  Każda wiadomość wysłana na serwerze przez członka drużyny liczy się do ogólnego
+                  wyniku.
                   <Br />
-                  <Bold>Jak dołączyć?</Bold> Użyj komendy{" "}
-                  <InlineCode>/wielkanoc dolacz</InlineCode>
+                  <Bold>Jak dołączyć?</Bold> Użyj komendy <InlineCode>/wielkanoc dolacz</InlineCode>
                   <Br />
                   <Bold>Jak sprawdzić postęp?</Bold> Użyj komendy{" "}
                   <InlineCode>/wielkanoc ranking-druzyny</InlineCode> lub{" "}
@@ -184,19 +171,14 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             if (rawDate) {
               const parsed = parseDate(rawDate, "start", null);
               if (!parsed) {
-                await errorFollowUp(
-                  itx,
-                  "Nieprawidłowy format daty. Przykład: 2026-04-17",
-                );
+                await errorFollowUp(itx, "Nieprawidłowy format daty. Przykład: 2026-04-17");
                 return;
               }
               since = parsed;
               until = new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1);
             }
 
-            const disabledChannelIds = config.disabledChannels.map(
-              (dc) => dc.channelId,
-            );
+            const disabledChannelIds = config.disabledChannels.map((dc) => dc.channelId);
             const bonusChannels = config.bonusChannels.map((bc) => ({
               channelId: bc.channelId,
               date: bc.date,
@@ -226,10 +208,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             rankings.sort((a, b) => b.points - a.points);
 
             const description = rankings
-              .map(
-                (r, i) =>
-                  `${i + 1}. **${r.name}** — ${r.points.toLocaleString("pl-PL")} pkt`,
-              )
+              .map((r, i) => `${i + 1}. **${r.name}** — ${r.points.toLocaleString("pl-PL")} pkt`)
               .join("\n");
 
             const element = (
@@ -271,19 +250,14 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             if (rawDate) {
               const parsed = parseDate(rawDate, "start", null);
               if (!parsed) {
-                await errorFollowUp(
-                  itx,
-                  "Nieprawidłowy format daty. Przykład: 2026-04-17",
-                );
+                await errorFollowUp(itx, "Nieprawidłowy format daty. Przykład: 2026-04-17");
                 return;
               }
               since = parsed;
               until = new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1);
             }
 
-            const disabledChannelIds = config.disabledChannels.map(
-              (dc) => dc.channelId,
-            );
+            const disabledChannelIds = config.disabledChannels.map((dc) => dc.channelId);
             const bonusChannels = config.bonusChannels.map((bc) => ({
               channelId: bc.channelId,
               date: bc.date,
@@ -342,17 +316,10 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
 
-            const membership = await findMembershipForEaster2026(
-              prisma,
-              itx.user.id,
-              itx.guildId,
-            );
+            const membership = await findMembershipForEaster2026(prisma, itx.user.id, itx.guildId);
 
             if (!membership) {
-              await errorFollowUp(
-                itx,
-                "Nie jesteś w żadnej drużynie! Użyj `/wielkanoc dolacz`.",
-              );
+              await errorFollowUp(itx, "Nie jesteś w żadnej drużynie! Użyj `/wielkanoc dolacz`.");
               return;
             }
 
@@ -362,9 +329,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               return;
             }
 
-            const disabledChannelIds = config.disabledChannels.map(
-              (dc) => dc.channelId,
-            );
+            const disabledChannelIds = config.disabledChannels.map((dc) => dc.channelId);
             const bonusChannels = config.bonusChannels.map((bc) => ({
               channelId: bc.channelId,
               date: bc.date,
@@ -416,9 +381,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               .setRequired(false),
           )
           .addBoolean("auto-dolaczanie", (option) =>
-            option
-              .setDescription("Automatyczne dołączanie nowych użytkowników")
-              .setRequired(false),
+            option.setDescription("Automatyczne dołączanie nowych użytkowników").setRequired(false),
           )
           .handle(
             async (
@@ -437,10 +400,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               const eventStartDate = new Date(rawStart);
               const eventEndDate = new Date(rawEnd);
 
-              if (
-                Number.isNaN(eventStartDate.getTime()) ||
-                Number.isNaN(eventEndDate.getTime())
-              ) {
+              if (Number.isNaN(eventStartDate.getTime()) || Number.isNaN(eventEndDate.getTime())) {
                 await errorFollowUp(itx, "Nieprawidłowy format daty!");
                 return;
               }
@@ -471,9 +431,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
           .setDescription("Dodaj nową drużynę do eventu")
           .addString("nazwa", (option) => option.setDescription("Nazwa drużyny"))
           .addRole("rola", (option) => option.setDescription("Rola drużyny"))
-          .addChannel("kanal", (option) =>
-            option.setDescription("Kanał ze statusem drużyny"),
-          )
+          .addChannel("kanal", (option) => option.setDescription("Kanał ze statusem drużyny"))
           .addString("kolor", (option) => option.setDescription("Kolor drużyny (hex)"))
           .handle(
             async (
@@ -570,9 +528,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
         command
           .setDescription("Zmień drużynę użytkownika")
           .addUser("user", (option) => option.setDescription("Użytkownik"))
-          .addRole("druzyna", (option) =>
-            option.setDescription("Docelowa rola drużyny"),
-          )
+          .addRole("druzyna", (option) => option.setDescription("Docelowa rola drużyny"))
           .handle(async ({ prisma }, { user, druzyna: teamRole }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
@@ -614,9 +570,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               );
             }
 
-            actions.push(
-              targetMember.roles.add(targetConfig.roleId, "Zmieniono drużynę"),
-            );
+            actions.push(targetMember.roles.add(targetConfig.roleId, "Zmieniono drużynę"));
 
             const message = result.previousTeam
               ? `Zmieniono drużynę ${bold(user.tag)} z ${bold(result.previousTeam.name)} na ${bold(targetConfig.team.name)}!`
@@ -692,11 +646,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
           .addRole("druzyna", (option) => option.setDescription("Rola drużyny"))
           .addString("obrazek", (option) => option.setDescription("Link do obrazka"))
           .handle(
-            async (
-              { prisma },
-              { punkty: points, druzyna: teamRole, obrazek: image },
-              itx,
-            ) => {
+            async ({ prisma }, { punkty: points, druzyna: teamRole, obrazek: image }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -833,8 +783,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             const paginatedView = new PaginatedView(
               paginator,
               "Wykluczone kanały",
-              (channel) =>
-                `Kanał ${channelMention(channel.channelId)} (${channel.channelId})`,
+              (channel) => `Kanał ${channelMention(channel.channelId)} (${channel.channelId})`,
               true,
             );
             await paginatedView.render(itx);
@@ -847,11 +796,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
           .addString("data", (option) => option.setDescription("Data (np. 2026-04-17)"))
           .addNumber("mnoznik", (option) => option.setDescription("Mnożnik punktów"))
           .handle(
-            async (
-              { prisma },
-              { kanal: channel, data: rawDate, mnoznik: multiplier },
-              itx,
-            ) => {
+            async ({ prisma }, { kanal: channel, data: rawDate, mnoznik: multiplier }, itx) => {
               if (!itx.inCachedGuild()) return;
               await itx.deferReply();
 
@@ -920,11 +865,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
             const memberIds = config.team.members.map((m) => m.userId);
 
             if (memberIds.length === 0) {
-              await safeSendCode(
-                itx.editReply.bind(itx),
-                "Brak członków w drużynie.",
-                "",
-              );
+              await safeSendCode(itx.editReply.bind(itx), "Brak członków w drużynie.", "");
               return;
             }
 
@@ -933,10 +874,7 @@ export const easter2026 = new Hashira({ name: "easter2026" })
               const guildMembers = await fetchMembers(itx.guild, memberIds);
               validMemberIds = memberIds.filter((id) => guildMembers.has(id));
             } catch (error) {
-              console.error(
-                "Błąd podczas pobierania członków dla ping-druzyna:",
-                error,
-              );
+              console.error("Błąd podczas pobierania członków dla ping-druzyna:", error);
             }
 
             if (validMemberIds.length === 0) {

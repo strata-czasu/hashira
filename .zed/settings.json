@@ -1,15 +1,42 @@
 // NOTE: The following extensions are required for full LSP and formatter support:
-// - biome
+// - oxc
 // - prisma
 {
   "tab_size": 2,
   "use_on_type_format": false,
 
+  // https://github.com/oxc-project/oxc-zed/blob/main/examples/both/.zed/settings.json
+  "lsp": {
+    "oxlint": {
+      "initialization_options": {
+        "settings": {
+          "configPath": null,
+          "run": "onType",
+          "disableNestedConfig": false,
+          "fixKind": "safe_fix",
+          "unusedDisableDirectives": "deny"
+        }
+      }
+    },
+    "oxfmt": {
+      "initialization_options": {
+        "settings": {
+          "fmt.configPath": null,
+          "run": "onSave"
+        }
+      }
+    }
+  },
+
   // NOTE: Language servers and formatters aren't enabled globally for more fine control
   // https://zed.dev/docs/languages/typescript
-  // https://biomejs.dev/reference/zed/
+  // https://github.com/oxc-project/oxc-zed
   "languages": {
     "TypeScript": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false
+      },
       "language_servers": [
         "!typescript-language-server",
         "!prisma-language-server",
@@ -18,17 +45,21 @@
         "!prettier",
         "!vtsls",
         "tsgo",
-        "biome",
+        "oxlint",
+        "oxfmt",
         "..."
       ],
-      "formatter": { "language_server": { "name": "biome" } },
-      "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true
-      }
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
     },
 
     "JavaScript": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false
+      },
       "language_servers": [
         "!typescript-language-server",
         "!prisma-language-server",
@@ -37,17 +68,21 @@
         "!prettier",
         "!vtsls",
         "tsgo",
-        "biome",
+        "oxlint",
+        "oxfmt",
         "..."
       ],
-      "formatter": { "language_server": { "name": "biome" } },
-      "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true
-      }
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
     },
 
     "TSX": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false
+      },
       "language_servers": [
         "!typescript-language-server",
         "!prisma-language-server",
@@ -56,17 +91,21 @@
         "!prettier",
         "!vtsls",
         "tsgo",
-        "biome",
+        "oxlint",
+        "oxfmt",
         "..."
       ],
-      "formatter": { "language_server": { "name": "biome" } },
-      "code_actions_on_format": {
-        "source.organizeImports.biome": true,
-        "source.fixAll.biome": true
-      }
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
     },
 
     "JSON": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false
+      },
       "language_servers": [
         "!typescript-language-server",
         "!prisma-language-server",
@@ -75,13 +114,17 @@
         "!prettier",
         "!vtsls",
         "!tsgo",
-        "biome",
+        "oxfmt",
         "..."
       ],
-      "formatter": { "language_server": { "name": "biome" } }
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
 
     "JSONC": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false
+      },
       "language_servers": [
         "!typescript-language-server",
         "!prisma-language-server",
@@ -90,10 +133,10 @@
         "!prettier",
         "!vtsls",
         "!tsgo",
-        "biome",
+        "oxfmt",
         "..."
       ],
-      "formatter": { "language_server": { "name": "biome" } }
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
 
     "Prisma": {
@@ -103,7 +146,8 @@
         "!eslint",
         "!prettier",
         "!vtsls",
-        "!biome",
+        "!oxlint",
+        "!oxfmt",
         "!tsgo",
         "prisma-language-server",
         "..."

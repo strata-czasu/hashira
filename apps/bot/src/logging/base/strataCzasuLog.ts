@@ -1,6 +1,8 @@
-import { Hashira } from "@hashira/core";
 import { intervalToDuration } from "date-fns";
 import { bold, italic, type Role, TimestampStyles, time, type User } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { formatDuration } from "../../util/duration";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
@@ -40,10 +42,7 @@ export const strataCzasuLog = new Hashira({ name: "strataCzasuLog" }).const(
   new Logger()
     .addMessageType(
       "ultimatumStart",
-      async (
-        { timestamp },
-        { user, createdAt, expiresAt, reason }: UltimatumStartData,
-      ) => {
+      async ({ timestamp }, { user, createdAt, expiresAt, reason }: UltimatumStartData) => {
         const content = [
           bold("Rozpoczyna ultimatum"),
           `Poczatek: ${time(createdAt, TimestampStyles.RelativeTime)}`,
@@ -78,9 +77,7 @@ export const strataCzasuLog = new Hashira({ name: "strataCzasuLog" }).const(
           `Rola: ${role.name} (${role.id})`,
           `Treść: ${italic(content)}`,
         ];
-        return getLogMessageEmbed(user, timestamp)
-          .setDescription(lines.join("\n"))
-          .setColor("Red");
+        return getLogMessageEmbed(user, timestamp).setDescription(lines.join("\n")).setColor("Red");
       },
     )
     .addMessageType(

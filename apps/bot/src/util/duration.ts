@@ -76,11 +76,7 @@ export const formatDuration = (duration: Duration): string => {
   return parts.join(" ");
 };
 
-export const randomDuration = (
-  min: Duration,
-  max: Duration,
-  random: () => number,
-): Duration => {
+export const randomDuration = (min: Duration, max: Duration, random: () => number): Duration => {
   const minMs = durationToMilliseconds(min);
   const maxMs = durationToMilliseconds(max);
   const randomMs = Math.floor(random() * (maxMs - minMs + 1)) + minMs;

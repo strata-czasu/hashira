@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { channelMention, type GuildChannel, roleMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { TICKET_REMINDER_SETTINGS } from "../specializedConstants";
 import { getGuildSetting } from "../util/getGuildSetting";
 

@@ -1,69 +1,32 @@
-import type {
-  ActionRowData,
-  APIAttachment,
-  APIMessageTopLevelComponent,
-  Attachment,
-  AttachmentPayload,
-  BufferResolvable,
-  JSONEncodable,
-  MessageActionRowComponentBuilder,
-  MessageActionRowComponentData,
-  TopLevelComponentData,
-} from "discord.js";
-import {
-  ActionRowBuilder,
-  AttachmentBuilder,
-  ContainerBuilder,
-  FileBuilder,
-  MediaGalleryBuilder,
-  SectionBuilder,
-  SeparatorBuilder,
-  TextDisplayBuilder,
-} from "discord.js";
+import type { APIMessageTopLevelComponent, JSONEncodable } from "discord.js";
+import { AttachmentBuilder, TextDisplayBuilder } from "discord.js";
+
 import { reconcile } from "./reconciler";
 import type { JSXNode } from "./types";
 
-// Extracted from BaseMessageOptions["components"] to be mutable
-type Components = (
-  | JSONEncodable<APIMessageTopLevelComponent>
-  | TopLevelComponentData
-  | ActionRowData<MessageActionRowComponentData | MessageActionRowComponentBuilder>
-  | APIMessageTopLevelComponent
-)[];
+function isAttachment(child: object): child is AttachmentBuilder {
+  return "attachment" in child;
+}
 
-// Extracted from BaseMessageOptions["files"] to be mutable
-type Files = (
-  | BufferResolvable
-  | JSONEncodable<APIAttachment>
-  | Attachment
-  | AttachmentBuilder
-  | AttachmentPayload
-)[];
+function isComponent(child: object): child is JSONEncodable<APIMessageTopLevelComponent> {
+  return "toJSON" in child && typeof child.toJSON === "function";
+}
 
 export function render(element: JSXNode) {
   // reconcile() is idempotent - already resolved nodes pass through unchanged
   const children = reconcile(element);
 
-  const components: Components = [];
-  const files: Files = [];
+  const components: JSONEncodable<APIMessageTopLevelComponent>[] = [];
+  const files: AttachmentBuilder[] = [];
 
   for (const child of children) {
     if (child == null || child === false || child === true) continue;
 
     if (typeof child === "string" || typeof child === "number") {
-      const text = new TextDisplayBuilder().setContent(String(child));
-      components.push(text);
-    } else if (child instanceof AttachmentBuilder) {
+      components.push(new TextDisplayBuilder().setContent(String(child)));
+    } else if (typeof child === "object" && isAttachment(child)) {
       files.push(child);
-    } else if (
-      child instanceof ActionRowBuilder ||
-      child instanceof SectionBuilder ||
-      child instanceof TextDisplayBuilder ||
-      child instanceof MediaGalleryBuilder ||
-      child instanceof FileBuilder ||
-      child instanceof SeparatorBuilder ||
-      child instanceof ContainerBuilder
-    ) {
+    } else if (typeof child === "object" && isComponent(child)) {
       components.push(child);
     } else {
       throw new Error(`Unsupported child type: ${typeof child}`);

@@ -1,5 +1,3 @@
-import { ConfirmationDialog, type ExtractContext } from "@hashira/core";
-import type { ExtendedPrismaClient } from "@hashira/db";
 import { intervalToDuration, isAfter } from "date-fns";
 import {
   type Guild,
@@ -8,6 +6,10 @@ import {
   RESTJSONErrorCodes,
   type User,
 } from "discord.js";
+
+import { ConfirmationDialog, type ExtractContext } from "@hashira/core";
+import type { ExtendedPrismaClient } from "@hashira/db";
+
 import type { base } from "../base";
 import { universalAddMute } from "../moderation/mutes";
 import { AsyncFunction } from "../util/asyncFunction";
@@ -65,14 +67,10 @@ export const createGetLatestMutes = (prisma: ExtendedPrismaClient, guildId: stri
       id: mute.id,
       mutedBy: mute.moderatorId,
       reason: mute.reason,
-      duration: formatDuration(
-        intervalToDuration({ start: mute.createdAt, end: mute.endsAt }),
-      ),
+      duration: formatDuration(intervalToDuration({ start: mute.createdAt, end: mute.endsAt })),
       ...(isAfter(now, mute.endsAt)
         ? {
-            timeSinceEnd: formatDuration(
-              intervalToDuration({ start: mute.endsAt, end: now }),
-            ),
+            timeSinceEnd: formatDuration(intervalToDuration({ start: mute.endsAt, end: now })),
           }
         : {}),
     }));
@@ -91,9 +89,7 @@ export const createGetLatestWarns = (prisma: ExtendedPrismaClient, guildId: stri
       id: warn.id,
       warnedBy: warn.moderatorId,
       reason: warn.reason,
-      timeSince: formatDuration(
-        intervalToDuration({ start: warn.createdAt, end: new Date() }),
-      ),
+      timeSince: formatDuration(intervalToDuration({ start: warn.createdAt, end: new Date() })),
     }));
   };
 };
@@ -152,12 +148,7 @@ export const createCodeInterpreter = (context: InterpreterContext) => {
       async () => {
         try {
           const fn = AsyncFunction("prisma", "guild", "moderator", "channel", code);
-          result = await fn(
-            context.prisma,
-            context.guild,
-            context.invokedBy,
-            context.channel,
-          );
+          result = await fn(context.prisma, context.guild, context.invokedBy, context.channel);
         } catch (error) {
           await context.invokedBy.send(`Error: ${error}`);
           throw error;

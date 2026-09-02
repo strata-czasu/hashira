@@ -2,6 +2,7 @@ import type { ColorInput } from "bun";
 import type * as cheerio from "cheerio";
 import { format as formatDate } from "date-fns";
 import sharp from "sharp";
+
 import { pluralizers } from "../util/pluralize";
 
 const PROFILE_DATE_FORMAT = "dd.MM.yyyy" as const;
@@ -82,10 +83,7 @@ export class ProfileImageBuilder {
    *
    * @param selector Selector for <text> elements which should be combined
    */
-  private combineTextElements(
-    selector: string,
-    options?: { sortTspanElements?: boolean },
-  ) {
+  private combineTextElements(selector: string, options?: { sortTspanElements?: boolean }) {
     // All <text> elements matching the selector
     const allTextElements = this.#svg(selector);
 
@@ -255,9 +253,7 @@ export class ProfileImageBuilder {
   }
 
   public guildJoinDate(value: Date) {
-    this.#svg("text[id='Guild Join Value'] > tspan").text(
-      formatDate(value, PROFILE_DATE_FORMAT),
-    );
+    this.#svg("text[id='Guild Join Value'] > tspan").text(formatDate(value, PROFILE_DATE_FORMAT));
     return this;
   }
 
@@ -270,10 +266,7 @@ export class ProfileImageBuilder {
 
   public avatarImage(image: Buffer) {
     // TODO)) Resolve this image via the final avatar element
-    this.#svg("image[data-name='discordyellow.png']").attr(
-      "href",
-      pngBufferToDataURL(image),
-    );
+    this.#svg("image[data-name='discordyellow.png']").attr("href", pngBufferToDataURL(image));
     return this;
   }
 
@@ -303,10 +296,7 @@ export class ProfileImageBuilder {
 
   public backgroundImage(image: Buffer) {
     // TODO)) Resolve this image via the final background element
-    this.#svg("image[data-name='background.png']").attr(
-      "href",
-      pngBufferToDataURL(image),
-    );
+    this.#svg("image[data-name='background.png']").attr("href", pngBufferToDataURL(image));
     return this;
   }
 

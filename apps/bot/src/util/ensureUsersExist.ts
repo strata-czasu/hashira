@@ -1,11 +1,6 @@
+import { GuildMember, Message, ThreadMember, User, type UserResolvable } from "discord.js";
+
 import type { PrismaTransaction } from "@hashira/db";
-import {
-  GuildMember,
-  Message,
-  ThreadMember,
-  User,
-  type UserResolvable,
-} from "discord.js";
 
 const resolveId = (userResolvable: UserResolvable) => {
   if (
@@ -20,10 +15,7 @@ const resolveId = (userResolvable: UserResolvable) => {
   return { id: userResolvable };
 };
 
-export async function ensureUsersExist(
-  prisma: PrismaTransaction,
-  users: UserResolvable[],
-) {
+export async function ensureUsersExist(prisma: PrismaTransaction, users: UserResolvable[]) {
   await prisma.user.createMany({ data: users.map(resolveId), skipDuplicates: true });
 }
 

@@ -1,17 +1,16 @@
 /** @jsxImportSource @hashira/jsx */
 
 import { describe, expect, it } from "bun:test";
+
 import type { Easter2026Stage } from "@hashira/db";
+
 import {
   checkMilestoneThreshold,
   formatMilestoneProgress,
   getMilestones,
 } from "../../src/events/easter2026/statusService";
 
-const createStage = (
-  neededPoints: number,
-  completedAt: Date | null = null,
-): Easter2026Stage => ({
+const createStage = (neededPoints: number, completedAt: Date | null = null): Easter2026Stage => ({
   id: neededPoints, // simplicity
   teamConfigId: 1,
   neededPoints,
@@ -110,11 +109,7 @@ describe("StatusService", () => {
     });
 
     it("should return next uncompleted stage", () => {
-      const stages = [
-        createStage(500, new Date()),
-        createStage(1000),
-        createStage(2000),
-      ];
+      const stages = [createStage(500, new Date()), createStage(1000), createStage(2000)];
       const result = checkMilestoneThreshold(1200, stages);
       expect(result?.neededPoints).toBe(1000);
     });

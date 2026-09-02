@@ -9,6 +9,7 @@ import {
   type Message,
   RESTJSONErrorCodes,
 } from "discord.js";
+
 import { discordTry } from "./discordTry";
 import { durationToMilliseconds } from "./duration";
 
@@ -93,9 +94,7 @@ export function waitForButtonClick(
   const customIds = Array.isArray(customId) ? customId : [customId];
   const components = customIds
     .map((id) => message.resolveComponent(id))
-    .filter(
-      (component): component is ButtonComponent => component instanceof ButtonComponent,
-    );
+    .filter((component): component is ButtonComponent => component instanceof ButtonComponent);
 
   if (components.length === 0) {
     throw new Error(`Button with customId "${customId}" not found in message.`);
@@ -116,9 +115,7 @@ export function waitForButtonClick(
     collector.once("end", (interactions, _) => {
       const interaction = interactions.first();
       if (interaction) {
-        const matched = components.find(
-          (component) => component.customId === interaction.customId,
-        );
+        const matched = components.find((component) => component.customId === interaction.customId);
         if (matched) resolve(ok(interaction, matched));
       } else if (components[0]) {
         resolve(err(components[0], message));

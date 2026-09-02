@@ -69,8 +69,7 @@ const parseMonthName = (month: string) => parse(month, "MMMM", new Date());
 const parseMonthDay = (monthDay: string) => parse(monthDay, "MM-dd", new Date());
 const parseYearNumber = (year: string) => parse(year, "yyyy", new Date());
 const parseYearMonth = (yearMonth: string) => parse(yearMonth, "yyyy-MM", new Date());
-const parseYearMonthDay = (yearMonthDay: string) =>
-  parse(yearMonthDay, "yyyy-MM-dd", new Date());
+const parseYearMonthDay = (yearMonthDay: string) => parse(yearMonthDay, "yyyy-MM-dd", new Date());
 
 const parsers = [
   parseNaturalDate,

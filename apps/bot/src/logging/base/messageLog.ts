@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { channelMention, type GuildBasedChannel, type Message } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
@@ -30,40 +32,32 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
 export const messageLog = new Hashira({ name: "messageLog" }).const(
   "messageLog",
   new Logger()
-    .addMessageType(
-      "messageDelete",
-      async ({ timestamp }, { message }: MessageDeleteData) => {
-        const embed = getLogMessageEmbed(message.author, timestamp)
-          .setDescription(
-            `**${linkMessage(message)} usunięta na ${linkChannel(message.channel)}**\n${
-              message.content
-            }`,
-          )
-          .setColor("Red");
+    .addMessageType("messageDelete", async ({ timestamp }, { message }: MessageDeleteData) => {
+      const embed = getLogMessageEmbed(message.author, timestamp)
+        .setDescription(
+          `**${linkMessage(message)} usunięta na ${linkChannel(message.channel)}**\n${
+            message.content
+          }`,
+        )
+        .setColor("Red");
 
-        if (message.attachments.size > 0) {
-          const fieldName = message.attachments.size > 1 ? "Załączniki" : "Załącznik";
-          embed.addFields([
-            {
-              name: fieldName,
-              value: message.attachments.map((a) => `- ${a.proxyURL}`).join("\n"),
-            },
-          ]);
-        }
+      if (message.attachments.size > 0) {
+        const fieldName = message.attachments.size > 1 ? "Załączniki" : "Załącznik";
+        embed.addFields([
+          {
+            name: fieldName,
+            value: message.attachments.map((a) => `- ${a.proxyURL}`).join("\n"),
+          },
+        ]);
+      }
 
-        return embed;
-      },
-    )
+      return embed;
+    })
     .addMessageType(
       "messageUpdate",
       async (
         { timestamp },
-        {
-          oldMessage,
-          newMessage,
-          oldMessageContent,
-          newMessageContent,
-        }: MessageEditData,
+        { oldMessage, newMessage, oldMessageContent, newMessageContent }: MessageEditData,
       ) => {
         const lines = [
           `**${linkMessage(newMessage)} edytowana na ${linkChannel(newMessage.channel)}**`,

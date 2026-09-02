@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { type GuildMember, type Role, roleMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
@@ -29,9 +31,7 @@ export const roleLog = new Hashira({ name: "roleLog" }).const(
           const addedRole = addedRoles[0] as Role;
           embed.setDescription(`**Otrzymuje rolę** ${formatRole(addedRole)}`);
         } else {
-          embed.setDescription(
-            `**Otrzymuje role** \n${addedRoles.map(formatRole).join(", ")}`,
-          );
+          embed.setDescription(`**Otrzymuje role** \n${addedRoles.map(formatRole).join(", ")}`);
         }
         return embed;
       },
@@ -44,19 +44,14 @@ export const roleLog = new Hashira({ name: "roleLog" }).const(
           const removedRole = removedRoles[0] as Role;
           embed.setDescription(`**Traci rolę** ${formatRole(removedRole)}`);
         } else {
-          embed.setDescription(
-            `**Traci role** \n${removedRoles.map(formatRole).join(", ")}`,
-          );
+          embed.setDescription(`**Traci role** \n${removedRoles.map(formatRole).join(", ")}`);
         }
         return embed;
       },
     )
     .addMessageType(
       "guildMemberBulkRoleAdd",
-      async (
-        { timestamp },
-        { moderator, members, role }: GuildMemberBulkRoleAddData,
-      ) => {
+      async ({ timestamp }, { moderator, members, role }: GuildMemberBulkRoleAddData) => {
         const embed = getLogMessageEmbed(moderator, timestamp).setColor("Green");
         const lines = [
           `**Dodaje rolę ${formatRole(role)} ${members.length} użytkownikom**:`,
@@ -68,10 +63,7 @@ export const roleLog = new Hashira({ name: "roleLog" }).const(
     )
     .addMessageType(
       "guildMemberBulkRoleRemove",
-      async (
-        { timestamp },
-        { moderator, members, role }: GuildMemberBulkRoleRemoveData,
-      ) => {
+      async ({ timestamp }, { moderator, members, role }: GuildMemberBulkRoleRemoveData) => {
         const embed = getLogMessageEmbed(moderator, timestamp).setColor("Red");
         const lines = [
           `**Zabiera rolę ${formatRole(role)} ${members.length} użytkownikom**:`,

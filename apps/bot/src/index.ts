@@ -1,8 +1,10 @@
-import { Hashira } from "@hashira/core";
-import env from "@hashira/env";
 import { PrismaInstrumentation } from "@prisma/instrumentation";
 import * as Sentry from "@sentry/bun";
 import { GatewayIntentBits } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+import env from "@hashira/env";
+
 import { ai } from "./ai";
 import { autoRole } from "./autoRole";
 import { avatar } from "./avatar";
@@ -11,7 +13,6 @@ import { dmForwarding } from "./dmForwarding";
 import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
-import { easter2026 } from "./events/easter2026";
 import { halloween2025 } from "./events/halloween2025";
 import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
@@ -77,7 +78,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(ranking)
   .use(moderatorLeave)
   .use(halloween2025)
-  .use(easter2026)
   .handle("clientReady", async () => {
     if (env.NODE_ENV) {
       console.log(`Bot is ready in ${Bun.env.NODE_ENV} mode`);
@@ -91,11 +91,7 @@ if (import.meta.main) {
   // get any signals, so we need to figure out how to handle this!
   try {
     if (env.NODE_ENV === "development") {
-      await bot.registerCommands(
-        env.BOT_TOKEN,
-        env.BOT_DEVELOPER_GUILD_IDS,
-        env.BOT_CLIENT_ID,
-      );
+      await bot.registerCommands(env.BOT_TOKEN, env.BOT_DEVELOPER_GUILD_IDS, env.BOT_CLIENT_ID);
     }
     await bot.start(env.BOT_TOKEN, {
       disabledIntents: env.BOT_PRIVILEGED_INTENTS_ENABLED

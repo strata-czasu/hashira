@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { PermissionFlagsBits, RESTJSONErrorCodes, userMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { base } from "../base";
 import { discordTry } from "../util/discordTry";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -14,9 +16,7 @@ export const badgeRole = new Hashira({ name: "badgeRole" })
       .setDescription("Odzyskaj rolę za odznakę 100 poziom")
       .setDMPermission(false)
       .addUser("user", (user) =>
-        user
-          .setDescription("Użytkownik któremu chcesz przypisać rolę")
-          .setRequired(false),
+        user.setDescription("Użytkownik któremu chcesz przypisać rolę").setRequired(false),
       )
       .handle(async ({ prisma }, { user: targetUser }, itx) => {
         if (!itx.inCachedGuild()) return;

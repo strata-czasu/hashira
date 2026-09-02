@@ -1,6 +1,8 @@
+import * as Sentry from "@sentry/bun";
+
 import { Hashira } from "@hashira/core";
 import env from "@hashira/env";
-import * as Sentry from "@sentry/bun";
+
 import { database } from "./db";
 import { emojiCountingBase } from "./emojiCounting/emojiCountingBase";
 import { loggingBase } from "./logging/base";

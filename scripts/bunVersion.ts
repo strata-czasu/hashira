@@ -139,9 +139,7 @@ async function applyTarget(
     const regex = new RegExp(replacement.pattern.source, replacement.pattern.flags);
 
     if (!regex.test(after)) {
-      throw new Error(
-        `Could not find ${replacement.description} in ${target.relativePath}`,
-      );
+      throw new Error(`Could not find ${replacement.description} in ${target.relativePath}`);
     }
 
     regex.lastIndex = 0;

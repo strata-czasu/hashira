@@ -1,5 +1,6 @@
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
+
 import { StickyMessageCache } from "../stickyMessage/stickyMessageCache";
 import { Batcher, RedisBackend } from "../util/batcher";
 
@@ -19,9 +20,7 @@ export class UserTextActivityQueue {
 
     // NOTE: This may be even better with a .createMany call
     //       instead of splitting everything into single inserts.
-    await prisma.$transaction(
-      messages.map((m) => prisma.userTextActivity.create({ data: m })),
-    );
+    await prisma.$transaction(messages.map((m) => prisma.userTextActivity.create({ data: m })));
   }
 
   public start(prisma: ExtendedPrismaClient, redis: RedisClient) {

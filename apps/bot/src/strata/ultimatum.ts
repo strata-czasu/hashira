@@ -1,11 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import {
-  DatabasePaginator,
-  type ExtendedPrismaClient,
-  type Prisma,
-  type Ultimatum,
-} from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import { addSeconds } from "date-fns";
 import {
   type Guild,
@@ -18,6 +10,16 @@ import {
   type User,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import {
+  DatabasePaginator,
+  type ExtendedPrismaClient,
+  type Prisma,
+  type Ultimatum,
+} from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "../base";
 import { STRATA_CZASU } from "../specializedConstants";
 import { ensureUsersExist } from "../util/ensureUsersExist";
@@ -58,10 +60,7 @@ Biszkopt
 `;
 
 const composeUltimatumMessage = (user: User, reason: string) =>
-  ULTIMATUM_TEMPLATE.replace("{{mention}}", user.toString()).replace(
-    "{{reason}}",
-    italic(reason),
-  );
+  ULTIMATUM_TEMPLATE.replace("{{mention}}", user.toString()).replace("{{reason}}", italic(reason));
 
 export const ultimatum = new Hashira({ name: "ultimatum" })
   .use(base)
@@ -91,11 +90,7 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
 
               await ensureUsersExist(prisma, [itx.user, user]);
 
-              const currentUltimatum = await getCurrentUltimatum(
-                prisma,
-                itx.guild,
-                user,
-              );
+              const currentUltimatum = await getCurrentUltimatum(prisma, itx.guild, user);
 
               if (currentUltimatum) {
                 await itx.editReply("Użytkownik ma już aktywne ultimatum");
@@ -141,40 +136,34 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
           ),
       )
       .addCommand("list", (command) =>
-        command
-          .setDescription("Wyświetl aktywne ultimatum")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply();
+        command.setDescription("Wyświetl aktywne ultimatum").handle(async ({ prisma }, _, itx) => {
+          if (!itx.inCachedGuild()) return;
+          await itx.deferReply();
 
-            const where: Prisma.UltimatumWhereInput = {
-              guildId: itx.guildId,
-              endedAt: null,
-            };
+          const where: Prisma.UltimatumWhereInput = {
+            guildId: itx.guildId,
+            endedAt: null,
+          };
 
-            const paginator = new DatabasePaginator(
-              (props, createdAt) =>
-                prisma.ultimatum.findMany({ ...props, where, orderBy: { createdAt } }),
-              () => prisma.ultimatum.count({ where }),
-              { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
-            );
+          const paginator = new DatabasePaginator(
+            (props, createdAt) =>
+              prisma.ultimatum.findMany({ ...props, where, orderBy: { createdAt } }),
+            () => prisma.ultimatum.count({ where }),
+            { pageSize: 5, defaultOrder: PaginatorOrder.DESC },
+          );
 
-            const formatUltimatum = ({ id, userId, expiresAt, reason }: Ultimatum) => {
-              const lines = [
-                heading(`${userMention(userId)} [${id}]`, HeadingLevel.Three),
-                `Termin: ${time(expiresAt, TimestampStyles.LongDateShortTime)}`,
-                `Powód: ${reason}`,
-              ];
-              return lines.join("\n");
-            };
+          const formatUltimatum = ({ id, userId, expiresAt, reason }: Ultimatum) => {
+            const lines = [
+              heading(`${userMention(userId)} [${id}]`, HeadingLevel.Three),
+              `Termin: ${time(expiresAt, TimestampStyles.LongDateShortTime)}`,
+              `Powód: ${reason}`,
+            ];
+            return lines.join("\n");
+          };
 
-            const paginatedView = new PaginatedView(
-              paginator,
-              "Aktywne ultimatum",
-              formatUltimatum,
-            );
-            await paginatedView.render(itx);
-          }),
+          const paginatedView = new PaginatedView(paginator, "Aktywne ultimatum", formatUltimatum);
+          await paginatedView.render(itx);
+        }),
       )
       .addCommand("zakończ", (command) =>
         command
@@ -183,33 +172,27 @@ export const ultimatum = new Hashira({ name: "ultimatum" })
           .addBoolean("force", (force) =>
             force.setDescription("Zakończ ultimatum siłą").setRequired(false),
           )
-          .handle(
-            async ({ prisma, messageQueue }, { użytkownik: user, force }, itx) => {
-              if (!itx.inCachedGuild()) return;
-              await itx.deferReply();
+          .handle(async ({ prisma, messageQueue }, { użytkownik: user, force }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-              const ultimatum = await getCurrentUltimatum(prisma, itx.guild, user);
-              if (!ultimatum) {
-                await itx.editReply("Nie znaleziono aktywnego ultimatum");
-                return;
-              }
+            const ultimatum = await getCurrentUltimatum(prisma, itx.guild, user);
+            if (!ultimatum) {
+              await itx.editReply("Nie znaleziono aktywnego ultimatum");
+              return;
+            }
 
-              await messageQueue.updateDelay(
-                "ultimatumEnd",
-                ultimatum.id.toString(),
-                new Date(),
-              );
+            await messageQueue.updateDelay("ultimatumEnd", ultimatum.id.toString(), new Date());
 
-              if (force) {
-                await prisma.ultimatum.update({
-                  where: { id: ultimatum.id },
-                  data: { endedAt: new Date() },
-                });
-              }
+            if (force) {
+              await prisma.ultimatum.update({
+                where: { id: ultimatum.id },
+                data: { endedAt: new Date() },
+              });
+            }
 
-              await itx.editReply("Zakończono ultimatum");
-            },
-          ),
+            await itx.editReply("Zakończono ultimatum");
+          }),
       ),
   )
   .handle("guildMemberAdd", async ({ prisma }, member) => {

@@ -1,4 +1,3 @@
-import { Hashira } from "@hashira/core";
 import {
   ALLOWED_EXTENSIONS as ALLOWED_IMAGE_EXTENSIONS,
   ALLOWED_SIZES as ALLOWED_IMAGE_SIZES,
@@ -6,6 +5,8 @@ import {
   type ImageExtension,
   type ImageSize,
 } from "discord.js";
+
+import { Hashira } from "@hashira/core";
 
 export const avatar = new Hashira({ name: "avatar" }).command("avatar", (command) =>
   command
@@ -34,9 +35,7 @@ export const avatar = new Hashira({ name: "avatar" }).command("avatar", (command
         ),
     )
     .addBoolean("guild-avatar", (guildAvatar) =>
-      guildAvatar
-        .setDescription("Pobierz serwerowy avatar zamiast globalnego")
-        .setRequired(false),
+      guildAvatar.setDescription("Pobierz serwerowy avatar zamiast globalnego").setRequired(false),
     )
     .handle(
       async (
@@ -63,9 +62,7 @@ export const avatar = new Hashira({ name: "avatar" }).command("avatar", (command
           });
         }
 
-        const embed = new EmbedBuilder()
-          .setTitle(`Avatar ${user.tag}`)
-          .setImage(avatarUrl);
+        const embed = new EmbedBuilder().setTitle(`Avatar ${user.tag}`).setImage(avatarUrl);
         await itx.editReply({ embeds: [embed] });
       },
     ),

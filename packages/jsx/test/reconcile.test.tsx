@@ -1,6 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { ButtonStyle } from "discord.js";
+
 import { ActionRow, Button, reconcile, render, TextDisplay } from "../src";
 
 describe("JSX", () => {
@@ -83,7 +84,7 @@ describe("JSX", () => {
   });
 
   it("renders empty fragment as empty array", () => {
-    // biome-ignore lint/complexity/noUselessFragments: we are testing fragments here
+    // we are testing fragments here
     expect(<></>).toMatchInlineSnapshot(`[]`);
   });
 
@@ -232,5 +233,14 @@ describe("reconcile", () => {
   it("returns empty array for boolean input", () => {
     expect(reconcile(true)).toEqual([]);
     expect(reconcile(false)).toEqual([]);
+  });
+
+  it("accepts builders from a foreign discord.js copy (no instanceof)", () => {
+    const component = { toJSON: () => ({ type: 10, content: "hi" }) };
+    const attachment = { attachment: Buffer.from("x"), name: "f.txt" };
+    const result = render([component, attachment] as never);
+
+    expect(result.components).toEqual([component as never]);
+    expect(result.files).toEqual([attachment as never]);
   });
 });

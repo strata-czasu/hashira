@@ -1,4 +1,5 @@
 import type { RedisClient } from "@hashira/db";
+
 import type { BatcherBackend } from "./base";
 
 export class RedisBackend<K, T> implements BatcherBackend<K, T> {

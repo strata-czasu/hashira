@@ -1,10 +1,18 @@
-import type { Prettify } from "@hashira/utils/types";
 import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   type Permissions,
   SlashCommandBuilder,
 } from "discord.js";
+
+import type { Prettify } from "@hashira/utils/types";
+
+import type {
+  CommandSettings,
+  commandSettingsInitBase,
+  optionsInitBase,
+  UnknownCommandHandler,
+} from ".";
 import type {
   BaseDecorator,
   HashiraContext,
@@ -14,12 +22,6 @@ import type {
   OptionDataType,
   UnknownAutocompleteHandler,
 } from "../types";
-import type {
-  CommandSettings,
-  commandSettingsInitBase,
-  optionsInitBase,
-  UnknownCommandHandler,
-} from ".";
 import { AttachmentOptionBuilder } from "./attachmentOptionBuilder";
 import { BooleanOptionBuilder } from "./booleanOptionBuilder";
 import { IntegerOptionBuilder } from "./integerOptionBuilder";
@@ -35,7 +37,7 @@ export class TopLevelSlashCommand<
   const Options extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Options];
+  declare protected readonly nominal: [Settings, Options];
   #builder = new SlashCommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;
@@ -60,10 +62,7 @@ export class TopLevelSlashCommand<
     return this as unknown as ReturnType<typeof this.setDMPermission>;
   }
 
-  addAttachment<
-    const T extends string,
-    const U extends AttachmentOptionBuilder<true, boolean>,
-  >(
+  addAttachment<const T extends string, const U extends AttachmentOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: AttachmentOptionBuilder) => U,
   ): TopLevelSlashCommand<
@@ -120,10 +119,7 @@ export class TopLevelSlashCommand<
     return this as unknown as ReturnType<typeof this.addNumber<T, U>>;
   }
 
-  addInteger<
-    const T extends string,
-    const U extends IntegerOptionBuilder<true, boolean>,
-  >(
+  addInteger<const T extends string, const U extends IntegerOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: IntegerOptionBuilder) => U,
   ): TopLevelSlashCommand<
@@ -180,10 +176,7 @@ export class TopLevelSlashCommand<
     return this as unknown as ReturnType<typeof this.addRole<T, U>>;
   }
 
-  addBoolean<
-    const T extends string,
-    const U extends BooleanOptionBuilder<true, boolean>,
-  >(
+  addBoolean<const T extends string, const U extends BooleanOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: BooleanOptionBuilder) => U,
   ): TopLevelSlashCommand<

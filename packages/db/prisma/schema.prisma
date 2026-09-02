@@ -90,6 +90,7 @@ model Guild {
   halloweenMonsterSpawns Halloween2025MonsterSpawn[]
   teams                  Team[]
   easter2026Config       Easter2026Config?
+  birthday2026Config     Birthday2026Config?
 
   @@map("guild")
 }
@@ -113,9 +114,11 @@ model GuildSettings {
   plus18RoleId            String?
   moderatorLeaveRoleId    String?
   moderatorLeaveManagerId String?
+  defaultCurrencyId       Int?
   meta                    Json         @default("{ \"version\": 1 }")
   guild                   Guild        @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "guildSettings_guildId_guild_id_fk")
   logSettings             LogSettings?
+  defaultCurrency         Currency?    @relation("guildSettingsDefaultCurrency", fields: [defaultCurrencyId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("guildSettings")
 }
@@ -173,6 +176,24 @@ model User {
   shopItemPurchases                 ShopItemPurchase[]
   teamMemberships                   TeamMember[]
   easter2026CaptainOf               Easter2026TeamConfig[]             @relation("easter2026Captain")
+  birthday2026TucznikOf             Birthday2026TeamIdentity[]         @relation("birthday2026Tucznik")
+  birthday2026CaptainOf             Birthday2026TeamIdentity[]         @relation("birthday2026Captain")
+  birthday2026PersonaOf             Birthday2026TeamPersona[]          @relation("birthday2026PersonaSubject")
+  configuredBirthday2026Personas    Birthday2026TeamPersona[]          @relation("birthday2026PersonaConfiguredBy")
+  previousBirthday2026TucznikChanges Birthday2026TucznikChange[]       @relation("birthday2026PreviousTucznik")
+  nextBirthday2026TucznikChanges     Birthday2026TucznikChange[]       @relation("birthday2026NextTucznik")
+  changedBirthday2026Tucznicy        Birthday2026TucznikChange[]       @relation("birthday2026TucznikChangedBy")
+  birthday2026Settlements            Birthday2026Settlement[]
+  birthday2026IndividualResults      Birthday2026IndividualResult[]
+  birthday2026EncounterEntries       Birthday2026EncounterEntry[]
+  birthday2026EncounterWins          Birthday2026EncounterWinner[]
+  birthday2026Registrations         Birthday2026Registration[]
+  birthday2026MemberStates          Birthday2026MemberState[]
+  birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
+  birthday2026DailyVoiceEarnings    Birthday2026DailyVoiceEarning[]
+  birthday2026FeedBatches           Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
+  birthday2026PersonalTransactions  Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
+  createdBirthday2026Transactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
 
   @@map("users")
 }

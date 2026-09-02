@@ -1,7 +1,7 @@
 {
   "name": "@hashira/bot",
-  "module": "src/index.ts",
   "type": "module",
+  "module": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./*.ts": "./src/*.ts"
@@ -11,7 +11,7 @@
     "start": "bun run src/index.ts",
     "reload-commands": "bun run reload-commands.ts",
     "seed": "bun run seed.ts",
-    "typecheck": "tsgo"
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
@@ -29,5 +29,8 @@
     "date-fns": "4.1.0",
     "openai": "6.15.0",
     "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@prisma/adapter-pg": "7.8.0"
   }
 }

@@ -1,4 +1,3 @@
-import type { Prettify } from "@hashira/utils/types";
 import {
   type AutocompleteInteraction,
   type Channel,
@@ -8,6 +7,9 @@ import {
   SlashCommandSubcommandBuilder,
   SlashCommandSubcommandGroupBuilder,
 } from "discord.js";
+
+import type { Prettify } from "@hashira/utils/types";
+
 import type {
   BaseDecorator,
   HashiraContext,
@@ -55,7 +57,7 @@ export class Group<
   const Commands extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Commands];
+  declare protected readonly nominal: [Settings, Commands];
   protected readonly _topLevel: Settings["TopLevel"];
   #builder: SlashCommandBuilder | SlashCommandSubcommandGroupBuilder;
   #handlers: Handlers = {};
@@ -72,11 +74,7 @@ export class Group<
 
   setDescription(
     description: string,
-  ): Group<
-    Context,
-    { HasDescription: true; TopLevel: Settings["TopLevel"] },
-    Commands
-  > {
+  ): Group<Context, { HasDescription: true; TopLevel: Settings["TopLevel"] }, Commands> {
     this.#builder.setDescription(description);
     return this as unknown as ReturnType<typeof this.setDescription>;
   }
@@ -101,10 +99,7 @@ export class Group<
 
   addCommand<
     const T extends string,
-    const U extends SlashCommand<
-      Context,
-      { HasHandler: true; HasDescription: boolean }
-    >,
+    const U extends SlashCommand<Context, { HasHandler: true; HasDescription: boolean }>,
   >(
     name: T,
     input: (builder: SlashCommand<Context>) => U,
@@ -120,11 +115,7 @@ export class Group<
 
   addGroup<
     const T extends string,
-    const U extends Group<
-      Context,
-      { HasDescription: true; TopLevel: false },
-      BaseDecorator
-    >,
+    const U extends Group<Context, { HasDescription: true; TopLevel: false }, BaseDecorator>,
   >(
     name: T,
     input: (builder: Group<Context, { HasDescription: false; TopLevel: false }>) => U,
@@ -175,9 +166,7 @@ export class Group<
       if (typeof value === "function") {
         result[key] = value;
       } else {
-        for (const [subKey, subValue] of Object.entries(
-          this.#flattenAutocompleteHandlers(value),
-        )) {
+        for (const [subKey, subValue] of Object.entries(this.#flattenAutocompleteHandlers(value))) {
           result[`${key}.${subKey}`] = subValue;
         }
       }
@@ -231,7 +220,7 @@ export class SlashCommand<
   const Options extends BaseDecorator = typeof optionsInitBase,
 > {
   // Enforce nominal typing
-  protected declare readonly nominal: [Settings, Options];
+  declare protected readonly nominal: [Settings, Options];
   #builder = new SlashCommandSubcommandBuilder();
   #options: Record<string, OptionBuilder<boolean, unknown>> = {};
   #handler?: UnknownCommandHandler;
@@ -244,17 +233,10 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.setDescription>;
   }
 
-  addAttachment<
-    const T extends string,
-    const U extends AttachmentOptionBuilder<true, boolean>,
-  >(
+  addAttachment<const T extends string, const U extends AttachmentOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: AttachmentOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new AttachmentOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addAttachmentOption(builder);
@@ -262,17 +244,10 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.addAttachment<T, U>>;
   }
 
-  addChannel<
-    const T extends string,
-    const U extends ChannelOptionBuilder<Channel, true, boolean>,
-  >(
+  addChannel<const T extends string, const U extends ChannelOptionBuilder<Channel, true, boolean>>(
     name: T,
     input: (builder: ChannelOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new ChannelOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addChannelOption(builder);
@@ -283,11 +258,7 @@ export class SlashCommand<
   addString<const T extends string, const U extends StringOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: StringOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new StringOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addStringOption(builder);
@@ -298,11 +269,7 @@ export class SlashCommand<
   addNumber<const T extends string, const U extends NumberOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: NumberOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new NumberOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addNumberOption(builder);
@@ -310,17 +277,10 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.addNumber<T, U>>;
   }
 
-  addInteger<
-    const T extends string,
-    const U extends IntegerOptionBuilder<true, boolean>,
-  >(
+  addInteger<const T extends string, const U extends IntegerOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: IntegerOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new IntegerOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addIntegerOption(builder);
@@ -331,11 +291,7 @@ export class SlashCommand<
   addUser<const T extends string, const U extends UserOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: UserOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new UserOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addUserOption(builder);
@@ -346,11 +302,7 @@ export class SlashCommand<
   addRole<const T extends string, const U extends RoleOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: RoleOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new RoleOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addRoleOption(builder);
@@ -358,17 +310,10 @@ export class SlashCommand<
     return this as unknown as ReturnType<typeof this.addRole<T, U>>;
   }
 
-  addBoolean<
-    const T extends string,
-    const U extends BooleanOptionBuilder<true, boolean>,
-  >(
+  addBoolean<const T extends string, const U extends BooleanOptionBuilder<true, boolean>>(
     name: T,
     input: (builder: BooleanOptionBuilder) => U,
-  ): SlashCommand<
-    Context,
-    Settings,
-    Prettify<Options & { [key in T]: OptionDataType<U> }>
-  > {
+  ): SlashCommand<Context, Settings, Prettify<Options & { [key in T]: OptionDataType<U> }>> {
     const option = input(new BooleanOptionBuilder());
     const builder = option.toSlashCommandOption().setName(name);
     this.#builder.addBooleanOption(builder);

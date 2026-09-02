@@ -1,5 +1,7 @@
-import { Hashira } from "@hashira/core";
 import { type GuildMember, type Role, roleMention } from "discord.js";
+
+import { Hashira } from "@hashira/core";
+
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
@@ -11,15 +13,12 @@ const formatRole = (role: Role) => `${roleMention(role.id)} (${role.name})`;
 export const memberLog = new Hashira({ name: "memberLog" }).const(
   "memberLog",
   new Logger()
-    .addMessageType(
-      "guildMemberAdd",
-      async ({ timestamp }, { member }: GuildMemberAddData) => {
-        const embed = getLogMessageEmbed(member, timestamp)
-          .setDescription("**Dołącza do serwera**")
-          .setColor("Green");
-        return embed;
-      },
-    )
+    .addMessageType("guildMemberAdd", async ({ timestamp }, { member }: GuildMemberAddData) => {
+      const embed = getLogMessageEmbed(member, timestamp)
+        .setDescription("**Dołącza do serwera**")
+        .setColor("Green");
+      return embed;
+    })
     .addMessageType(
       "guildMemberRemove",
       async ({ timestamp }, { member, roles }: GuildMemberRemoveData) => {

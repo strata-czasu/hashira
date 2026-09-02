@@ -1,4 +1,5 @@
 import type { ClientEvents } from "discord.js";
+
 import { allCustomEvents } from "./events";
 import { allEventsToIntent, type customEventsToIntent } from "./eventsToIntent";
 

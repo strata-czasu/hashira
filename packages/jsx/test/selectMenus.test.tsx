@@ -1,6 +1,7 @@
 /** @jsxImportSource @hashira/jsx */
 import { describe, expect, it } from "bun:test";
 import { ChannelType } from "discord.js";
+
 import {
   ActionRow,
   ChannelSelect,
@@ -139,10 +140,7 @@ describe("UserSelect", () => {
   it("renders user select with default users", () => {
     expect(
       <ActionRow>
-        <UserSelect
-          customId="user-select-defaults"
-          defaultUsers={["123456789", "987654321"]}
-        />
+        <UserSelect customId="user-select-defaults" defaultUsers={["123456789", "987654321"]} />
       </ActionRow>,
     ).toMatchInlineSnapshot(`
       ActionRowBuilder {
@@ -229,10 +227,7 @@ describe("MentionableSelect", () => {
   it("renders mentionable select menu", () => {
     expect(
       <ActionRow>
-        <MentionableSelect
-          customId="mentionable-select"
-          placeholder="Select users or roles"
-        />
+        <MentionableSelect customId="mentionable-select" placeholder="Select users or roles" />
       </ActionRow>,
     ).toMatchInlineSnapshot(`
       ActionRowBuilder {
@@ -345,10 +340,7 @@ describe("ChannelSelect", () => {
   it("renders channel select with default channels", () => {
     expect(
       <ActionRow>
-        <ChannelSelect
-          customId="channel-select-defaults"
-          defaultChannels={["channel123"]}
-        />
+        <ChannelSelect customId="channel-select-defaults" defaultChannels={["channel123"]} />
       </ActionRow>,
     ).toMatchInlineSnapshot(`
       ActionRowBuilder {

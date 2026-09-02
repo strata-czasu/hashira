@@ -1,11 +1,4 @@
-import {
-  bold,
-  channelMention,
-  italic,
-  TimestampStyles,
-  time,
-  type User,
-} from "discord.js";
+import { bold, channelMention, italic, TimestampStyles, time, type User } from "discord.js";
 
 const CHANNEL_RESTRICTION_TEMPLATE = `
 ## Hejka {{user}}!

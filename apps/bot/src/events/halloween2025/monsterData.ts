@@ -79,8 +79,7 @@ export const MONSTER_TEMPLATES = {
     actions: [
       {
         name: "Zarzutka",
-        description:
-          "Wszyscy atakujący zostają trafieni haczykiem i łapią się na zarzutkę.",
+        description: "Wszyscy atakujący zostają trafieni haczykiem i łapią się na zarzutkę.",
         actionType: "attack" as const,
         power: 9,
         weight: 100,
@@ -191,8 +190,7 @@ export const MONSTER_TEMPLATES = {
       },
       {
         name: "Podmuch",
-        description:
-          "Silny podmuch wiatru, który zadaje obrażenia wszystkim przeciwnikom.",
+        description: "Silny podmuch wiatru, który zadaje obrażenia wszystkim przeciwnikom.",
         actionType: "attack" as const,
         power: 11,
         weight: 80,
@@ -279,8 +277,7 @@ export const MONSTER_TEMPLATES = {
       },
       {
         name: "Piekielne Selfie",
-        description:
-          "Zadaje obrażenia wszystkim przeciwnikom i nakłada efekt podpalenia.",
+        description: "Zadaje obrażenia wszystkim przeciwnikom i nakłada efekt podpalenia.",
         actionType: "attack" as const,
         power: 16,
         weight: 80,
@@ -337,8 +334,7 @@ export const MONSTER_TEMPLATES = {
       },
       {
         name: "Kły Cerbera",
-        description:
-          "Niszczycielski atak, który leczy Cerbera za 50% zadanych obrażeń.",
+        description: "Niszczycielski atak, który leczy Cerbera za 50% zadanych obrażeń.",
         actionType: "attack" as const,
         power: 20,
         weight: 80,
@@ -372,8 +368,7 @@ export const MONSTER_TEMPLATES = {
     actions: [
       {
         name: "Ugryzienie Wampira",
-        description:
-          "Kąsa wroga, wysysając jego krew i lecząc się za 60% zadanych obrażeń.",
+        description: "Kąsa wroga, wysysając jego krew i lecząc się za 60% zadanych obrażeń.",
         actionType: "attack" as const,
         power: 15,
         weight: 100,
@@ -472,8 +467,7 @@ export const MONSTER_TEMPLATES = {
       },
       {
         name: "Eksplozja Dyni",
-        description:
-          "Dynamia eksploduje, zadając obrażenia wszystkim i podpalając ich.",
+        description: "Dynamia eksploduje, zadając obrażenia wszystkim i podpalając ich.",
         actionType: "attack" as const,
         power: 18,
         weight: 70,

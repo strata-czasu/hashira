@@ -1,14 +1,10 @@
 import type { ExtendedPrismaClient } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
+
 import { InvalidAmountError, SelfTransferError } from "../economyError";
 import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
 import { getCurrency } from "./currencyManager";
-import {
-  debitWallet,
-  getDefaultWallet,
-  getDefaultWallets,
-  getWallet,
-} from "./walletManager";
+import { debitWallet, getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
 
 type AddBalanceOptions = {
   prisma: ExtendedPrismaClient;
@@ -41,21 +37,23 @@ export const addBalance = async ({
       currencyId: currency.id,
     });
 
-    await tx.wallet.update({
-      where: { id: wallet.id },
+    const transaction = await tx.transaction.create({
       data: {
-        balance: { increment: amount },
-        transactions: {
-          create: {
-            relatedUserId: fromUserId,
-            amount,
-            reason,
-            entryType: amount > 0 ? "credit" : "debit",
-            transactionType: "add",
-          },
-        },
+        walletId: wallet.id,
+        relatedUserId: fromUserId,
+        amount,
+        reason,
+        entryType: amount > 0 ? "credit" : "debit",
+        transactionType: "add",
       },
     });
+
+    const updatedWallet = await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: { increment: amount } },
+    });
+
+    return { transaction, wallet: updatedWallet };
   });
 };
 
@@ -204,9 +202,7 @@ export const transferBalances = async ({
   return await prisma.$transaction(async (tx) => {
     validateNonNegativeAmount(amount);
 
-    const uniqueToUserIds = [...new Set(toUserIds)].filter(
-      (userId) => userId !== fromUserId,
-    );
+    const uniqueToUserIds = [...new Set(toUserIds)].filter((userId) => userId !== fromUserId);
     if (uniqueToUserIds.length === 0) throw new InvalidAmountError();
 
     const sum = uniqueToUserIds.length * amount;
@@ -256,5 +252,13 @@ export const transferBalances = async ({
         transactionType: "transfer",
       })),
     });
+
+    return {
+      sourceWallet: { ...fromWallet, balance: fromWallet.balance - sum },
+      recipientWallets: wallets.map((wallet) => ({
+        ...wallet,
+        balance: wallet.balance + amount,
+      })),
+    };
   });
 };

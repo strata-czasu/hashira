@@ -1,6 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import { DatabasePaginator } from "@hashira/db";
-import { PaginatorOrder } from "@hashira/paginate";
 import {
   AttachmentBuilder,
   type GuildEmoji,
@@ -8,6 +5,11 @@ import {
   PermissionFlagsBits,
   RESTJSONErrorCodes,
 } from "discord.js";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import { DatabasePaginator } from "@hashira/db";
+import { PaginatorOrder } from "@hashira/paginate";
+
 import { base } from "../base";
 import { parseDate } from "../util/dateParsing";
 import { discordTry } from "../util/discordTry";
@@ -58,63 +60,57 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
       .addCommand("user", (command) =>
         command
           .setDescription("Get emoji usage stats for a user")
-          .addUser("user", (option) =>
-            option.setDescription("The user to get stats for"),
-          )
+          .addUser("user", (option) => option.setDescription("The user to get stats for"))
           .addString("after", (option) =>
             option.setDescription("The date to end at").setRequired(false),
           )
           .addString("before", (option) =>
             option.setDescription("The date to start from").setRequired(false),
           )
-          .handle(
-            async ({ prisma }, { user, after: rawAfter, before: rawBefore }, itx) => {
-              if (!itx.inCachedGuild()) return;
+          .handle(async ({ prisma }, { user, after: rawAfter, before: rawBefore }, itx) => {
+            if (!itx.inCachedGuild()) return;
 
-              const after = parseDate(rawAfter, "start", () => new Date(0));
-              const before = parseDate(rawBefore, "end", () => new Date());
+            const after = parseDate(rawAfter, "start", () => new Date(0));
+            const before = parseDate(rawBefore, "end", () => new Date());
 
-              const where = {
-                userId: user.id,
-                timestamp: { gte: after, lte: before },
-              };
+            const where = {
+              userId: user.id,
+              timestamp: { gte: after, lte: before },
+            };
 
-              const paginate = new DatabasePaginator(
-                (props, ordering) =>
-                  prisma.emojiUsage.groupBy({
-                    ...props,
-                    by: "emojiId",
-                    where,
-                    _count: true,
-                    orderBy: [{ _count: { emojiId: ordering } }, { emojiId: ordering }],
-                  }),
-                async () => {
-                  const count = await prisma.emojiUsage.groupBy({
-                    by: "emojiId",
-                    where,
-                  });
-                  return count.length;
-                },
-                { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
-              );
+            const paginate = new DatabasePaginator(
+              (props, ordering) =>
+                prisma.emojiUsage.groupBy({
+                  ...props,
+                  by: "emojiId",
+                  where,
+                  _count: true,
+                  orderBy: [{ _count: { emojiId: ordering } }, { emojiId: ordering }],
+                }),
+              async () => {
+                const count = await prisma.emojiUsage.groupBy({
+                  by: "emojiId",
+                  where,
+                });
+                return count.length;
+              },
+              { pageSize: 20, defaultOrder: PaginatorOrder.DESC },
+            );
 
-              const paginator = new PaginatedView(
-                paginate,
-                `Emoji stats for <@${user.id}>`,
-                (item, idx) => `${idx}. ${item.emojiId} - ${item._count}`,
-                true,
-              );
+            const paginator = new PaginatedView(
+              paginate,
+              `Emoji stats for <@${user.id}>`,
+              (item, idx) => `${idx}. ${item.emojiId} - ${item._count}`,
+              true,
+            );
 
-              await paginator.render(itx);
-            },
-          ),
+            await paginator.render(itx);
+          }),
       )
       .addCommand("emoji", (command) =>
         command
           .setDescription("Get emoji usage stats for an emoji")
-          .addString("emoji", (option) =>
-            option.setDescription("The emoji to get stats for"),
-          )
+          .addString("emoji", (option) => option.setDescription("The emoji to get stats for"))
           .addString("after", (option) =>
             option.setDescription("The date to end at").setRequired(false),
           )
@@ -122,11 +118,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
             option.setDescription("The date to start from").setRequired(false),
           )
           .handle(
-            async (
-              { prisma },
-              { emoji: rawEmoji, after: rawAfter, before: rawBefore },
-              itx,
-            ) => {
+            async ({ prisma }, { emoji: rawEmoji, after: rawAfter, before: rawBefore }, itx) => {
               if (!itx.inCachedGuild()) return;
               const emojis = parseEmojis(itx.guild.emojis, rawEmoji);
 
@@ -236,9 +228,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
           .setDescription("Prune removed emojis from the database")
           .handle(async ({ prisma }, _, itx) => {
             if (!itx.inCachedGuild()) return;
-            if (
-              !itx.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)
-            ) {
+            if (!itx.member.permissions.has(PermissionFlagsBits.ManageGuildExpressions)) {
               return await errorFollowUp(
                 itx,
                 "You do not have the required permissions to run this command",
@@ -286,9 +276,7 @@ export const emojiCounting = new Hashira({ name: "emoji-counting" })
             });
 
             const usedEmojiIds = emojiUsages.map((usage) => usage.emojiId);
-            const unusedEmojis = guildEmojis.filter(
-              (emoji) => !usedEmojiIds.includes(emoji.id),
-            );
+            const unusedEmojis = guildEmojis.filter((emoji) => !usedEmojiIds.includes(emoji.id));
 
             const content = unusedEmojis.map((emoji) => emoji.name).join("\n");
 

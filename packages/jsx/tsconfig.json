@@ -1,6 +1,7 @@
 {
   "extends": "@hashira/tsconfig/base.json",
   "compilerOptions": {
+    "composite": true,
     "jsx": "react-jsx",
     "jsxImportSource": "@hashira/jsx"
   },

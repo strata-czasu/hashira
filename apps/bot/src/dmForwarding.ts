@@ -1,5 +1,3 @@
-import { Hashira, PaginatedView } from "@hashira/core";
-import { TextChannelPaginator } from "@hashira/core/paginate";
 import {
   bold,
   type Message,
@@ -9,6 +7,10 @@ import {
   time,
   userMention,
 } from "discord.js";
+
+import { Hashira, PaginatedView } from "@hashira/core";
+import { TextChannelPaginator } from "@hashira/core/paginate";
+
 import { base } from "./base";
 import { STRATA_CZASU } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
@@ -65,13 +67,9 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
 
             const messageSent = await sendDirectMessage(user, content);
             if (messageSent) {
-              await itx.editReply(
-                `Wysłano wiadomość do ${userMention(user.id)}: ${content}`,
-              );
+              await itx.editReply(`Wysłano wiadomość do ${userMention(user.id)}: ${content}`);
               if (logChannel?.isSendable()) {
-                logChannel.send(
-                  `${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`,
-                );
+                logChannel.send(`${bold(itx.user.tag)} -> ${bold(user.tag)}: ${content}`);
               }
             } else {
               await itx.editReply("Nie udało się wysłać wiadomości");
