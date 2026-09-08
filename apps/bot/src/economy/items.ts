@@ -45,7 +45,7 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           "Przedmioty",
           formatItemInList,
           true,
-          "T - tytuł profilu, O - odznaka",
+          "T - tytuł profilu, O - osiągnięcie",
         );
         await paginatedView.render(itx);
       }),
@@ -139,44 +139,37 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           // TODO)) Logs of title creation
         }),
     )
-    .addCommand("utwórz-odznakę", (command) =>
+    .addCommand("utwórz-osiągnięcie", (command) =>
       command
-        .setDescription("Utwórz nową odznakę profilu")
-        .addString("name", (name) => name.setDescription("Nazwa odznaki"))
-        .addAttachment("image", (image) => image.setDescription("Obrazek odznaki (PNG, 128x128px)"))
-        .handle(async ({ prisma }, { name, image }, itx) => {
+        .setDescription("Utwórz nowe osiągnięcie")
+        .addString("tytuł", (name) => name.setDescription("Nazwa osiągnięcia"))
+        .addString("opis", (description) => description.setDescription("Opis osiągnięcia"))
+        .addInteger("gwiazdki", (stars) =>
+          stars.setDescription("Liczba gwiazdek (0-3)").setMinValue(0).setMaxValue(3),
+        )
+        .handle(async ({ prisma }, { tytuł: name, opis: description, gwiazdki: stars }, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
-
-          if (image.contentType !== "image/png") {
-            await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
-            return;
-          }
-          if (image.width !== 128 || image.height !== 128) {
-            await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
-            return;
-          }
-
-          const imageData = await fetch(image.url);
 
           await ensureUserExists(prisma, itx.user);
           const item = await prisma.item.create({
             data: {
               name,
+              description,
               guildId: itx.guildId,
               createdBy: itx.user.id,
               type: "badge",
               perUserLimit: 1,
               badge: {
                 create: {
-                  image: new Uint8Array(await imageData.arrayBuffer()),
+                  stars,
                 },
               },
             },
           });
 
-          await itx.editReply(`Utworzono odznakę ${formatItem(item)}`);
-          // TODO)) Logs of badge creation
+          await itx.editReply(`Utworzono osiągnięcie ${formatItem(item)}`);
+          // TODO)) Logs of achievement creation
         }),
     )
     .addCommand("utwórz-kolor", (command) =>
@@ -262,51 +255,56 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           // TODO)) Logs of item edits
         }),
     )
-    .addCommand("edytuj-odznakę", (command) =>
+    .addCommand("edytuj-osiągnięcie", (command) =>
       command
-        .setDescription("Edytuj obrazek odznaki profilu")
+        .setDescription("Edytuj osiągnięcie")
         .addInteger("id", (id) => id.setDescription("ID przedmiotu"))
-        .addAttachment("image", (image) =>
-          image.setDescription("Nowy obrazek odznaki (PNG, 128x128px)"),
+        .addString("tytuł", (name) =>
+          name.setDescription("Nowy tytuł osiągnięcia").setRequired(false),
         )
-        .handle(async ({ prisma }, { id, image }, itx) => {
-          if (!itx.inCachedGuild()) return;
-          await itx.deferReply();
+        .addString("opis", (description) =>
+          description.setDescription("Nowy opis osiągnięcia").setRequired(false),
+        )
+        .addInteger("gwiazdki", (stars) =>
+          stars
+            .setDescription("Nowa liczba gwiazdek (0-3)")
+            .setMinValue(0)
+            .setMaxValue(3)
+            .setRequired(false),
+        )
+        .handle(
+          async ({ prisma }, { id, tytuł: name, opis: description, gwiazdki: stars }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
 
-          if (image.contentType !== "image/png") {
-            await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
-            return;
-          }
-          if (image.width !== 128 || image.height !== 128) {
-            await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
-            return;
-          }
-
-          const imageData = await fetch(image.url);
-
-          const item = await prisma.$transaction(async (tx) => {
-            const item = await getItem(tx, id, itx.guildId);
-            if (!item) {
-              await errorFollowUp(itx, "Nie znaleziono odznaki o podanym ID");
-              return null;
+            if (!name && !description && stars === null) {
+              await errorFollowUp(itx, "Podaj przynajmniej jedną wartość do edycji");
+              return;
             }
 
-            return tx.item.update({
-              where: { id },
-              data: {
-                badge: {
-                  update: {
-                    image: new Uint8Array(await imageData.arrayBuffer()),
-                  },
-                },
-              },
-            });
-          });
-          if (!item) return;
+            const updateData: Prisma.ItemUpdateInput = { editedAt: itx.createdAt };
+            if (name !== null) updateData.name = name;
+            if (description !== null) updateData.description = description;
+            if (stars !== null) updateData.badge = { update: { stars } };
 
-          await itx.editReply(`Edytowano obrazek odznaki ${inlineCode(id.toString())}`);
-          // TODO)) Logs of item edits
-        }),
+            const item = await prisma.$transaction(async (tx) => {
+              const item = await getItem(tx, id, itx.guildId);
+              if (!item || item.type !== "badge") {
+                await errorFollowUp(itx, "Nie znaleziono osiągnięcia o podanym ID");
+                return null;
+              }
+
+              return tx.item.update({
+                where: { id },
+                data: updateData,
+              });
+            });
+            if (!item) return;
+
+            await itx.editReply(`Edytowano osiągnięcie ${inlineCode(id.toString())}`);
+            // TODO)) Logs of item edits
+          },
+        ),
     )
     .addCommand("usuń", (command) =>
       command

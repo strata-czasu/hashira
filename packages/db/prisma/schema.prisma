@@ -162,6 +162,7 @@ model User {
   voiceSessions                     VoiceSession[]
   profileSettings                   ProfileSettings?
   displayedProfileBadges            DisplayedProfileBadge[]
+  displayedProfileAchievements      DisplayedProfileAchievement[]
   easter2025TeamMember              Easter2025TeamMember[]
   lastFishings                      LastFishing[]
   givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
