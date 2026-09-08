@@ -206,15 +206,12 @@ export const profile = new Hashira({ name: "profile" })
               image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
             }
 
-            // TODO)) Migrate to achievements
-            image.allShowcaseBadgesOpacity(0);
-            const displayedBadges = await prisma.displayedProfileBadge.findMany({
-              where: { userId: user.id },
-              include: { badge: true },
-            });
-            for (const { row, col, badge } of displayedBadges) {
-              image.showcaseBadge(row, col, Buffer.from(badge.image));
-            }
+            // TODO)) Display achievements from user preferences
+            image.allAchievementsOpacity(0);
+            image.achievement(1, "Uczestnik Zlotu", 1);
+            image.achievement(2, "Dev", 3);
+            image.achievement(3, "200 Poziom", 2);
+            image.achievement(4, "Atencjusz", 0);
 
             try {
               const attachment = await image.toSharp().png().toBuffer();

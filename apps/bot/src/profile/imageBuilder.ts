@@ -71,6 +71,15 @@ export class ProfileImageBuilder {
       408, // From Figma: 'Level Value' -> Position -> X
       259, // From Figma: 'Level Value' -> Layout -> Width
     );
+
+    // Fix text alignment for 'Showcase Achievement <1..4>' -> 'Title'
+    for (const row of [1, 2, 3, 4]) {
+      this.createTextBoundingBox(
+        `g[id='Showcase Achievement ${row}'] > text`,
+        820.64, // From Figma: 'Showcase Achievements' -> 'Showcase Achievement <n>' -> 'Title' -> Position -> X
+        326, // From Figma: 'Showcase Achievements' -> 'Showcase Achievement <n>' -> 'Title' -> Layout -> Width
+      );
+    }
   }
 
   /**
@@ -192,8 +201,7 @@ export class ProfileImageBuilder {
       this.#svg('path[id="Level Background Wave 2 Mask"]'),
       // Right
       this.#svg('rect[id="Showcase Header Background"]'),
-      // TODO)) Showcase item stars
-      // TODO)) Showcase item text?
+      this.#svg('g[id^="Achievement Stars"] path'),
     ];
 
     const color = Bun.color(value, "hex");
@@ -201,9 +209,16 @@ export class ProfileImageBuilder {
       throw new Error(`Invalid color value: ${value}`);
     }
 
+    // Set `fill` for everything
     for (const element of elements) {
       element.attr("fill", color);
     }
+
+    // Achievement border stroke
+    this.#svg(
+      `g[id^="Achievement Background"] path[stroke="${defaultTintColor}"]`,
+    ).attr("stroke", color);
+
     return this;
   }
 
@@ -298,141 +313,110 @@ export class ProfileImageBuilder {
   }
 
   /**
-   * Set the image of a showcase badge and make it visible.
+   * Set the title of an achievement and make it visible.
    *
-   * Incorrect row or column values will be ignored.
+   * Incorrect row or star values will be ignored.
    *
    * This is a convenience shortcut for calling:
-   * - `showcaseBadgeImage(row, col, value)`
-   * - `showcaseBadgeOpacity(row, col, 1)`
-   * - `showcaseBadgeBackgroundStrokeWidth(row, col, 0)`
+   * - `achievementTitle(row, title)`
+   * - `achievementStars(row, stars)`
+   * - `achievementOpacity(row, 1)`
    *
-   * @param row Row index (1-3)
-   * @param col Column index (1-5)
-   * @param image PNG image data buffer
+   * @param row Row index (1-4)
+   * @param title Achievement title
+   * @param stars Number of stars (0-3)
    */
-  public showcaseBadge(row: number, col: number, image: Buffer) {
-    return this.showcaseBadgeImage(row, col, image)
-      .showcaseBadgeOpacity(row, col, 1)
-      .showcaseBadgeBackgroundStrokeWidth(row, col, 0);
+  public achievement(row: number, title: string, stars: number) {
+    return this.achievementTitle(row, title)
+      .achievementStars(row, stars)
+      .achievementOpacity(row, 1);
   }
 
   /**
-   * Set the image of a showcase badge.
+   * Set the title of an achievement.
    *
-   * Incorrect row or column values will be ignored.
+   * Incorrect row values will be ignored.
    *
-   * WARN: Calling this multiple times on the same row and column
-   * is undefined behavior and may not work as expected.
-   *
-   * @param row Row index (1-3)
-   * @param col Column index (1-5)
-   * @param image PNG image data buffer
+   * @param row Row index (1-4)
+   * @param title Achievement title
    */
-  public showcaseBadgeImage(row: number, col: number, image: Buffer) {
-    const elementId = this.showcaseBadgeElementId(row, col);
-    // <circle id="${elementId}" fill="url(#...)"/>
-    const fill = this.showcaseBadgeContainer()
-      .children(`circle[id='${elementId}']`)
+  public achievementTitle(row: number, title: string) {
+    this.achievementContainer()
+      .children(this.achievementElementSelector(row))
+      .children("text")
+      .children("tspan")
       .first()
-      .attr("fill");
-    if (!fill) {
-      throw new Error(`\`fill\` attribute not found for badge '${elementId}'`);
+      .text(title);
+    return this;
+  }
+
+  /**
+   * Set the number of stars for an achievement.
+   *
+   * Incorrect row values will be ignored.
+   *
+   * @param row Row index (1-4)
+   * @param stars Number of stars (0-3)
+   */
+  public achievementStars(row: number, stars: number) {
+    this.achievementContainer()
+      .children(this.achievementElementSelector(row))
+      .children(this.achievementStarsElementSelector(row))
+      .children("path")
+      .attr("opacity", "0");
+
+    for (let i = 1; i <= stars; i++) {
+      this.achievementContainer()
+        .children(this.achievementElementSelector(row))
+        .children(this.achievementStarsElementSelector(row))
+        // Star icon IDs have non-deterministic suffixes, so match by prefix
+        .children(`path[id^='${i}']`)
+        .attr("opacity", "1");
     }
-
-    const defs = this.#svg("defs").first();
-
-    // `url(#...)` -> `...`
-    const fillUrl = fill.replace("url(#", "").replace(")", "");
-    // <pattern id="${fillUrl}>
-    const patternElement = defs.children(`pattern[id='${fillUrl}']`).first();
-    if (!patternElement) {
-      throw new Error(`Pattern element not found for badge '${elementId}'`);
-    }
-
-    // <use xlink:href="..."/>
-    const imageHref = patternElement.children("use").first().attr("href");
-    if (!imageHref) {
-      throw new Error(`Pattern element href not found for badge '${elementId}'`);
-    }
-    const imageId = imageHref.replace("#", "");
-
-    // Find the placeholder image element
-    const imageElement = defs.children(`image[id='${imageId}']`).first();
-
-    const newImageId = `badge_image_${row}_${col}`;
-    // Clone the placeholder image with a new ID and href
-    imageElement
-      .clone()
-      .attr("id", newImageId)
-      .attr("href", pngBufferToDataURL(image))
-      .appendTo(defs);
-
-    // Update the pattern to use the new image
-    patternElement.children("use").first().attr("href", `#${newImageId}`);
 
     return this;
   }
 
   /**
-   * Set the opacity of a showcase badge.
+   * Set the opacity of an achievement.
    *
-   * Incorrect row or column values will be ignored.
+   * Incorrect row values will be ignored.
    *
-   * @param row Row index (1-3)
-   * @param col Column index (1-5)
+   * @param row Row index (1-4)
    * @param value Opacity value (0-1)
    */
-  public showcaseBadgeOpacity(row: number, col: number, value: number) {
-    const elementId = `Showcase Badge ${row}:${col}`;
-    this.showcaseBadgeContainer()
-      .children(`circle[id='${elementId}']`)
+  public achievementOpacity(row: number, value: number) {
+    this.achievementContainer()
+      .children(this.achievementElementSelector(row))
       .first()
       .attr("opacity", value.toString());
     return this;
   }
 
   /**
-   * Set the opacity of all showcase badges.
-   * This will override individual badge opacities.
+   * Set the opacity of all achievements.
+   *
+   * This will override individual achievement opacities.
+   *
    * @param value Opacity value (0-1)
    */
-  public allShowcaseBadgesOpacity(value: number) {
-    this.showcaseBadgeContainer().children("circle").attr("opacity", value.toString());
+  public allAchievementsOpacity(value: number) {
+    this.achievementContainer().children("g").attr("opacity", value.toString());
+
     return this;
   }
 
-  private showcaseBadgeElementId(row: number, col: number) {
-    return `Showcase Badge ${row}:${col}`;
+  private achievementElementSelector(row: number) {
+    return `g[id='Showcase Achievement ${row}']`;
   }
 
-  private showcaseBadgeContainer() {
-    return this.#svg("g[id='Showcase Badges']");
+  /** Matches `Achievement Stars {Left,Right} <row>` */
+  private achievementStarsElementSelector(row: number) {
+    return `g[id^='Achievement Stars'][id$='${row}']`;
   }
 
-  /**
-   * Set the background stroke width of a showcase badge.
-   *
-   * Incorrect row or column values will be ignored.
-   *
-   * @param row Row index (1-3)
-   * @param col Column index (1-5)
-   * @param value Stroke width value
-   */
-  public showcaseBadgeBackgroundStrokeWidth(row: number, col: number, value: number) {
-    const elementId = this.showcaseBadgeBackgroundElementId(row, col);
-    this.showcaseBadgeBackgroundsContainer()
-      .children(`circle[id='${elementId}']`)
-      .first()
-      .attr("stroke-width", value.toString());
-  }
-
-  private showcaseBadgeBackgroundElementId(row: number, col: number) {
-    return `Showcase Badge Background ${row}:${col}`;
-  }
-
-  private showcaseBadgeBackgroundsContainer() {
-    return this.#svg("g[id='Showcase Badge Backgrounds']");
+  private achievementContainer() {
+    return this.#svg("g[id='Showcase Achievements']");
   }
 
   public result() {

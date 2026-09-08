@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
+
 import * as cheerio from "cheerio";
 import sharp from "sharp";
 
@@ -264,49 +265,56 @@ describe("imageBuilder", () => {
     });
   });
 
-  describe("showcase badges", () => {
-    it("changes showcase badge image", async () => {
+  describe("achievements", () => {
+    const rows = [1, 2, 3, 4];
+
+    test.each(rows)("changes achievement %d title", async (row) => {
       const image = await getImageBuilder();
-      const badgeImage = await getDummyImage();
-      image.showcaseBadgeImage(1, 1, badgeImage);
-
+      image.achievementTitle(row, "Test Title");
       const res = cheerio.load(image.result());
-      const badgeFill = res("circle[id='Showcase Badge 1:1']").first().attr("fill");
-      const fillUrl = badgeFill?.replace("url(#", "").replace(")", "");
-      const pattern = res(`defs > pattern[id='${fillUrl}']`).first();
-      const imageId = pattern.children("use").first().attr("href")?.replace("#", "");
-      const imageHref = res(`defs > image[id='${imageId}']`).attr("href");
-
-      expect(imageHref).toContain(badgeImage.toString("base64"));
+      const title = res(`g[id='Showcase Achievement ${row}'] > text`).text();
+      expect(title).toBe("Test Title");
     });
 
-    it("changes showcase badge opacity", async () => {
+    test.each(rows)("hides all stars for achievement %d", async (row) => {
       const image = await getImageBuilder();
-      image.showcaseBadgeOpacity(2, 2, 0);
+      image.achievementStars(row, 0);
       const res = cheerio.load(image.result());
-      const badge = res("circle[id='Showcase Badge 2:2']");
-      const opacity = badge.attr("opacity");
+      const elements = res(`g[id='Showcase Achievement ${row}']`)
+        .children(`g[id^='Achievement Stars'][id$='${row}']`)
+        .children("path[opacity='1']");
+      expect(elements).toHaveLength(0);
+    });
+
+    test.each(
+      rows.flatMap((row) => [1, 2, 3].map((stars) => ({ row, stars }))),
+    )("sets visible stars for achievement %d to %d", async ({ row, stars }) => {
+      const image = await getImageBuilder();
+      image.achievementStars(row, stars);
+      const res = cheerio.load(image.result());
+      const elements = res(`g[id='Showcase Achievement ${row}']`)
+        .children(`g[id^='Achievement Stars'][id$='${row}']`)
+        .children("path[opacity='1']");
+      expect(elements).toHaveLength(stars * 2); // 1 for each side
+    });
+
+    test.each(rows)("changes achievement %d opacity", async (row) => {
+      const image = await getImageBuilder();
+      image.achievementOpacity(row, 0);
+      const res = cheerio.load(image.result());
+      const element = res(`g[id='Showcase Achievement ${row}']`).first();
+      const opacity = element.attr("opacity");
       expect(opacity).toBe("0");
     });
 
-    it("changes all showcase badges opacity", async () => {
+    test.each([0, 1])("changes all achievement opacities to %d", async (opacity) => {
       const image = await getImageBuilder();
-      image.allShowcaseBadgesOpacity(0);
+      image.allAchievementsOpacity(opacity);
       const res = cheerio.load(image.result());
-      const badges = res("g[id='Showcase Badges']").children("circle");
-      badges.each((_, badge) => {
-        const opacity = badge.attributes.find((attr) => attr.name === "opacity");
-        expect(opacity?.value).toBe("0");
-      });
-    });
-
-    it("changes showcase badge background stroke width", async () => {
-      const image = await getImageBuilder();
-      image.showcaseBadgeBackgroundStrokeWidth(1, 3, 0.5);
-      const res = cheerio.load(image.result());
-      const badgeBackground = res("circle[id='Showcase Badge Background 1:3']");
-      const strokeWidth = badgeBackground.attr("stroke-width");
-      expect(strokeWidth).toBe("0.5");
+      const elements = res("g[id='Showcase Achievements']").children(
+        `g[opacity='${opacity}']`,
+      );
+      expect(elements).toHaveLength(4);
     });
   });
 
