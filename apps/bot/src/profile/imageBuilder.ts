@@ -94,10 +94,7 @@ export class ProfileImageBuilder {
    *
    * @param selector Selector for <text> elements which should be combined
    */
-  private combineTextElements(
-    selector: string,
-    options?: { sortTspanElements?: boolean },
-  ) {
+  private combineTextElements(selector: string, options?: { sortTspanElements?: boolean }) {
     const allTextElements = this.#svg(selector);
     const allTspanElements = allTextElements.children("tspan");
 
@@ -215,9 +212,10 @@ export class ProfileImageBuilder {
     }
 
     // Achievement border stroke
-    this.#svg(
-      `g[id^="Achievement Background"] path[stroke="${defaultTintColor}"]`,
-    ).attr("stroke", color);
+    this.#svg(`g[id^="Achievement Background"] path[stroke="${defaultTintColor}"]`).attr(
+      "stroke",
+      color,
+    );
 
     return this;
   }

@@ -1,5 +1,4 @@
 import { describe, expect, it, test } from "bun:test";
-
 import * as cheerio from "cheerio";
 import sharp from "sharp";
 
@@ -286,17 +285,18 @@ describe("imageBuilder", () => {
       expect(elements).toHaveLength(0);
     });
 
-    test.each(
-      rows.flatMap((row) => [1, 2, 3].map((stars) => ({ row, stars }))),
-    )("sets visible stars for achievement %d to %d", async ({ row, stars }) => {
-      const image = await getImageBuilder();
-      image.achievementStars(row, stars);
-      const res = cheerio.load(image.result());
-      const elements = res(`g[id='Showcase Achievement ${row}']`)
-        .children(`g[id^='Achievement Stars'][id$='${row}']`)
-        .children("path[opacity='1']");
-      expect(elements).toHaveLength(stars * 2); // 1 for each side
-    });
+    test.each(rows.flatMap((row) => [1, 2, 3].map((stars) => ({ row, stars }))))(
+      "sets visible stars for achievement %d to %d",
+      async ({ row, stars }) => {
+        const image = await getImageBuilder();
+        image.achievementStars(row, stars);
+        const res = cheerio.load(image.result());
+        const elements = res(`g[id='Showcase Achievement ${row}']`)
+          .children(`g[id^='Achievement Stars'][id$='${row}']`)
+          .children("path[opacity='1']");
+        expect(elements).toHaveLength(stars * 2); // 1 for each side
+      },
+    );
 
     test.each(rows)("changes achievement %d opacity", async (row) => {
       const image = await getImageBuilder();
@@ -311,9 +311,7 @@ describe("imageBuilder", () => {
       const image = await getImageBuilder();
       image.allAchievementsOpacity(opacity);
       const res = cheerio.load(image.result());
-      const elements = res("g[id='Showcase Achievements']").children(
-        `g[opacity='${opacity}']`,
-      );
+      const elements = res("g[id='Showcase Achievements']").children(`g[opacity='${opacity}']`);
       expect(elements).toHaveLength(4);
     });
   });
