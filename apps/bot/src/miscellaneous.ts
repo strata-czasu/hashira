@@ -14,7 +14,7 @@ import {
   TextInputStyle,
   time,
 } from "discord.js";
-import { isNil, isNotNil } from "es-toolkit";
+import { groupBy, isNil, isNotNil } from "es-toolkit";
 
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient, type Prisma, type Task } from "@hashira/db";
@@ -612,6 +612,68 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             }
 
             await itx.editReply(`Imported inventory for ${processed} users`);
+          }),
+      )
+      .addCommand("migrate-badge-placement", (command) =>
+        command
+          .setDescription("Migrate badge placements to the new achievement system")
+          .addUser("user", (user) => user.setDescription("user").setRequired(false))
+          .handle(async ({ prisma }, { user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const displayedBadges = await prisma.displayedProfileBadge.findMany({
+              ...(user ? { where: { userId: user.id } } : {}),
+              include: { badge: { include: { item: true } } },
+              orderBy: [{ row: "asc" }, { col: "asc" }],
+            });
+            const displayedBadgesByUser = groupBy(displayedBadges, (badge) => badge.userId);
+
+            const toCreate: Prisma.DisplayedProfileAchievementCreateManyInput[] = [];
+            const userIds: string[] = [];
+            for (const [userId, badges] of Object.entries(displayedBadgesByUser)) {
+              toCreate.push(
+                ...badges.slice(0, 4).map(({ badgeId }, idx) => ({
+                  userId,
+                  achievementId: badgeId,
+                  row: idx,
+                })),
+              );
+              userIds.push(userId);
+            }
+
+            await ensureUsersExist(prisma, userIds);
+
+            if (user) {
+              await prisma.displayedProfileAchievement.createMany({
+                data: toCreate,
+                skipDuplicates: true,
+              });
+              await itx.editReply(
+                `Migrated ${toCreate.length} badge placements for user ${user.id}`,
+              );
+              return;
+            }
+
+            const chunkSize = 10;
+            let processed = 0;
+            let lastProcessedUserId: string | undefined;
+            for (let i = 0; i < toCreate.length; i += chunkSize) {
+              const chunk = toCreate.slice(i, i + chunkSize);
+              await prisma.displayedProfileAchievement.createMany({
+                data: chunk,
+                skipDuplicates: true,
+              });
+              processed += chunk.length;
+              lastProcessedUserId = chunk.at(-1)?.userId;
+              await itx.editReply(
+                `Migrating... ${processed} badge placements for user ${lastProcessedUserId}`,
+              );
+            }
+
+            await itx.editReply(
+              `Finished migrating ${processed} badge placements for ${userIds.length} user(s)`,
+            );
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>
