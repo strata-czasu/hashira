@@ -636,7 +636,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
                 ...badges.slice(0, 4).map(({ badgeId }, idx) => ({
                   userId,
                   achievementId: badgeId,
-                  row: idx,
+                  row: idx + 1,
                 })),
               );
               userIds.push(userId);
