@@ -35,9 +35,9 @@ enum ItemType {
 }
 
 model Badge {
-  id     Int   @id() @default(autoincrement())
-  itemId Int   @unique
-  image  Bytes // PNG binary data, 128x128px
+  id     Int @id() @default(autoincrement())
+  itemId Int @unique
+  stars  Int @default(0)
 
   item                Item                    @relation(fields: [itemId], references: [id])
   displayedInProfiles DisplayedProfileBadge[]

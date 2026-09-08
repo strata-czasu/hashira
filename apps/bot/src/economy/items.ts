@@ -139,44 +139,37 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           // TODO)) Logs of title creation
         }),
     )
-    .addCommand("utwórz-odznakę", (command) =>
+    .addCommand("utwórz-osiągnięcie", (command) =>
       command
-        .setDescription("Utwórz nową odznakę profilu")
-        .addString("name", (name) => name.setDescription("Nazwa odznaki"))
-        .addAttachment("image", (image) => image.setDescription("Obrazek odznaki (PNG, 128x128px)"))
-        .handle(async ({ prisma }, { name, image }, itx) => {
+        .setDescription("Utwórz nowe osiągnięcie")
+        .addString("tytuł", (name) => name.setDescription("Nazwa osiągnięcia"))
+        .addString("opis", (description) => description.setDescription("Opis osiągnięcia"))
+        .addInteger("gwiazdki", (stars) =>
+          stars.setDescription("Liczba gwiazdek (0-3)").setMinValue(0).setMaxValue(3),
+        )
+        .handle(async ({ prisma }, { tytuł: name, opis: description, gwiazdki: stars }, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
-
-          if (image.contentType !== "image/png") {
-            await itx.editReply("Obrazek odznaki musi być w formacie PNG!");
-            return;
-          }
-          if (image.width !== 128 || image.height !== 128) {
-            await itx.editReply("Obrazek odznaki musi mieć rozmiar 128x128px!");
-            return;
-          }
-
-          const imageData = await fetch(image.url);
 
           await ensureUserExists(prisma, itx.user);
           const item = await prisma.item.create({
             data: {
               name,
+              description,
               guildId: itx.guildId,
               createdBy: itx.user.id,
               type: "badge",
               perUserLimit: 1,
               badge: {
                 create: {
-                  image: new Uint8Array(await imageData.arrayBuffer()),
+                  stars,
                 },
               },
             },
           });
 
-          await itx.editReply(`Utworzono odznakę ${formatItem(item)}`);
-          // TODO)) Logs of badge creation
+          await itx.editReply(`Utworzono osiągnięcie ${formatItem(item)}`);
+          // TODO)) Logs of achievement creation
         }),
     )
     .addCommand("utwórz-kolor", (command) =>
