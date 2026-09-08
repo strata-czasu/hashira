@@ -45,7 +45,7 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           "Przedmioty",
           formatItemInList,
           true,
-          "T - tytuł profilu, O - odznaka",
+          "T - tytuł profilu, O - osiągnięcie",
         );
         await paginatedView.render(itx);
       }),
