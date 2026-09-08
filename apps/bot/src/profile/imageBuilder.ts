@@ -86,7 +86,8 @@ export class ProfileImageBuilder {
    * Combine text elements matching a selector into a single element
    * with multiple <tspan> children.
    *
-   * Move the `x` and `y` attributes from the leftmost <text> element,
+   * Move the `x` and `y` attributes from the leftmost <tspan> element
+   * (across all matches) to the first <text> element,
    * but remove them from all <tspan> elements afterwards.
    *
    * Move values of `font-size` and `fill` to individual <tspan> elements
