@@ -206,12 +206,14 @@ export const profile = new Hashira({ name: "profile" })
               image.marriageStatusOpacity(0).marriageAvatarOpacity(0);
             }
 
-            // TODO)) Display achievements from user preferences
             image.allAchievementsOpacity(0);
-            image.achievement(1, "Uczestnik Zlotu", 1);
-            image.achievement(2, "Dev", 3);
-            image.achievement(3, "200 Poziom", 2);
-            image.achievement(4, "Atencjusz", 0);
+            const displayedAchievements = await prisma.displayedProfileAchievement.findMany({
+              where: { userId: user.id },
+              include: { achievement: { include: { item: true } } },
+            });
+            for (const { row, achievement } of displayedAchievements) {
+              image.achievement(row, achievement.item.name, achievement.stars);
+            }
 
             try {
               const attachment = await image.toSharp().png().toBuffer();
@@ -331,51 +333,52 @@ export const profile = new Hashira({ name: "profile" })
               }),
           ),
       )
-      .addGroup("odznaki", (group) =>
+      .addGroup("osiągnięcia", (group) =>
         group
-          .setDescription("Odznaki profilu")
+          .setDescription("Osiągnięcia")
           .addCommand("lista", (command) =>
-            command.setDescription("Wyświetl swoje odznaki").handle(async ({ prisma }, _, itx) => {
-              if (!itx.inCachedGuild()) return;
+            command
+              .setDescription("Wyświetl swoje osiągnięcia")
+              .handle(async ({ prisma }, _, itx) => {
+                if (!itx.inCachedGuild()) return;
 
-              const where: Prisma.InventoryItemWhereInput = {
-                item: { guildId: itx.guildId, type: "badge" },
-                userId: itx.user.id,
-                deletedAt: null,
-              };
-              const paginator = new DatabasePaginator(
-                (props) =>
-                  prisma.inventoryItem.findMany({
-                    where,
-                    include: { item: true },
-                    ...props,
-                  }),
-                () => prisma.inventoryItem.count({ where }),
-              );
+                const where: Prisma.InventoryItemWhereInput = {
+                  item: { guildId: itx.guildId, type: "badge" },
+                  userId: itx.user.id,
+                  deletedAt: null,
+                };
+                const paginator = new DatabasePaginator(
+                  (props) =>
+                    prisma.inventoryItem.findMany({
+                      where,
+                      include: { item: true },
+                      ...props,
+                    }),
+                  () => prisma.inventoryItem.count({ where }),
+                );
 
-              const paginatedView = new PaginatedView(
-                paginator,
-                "Posiadane odznaki",
-                ({ item: { name, id }, createdAt }) =>
-                  `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
-                false,
-              );
-              await paginatedView.render(itx);
-            }),
+                const paginatedView = new PaginatedView(
+                  paginator,
+                  "Posiadane osiągnięcia",
+                  ({ item: { name, id }, createdAt }) =>
+                    `- ${name} (${time(createdAt, TimestampStyles.ShortDate)}) [${inlineCode(id.toString())}]`,
+                  false,
+                );
+                await paginatedView.render(itx);
+              }),
           )
           .addCommand("ustaw", (command) =>
             command
-              .setDescription("Wyświetl odznakę na profilu")
+              .setDescription("Wyświetl osiągnięcie na profilu")
               .addInteger("wiersz", (row) =>
-                row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
-              )
-              .addInteger("kolumna", (column) =>
-                column.setDescription("Numer kolumny (1-5)").setMinValue(1).setMaxValue(5),
+                row.setDescription("Numer wiersza (1-4)").setMinValue(1).setMaxValue(4),
               )
               // FIXME: This being auto-completed while row and column are not
               //        can lead to an interaction error when trying to receive
               //        autocomplete results, because row and column are not set.
-              .addInteger("odznaka", (id) => id.setDescription("Odznaka").setAutocomplete(true))
+              .addInteger("osiągnięcie", (id) =>
+                id.setDescription("Osiągnięcie").setAutocomplete(true),
+              )
               .autocomplete(async ({ prisma }, _, itx) => {
                 if (!itx.inCachedGuild()) return;
                 const results = await prisma.inventoryItem.findMany({
@@ -396,11 +399,11 @@ export const profile = new Hashira({ name: "profile" })
                 });
                 await itx.respond(results.map(({ item: { id, name } }) => ({ value: id, name })));
               })
-              .handle(async ({ prisma }, { odznaka: id, wiersz: row, kolumna: col }, itx) => {
+              .handle(async ({ prisma }, { osiągnięcie: id, wiersz: row }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
-                const ownedBadge = await prisma.inventoryItem.findFirst({
+                const ownedAchievement = await prisma.inventoryItem.findFirst({
                   where: {
                     item: {
                       id,
@@ -416,60 +419,57 @@ export const profile = new Hashira({ name: "profile" })
                     },
                   },
                 });
-                if (!ownedBadge?.item.badge) {
-                  await itx.editReply("Odznaka o tym ID nie istnieje lub jej nie posiadasz!");
+                if (!ownedAchievement?.item.badge) {
+                  await itx.editReply("Osiągnięcie o tym ID nie istnieje lub go nie posiadasz!");
                   return;
                 }
 
                 const {
                   item: {
                     name,
-                    badge: { id: badgeId },
+                    badge: { id: achievementId },
                   },
-                } = ownedBadge;
+                } = ownedAchievement;
 
                 await ensureUserExists(prisma, itx.user);
                 await prisma.$transaction(async (tx) => {
-                  // Remove placement on the same row and column we're trying to place a new badge
-                  await tx.displayedProfileBadge.deleteMany({
-                    where: { userId: itx.user.id, row, col },
+                  // Remove placement on the same row we're trying to place a new achievement
+                  await tx.displayedProfileAchievement.deleteMany({
+                    where: { userId: itx.user.id, row },
                   });
-                  // Update badge on an existing placement
-                  await tx.displayedProfileBadge.upsert({
-                    create: { userId: itx.user.id, badgeId, row, col },
-                    update: { badgeId, row, col },
+                  // Update achievement on an existing placement
+                  await tx.displayedProfileAchievement.upsert({
+                    create: { userId: itx.user.id, achievementId, row },
+                    update: { achievementId, row },
                     where: {
-                      userId_badgeId: { userId: itx.user.id, badgeId },
+                      userId_achievementId: { userId: itx.user.id, achievementId },
                     },
                   });
                 });
 
-                await itx.editReply(`Ustawiono odznakę ${italic(name)} na pozycji ${row}:${col}`);
+                await itx.editReply(`Ustawiono osiągnięcie ${italic(name)} na pozycji ${row}`);
               }),
           )
           .addCommand("usuń", (command) =>
             command
-              .setDescription("Usuń odznakę z profilu")
+              .setDescription("Usuń osiągnięcie z profilu")
               .addInteger("wiersz", (row) =>
-                row.setDescription("Numer wiersza (1-3)").setMinValue(1).setMaxValue(3),
+                row.setDescription("Numer wiersza (1-4)").setMinValue(1).setMaxValue(4),
               )
-              .addInteger("kolumna", (column) =>
-                column.setDescription("Numer kolumny (1-5)").setMinValue(1).setMaxValue(5),
-              )
-              .handle(async ({ prisma }, { wiersz: row, kolumna: col }, itx) => {
+              .handle(async ({ prisma }, { wiersz: row }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 await itx.deferReply();
 
                 await ensureUserExists(prisma, itx.user);
-                const { count } = await prisma.displayedProfileBadge.deleteMany({
-                  where: { userId: itx.user.id, row, col },
+                const { count } = await prisma.displayedProfileAchievement.deleteMany({
+                  where: { userId: itx.user.id, row },
                 });
 
                 if (count === 0) {
-                  await itx.editReply("Nie masz odznaki na tej pozycji!");
+                  await itx.editReply("Nie masz osiągnięcia na tej pozycji!");
                   return;
                 }
-                await itx.editReply(`Usunięto odznakę z pozycji ${row}:${col}`);
+                await itx.editReply(`Usunięto osiągnięcie z pozycji ${row}`);
               }),
           ),
       )

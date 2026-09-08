@@ -6,14 +6,14 @@ import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
 
-export const badges = new Hashira({ name: "badges" }).use(base).group("odznaki", (group) =>
+export const badges = new Hashira({ name: "badges" }).use(base).group("osiągnięcia", (group) =>
   group
-    .setDescription("Odznaki")
+    .setDescription("Osiągnięcia")
     .setDMPermission(false)
     .addCommand("kto-posiada", (command) =>
       command
-        .setDescription("Sprawdź, kto posiada odznakę")
-        .addInteger("odznaka", (id) => id.setDescription("Odznaka").setAutocomplete(true))
+        .setDescription("Sprawdź, kto posiada osiągnięcie")
+        .addInteger("osiągnięcie", (id) => id.setDescription("Osiągnięcie").setAutocomplete(true))
         .autocomplete(async ({ prisma }, _, itx) => {
           if (!itx.inCachedGuild()) return;
           const results = await prisma.item.findMany({
@@ -30,7 +30,7 @@ export const badges = new Hashira({ name: "badges" }).use(base).group("odznaki",
           });
           await itx.respond(results.map(({ id, name }) => ({ value: id, name })));
         })
-        .handle(async ({ prisma }, { odznaka: itemId }, itx) => {
+        .handle(async ({ prisma }, { osiągnięcie: itemId }, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
 
@@ -43,7 +43,7 @@ export const badges = new Hashira({ name: "badges" }).use(base).group("odznaki",
             },
           });
           if (!item) {
-            return await errorFollowUp(itx, "Odznaka o tym ID nie istnieje");
+            return await errorFollowUp(itx, "Osiągnięcie o tym ID nie istnieje");
           }
 
           const where: Prisma.InventoryItemWhereInput = {
@@ -71,7 +71,7 @@ export const badges = new Hashira({ name: "badges" }).use(base).group("odznaki",
 
           const paginatedView = new PaginatedView(
             paginator,
-            `Użytkownicy posiadający odznakę ${item.name}`,
+            `Użytkownicy posiadający osiągnięcie ${item.name}`,
             ({ userId }, idx) => `${idx}. ${userMention(userId)}`,
             true,
           );

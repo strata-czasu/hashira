@@ -34,13 +34,15 @@ enum ItemType {
   customTintColorAccess
 }
 
+// TODO)) Rename to `Achievement`
 model Badge {
   id     Int @id() @default(autoincrement())
   itemId Int @unique
   stars  Int @default(0)
 
-  item                Item                    @relation(fields: [itemId], references: [id])
-  displayedInProfiles DisplayedProfileBadge[]
+  item                   Item                          @relation(fields: [itemId], references: [id])
+  displayedInProfiles    DisplayedProfileAchievement[]
+  displayedInProfilesOld DisplayedProfileBadge[]
 }
 
 model TintColor {
