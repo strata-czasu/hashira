@@ -1,5 +1,7 @@
-import type { ExtendedPrismaClient, GiveawayRewardType, Item } from "@hashira/db";
 import type { Duration } from "date-fns";
+
+import type { ExtendedPrismaClient, GiveawayRewardType, Item } from "@hashira/db";
+
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 
 export type RewardType = Exclude<GiveawayRewardType, null>;
@@ -125,10 +127,7 @@ const findItemMatch = (items: Item[], reward: string): Item | null => {
   return null;
 };
 
-export const fetchGuildItems = (
-  prisma: ExtendedPrismaClient,
-  guildId: string,
-): Promise<Item[]> =>
+export const fetchGuildItems = (prisma: ExtendedPrismaClient, guildId: string): Promise<Item[]> =>
   prisma.item.findMany({
     where: { guildId, deletedAt: null },
   });
@@ -157,8 +156,13 @@ export const analyzeRewards = async (
 
   for (const entry of analyzed) {
     if (entry.type === null && isMuteReward(entry.reward)) {
-      entry.type = "mute";
-      entry.parsedDuration = parseMuteDuration(entry.reward);
+      const parsedDuration = parseMuteDuration(entry.reward);
+      if (parsedDuration) {
+        entry.type = "mute";
+        entry.parsedDuration = parsedDuration;
+      }
+      // If no duration found, leave type as null so the preview
+      // shows ❌ and the reward won't be distributed.
     }
   }
 
@@ -193,14 +197,7 @@ export const formatCompactValue = (value: number): string => {
 };
 
 export const formatRewardPreview = (reward: AnalyzedReward): string => {
-  const {
-    amount,
-    reward: rewardText,
-    type,
-    parsedValue,
-    parsedDuration,
-    matchedItem,
-  } = reward;
+  const { amount, reward: rewardText, type, parsedValue, parsedDuration, matchedItem } = reward;
 
   const marker =
     type === null
@@ -219,7 +216,7 @@ export const formatFixedReward = (
 ): { amount: number; reward: string; type: RewardType | null } => {
   const fixedText =
     reward.type === "currency" && reward.parsedValue !== null
-      ? `${reward.parsedValue} pkt`
+      ? `${formatCompactValue(reward.parsedValue)} pkt`
       : reward.type === "mute" && reward.parsedDuration
         ? `${formatDuration(reward.parsedDuration)} mute`
         : reward.type === "item" && reward.matchedItem

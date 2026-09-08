@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import {
   analyzeCurrencyReward,
   formatCompactValue,
@@ -64,7 +65,10 @@ describe("parseMuteDuration", () => {
     expect(parseMuteDuration("wyciszenie 1d")).toEqual({ days: 1 });
     expect(parseMuteDuration("mute 2h")).toEqual({ hours: 2 });
     expect(parseMuteDuration("1d wyciszenia")).toEqual({ days: 1 });
-    expect(parseMuteDuration("wyciszenie 1d 2h")).toEqual({ days: 1, hours: 2 });
+    expect(parseMuteDuration("wyciszenie 1d 2h")).toEqual({
+      days: 1,
+      hours: 2,
+    });
   });
 
   it("returns null when no duration present", () => {
@@ -156,7 +160,7 @@ describe("formatFixedReward", () => {
         parsedDuration: null,
         matchedItem: null,
       }),
-    ).toEqual({ amount: 2, reward: "1000 pkt", type: "currency" });
+    ).toEqual({ amount: 2, reward: "1k pkt", type: "currency" });
   });
 
   it("returns fixed mute text", () => {
@@ -232,7 +236,7 @@ describe("toPersistedReward", () => {
 
     expect(toPersistedReward(analyzed, true)).toEqual({
       amount: 2,
-      reward: "1000 pkt",
+      reward: "1k pkt",
       type: "currency",
       currencyValue: 1000,
       muteDurationSeconds: null,
@@ -252,7 +256,7 @@ describe("toPersistedReward", () => {
 
     expect(toPersistedReward(analyzed)).toEqual({
       amount: 1,
-      reward: "1000 pkt",
+      reward: "1k pkt",
       type: "currency",
       currencyValue: 1000,
       muteDurationSeconds: null,

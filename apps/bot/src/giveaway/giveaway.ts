@@ -6,7 +6,9 @@ import {
   ButtonStyle,
   ComponentType,
   ContainerBuilder,
+  EmbedBuilder,
   MessageFlags,
+  messageLink,
   PermissionFlagsBits,
   SeparatorSpacingSize,
   TextDisplayBuilder,
@@ -15,7 +17,7 @@ import {
 import { round, shuffle } from "es-toolkit";
 
 import { Hashira } from "@hashira/core";
-import type { GiveawayParticipant, GiveawayReward } from "@hashira/db";
+import type { GiveawayParticipant } from "@hashira/db";
 
 import { base } from "../base";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
@@ -35,6 +37,7 @@ import {
   getStaticBanner,
   GiveawayBannerRatio,
   giveawayFooter,
+  type ParsedReward,
   parseRewards,
   selectAndSaveWinners,
   updateGiveaway,
@@ -134,7 +137,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 imageURL = getStaticBanner(title || "Giveaway");
               }
 
-              const parsedRewards: GiveawayReward[] = parseRewards(rewards);
+              const parsedRewards: ParsedReward[] = parseRewards(rewards);
 
               const analyzedRewards = await analyzeRewards(parsedRewards, prisma, itx.guildId);
 
@@ -202,6 +205,13 @@ export const giveaway = new Hashira({ name: "giveaway" })
                 .addTextDisplayComponents((td) =>
                   td.setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.").setId(99),
                 )
+                .addTextDisplayComponents((td) =>
+                  td
+                    .setContent(
+                      "-# ✅ oznacza że nagroda zostanie nadana automatycznie po wpisaniu komendy `/givek-rozdaj-...`,\n-# ❌ oznacza że nagroda nie została rozpoznana i nie zostanie automatycznie rozdana",
+                    )
+                    .setId(98),
+                )
                 .addActionRowComponents((ar) =>
                   ar.setComponents([confirmButton, confirmFixedButton]),
                 );
@@ -245,6 +255,22 @@ export const giveaway = new Hashira({ name: "giveaway" })
               );
 
               itx.deleteReply();
+
+              // Remove confirmation UI: buttons, "Potwierdź" text, and
+              // the checkmark explanation footer — they must not appear
+              // on the published giveaway message.
+              const removeById = (id: number) => {
+                const idx = messageContainer.components.findIndex((c) => c.data?.id === id);
+                if (idx !== -1) messageContainer.spliceComponents(idx, 1);
+              };
+              removeById(99); // "Potwierdź jeśli wszystko się zgadza"
+              removeById(98); // checkmark explanation
+              const actionRowIdx = messageContainer.components.findIndex(
+                (c) => c.data?.type === ComponentType.ActionRow,
+              );
+              if (actionRowIdx !== -1) {
+                messageContainer.spliceComponents(actionRowIdx, 1);
+              }
 
               const rewardsIndex = messageContainer.components.findIndex(
                 (c) => c.data?.id === 3 && c.data?.type === ComponentType.TextDisplay,
@@ -677,7 +703,7 @@ export const giveaway = new Hashira({ name: "giveaway" })
           if (!member) continue;
           await sendDirectMessage(
             member.user,
-            `Gratulacje! Wygrałeśx w giveawayu #${giveaway.id}: ${rewardsList.join(", ")}`,
+            `Gratulacje! Nadano Ci wygraną z giveawayu #${giveaway.id}: ${rewardsList.join(", ")}`,
           );
         }
 
@@ -688,13 +714,22 @@ export const giveaway = new Hashira({ name: "giveaway" })
           return;
         }
 
-        const content = [
-          `# Nagrody z giveawayu #${giveaway.id}`,
-          ...lines,
-          ...(outcomeless.length > 0 ? ["", ...outcomeless.map((line) => `⚠️ ${line}`)] : []),
-        ].join("\n");
-
-        await itx.editReply(content);
+        await itx.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("Rozdano nagrody")
+              .setDescription(
+                [
+                  ...lines,
+                  ...(outcomeless.length > 0
+                    ? ["", ...outcomeless.map((line) => `⚠️ ${line}`)]
+                    : []),
+                ].join("\n"),
+              )
+              .setFooter({ text: `Giveaway #${giveaway.id}` })
+              .setURL(messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)),
+          ],
+        });
       }),
   )
   .command("givek-rozdaj-mute", (command) =>
@@ -760,13 +795,17 @@ export const giveaway = new Hashira({ name: "giveaway" })
           return;
         }
 
-        await itx.editReply(
-          [
-            `# Mute z giveawayu #${giveaway.id}`,
-            ...lines,
-            ...(notices.length > 0 ? ["", ...notices] : []),
-          ].join("\n"),
-        );
+        await itx.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("Rozdano nagrody")
+              .setDescription(
+                [...lines, ...(notices.length > 0 ? ["", ...notices] : [])].join("\n"),
+              )
+              .setFooter({ text: `Giveaway #${giveaway.id}` })
+              .setURL(messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)),
+          ],
+        });
       }),
   )
   .handle("buttonInteractionCreate", async ({ prisma }, itx) => {
@@ -916,7 +955,9 @@ export const giveaway = new Hashira({ name: "giveaway" })
     await leaveButtonClick.interaction.deleteReply();
 
     await prisma.giveawayParticipant.update({
-      where: { giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id } },
+      where: {
+        giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
+      },
       data: { isRemoved: true },
     });
 

@@ -61,7 +61,12 @@ function createLeaveButtonRow() {
 
 export { createGiveawayButtonRow, createLeaveButtonRow, GiveawayBannerRatio };
 
-export function parseRewards(input: string): GiveawayReward[] {
+export type ParsedReward = {
+  amount: number;
+  reward: string;
+};
+
+export function parseRewards(input: string): ParsedReward[] {
   return input
     .split(",")
     .map((item) => item.trim())
@@ -70,28 +75,9 @@ export function parseRewards(input: string): GiveawayReward[] {
       const match = item.match(/^(\d+)x\s*(.+)$/i);
       if (match) {
         const [, num, reward] = match;
-        if (reward)
-          return {
-            id: 0,
-            giveawayId: 0,
-            amount: Number(num),
-            reward: reward.trim(),
-            type: null,
-            currencyValue: null,
-            muteDurationSeconds: null,
-            itemId: null,
-          };
+        if (reward) return { amount: Number(num), reward: reward.trim() };
       }
-      return {
-        id: 0,
-        giveawayId: 0,
-        amount: 1,
-        reward: item,
-        type: null,
-        currencyValue: null,
-        muteDurationSeconds: null,
-        itemId: null,
-      };
+      return { amount: 1, reward: item };
     });
 }
 
@@ -262,7 +248,7 @@ export async function updateGiveaway(
     if (footerIndex === -1) return;
 
     container.components[footerIndex] = new TextDisplayBuilder().setContent(
-      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id}`,
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id} ${messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}`,
     );
 
     await message.edit({ components: [container] });
@@ -288,7 +274,8 @@ export async function selectAndSaveWinners(
 
   for (const { amount, id: rewardId } of rewards) {
     // this is intended as a compact way to slice
-    const slice = shuffledIds.slice(idx, (idx += amount));
+    const slice = shuffledIds.slice(idx, idx + amount);
+    idx += amount;
     if (slice.length > 0) {
       winningUsers.push(
         ...slice.map((userId) => ({

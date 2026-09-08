@@ -1,6 +1,8 @@
+import type { Guild, User } from "discord.js";
+
 import type { ExtractContext } from "@hashira/core";
 import type { GiveawayReward, Item } from "@hashira/db";
-import type { Guild, User } from "discord.js";
+
 import type { base } from "../base";
 import { grantItemToUsers } from "../economy/managers/inventoryService";
 import { addBalances } from "../economy/managers/transferManager";
@@ -62,11 +64,7 @@ export const distributeEconomyReward = async ({
   reward,
 }: DistributeEconomyRewardOptions): Promise<EconomyDistributionOutcome> => {
   const allUserIds = [...new Set(reward.winners.map(({ userId }) => userId))];
-  const alreadyDistributed = await getAlreadyDistributedUserIds(
-    prisma,
-    reward.id,
-    allUserIds,
-  );
+  const alreadyDistributed = await getAlreadyDistributedUserIds(prisma, reward.id, allUserIds);
   const pendingUserIds = allUserIds.filter((userId) => !alreadyDistributed.has(userId));
 
   if (pendingUserIds.length === 0) {
@@ -219,11 +217,7 @@ export const distributeMuteReward = async ({
   reward,
 }: DistributeMuteRewardOptions): Promise<MuteDistributionOutcome> => {
   const allUserIds = [...new Set(reward.winners.map(({ userId }) => userId))];
-  const alreadyDistributed = await getAlreadyDistributedUserIds(
-    prisma,
-    reward.id,
-    allUserIds,
-  );
+  const alreadyDistributed = await getAlreadyDistributedUserIds(prisma, reward.id, allUserIds);
   const pendingUserIds = allUserIds.filter((userId) => !alreadyDistributed.has(userId));
 
   const mutedUserIds: string[] = [];
@@ -266,7 +260,11 @@ export const distributeMuteReward = async ({
       });
 
       if (mute) mutedUserIds.push(userId);
-      else failedUsers.push({ userId, reason: "Wyciszenie nie zostało nałożone." });
+      else
+        failedUsers.push({
+          userId,
+          reason: "Wyciszenie nie zostało nałożone.",
+        });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Nieznany błąd";
       failedUsers.push({ userId, reason: message });
