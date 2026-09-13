@@ -4,6 +4,7 @@ import { randomInt } from "es-toolkit";
 
 import { Hashira } from "@hashira/core";
 import type { ExtendedPrismaClient } from "@hashira/db";
+import { nestedTransaction } from "@hashira/db/transaction";
 
 import { base } from "../../base";
 import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
@@ -89,17 +90,18 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         const streakBonus = Math.min(dailyStreak, 20) / 100;
         const totalAmount = Math.floor(amount * (1 + streakBonus));
 
-        await addBalance({
-          prisma,
-          currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-          reason: "Daily",
-          guildId: itx.guildId,
-          toUserId: targetUser.id,
-          amount: totalAmount,
-        });
-
-        await prisma.dailyPointsRedeems.create({
-          data: { userId: itx.user.id, guildId: itx.guildId },
+        await prisma.$transaction(async (tx) => {
+          await addBalance({
+            prisma: nestedTransaction(tx),
+            currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            reason: "Daily",
+            guildId: itx.guildId,
+            toUserId: targetUser.id,
+            amount: totalAmount,
+          });
+          await tx.dailyPointsRedeems.create({
+            data: { userId: itx.user.id, guildId: itx.guildId },
+          });
         });
 
         const balance = formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol);
