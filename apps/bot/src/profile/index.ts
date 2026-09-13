@@ -17,9 +17,9 @@ import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
 
 import { base } from "../base";
-import { getDefaultWallet } from "../economy/managers/walletManager";
+import { getDefaultWallet, getWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { REP_CURRENCY, STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -106,6 +106,13 @@ export const profile = new Hashira({ name: "profile" })
             });
             const formattedBalance = formatBalance(wallet.balance, STRATA_CZASU_CURRENCY.symbol);
 
+            const rep = await getWallet({
+              prisma,
+              userId: user.id,
+              guildId: itx.guildId,
+              currencySymbol: REP_CURRENCY.symbol,
+            });
+
             const activitySince = sub(itx.createdAt, { days: 30 });
             const textActivity = await getUserTextActivity({
               prisma,
@@ -143,7 +150,7 @@ export const profile = new Hashira({ name: "profile" })
             image
               .nickname(user.displayName)
               .balance(wallet.balance)
-              .rep(0) // TODO)) Rep value
+              .rep(rep.balance)
               .items(dbUser.inventoryItems.length)
               .textActivity(textActivity)
               .exp(0, 0) // TODO)) Exp value
