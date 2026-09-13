@@ -44,6 +44,15 @@ model DailyPointsRedeems {
   @@map("dailyPointsRedeems")
 }
 
+model DailyRepRedeem {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  userId    String
+  timestamp DateTime @default(now())
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
 model LastFishing {
   id        Int      @id @default(autoincrement())
   guildId   String
@@ -70,6 +79,7 @@ model Guild {
   colorRole              ColorRole[]
   currency               Currency[]
   dailyPointsRedeems     DailyPointsRedeems[]
+  dailyRepRedeems        DailyRepRedeem[]
   emojiUsage             EmojiUsage[]
   guildSettings          GuildSettings?
   mute                   Mute[]
@@ -131,69 +141,70 @@ model ProtectedInvite {
 }
 
 model User {
-  id                                String                             @id(map: "core_users_pkey")
-  verificationLevel                 VerificationLevel?
-  marriedTo                         String?
-  marriedAt                         DateTime?                          @db.Timestamp(6)
-  birthdayEventStage2024Completions BirthdayEventStage2024Completion[]
-  colorRoles                        ColorRole[]
-  currencies                        Currency[]
-  dailyPointsRedeems                DailyPointsRedeems[]
-  inventoryItems                    InventoryItem[]
-  inventoryTotals                   InventoryItemTotal[]
-  createdItems                      Item[]
-  givenMutes                        Mute[]                             @relation("mute_moderatorIdTousers")
-  receivedMutes                     Mute[]                             @relation("mute_userIdTousers")
-  createdShopItems                  ShopItem[]
-  transactions                      Transaction[]
-  userTextActivities                UserTextActivity[]
-  marriedUser                       User?                              @relation("usersTousers", fields: [marriedTo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_marriedTo_users_id_fk")
-  marriedToUsers                    User[]                             @relation("usersTousers")
-  wallets                           Wallet[]
-  givenVerifications                Verification[]                     @relation("verification_moderatorIdTousers")
-  receivedVerifications             Verification[]                     @relation("verification_userIdTousers")
-  givenWarns                        Warn[]                             @relation("warn_moderatorIdTousers")
-  receivedWarns                     Warn[]                             @relation("warn_userIdTousers")
-  ultimatums                        Ultimatum[]
-  dmPolls                           DmPoll[]
-  dmPollVotes                       DmPollVote[]
-  participatingInDmPolls            DmPollParticipant[]
-  dmPollExclusion                   DmPollExclusion?
-  voiceSessions                     VoiceSession[]
-  profileSettings                   ProfileSettings?
-  displayedProfileBadges            DisplayedProfileBadge[]
-  displayedProfileAchievements      DisplayedProfileAchievement[]
-  easter2025TeamMember              Easter2025TeamMember[]
-  lastFishings                      LastFishing[]
-  givenChannelRestrictions          ChannelRestriction[]               @relation("moderator")
-  receivedChannelRestrictions       ChannelRestriction[]               @relation("user")
-  giveawayParticipations            GiveawayParticipant[]
-  giveawayWinnings                  GiveawayWinner[]
-  createdGiveaways                  Giveaway[]
-  moderatorLeaves                   ModeratorLeave[]
-  halloween2025MonsterCatchAttempts Halloween2025MonsterCatchAttempt[]
-  halloween2025MonsterLoot          Halloween2025MonsterLoot[]
-  shopItemPurchases                 ShopItemPurchase[]
-  teamMemberships                   TeamMember[]
-  easter2026CaptainOf               Easter2026TeamConfig[]             @relation("easter2026Captain")
-  birthday2026TucznikOf             Birthday2026TeamIdentity[]         @relation("birthday2026Tucznik")
-  birthday2026CaptainOf             Birthday2026TeamIdentity[]         @relation("birthday2026Captain")
-  birthday2026PersonaOf             Birthday2026TeamPersona[]          @relation("birthday2026PersonaSubject")
-  configuredBirthday2026Personas    Birthday2026TeamPersona[]          @relation("birthday2026PersonaConfiguredBy")
-  previousBirthday2026TucznikChanges Birthday2026TucznikChange[]       @relation("birthday2026PreviousTucznik")
-  nextBirthday2026TucznikChanges     Birthday2026TucznikChange[]       @relation("birthday2026NextTucznik")
-  changedBirthday2026Tucznicy        Birthday2026TucznikChange[]       @relation("birthday2026TucznikChangedBy")
+  id                                 String                             @id(map: "core_users_pkey")
+  verificationLevel                  VerificationLevel?
+  marriedTo                          String?
+  marriedAt                          DateTime?                          @db.Timestamp(6)
+  birthdayEventStage2024Completions  BirthdayEventStage2024Completion[]
+  colorRoles                         ColorRole[]
+  currencies                         Currency[]
+  dailyPointsRedeems                 DailyPointsRedeems[]
+  dailyRepRedeems                    DailyRepRedeem[]
+  inventoryItems                     InventoryItem[]
+  inventoryTotals                    InventoryItemTotal[]
+  createdItems                       Item[]
+  givenMutes                         Mute[]                             @relation("mute_moderatorIdTousers")
+  receivedMutes                      Mute[]                             @relation("mute_userIdTousers")
+  createdShopItems                   ShopItem[]
+  transactions                       Transaction[]
+  userTextActivities                 UserTextActivity[]
+  marriedUser                        User?                              @relation("usersTousers", fields: [marriedTo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_marriedTo_users_id_fk")
+  marriedToUsers                     User[]                             @relation("usersTousers")
+  wallets                            Wallet[]
+  givenVerifications                 Verification[]                     @relation("verification_moderatorIdTousers")
+  receivedVerifications              Verification[]                     @relation("verification_userIdTousers")
+  givenWarns                         Warn[]                             @relation("warn_moderatorIdTousers")
+  receivedWarns                      Warn[]                             @relation("warn_userIdTousers")
+  ultimatums                         Ultimatum[]
+  dmPolls                            DmPoll[]
+  dmPollVotes                        DmPollVote[]
+  participatingInDmPolls             DmPollParticipant[]
+  dmPollExclusion                    DmPollExclusion?
+  voiceSessions                      VoiceSession[]
+  profileSettings                    ProfileSettings?
+  displayedProfileBadges             DisplayedProfileBadge[]
+  displayedProfileAchievements       DisplayedProfileAchievement[]
+  easter2025TeamMember               Easter2025TeamMember[]
+  lastFishings                       LastFishing[]
+  givenChannelRestrictions           ChannelRestriction[]               @relation("moderator")
+  receivedChannelRestrictions        ChannelRestriction[]               @relation("user")
+  giveawayParticipations             GiveawayParticipant[]
+  giveawayWinnings                   GiveawayWinner[]
+  createdGiveaways                   Giveaway[]
+  moderatorLeaves                    ModeratorLeave[]
+  halloween2025MonsterCatchAttempts  Halloween2025MonsterCatchAttempt[]
+  halloween2025MonsterLoot           Halloween2025MonsterLoot[]
+  shopItemPurchases                  ShopItemPurchase[]
+  teamMemberships                    TeamMember[]
+  easter2026CaptainOf                Easter2026TeamConfig[]             @relation("easter2026Captain")
+  birthday2026TucznikOf              Birthday2026TeamIdentity[]         @relation("birthday2026Tucznik")
+  birthday2026CaptainOf              Birthday2026TeamIdentity[]         @relation("birthday2026Captain")
+  birthday2026PersonaOf              Birthday2026TeamPersona[]          @relation("birthday2026PersonaSubject")
+  configuredBirthday2026Personas     Birthday2026TeamPersona[]          @relation("birthday2026PersonaConfiguredBy")
+  previousBirthday2026TucznikChanges Birthday2026TucznikChange[]        @relation("birthday2026PreviousTucznik")
+  nextBirthday2026TucznikChanges     Birthday2026TucznikChange[]        @relation("birthday2026NextTucznik")
+  changedBirthday2026Tucznicy        Birthday2026TucznikChange[]        @relation("birthday2026TucznikChangedBy")
   birthday2026Settlements            Birthday2026Settlement[]
   birthday2026IndividualResults      Birthday2026IndividualResult[]
   birthday2026EncounterEntries       Birthday2026EncounterEntry[]
   birthday2026EncounterWins          Birthday2026EncounterWinner[]
-  birthday2026Registrations         Birthday2026Registration[]
-  birthday2026MemberStates          Birthday2026MemberState[]
-  birthday2026DailyTextEarnings     Birthday2026DailyTextEarning[]
-  birthday2026DailyVoiceEarnings    Birthday2026DailyVoiceEarning[]
-  birthday2026FeedBatches           Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
-  birthday2026PersonalTransactions  Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
-  createdBirthday2026Transactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
+  birthday2026Registrations          Birthday2026Registration[]
+  birthday2026MemberStates           Birthday2026MemberState[]
+  birthday2026DailyTextEarnings      Birthday2026DailyTextEarning[]
+  birthday2026DailyVoiceEarnings     Birthday2026DailyVoiceEarning[]
+  birthday2026FeedBatches            Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
+  birthday2026PersonalTransactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
+  createdBirthday2026Transactions    Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
 
   @@map("users")
 }
