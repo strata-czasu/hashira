@@ -29,7 +29,7 @@ import { createWarnFormat } from "./moderation/warns";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
-import { ensureUsersExist } from "./util/ensureUsersExist";
+import { ensureUserExists, ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { isNotOwner } from "./util/isOwner";
@@ -119,6 +119,16 @@ type ImportInventoryRow = {
   itemName: string;
   description: string;
   quantity: number;
+};
+
+type ImportAchievementRow = {
+  /** old item name; null for new items */
+  oldName: string | null;
+  /** new item name */
+  newName: string;
+  /** 0..3 (inclusive) */
+  stars: number;
+  description: string;
 };
 
 const parseCsv = (content: string): string[][] => {
@@ -674,6 +684,91 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             await itx.editReply(
               `Finished migrating ${processed} badge placements for ${userIds.length} user(s)`,
             );
+          }),
+      )
+      .addCommand("import-achievements", (command) =>
+        command
+          .setDescription("Import (create/update) achievements from a CSV")
+          .addAttachment("csv", (csv) =>
+            csv.setDescription("CSV with name_badge,name_achievement,stars,description"),
+          )
+          .handle(async ({ prisma }, { csv }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            if (csv.size > 10_000_000) return;
+            await itx.deferReply();
+
+            const content = await fetch(csv.url).then((res) => res.text());
+
+            const rows: ImportAchievementRow[] = [];
+            for (const columns of parseCsv(content).slice(1)) {
+              const [oldName, newName, starsRaw, description] = columns;
+              if (!newName || !description) continue;
+              const stars = Number(starsRaw);
+              if (!Number.isSafeInteger(stars) || stars < 0 || stars > 3) continue;
+              rows.push({
+                oldName: oldName?.trim() || null,
+                newName: newName.trim(),
+                stars,
+                description: description.trim(),
+              });
+            }
+
+            await itx.editReply(`Processing ${rows.length} items...`);
+
+            await ensureUserExists(prisma, itx.user);
+
+            let created = 0;
+            let updated = 0;
+            for (const row of rows) {
+              if (!row.oldName) {
+                await prisma.item.create({
+                  data: {
+                    name: row.newName,
+                    description: row.description,
+                    guildId: itx.guildId,
+                    createdBy: itx.user.id,
+                    type: "badge",
+                    perUserLimit: 1,
+                    badge: {
+                      create: {
+                        stars: row.stars,
+                      },
+                    },
+                  },
+                });
+                created++;
+                continue;
+              }
+
+              // `update` needs an ID and `updateMany` can't update the `badge` relation,
+              // so fetch the object first, then use regular `update`
+              const item = await prisma.item.findFirst({
+                where: {
+                  name: row.oldName,
+                  guildId: itx.guildId,
+                  type: "badge",
+                  deletedAt: null,
+                },
+              });
+              if (!item) continue;
+              await prisma.item.update({
+                where: {
+                  id: item.id,
+                },
+                data: {
+                  name: row.newName,
+                  description: row.description,
+                  badge: {
+                    update: {
+                      stars: row.stars,
+                    },
+                  },
+                },
+              });
+              updated++;
+            }
+
+            await itx.editReply(`Created ${created} and updated ${updated} items`);
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>
