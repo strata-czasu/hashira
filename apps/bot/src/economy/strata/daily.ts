@@ -7,10 +7,9 @@ import type { ExtendedPrismaClient } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 
 import { base } from "../../base";
-import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUsersExist } from "../../util/ensureUsersExist";
 import { addBalance } from "../managers/transferManager";
-import { formatBalance } from "../util";
+import { formatBalance, getRequiredGuildDefaultCurrency } from "../util";
 
 const calculateDailyAmount = (marriageBonus: boolean, targetNotSelf: boolean) => {
   if (!targetNotSelf) {
@@ -90,10 +89,11 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
         const streakBonus = Math.min(dailyStreak, 20) / 100;
         const totalAmount = Math.floor(amount * (1 + streakBonus));
 
-        await prisma.$transaction(async (tx) => {
+        const currency = await prisma.$transaction(async (tx) => {
+          const currency = await getRequiredGuildDefaultCurrency(tx, itx.guildId);
           await addBalance({
             prisma: nestedTransaction(tx),
-            currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+            currencyId: currency.id,
             reason: "Daily",
             guildId: itx.guildId,
             toUserId: targetUser.id,
@@ -102,9 +102,10 @@ export const strataDaily = new Hashira({ name: "strata-daily" })
           await tx.dailyPointsRedeems.create({
             data: { userId: itx.user.id, guildId: itx.guildId },
           });
+          return currency;
         });
 
-        const balance = formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol);
+        const balance = formatBalance(totalAmount, currency.symbol);
         const giveOrReceive = shouldApplyTargetNotSelf
           ? `Przekazujesz ${balance} dla ${userMention(targetUser.id)}!`
           : `Otrzymujesz ${balance}!`;

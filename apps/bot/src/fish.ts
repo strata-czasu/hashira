@@ -16,8 +16,7 @@ import type { ExtendedPrismaClient } from "@hashira/db";
 
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
-import { formatBalance } from "./economy/util";
-import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
+import { formatBalance, getRequiredGuildDefaultCurrency } from "./economy/util";
 import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { waitForButtonClick } from "./util/singleUseButton";
@@ -135,11 +134,12 @@ export const fish = new Hashira({ name: "fish" })
         const { id } = getRandomItem(FISH_TABLE);
         // This is guaranteed to find a fish
         const { name, amount } = getItemById(FISH_TABLE, id)!;
+        const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
         // TEMPORARILY DISABLED: fishing no longer awards balance.
         // await addBalance({
         //   prisma,
-        //   currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+        //   currencyId: currency.id,
         //   reason: `Łowienie ${id}`,
         //   guildId: itx.guildId,
         //   toUserId: itx.user.id,
@@ -150,7 +150,7 @@ export const fish = new Hashira({ name: "fish" })
           data: { userId: itx.user.id, guildId: itx.guildId },
         });
 
-        const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+        const balance = formatBalance(amount, currency.symbol);
 
         const reminderButton = new ButtonBuilder()
           .setCustomId("fish_reminder")
@@ -234,17 +234,18 @@ export const fish = new Hashira({ name: "fish" })
             if (!fish) {
               return errorFollowUp(itx, "Błąd: Nie znaleziono ryby o tym ID");
             }
+            const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
             await addBalance({
               prisma,
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              currencyId: currency.id,
               reason: `Admin force fish ${fish.id}`,
               guildId: itx.guildId,
               toUserId: user.id,
               amount: fish.amount,
             });
 
-            const balance = formatBalance(fish.amount, STRATA_CZASU_CURRENCY.symbol);
+            const balance = formatBalance(fish.amount, currency.symbol);
 
             await itx.reply({
               content: `${user} został zmuszony do złowienia ${fish.name} wartego ${balance}`,

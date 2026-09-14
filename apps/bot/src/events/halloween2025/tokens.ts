@@ -256,6 +256,7 @@ export const tokens = new Hashira({ name: "tokens" }).use(base).group("tokeny", 
               toUsers: members.map((m) => m.user),
               amount,
               reason,
+              currencySymbol: TOKENY_CURRENCY.symbol,
             });
 
             const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);
@@ -320,6 +321,7 @@ export const tokens = new Hashira({ name: "tokens" }).use(base).group("tokeny", 
               toUsers: [user],
               amount,
               reason,
+              currencySymbol: TOKENY_CURRENCY.symbol,
             });
 
             const amountFormatted = formatBalance(amount, TOKENY_CURRENCY.symbol);

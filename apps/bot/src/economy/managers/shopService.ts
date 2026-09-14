@@ -16,7 +16,7 @@ import {
   UserPurchaseLimitExceededError,
 } from "../economyError";
 import { validateNonNegativeAmount } from "../util";
-import { getCurrency } from "./currencyManager";
+import { getActiveCurrency } from "./currencyManager";
 import { reserveInventoryTotal } from "./inventoryService";
 import { debitWallet, getDefaultWallet } from "./walletManager";
 
@@ -56,7 +56,7 @@ export const createShopItem = async ({
 }: CreateShopItemOptions): Promise<ShopItemWithDetails> => {
   validateNonNegativeAmount(price);
 
-  const currency = await getCurrency({
+  const currency = await getActiveCurrency({
     prisma,
     guildId,
     currencySymbol,
@@ -331,7 +331,6 @@ export const purchaseShopItem = async ({
     if (!shopItem) {
       throw new ShopItemNotFoundError();
     }
-
     // 1. Reserve against the per-user inventory limit
     await reserveInventoryTotal({
       prisma: tx,

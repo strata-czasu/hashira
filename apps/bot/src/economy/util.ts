@@ -1,25 +1,38 @@
 import { bold, inlineCode } from "discord.js";
 
-import type { ExtendedPrismaClient, Item, ItemType, PrismaTransaction } from "@hashira/db";
+import type { Currency, Item, ItemType, PrismaTransaction } from "@hashira/db";
 
-import { InvalidAmountError } from "./economyError";
+import { CurrencyNotFoundError, InvalidAmountError } from "./economyError";
 
 export type GetCurrencyConditionOptions = { currencySymbol: string } | { currencyId: number };
 
 /**
- * Resolve the guild's configured default currency symbol, or null when none is
- * configured.
+ * Resolve the guild's configured default currency, or null when none is configured.
  */
-export const getGuildDefaultCurrencySymbol = async (
-  prisma: ExtendedPrismaClient,
+export const getGuildDefaultCurrency = async (
+  prisma: PrismaTransaction,
   guildId: string,
-): Promise<string | null> => {
+): Promise<Currency | null> => {
   const settings = await prisma.guildSettings.findUnique({
     where: { guildId },
     include: { defaultCurrency: true },
   });
 
-  return settings?.defaultCurrency?.symbol ?? null;
+  return settings?.defaultCurrency ?? null;
+};
+
+export const getGuildDefaultCurrencySymbol = async (
+  prisma: PrismaTransaction,
+  guildId: string,
+): Promise<string | null> => (await getGuildDefaultCurrency(prisma, guildId))?.symbol ?? null;
+
+export const getRequiredGuildDefaultCurrency = async (
+  prisma: PrismaTransaction,
+  guildId: string,
+): Promise<Currency> => {
+  const currency = await getGuildDefaultCurrency(prisma, guildId);
+  if (!currency) throw new CurrencyNotFoundError();
+  return currency;
 };
 
 export const validateNonNegativeAmount = (amount: number): void => {

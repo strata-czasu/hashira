@@ -43,7 +43,7 @@ import {
 import {
   formatBalance,
   formatItem,
-  getGuildDefaultCurrencySymbol,
+  getGuildDefaultCurrency,
   getItem,
   getTypeNameForList,
 } from "./util";
@@ -280,7 +280,20 @@ const getEffectiveCurrencySymbol = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
   override?: string | null,
-): Promise<string | null> => (override ? override : getGuildDefaultCurrencySymbol(prisma, guildId));
+): Promise<string | null> => {
+  if (override) {
+    return (
+      (
+        await prisma.currency.findFirst({
+          where: { guildId, symbol: override },
+          select: { symbol: true },
+        })
+      )?.symbol ?? null
+    );
+  }
+  const currency = await getGuildDefaultCurrency(prisma, guildId);
+  return currency?.symbol ?? null;
+};
 
 async function autocompleteCurrencies({
   prisma,
@@ -329,7 +342,7 @@ async function autocompleteShopItems({
           mode: "insensitive",
         },
       },
-      ...(currencySymbol ? { currency: { symbol: currencySymbol } } : {}),
+      currency: currencySymbol ? { symbol: currencySymbol } : {},
     },
     include: { item: true, currency: true },
     take: 25,

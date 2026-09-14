@@ -18,8 +18,8 @@ import { DatabasePaginator, type Prisma } from "@hashira/db";
 
 import { base } from "../base";
 import { getDefaultWallet, getWallet } from "../economy/managers/walletManager";
-import { formatBalance } from "../economy/util";
-import { REP_CURRENCY, STRATA_CZASU_CURRENCY } from "../specializedConstants";
+import { formatBalance, getRequiredGuildDefaultCurrency } from "../economy/util";
+import { REP_CURRENCY } from "../specializedConstants";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
@@ -97,14 +97,15 @@ export const profile = new Hashira({ name: "profile" })
             });
             if (!dbUser) return;
             await itx.deferReply();
+            const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
             const wallet = await getDefaultWallet({
               prisma,
               userId: user.id,
               guildId: itx.guildId,
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              currencyId: currency.id,
             });
-            const formattedBalance = formatBalance(wallet.balance, STRATA_CZASU_CURRENCY.symbol);
+            const formattedBalance = formatBalance(wallet.balance, currency.symbol);
 
             const rep = await getWallet({
               prisma,

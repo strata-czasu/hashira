@@ -23,3 +23,5 @@ export const getCurrency = async ({ prisma, guildId, ...options }: GetCurrencyOp
 
   return currency;
 };
+
+export const getActiveCurrency = getCurrency;
