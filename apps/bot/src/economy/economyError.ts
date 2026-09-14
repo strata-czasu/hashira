@@ -42,6 +42,12 @@ export class CurrencyNotFoundError extends EconomyError {
   }
 }
 
+export class CurrencyRetiredError extends EconomyError {
+  constructor() {
+    super("Currency is archived and cannot be used for this operation");
+  }
+}
+
 export class ShopItemNotFoundError extends EconomyError {
   constructor() {
     super("Shop item not found");

@@ -9,6 +9,7 @@ import type {
 import { nestedTransaction } from "@hashira/db/transaction";
 
 import {
+  CurrencyRetiredError,
   InvalidAmountError,
   InvalidStockError,
   OutOfStockError,
@@ -331,6 +332,8 @@ export const purchaseShopItem = async ({
     if (!shopItem) {
       throw new ShopItemNotFoundError();
     }
+    if (shopItem.currency.retiredAt) throw new CurrencyRetiredError();
+
     // 1. Reserve against the per-user inventory limit
     await reserveInventoryTotal({
       prisma: tx,
