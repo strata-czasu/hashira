@@ -1,6 +1,6 @@
 import type { PrismaTransaction } from "@hashira/db";
 
-import { CurrencyNotFoundError } from "../economyError";
+import { CurrencyNotFoundError, CurrencyRetiredError } from "../economyError";
 import type { GetCurrencyConditionOptions } from "../util";
 
 type GetCurrencyOptions = {
@@ -24,4 +24,8 @@ export const getCurrency = async ({ prisma, guildId, ...options }: GetCurrencyOp
   return currency;
 };
 
-export const getActiveCurrency = getCurrency;
+export const getActiveCurrency = async (options: GetCurrencyOptions) => {
+  const currency = await getCurrency(options);
+  if (currency.retiredAt) throw new CurrencyRetiredError();
+  return currency;
+};
