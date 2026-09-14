@@ -22,8 +22,9 @@ import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 
 import { base } from "./base";
 import { WalletCreationError } from "./economy/economyError";
-import { getCurrency } from "./economy/managers/currencyManager";
+import { getActiveCurrency } from "./economy/managers/currencyManager";
 import { addBalances } from "./economy/managers/transferManager";
+import { getRequiredGuildDefaultCurrency } from "./economy/util";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
@@ -49,11 +50,8 @@ const importWalletBalancesChunk = async (
       rows.map((row) => row.userId),
     );
 
-    const currency = await getCurrency({
-      prisma: tx,
-      guildId,
-      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-    });
+    const currency = await getRequiredGuildDefaultCurrency(tx, guildId);
+    await getActiveCurrency({ prisma: tx, guildId, currencyId: currency.id });
 
     const uniqueUserIds = [...new Set(rows.map((row) => row.userId))];
 
@@ -432,9 +430,15 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
         command.setDescription("Clean balances").handle(async ({ prisma }, _, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
+          const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
+          await getActiveCurrency({
+            prisma,
+            guildId: itx.guildId,
+            currencyId: currency.id,
+          });
 
           await prisma.wallet.updateMany({
-            where: { guildId: itx.guildId },
+            where: { guildId: itx.guildId, currencyId: currency.id },
             data: { balance: 0 },
           });
 
@@ -454,6 +458,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             await itx.deferReply();
 
             const members = [...role.members.keys()];
+            const currency = await getRequiredGuildDefaultCurrency(ctx.prisma, itx.guildId);
 
             await addBalances({
               prisma: ctx.prisma,
@@ -462,7 +467,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               toUserIds: members,
               amount,
               reason: "Added balance to role",
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              currencyId: currency.id,
             });
 
             await itx.editReply("Added balance to role");

@@ -2,14 +2,17 @@ import { bold, inlineCode, PermissionFlagsBits } from "discord.js";
 
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Item, type Prisma } from "@hashira/db";
-import { nestedTransaction } from "@hashira/db/transaction";
 
 import { base } from "../base";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { getCurrency } from "./managers/currencyManager";
-import { formatBalance, formatItem, getItem, getTypeNameForList } from "./util";
+import {
+  formatBalance,
+  formatItem,
+  getRequiredGuildDefaultCurrency,
+  getItem,
+  getTypeNameForList,
+} from "./util";
 
 const formatItemInList = ({ id, name, description, type, perUserLimit }: Item) => {
   const lines = [];
@@ -71,7 +74,7 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
 
-          const item = await prisma.$transaction(async (tx) => {
+          const result = await prisma.$transaction(async (tx) => {
             await ensureUserExists(tx, itx.user);
             const item = await tx.item.create({
               data: {
@@ -85,12 +88,9 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
             });
 
             if (!item) return null;
+            let currency = null;
             if (price !== null) {
-              const currency = await getCurrency({
-                prisma: nestedTransaction(tx),
-                guildId: itx.guildId,
-                currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-              });
+              currency = await getRequiredGuildDefaultCurrency(tx, itx.guildId);
               await tx.shopItem.create({
                 data: {
                   item: { connect: { id: item.id } },
@@ -100,13 +100,14 @@ export const items = new Hashira({ name: "items" }).use(base).group("item-admin"
                 },
               });
             }
-            return item;
+            return { item, currency };
           });
-          if (!item) return;
+          if (!result) return;
+          const { item, currency } = result;
 
           let message = `Utworzono przedmiot ${formatItem(item)}`;
-          if (price !== null) {
-            message += ` i dodano go do sklepu za ${formatBalance(price, STRATA_CZASU_CURRENCY.symbol)}`;
+          if (price !== null && currency) {
+            message += ` i dodano go do sklepu za ${formatBalance(price, currency.symbol)}`;
           }
           await itx.editReply(message);
           // TODO)) Logs of item creation

@@ -3,7 +3,7 @@ import { nestedTransaction } from "@hashira/db/transaction";
 
 import { InvalidAmountError, SelfTransferError } from "../economyError";
 import { type GetCurrencyConditionOptions, validateNonNegativeAmount } from "../util";
-import { getCurrency } from "./currencyManager";
+import { getActiveCurrency } from "./currencyManager";
 import { debitWallet, getDefaultWallet, getDefaultWallets, getWallet } from "./walletManager";
 
 type AddBalanceOptions = {
@@ -27,7 +27,7 @@ export const addBalance = async ({
   ...currencyOptions
 }: AddBalanceOptions) => {
   return await prisma.$transaction(async (tx) => {
-    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
+    const currency = await getActiveCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallet = await getWallet({
       prisma: nestedTransaction(tx),
@@ -76,7 +76,7 @@ export const addBalances = async ({
   ...currencyOptions
 }: AddBalancesOptions) => {
   return await prisma.$transaction(async (tx) => {
-    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
+    const currency = await getActiveCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const wallets = await getDefaultWallets({
       prisma: nestedTransaction(tx),
@@ -130,7 +130,7 @@ export const transferBalance = async ({
   return await prisma.$transaction(async (tx) => {
     validateNonNegativeAmount(amount);
 
-    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
+    const currency = await getActiveCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getWallet({
       prisma: nestedTransaction(tx),
@@ -208,7 +208,7 @@ export const transferBalances = async ({
     const sum = uniqueToUserIds.length * amount;
     validateNonNegativeAmount(sum);
 
-    const currency = await getCurrency({ prisma: tx, guildId, ...currencyOptions });
+    const currency = await getActiveCurrency({ prisma: tx, guildId, ...currencyOptions });
 
     const fromWallet = await getDefaultWallet({
       prisma: nestedTransaction(tx),
