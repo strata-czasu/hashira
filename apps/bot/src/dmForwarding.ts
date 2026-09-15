@@ -1,6 +1,8 @@
 import {
   bold,
   type Message,
+  type MessageCreateOptions,
+  MessageReferenceType,
   PermissionFlagsBits,
   RESTJSONErrorCodes,
   TimestampStyles,
@@ -17,6 +19,40 @@ import { discordTry } from "./util/discordTry";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { sendDirectMessage } from "./util/sendDirectMessage";
 
+export type DmForwardMessage = Pick<
+  Message,
+  "channelId" | "content" | "embeds" | "guildId" | "id" | "reference"
+> & {
+  author: Pick<Message["author"], "tag">;
+  attachments: {
+    map: <T>(callback: (attachment: { url: string }) => T) => T[];
+  };
+};
+
+export const getDmForwardMessageOptions = (
+  message: DmForwardMessage,
+): MessageCreateOptions => {
+  const content = `${bold(message.author.tag)}: ${message.content}`;
+
+  if (message.reference?.type === MessageReferenceType.Forward) {
+    return {
+      content,
+      messageReference: {
+        messageId: message.id,
+        channelId: message.channelId,
+        guildId: message.guildId ?? undefined,
+        type: MessageReferenceType.Forward,
+      },
+    };
+  }
+
+  return {
+    content,
+    embeds: message.embeds,
+    files: message.attachments.map((attachment) => attachment.url),
+  };
+};
+
 export const dmForwarding = new Hashira({ name: "dmForwarding" })
   .use(base)
   .handle("directMessageCreate", async (_, message) => {
@@ -32,11 +68,7 @@ export const dmForwarding = new Hashira({ name: "dmForwarding" })
 
     await discordTry(
       async () =>
-        channel.send({
-          content: `${bold(message.author.tag)}: ${message.content}`,
-          embeds: message.embeds,
-          files: message.attachments.map((attachment) => attachment.url),
-        }),
+        channel.send(getDmForwardMessageOptions(message)),
       [RESTJSONErrorCodes.MissingAccess],
       () => console.warn("Missing access to send message to DM forward channel"),
     );
