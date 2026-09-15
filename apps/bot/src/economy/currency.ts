@@ -11,10 +11,6 @@ import {
   getCurrencyCutoverPreview,
   KAPSLE_CURRENCY,
 } from "./managers/currencyCutoverService";
-import {
-  cleanupPostCutoverDailyRewards,
-  getPostCutoverDailyCleanupPreview,
-} from "./managers/postCutoverDailyCleanupService";
 import { formatBalance } from "./util";
 
 const formatCurrency = (
@@ -134,45 +130,6 @@ export const currency = new Hashira({ name: "currency" })
             });
             await itx.editReply({
               content: `Cutover zakończony. Zarchiwizowano walutę ID ${result.oldCurrency.id}, utworzono Kapsle ID ${result.newCurrency.id} i wyłączono ${result.disabledShopListingCount} ofert sklepu.`,
-              components: [],
-            });
-          }),
-      )
-      .addCommand("cleanup-cutover-daily", (command) =>
-        command
-          .setDescription("Reverse Daily rewards created after the Kapsle cutover")
-          .handle(async ({ prisma }, _, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply({ flags: "Ephemeral" });
-
-            const preview = await getPostCutoverDailyCleanupPreview(prisma, itx.guildId);
-            const confirmed = await waitForConfirmation(
-              { send: itx.editReply.bind(itx) },
-              [
-                `Serwer: ${itx.guild.name} (${itx.guildId})`,
-                `Waluta: ${preview.currency.name} (${preview.currency.symbol}), ID ${preview.currency.id}`,
-                `Transakcje Daily do usunięcia: ${preview.transactionCount}`,
-                `Portfele do skorygowania: ${preview.affectedWalletCount}`,
-                `Zmiana sald do cofnięcia: ${formatBalance(preview.netAmount, preview.currency.symbol)}`,
-                `Wpisy odbioru Daily do usunięcia: ${preview.redeemCount}`,
-                "",
-                "Czy wykonać cleanup? Operacja jest nieodwracalna.",
-              ].join("\n"),
-              "Tak",
-              "Nie",
-              (action) => action.user.id === itx.user.id,
-            );
-            if (!confirmed) {
-              await itx.editReply({ content: "Anulowano cleanup.", components: [] });
-              return;
-            }
-
-            const result = await cleanupPostCutoverDailyRewards({
-              prisma,
-              guildId: itx.guildId,
-            });
-            await itx.editReply({
-              content: `Cleanup zakończony. Usunięto ${result.transactionCount} transakcji Daily, skorygowano ${result.affectedWalletCount} portfeli o ${formatBalance(result.netAmount, result.currency.symbol)} i usunięto ${result.redeemCount} wpisów odbioru Daily.`,
               components: [],
             });
           }),
