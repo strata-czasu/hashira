@@ -1,3 +1,4 @@
+import { parse } from "date-fns";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -14,7 +15,7 @@ import {
   TextInputStyle,
   time,
 } from "discord.js";
-import { groupBy, isNil, isNotNil } from "es-toolkit";
+import { chunk, groupBy, isNil, isNotNil } from "es-toolkit";
 
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient, type Prisma, type Task } from "@hashira/db";
@@ -774,6 +775,84 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             }
 
             await itx.editReply(`Created ${created} and updated ${updated} items`);
+          }),
+      )
+      .addCommand("import-nickname-history", (command) =>
+        command
+          .setDescription("Import nickname history from the deprecated format")
+          .addAttachment("file", (file) =>
+            file.setDescription("JSON file with per-guild per-user nickname history"),
+          )
+          .handle(async ({ prisma }, { file }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const content = await fetch(file.url).then((res) => res.text());
+
+            type RawEntry = [string, string];
+            type UserEntries = Record<string, RawEntry[]>;
+            type GuildEntries = Record<string, UserEntries>;
+            const rawData = JSON.parse(content) as GuildEntries;
+
+            const allGuilds = new Set<string>();
+            const allUsers = new Set<string>();
+            const entries: Prisma.NicknameChangeCreateManyInput[] = [];
+
+            // Raw format: "Saturday, 21.12.2019"
+            const parseDate = (dateString: string): Date | null => {
+              const datePart = dateString.split(",")[1]?.trim();
+              if (!datePart) return null;
+              return parse(datePart, "dd.MM.yyyy", new Date());
+            };
+
+            for (const [guildId, guildEntries] of Object.entries(rawData)) {
+              allGuilds.add(guildId);
+              for (const [userId, rawEntries] of Object.entries(guildEntries)) {
+                allUsers.add(userId);
+                entries.push(
+                  ...rawEntries
+                    .map(([dateString, nickname]) => {
+                      const timestamp = parseDate(dateString);
+                      if (!timestamp) return null;
+                      return { guildId, userId, nickname, timestamp };
+                    })
+                    .filter((entry) => entry !== null),
+                );
+              }
+            }
+            await itx.editReply(
+              `Loaded JSON data: ${allGuilds.size} guilds, ${allUsers.size} users, ${entries.length} entries. Starting import...`,
+            );
+
+            await Promise.allSettled(
+              Array.from(allGuilds).map((id) =>
+                // Copied from guildAvailability -> createGuildSettings
+                prisma.guild.create({
+                  data: { id, guildSettings: { create: {} } },
+                }),
+              ),
+            );
+            for (const userIdsChunk of chunk(Array.from(allUsers), 100)) {
+              await ensureUsersExist(prisma, userIdsChunk);
+            }
+
+            const chunkSize = 1000;
+            const totalChunks = Math.ceil(entries.length / chunkSize);
+            let importedCount = 0;
+            for (const [chunkIndex, entryBatch] of chunk(entries, chunkSize).entries()) {
+              await prisma.nicknameChange.createMany({ data: entryBatch });
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              if (chunkIndex === 1 || chunkIndex % 10 === 0) {
+                await itx.editReply(
+                  `Imported chunk ${chunkIndex + 1}/${totalChunks} (${importedCount} total)`,
+                );
+              }
+              importedCount += entryBatch.length;
+            }
+
+            await itx.editReply(
+              `Finished importing ${importedCount} entries for ${allGuilds.size} guilds and ${allUsers.size} users`,
+            );
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>
