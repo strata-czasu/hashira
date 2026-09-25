@@ -97,11 +97,11 @@ export const nick = new Hashira({ name: "nick" })
         const user = selectedUser ?? itx.user;
         const where = { guildId: itx.guildId, userId: user.id };
         const paginator = new DatabasePaginator(
-          (props, timestamp) =>
+          (props, ordering) =>
             prisma.nicknameChange.findMany({
               ...props,
               where,
-              orderBy: { timestamp },
+              orderBy: [{ timestamp: ordering }, { id: ordering }],
             }),
           () => prisma.nicknameChange.count({ where }),
           { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
