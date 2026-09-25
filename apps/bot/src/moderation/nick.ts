@@ -122,6 +122,24 @@ export const nick = new Hashira({ name: "nick" })
 
     await ensureUserExists(prisma, newMember);
 
+    const lastChange = await prisma.nicknameChange.findFirst({
+      where: {
+        guildId: newMember.guild.id,
+        userId: newMember.user.id,
+      },
+      orderBy: { timestamp: "desc" },
+    });
+    // Check if we missed the previous nickname change
+    if (oldMember.nickname && lastChange?.nickname != oldMember.nickname) {
+      await prisma.nicknameChange.create({
+        data: {
+          guildId: newMember.guild.id,
+          userId: newMember.user.id,
+          nickname: oldMember.nickname,
+        },
+      });
+    }
+
     await prisma.nicknameChange.create({
       data: {
         guildId: newMember.guild.id,
