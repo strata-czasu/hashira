@@ -118,7 +118,9 @@ export const nick = new Hashira({ name: "nick" })
       }),
   )
   .handle("guildMemberUpdate", async ({ prisma }, oldMember, newMember) => {
-    if (!newMember.nickname || oldMember.nickname === newMember.nickname) return;
+    // `member.displayName` resolves to the guild nickname or global display name
+    // This gives us tracking of events when the guild nickname is removed
+    if (oldMember.displayName === newMember.displayName) return;
 
     await ensureUserExists(prisma, newMember);
 
@@ -129,13 +131,13 @@ export const nick = new Hashira({ name: "nick" })
       },
       orderBy: { timestamp: "desc" },
     });
-    // Check if we missed the previous nickname change
-    if (oldMember.nickname && lastChange?.nickname != oldMember.nickname) {
+    // Check if we missed the previous name change
+    if (lastChange?.nickname != oldMember.displayName) {
       await prisma.nicknameChange.create({
         data: {
           guildId: newMember.guild.id,
           userId: newMember.user.id,
-          nickname: oldMember.nickname,
+          nickname: oldMember.displayName,
         },
       });
     }
@@ -144,7 +146,7 @@ export const nick = new Hashira({ name: "nick" })
       data: {
         guildId: newMember.guild.id,
         userId: newMember.user.id,
-        nickname: newMember.nickname,
+        nickname: newMember.displayName,
       },
     });
   });
