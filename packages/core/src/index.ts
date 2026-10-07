@@ -20,11 +20,6 @@ import { capitalize } from "es-toolkit";
 
 import type { Prettify } from "@hashira/utils/types";
 
-import {
-  type CommandOwnership,
-  loadCommandOwnership,
-  validateCommandOwnership,
-} from "./commandOwnership";
 import { syncGuildCommands } from "./commandRegistration";
 import { handleCustomEvent } from "./customEvents";
 import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
@@ -502,17 +497,13 @@ class Hashira<
 
   async registerCommands(token: string, guildIds: string[], clientId: string) {
     console.log(`Registering application commands for ${guildIds.join(", ")}.`);
-    const ownership = await loadCommandOwnership(process.env["DISCORD_COMMAND_OWNERSHIP_FILE"]);
-    const definitions = this.commandDefinitions();
-    for (const guildId of guildIds) {
-      validateCommandOwnership(clientId, guildId, "hashira", definitions, ownership);
-    }
     await Promise.all(
-      guildIds.map((guildId) => this.registerGuildCommands(token, guildId, clientId, ownership)),
+      guildIds.map((guildId) => this.registerGuildCommands(token, guildId, clientId)),
     );
   }
 
-  private commandDefinitions() {
+  async registerGuildCommands(token: string, guildId: string, clientId: string) {
+    const rest = new REST().setToken(token);
     const commands = [...this.#commands.values()].map(([builder]) => ({
       ...builder.toJSON(),
       type: ApplicationCommandType.ChatInput,
@@ -522,19 +513,7 @@ class Hashira<
       ...this.#messageContextMenus.values(),
     ].map(([builder]) => builder.toJSON());
 
-    return [...commands, ...contextMenus];
-  }
-
-  async registerGuildCommands(
-    token: string,
-    guildId: string,
-    clientId: string,
-    ownership?: CommandOwnership,
-  ) {
-    const policy =
-      ownership ?? (await loadCommandOwnership(process.env["DISCORD_COMMAND_OWNERSHIP_FILE"]));
-    const rest = new REST().setToken(token);
-    await syncGuildCommands(rest, clientId, guildId, this.commandDefinitions(), policy);
+    await syncGuildCommands(rest, clientId, guildId, [...commands, ...contextMenus]);
     console.log(`Successfully registered application commands for guild ${guildId}.`);
   }
 }

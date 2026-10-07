@@ -22,26 +22,7 @@ Run `bun reload-commands` when adding or changing command signatures. The script
 
 ### Running alongside Kasutera
 
-Both runtimes can share a Discord application and use separate databases. Give each runtime disjoint command definitions, or set `DISCORD_COMMAND_OWNERSHIP_FILE` to the same ownership JSON file in both deployments:
-
-```json
-{
-  "applicationId": "123456789012345678",
-  "defaultOwner": "hashira",
-  "commands": [
-    {
-      "guildId": "234567890123456789",
-      "type": 1,
-      "name": "confirm",
-      "owner": "kasutera"
-    }
-  ]
-}
-```
-
-Replace the IDs and names with your application, guild and commands. Types are `1` for slash commands, `2` for user menus and `3` for message menus. Ownership covers the whole root command, including subcommands. Explicit entries override `defaultOwner`; omit the default to require explicit assignments for every command. Hashira validates the entire local catalog in all targeted guilds before any registration writes. Invalid files, wrong application IDs and foreign/unassigned commands abort registration, and Discord failures propagate to the caller.
-
-The file validates registration; it does not filter command handlers or event listeners. To transfer a command, remove its definition and handler from the old runtime, update the ownership file, then register it in the new runtime. Keep general event handlers disjoint as features move. Without an ownership file, both runtimes defining the same type/name can still overwrite each other. The sync never uses bulk replacement or automatic deletion, including for an empty local catalog.
+Both runtimes can share a Discord application while using separate databases. Registration matches by command type and name and preserves commands absent from the local catalog. Keep command definitions and event handlers disjoint as features move. If both runtimes define the same type/name in the same guild, the latest reload updates that registration. Root commands and their subcommands form one registration; transfer the whole root together and remove its old handler. Delete retired registrations manually.
 
 ### VSCode Dev Container (recommended)
 
