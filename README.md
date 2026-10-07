@@ -18,7 +18,30 @@
 
 The `apps/bot/seed.ts` file contains basic data that is loaded into the database by `bun seed`. It sources some default settings from `apps/bot/src/specializedConstants.ts`.
 
-`bun reload-commands` needs to be ran every time a change is made to command signatures, e.g. changing a name, parameter, creating a new command or deleting a command. The `reload-commands` script syncs commands to guilds set in `BOT_DEVELOPER_GUILD_IDS`. This step can be skipped if only command handlers are changed or any other code that wouldn't change a command's signature.
+Run `bun reload-commands` when adding or changing command signatures. The script creates or updates individual commands in `BOT_DEVELOPER_GUILD_IDS`, preserving registrations it does not define. Removing a definition or syncing an empty catalog does not delete commands from Discord; delete retired registrations explicitly. Renaming a command leaves the old registration behind. Changes limited to handlers do not require registration.
+
+### Running alongside Kasutera
+
+Both runtimes can share a Discord application and use separate databases. Give each runtime disjoint command definitions, or set `DISCORD_COMMAND_OWNERSHIP_FILE` to the same ownership JSON file in both deployments:
+
+```json
+{
+  "applicationId": "123456789012345678",
+  "defaultOwner": "hashira",
+  "commands": [
+    {
+      "guildId": "234567890123456789",
+      "type": 1,
+      "name": "confirm",
+      "owner": "kasutera"
+    }
+  ]
+}
+```
+
+Replace the IDs and names with your application, guild and commands. Types are `1` for slash commands, `2` for user menus and `3` for message menus. Ownership covers the whole root command, including subcommands. Explicit entries override `defaultOwner`; omit the default to require explicit assignments for every command. Hashira validates the entire local catalog in all targeted guilds before any registration writes. Invalid files, wrong application IDs and foreign/unassigned commands abort registration, and Discord failures propagate to the caller.
+
+The file validates registration; it does not filter command handlers or event listeners. To transfer a command, remove its definition and handler from the old runtime, update the ownership file, then register it in the new runtime. Keep general event handlers disjoint as features move. Without an ownership file, both runtimes defining the same type/name can still overwrite each other. The sync never uses bulk replacement or automatic deletion, including for an empty local catalog.
 
 ### VSCode Dev Container (recommended)
 

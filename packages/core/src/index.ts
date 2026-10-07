@@ -11,7 +11,6 @@ import {
   Partials,
   type Permissions,
   REST,
-  Routes,
   type SlashCommandBuilder,
   type SlashCommandSubcommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
@@ -21,6 +20,12 @@ import { capitalize } from "es-toolkit";
 
 import type { Prettify } from "@hashira/utils/types";
 
+import {
+  type CommandOwnership,
+  loadCommandOwnership,
+  validateCommandOwnership,
+} from "./commandOwnership";
+import { syncGuildCommands } from "./commandRegistration";
 import { handleCustomEvent } from "./customEvents";
 import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
 import { filterDisabledIntents } from "./intents/util";
@@ -497,43 +502,40 @@ class Hashira<
 
   async registerCommands(token: string, guildIds: string[], clientId: string) {
     console.log(`Registering application commands for ${guildIds.join(", ")}.`);
+    const ownership = await loadCommandOwnership(process.env["DISCORD_COMMAND_OWNERSHIP_FILE"]);
+    const definitions = this.commandDefinitions();
+    for (const guildId of guildIds) {
+      validateCommandOwnership(clientId, guildId, "hashira", definitions, ownership);
+    }
     await Promise.all(
-      guildIds.map((guildId) => this.registerGuildCommands(token, guildId, clientId)),
+      guildIds.map((guildId) => this.registerGuildCommands(token, guildId, clientId, ownership)),
     );
   }
 
-  async registerGuildCommands(token: string, guildId: string, clientId: string) {
-    const rest = new REST().setToken(token);
-    const commands = [...this.#commands.values()].map(([builder]) => builder.toJSON());
+  private commandDefinitions() {
+    const commands = [...this.#commands.values()].map(([builder]) => ({
+      ...builder.toJSON(),
+      type: ApplicationCommandType.ChatInput,
+    }));
     const contextMenus = [
       ...this.#userContextMenus.values(),
       ...this.#messageContextMenus.values(),
     ].map(([builder]) => builder.toJSON());
 
-    try {
-      const currentCommands = (await rest.get(
-        Routes.applicationGuildCommands(clientId, guildId),
-      )) as { id: string; name: string }[];
+    return [...commands, ...contextMenus];
+  }
 
-      const commandsToDelete = currentCommands
-        .filter(
-          (command) =>
-            !this.#commands.has(command.name) && !this.#userContextMenus.has(command.name),
-        )
-        .map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
-
-      await Promise.all(commandsToDelete.map((route) => rest.delete(route)));
-
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-        body: [...commands, ...contextMenus],
-      });
-
-      // TODO)) Log how much commands and context menus were registered
-      console.log(`Successfully registered application commands for guild ${guildId}.`);
-    } catch (error) {
-      if (error instanceof Error) console.error(error);
-      console.error(error);
-    }
+  async registerGuildCommands(
+    token: string,
+    guildId: string,
+    clientId: string,
+    ownership?: CommandOwnership,
+  ) {
+    const policy =
+      ownership ?? (await loadCommandOwnership(process.env["DISCORD_COMMAND_OWNERSHIP_FILE"]));
+    const rest = new REST().setToken(token);
+    await syncGuildCommands(rest, clientId, guildId, this.commandDefinitions(), policy);
+    console.log(`Successfully registered application commands for guild ${guildId}.`);
   }
 }
 
