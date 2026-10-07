@@ -72,16 +72,16 @@ export const marriage = new Hashira({ name: "marriage" })
           },
           async () => {
             await itx.editReply({
-              content: `Niestety ${userMention(
-                itx.user.id,
-              )} odrzucił Twoje oświadczyny. :broken_heart:`,
+              content: `Twoje oświadczyny zostały odrzucone przez ${userMention(
+                targetUser.id,
+              )}. :broken_heart:`,
               components: [],
             });
           },
           (action) => action.user.id === targetUser.id,
           async () => {
             await itx.editReply({
-              content: `${userMention(targetUser.id)} nie odpowiedział na czas.`,
+              content: `Czas na odpowiedź przez ${userMention(targetUser.id)} minął.`,
               components: [],
             });
           },
