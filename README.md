@@ -18,7 +18,11 @@
 
 The `apps/bot/seed.ts` file contains basic data that is loaded into the database by `bun seed`. It sources some default settings from `apps/bot/src/specializedConstants.ts`.
 
-`bun reload-commands` needs to be ran every time a change is made to command signatures, e.g. changing a name, parameter, creating a new command or deleting a command. The `reload-commands` script syncs commands to guilds set in `BOT_DEVELOPER_GUILD_IDS`. This step can be skipped if only command handlers are changed or any other code that wouldn't change a command's signature.
+Run `bun reload-commands` when adding or changing command signatures. The script creates or updates individual commands in `BOT_DEVELOPER_GUILD_IDS`, preserving registrations it does not define. Removing a definition or syncing an empty catalog does not delete commands from Discord; delete retired registrations explicitly. Renaming a command leaves the old registration behind. Changes limited to handlers do not require registration.
+
+### Running alongside Kasutera
+
+Both runtimes can share a Discord application while using separate databases. Registration matches by command type and name and preserves commands absent from the local catalog. Keep command definitions and event handlers disjoint as features move. If both runtimes define the same type/name in the same guild, the latest reload updates that registration. Root commands and their subcommands form one registration; transfer the whole root together and remove its old handler. Delete retired registrations manually.
 
 ### VSCode Dev Container (recommended)
 
