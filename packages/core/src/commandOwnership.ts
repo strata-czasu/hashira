@@ -1,73 +1,37 @@
 import { readFile } from "node:fs/promises";
+import * as v from "valibot";
 
-export type CommandOwner = "hashira" | "kasutera";
+const Snowflake = v.pipe(v.string(), v.regex(/^\d+$/));
+const CommandOwner = v.picklist(["hashira", "kasutera"]);
+export type CommandOwner = v.InferOutput<typeof CommandOwner>;
 
-export interface CommandOwnership {
-  readonly applicationId: string;
-  readonly defaultOwner?: CommandOwner;
-  readonly commands: readonly {
-    readonly guildId: string;
-    readonly type: 1 | 2 | 3;
-    readonly name: string;
-    readonly owner: CommandOwner;
-  }[];
-}
+export const CommandOwnership = v.object({
+  applicationId: Snowflake,
+  defaultOwner: v.exactOptional(CommandOwner),
+  commands: v.array(
+    v.object({
+      guildId: Snowflake,
+      type: v.picklist([1, 2, 3]),
+      name: v.pipe(v.string(), v.regex(/\S/)),
+      owner: CommandOwner,
+    }),
+  ),
+});
+export type CommandOwnership = v.InferOutput<typeof CommandOwnership>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isOwner(value: unknown): value is CommandOwner {
-  return value === "hashira" || value === "kasutera";
-}
-
-function isId(value: unknown): value is string {
-  return typeof value === "string" && /^\d+$/.test(value);
-}
-
-export function commandKey(type: number | null | undefined, name: string): string {
-  return JSON.stringify([type ?? 1, name]);
+export function commandKey(type: number, name: string): string {
+  return `${type}:${name}`;
 }
 
 export function parseCommandOwnership(value: unknown): CommandOwnership {
-  if (
-    !isRecord(value) ||
-    !isId(value["applicationId"]) ||
-    (value["defaultOwner"] !== undefined && !isOwner(value["defaultOwner"])) ||
-    !Array.isArray(value["commands"])
-  ) {
-    throw new Error("Invalid command ownership file");
-  }
-
-  const commands: CommandOwnership["commands"][number][] = [];
+  const ownership = v.parse(CommandOwnership, value);
   const seen = new Set<string>();
-  for (const entry of value["commands"]) {
-    if (
-      !isRecord(entry) ||
-      !isId(entry["guildId"]) ||
-      (entry["type"] !== 1 && entry["type"] !== 2 && entry["type"] !== 3) ||
-      typeof entry["name"] !== "string" ||
-      !entry["name"].trim() ||
-      !isOwner(entry["owner"])
-    ) {
-      throw new Error("Invalid command ownership entry");
-    }
-    const key = JSON.stringify([entry["guildId"], entry["type"], entry["name"]]);
+  for (const { guildId, type, name } of ownership.commands) {
+    const key = `${guildId}:${commandKey(type, name)}`;
     if (seen.has(key)) throw new Error("Duplicate command ownership entry");
     seen.add(key);
-    commands.push({
-      guildId: entry["guildId"],
-      type: entry["type"],
-      name: entry["name"],
-      owner: entry["owner"],
-    });
   }
-
-  return {
-    applicationId: value["applicationId"],
-    ...(value["defaultOwner"] === undefined ? {} : { defaultOwner: value["defaultOwner"] }),
-    commands,
-  };
+  return ownership;
 }
 
 export async function loadCommandOwnership(path?: string): Promise<CommandOwnership | undefined> {

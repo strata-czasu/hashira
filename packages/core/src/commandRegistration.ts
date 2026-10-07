@@ -22,7 +22,7 @@ export async function syncGuildCommands(
     current.map((command) => [commandKey(command.type, command.name), command]),
   );
   for (const definition of definitions) {
-    const command = existing.get(commandKey(definition.type, definition.name));
+    const command = existing.get(commandKey(definition.type ?? 1, definition.name));
     const body = {
       ...definition,
       default_member_permissions: definition.default_member_permissions ?? null,
