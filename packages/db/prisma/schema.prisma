@@ -81,6 +81,7 @@ model Guild {
   dailyPointsRedeems     DailyPointsRedeems[]
   dailyRepRedeems        DailyRepRedeem[]
   emojiUsage             EmojiUsage[]
+  nicknameChanges        NicknameChange[]
   guildSettings          GuildSettings?
   mute                   Mute[]
   userTextActivity       UserTextActivity[]
@@ -176,6 +177,7 @@ model User {
   displayedProfileAchievements       DisplayedProfileAchievement[]
   easter2025TeamMember               Easter2025TeamMember[]
   lastFishings                       LastFishing[]
+  nicknameChanges                    NicknameChange[]
   givenChannelRestrictions           ChannelRestriction[]               @relation("moderator")
   receivedChannelRestrictions        ChannelRestriction[]               @relation("user")
   giveawayParticipations             GiveawayParticipant[]
