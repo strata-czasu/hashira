@@ -5,5 +5,5 @@ import { base } from "./base";
 export const tasks = new Hashira({ name: "tasks" })
   .use(base)
   .handle("clientReady", async ({ messageQueue }, client) => {
-    await messageQueue.consumeLoop({ client });
+    await messageQueue.startConsumer({ client }, { maxInFlight: 2, pollIntervalMs: 1000 });
   });

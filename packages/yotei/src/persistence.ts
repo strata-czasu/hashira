@@ -1,203 +1,123 @@
-import { addSeconds } from "date-fns";
+import { Clock, Context, Effect, Layer, Schema } from "effect";
 
-import type { ExtendedPrismaClient, Prisma, PrismaTransaction, Task } from "@hashira/db";
-import { nestedTransaction } from "@hashira/db/transaction";
+import type { ExtendedPrismaClient, Prisma, PrismaTransaction } from "@hashira/db";
 
-export interface TaskFindOptions<T> {
-  throwIfNotFound?: boolean;
-  tx?: T;
-}
+import { joinCallback } from "./joinCallback";
 
-export type MessageQueueTaskData = {
-  type: string;
-  data: unknown;
-};
+export type PersistenceTransaction = PrismaTransaction;
+export type TaskFindOptions = { tx?: PersistenceTransaction };
+export type MessageQueueTaskData = { type: string; data: unknown };
+export type MessageQueueTask = { id: number; data: unknown; createdAt: Date };
 
-export type MessageQueueTask = {
-  id: number;
-  data: MessageQueueTaskData;
-  createdAt: Date;
-};
+export class QueuePersistenceError extends Schema.TaggedError<QueuePersistenceError>()(
+  "QueuePersistenceError",
+  { cause: Schema.Unknown },
+) {}
 
-export interface MessageQueueTaskControls {
-  complete(): Promise<void>;
-  fail(): Promise<void>;
-}
-
-export interface MessageQueuePersistence<Transaction> {
+export interface Store {
   createTask(
     payload: MessageQueueTaskData,
-    handleAfter: Date,
+    delay?: number | Date,
     identifier?: string,
-    tx?: Transaction,
-  ): Promise<void>;
+    tx?: PersistenceTransaction,
+  ): Effect.Effect<void, QueuePersistenceError>;
   cancelTask(
     type: string,
     identifier: string,
-    options?: TaskFindOptions<Transaction>,
-  ): Promise<boolean>;
+    options?: TaskFindOptions,
+  ): Effect.Effect<boolean, QueuePersistenceError>;
   updateTaskDelay(
     type: string,
     identifier: string,
     delay: number | Date,
-    options?: TaskFindOptions<Transaction>,
-  ): Promise<boolean>;
-  withPendingTask(
-    fn: (task: MessageQueueTask, controls: MessageQueueTaskControls) => Promise<void>,
-  ): Promise<boolean>;
+    options?: TaskFindOptions,
+  ): Effect.Effect<boolean, QueuePersistenceError>;
+  consume<R>(
+    handle: (task: MessageQueueTask) => Effect.Effect<boolean, never, R>,
+  ): Effect.Effect<boolean, QueuePersistenceError, R>;
 }
 
-const ensureExecutor = (
-  prisma: ExtendedPrismaClient,
-  tx?: ExtendedPrismaClient | PrismaTransaction,
-): ExtendedPrismaClient => {
-  if (!tx) return prisma;
-  if ("$transaction" in tx) return tx as ExtendedPrismaClient;
+export class QueueStore extends Context.Service<QueueStore, Store>()("@hashira/yotei/QueueStore") {}
 
-  return nestedTransaction(tx);
-};
+const attempt = <A>(body: () => PromiseLike<A>) =>
+  Effect.tryPromise({
+    try: body,
+    catch: (cause) => new QueuePersistenceError({ cause }),
+  });
 
-const ensureTaskFound = (
-  task: Task | null | undefined,
-  type: string,
-  identifier: string,
-  options?: TaskFindOptions<unknown>,
-) => {
-  if (task) return task;
+const pending = (type: string, identifier: string): Prisma.TaskWhereInput => ({
+  identifier,
+  status: "pending",
+  data: { path: ["type"], equals: type },
+});
 
-  if (options?.throwIfNotFound) {
-    throw new Error(`Task not found for identifier ${identifier} for type ${type}`);
-  }
+const handleAfter = (delay: number | Date, base: number) =>
+  delay instanceof Date ? delay : new Date(base + delay * 1000);
 
-  return null;
-};
-
-const calculateHandleAfter = (delay: number | Date, createdAt: Date) => {
-  if (delay instanceof Date) return delay;
-  return addSeconds(createdAt, delay);
-};
-
-type PersistenceTransaction = ExtendedPrismaClient | PrismaTransaction;
-
-export class PrismaMessageQueuePersistence implements MessageQueuePersistence<PersistenceTransaction> {
-  readonly #prisma: ExtendedPrismaClient;
-
-  constructor(prisma: ExtendedPrismaClient) {
-    this.#prisma = prisma;
-  }
-
-  async createTask(
+export const make = (prisma: ExtendedPrismaClient): Store => ({
+  createTask: Effect.fnUntraced(function* (
     payload: MessageQueueTaskData,
-    handleAfter: Date,
+    delay: number | Date = 0,
     identifier?: string,
     tx?: PersistenceTransaction,
   ) {
-    const executor = ensureExecutor(this.#prisma, tx);
-
-    await executor.task.create({
-      data: {
-        data: payload as Prisma.InputJsonValue,
-        handleAfter,
-        ...(identifier ? { identifier } : {}),
-      },
-    });
-  }
-
-  async cancelTask(
-    type: string,
-    identifier: string,
-    options?: TaskFindOptions<PersistenceTransaction>,
-  ) {
-    const executor = ensureExecutor(this.#prisma, options?.tx);
-
-    const tasks = await executor.task.updateManyAndReturn({
-      where: {
-        identifier,
-        status: "pending",
-        data: { path: ["type"], equals: type },
-      },
-      limit: 1,
-      data: { status: "cancelled" },
-    });
-
-    return ensureTaskFound(tasks[0], type, identifier, options) !== null;
-  }
-
-  async updateTaskDelay(
-    type: string,
-    identifier: string,
-    delay: number | Date,
-    options?: TaskFindOptions<PersistenceTransaction>,
-  ) {
-    const executor = ensureExecutor(this.#prisma, options?.tx);
-
-    return await executor.$transaction(async (tx) => {
-      const task = await tx.task.findFirst({
-        where: {
-          identifier,
-          status: "pending",
-          data: { path: ["type"], equals: type },
+    const now = yield* Clock.currentTimeMillis;
+    yield* attempt(() =>
+      (tx ?? prisma).task.create({
+        data: {
+          data: payload as Prisma.InputJsonValue,
+          handleAfter: handleAfter(delay, now),
+          ...(identifier === undefined ? {} : { identifier }),
         },
-      });
-
-      const found = ensureTaskFound(task, type, identifier, options);
-      if (!found) return false;
-
-      const handleAfter = calculateHandleAfter(delay, found.createdAt);
-
-      await tx.task.update({
-        where: { id: found.id },
-        data: { handleAfter },
-      });
-
-      return true;
-    });
-  }
-
-  async withPendingTask(
-    fn: (task: MessageQueueTask, controls: MessageQueueTaskControls) => Promise<void>,
-  ) {
-    return await this.#prisma.$transaction(
-      async (tx) => {
-        const [task] = await tx.$queryRaw<
-          Task[]
-        >`SELECT * FROM "task" WHERE "status" = 'pending' AND "handleAfter" <= now() FOR UPDATE SKIP LOCKED LIMIT 1`;
-
-        if (!task) return false;
-
-        const normalized: MessageQueueTask = {
-          id: task.id,
-          data: task.data as MessageQueueTaskData,
-          createdAt: task.createdAt,
-        };
-
-        let settled = false;
-        const mark = async (status: "completed" | "failed") => {
-          if (settled) return;
-          settled = true;
-          await tx.task.update({ where: { id: task.id }, data: { status } });
-        };
-
-        const controls: MessageQueueTaskControls = {
-          complete: async () => {
-            await mark("completed");
-          },
-          fail: async () => {
-            await mark("failed");
-          },
-        };
-
-        try {
-          await fn(normalized, controls);
-        } finally {
-          if (!settled) {
-            await controls.fail();
-          }
-        }
-
-        return true;
-      },
-      { timeout: 30000 }, // There are cases where tasks can be long-running, so we set a higher timeout
+      }),
     );
-  }
-}
+  }),
+  cancelTask: (type, identifier, options) =>
+    attempt(() =>
+      (options?.tx ?? prisma).task.updateMany({
+        where: pending(type, identifier),
+        limit: 1,
+        data: { status: "cancelled" },
+      }),
+    ).pipe(Effect.map(({ count }) => count > 0)),
+  updateTaskDelay: (type, identifier, delay, options) =>
+    attempt(async () => {
+      const executor = options?.tx ?? prisma;
+      const task = await executor.task.findFirst({
+        where: pending(type, identifier),
+        select: { id: true, createdAt: true },
+      });
+      if (!task) return false;
+      const result = await executor.task.updateMany({
+        where: { id: task.id, status: "pending" },
+        data: { handleAfter: handleAfter(delay, task.createdAt.getTime()) },
+      });
+      return result.count > 0;
+    }),
+  consume: Effect.fnUntraced(function* <R>(
+    handle: (task: MessageQueueTask) => Effect.Effect<boolean, never, R>,
+  ) {
+    const run = Effect.runPromiseWith(yield* Effect.context<R>());
+    return yield* attempt(() =>
+      joinCallback(
+        (callback) => prisma.$transaction(callback, { timeout: 30_000 }),
+        async (tx: PrismaTransaction) => {
+          const [task] = await tx.$queryRaw<MessageQueueTask[]>`
+          SELECT id, data, "createdAt" FROM task
+          WHERE status = 'pending' AND "handleAfter" <= NOW()
+          LIMIT 1 FOR UPDATE SKIP LOCKED
+        `;
+          if (!task) return false;
+          const success = await run(Effect.suspend(() => handle(task)));
+          await tx.task.update({
+            where: { id: task.id },
+            data: { status: success ? "completed" : "failed" },
+          });
+          return true;
+        },
+      ),
+    );
+  }, Effect.uninterruptible),
+});
+
+export const layer = (prisma: ExtendedPrismaClient) => Layer.succeed(QueueStore, make(prisma));
