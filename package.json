@@ -30,7 +30,7 @@
   "dependencies": {
     "@hashira/utils": "workspace:*",
     "discord.js": "^14.23.2",
-    "effect": "^3.18.4",
+    "effect": "4.0.5",
     "es-toolkit": "^1.40.0",
     "valibot": "^1.0.0"
   },
