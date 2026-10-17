@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@hashira/db": "workspace:*",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "effect": "4.0.5"
   },
   "devDependencies": {}
 }
