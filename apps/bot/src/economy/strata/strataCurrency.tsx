@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 
 import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
-import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
+import { DatabasePaginator, type Wallet } from "@hashira/db";
 import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
 import { PaginatorOrder } from "@hashira/paginate";
 
@@ -21,8 +21,10 @@ import { parseUserMentions } from "../../util/parseUsers";
 import { pluralizers } from "../../util/pluralize";
 import { EconomyError } from "../economyError";
 import { addBalances, transferBalances } from "../managers/transferManager";
-import { getDefaultWallet } from "../managers/walletManager";
+import { getDefaultWallet, getDefaultWallets } from "../managers/walletManager";
 import { formatBalance, getRequiredGuildDefaultCurrency } from "../util";
+import { MultiHistoryView } from "./multiHistoryView";
+import { TransactionRow } from "./transactionRow";
 
 type FieldProps = {
   name: string;
@@ -60,32 +62,6 @@ function BalanceCard({
       </TextDisplay>
     </Container>
   );
-}
-
-const getCounterpartyLabel = (transaction: Transaction): string | null => {
-  if (!transaction.relatedUserId) return null;
-  const mention = userMention(transaction.relatedUserId);
-  if (transaction.transactionType === "add") return `przez ${mention}`;
-  return transaction.entryType === "credit" ? `od ${mention}` : `dla ${mention}`;
-};
-
-function TransactionRow({
-  transaction,
-  currencySymbol,
-}: {
-  transaction: Transaction;
-  currencySymbol: string;
-}) {
-  const sign = transaction.entryType === "credit" ? "+" : "-";
-  const parts = [
-    time(transaction.createdAt, TimestampStyles.LongDateShortTime),
-    `${sign}${formatBalance(transaction.amount, currencySymbol)}`,
-    getCounterpartyLabel(transaction),
-  ];
-  const line = parts.filter((part) => part !== null).join(" ");
-  const content = transaction.reason ? `${line} - ${italic(transaction.reason)}` : line;
-
-  return <TextDisplay content={content} />;
 }
 
 function BulkOperationReport({
@@ -173,8 +149,64 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           .addUser("użytkownik", (option) =>
             option.setDescription("Użytkownik, którego punkty chcesz sprawdzić").setRequired(false),
           )
-          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+          .addString("użytkownicy", (option) =>
+            option
+              .setDescription("Wzmianki lub ID użytkowników do przejrzenia (maks. 25)")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { użytkownik: user, użytkownicy: rawUsers }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            if (rawUsers !== null) {
+              if (user) {
+                await errorFollowUp(itx, "Podaj użytkownik albo użytkownicy, nie oba naraz.");
+                return;
+              }
+              const userIds = [...new Set(parseUserMentions(rawUsers))];
+              if (userIds.length === 0 || userIds.length > 25) {
+                await errorFollowUp(itx, "Podaj od 1 do 25 użytkowników jako wzmianki lub ID.");
+                return;
+              }
+              const members = await fetchMembers(itx.guild, userIds);
+              if (members.size !== userIds.length) {
+                await errorFollowUp(
+                  itx,
+                  "Nie znaleziono wszystkich podanych użytkowników na serwerze.",
+                );
+                return;
+              }
+              await ensureUsersExist(prisma, userIds);
+              const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
+              const wallets = await getDefaultWallets({
+                prisma,
+                userIds,
+                guildId: itx.guildId,
+                currencyId: currency.id,
+              });
+              const walletsByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet]));
+              const users = userIds.map((id) => {
+                const wallet = walletsByUserId.get(id)!;
+                const where = { walletId: wallet.id };
+                return {
+                  id,
+                  label: members.get(id)!.user.tag,
+                  balance: wallet.balance,
+                  paginator: new DatabasePaginator(
+                    (props, order) =>
+                      prisma.transaction.findMany({
+                        ...props,
+                        where,
+                        orderBy: [{ createdAt: order }, { id: order }],
+                      }),
+                    () => prisma.transaction.count({ where }),
+                    { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+                  ),
+                };
+              });
+              await new MultiHistoryView(users, currency.symbol).render(itx);
+              return;
+            }
 
             const targetUser = user ?? itx.user;
 
