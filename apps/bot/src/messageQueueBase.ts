@@ -10,15 +10,15 @@ import {
   inlineCode,
   RESTJSONErrorCodes,
   TextDisplayBuilder,
-  TimestampStyles,
   time,
+  TimestampStyles,
   userMention,
 } from "discord.js";
 import { Effect } from "effect";
 
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
-import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
+import { MessageQueue, Persistence, Queue, Runtime } from "@hashira/yotei";
 
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
@@ -119,9 +119,10 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(loggingBase)
   .const((ctx) => {
     const prisma = ctx.prisma;
+    const messageQueueRuntime = Runtime.make(Queue.layer(Persistence.layer(prisma)));
     return {
       ...ctx,
-      messageQueue: new MessageQueue(new PrismaMessageQueuePersistence(ctx.prisma))
+      messageQueue: new MessageQueue(messageQueueRuntime)
         .addArg<"client", Client>()
         .addHandler("ultimatumEnd", async ({ client }, { userId, guildId }: UltimatumEndData) => {
           const currentUltimatum = await prisma.ultimatum.findFirst({
