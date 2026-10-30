@@ -1,0 +1,86 @@
+enum Halloween2026TotItem {
+  garlic
+  mirror
+  lollipop
+  mask
+  broom
+  dice
+}
+
+enum Halloween2026TotKnockStatus {
+  pending
+  answered
+  expired
+}
+
+enum Halloween2026TotChoice {
+  treat
+  trick
+}
+
+model Halloween2026TotPlayer {
+  guildId         String
+  userId          String
+  candies         Int       @default(0)
+  doorsClosed     Boolean   @default(false)
+  lollipopArmed   Boolean   @default(false)
+  maskArmed       Boolean   @default(false)
+  lastKnockAt     DateTime? @db.Timestamp(6)
+  muteImmuneUntil DateTime? @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamp(6)
+
+  guild     Guild                       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventory Halloween2026TotInventory[]
+
+  @@id([guildId, userId])
+}
+
+model Halloween2026TotInventory {
+  guildId String
+  userId  String
+  item    Halloween2026TotItem
+  count   Int                  @default(0)
+
+  player Halloween2026TotPlayer @relation(fields: [guildId, userId], references: [guildId, userId], onDelete: Cascade)
+
+  @@id([guildId, userId, item])
+}
+
+model Halloween2026TotKnock {
+  id          Int                         @id @default(autoincrement())
+  guildId     String
+  knockerId   String
+  hostId      String
+  status      Halloween2026TotKnockStatus @default(pending)
+  anonymous   Boolean                     @default(false)
+  choice      Halloween2026TotChoice?
+  outcome     String?
+  channelId   String
+  messageId   String?
+  dmChannelId String?
+  dmMessageId String?
+  createdAt   DateTime                    @default(now()) @db.Timestamp(6)
+  expiresAt   DateTime                    @db.Timestamp(6)
+  answeredAt  DateTime?                   @db.Timestamp(6)
+
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  knocker User  @relation("halloween2026TotKnocker", fields: [knockerId], references: [id], onDelete: Cascade)
+  host    User  @relation("halloween2026TotHost", fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, hostId, createdAt])
+  @@index([guildId, knockerId, hostId, createdAt])
+}
+
+model Halloween2026TotDailyLimit {
+  guildId String
+  userId  String
+  day     DateTime @db.Date
+  mutes   Int      @default(0)
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([guildId, userId, day])
+}
