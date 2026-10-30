@@ -102,6 +102,9 @@ model Guild {
   teams                  Team[]
   easter2026Config       Easter2026Config?
   birthday2026Config     Birthday2026Config?
+  halloween2026TotPlayers     Halloween2026TotPlayer[]
+  halloween2026TotKnocks      Halloween2026TotKnock[]
+  halloween2026TotDailyLimits Halloween2026TotDailyLimit[]
 
   @@map("guild")
 }
@@ -207,6 +210,10 @@ model User {
   birthday2026FeedBatches            Birthday2026FeedBatch[]            @relation("birthday2026FeedOwner")
   birthday2026PersonalTransactions   Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionOwner")
   createdBirthday2026Transactions    Birthday2026PersonalTransaction[]  @relation("birthday2026PersonalTransactionCreator")
+  halloween2026TotPlayers            Halloween2026TotPlayer[]
+  halloween2026TotKnocksSent         Halloween2026TotKnock[]            @relation("halloween2026TotKnocker")
+  halloween2026TotKnocksReceived     Halloween2026TotKnock[]            @relation("halloween2026TotHost")
+  halloween2026TotDailyLimits        Halloween2026TotDailyLimit[]
 
   @@map("users")
 }

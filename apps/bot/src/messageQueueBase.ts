@@ -35,6 +35,8 @@ import {
   type StatsModifiers,
 } from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
+import { expireTotKnock } from "./events/halloween2026-tot/knockService";
+import { finishTotKnockMessages } from "./events/halloween2026-tot/messages";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
 import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
@@ -112,6 +114,10 @@ type Birthday2026VoiceAwardData = {
 
 type Birthday2026EncounterData = {
   encounterId: number;
+};
+
+type Halloween2026TotKnockData = {
+  knockId: number;
 };
 
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
@@ -548,6 +554,13 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 `Birthday 2026 voice award skipped for session ${voiceSessionId}: ${result.reason}`,
               );
             }
+          },
+        )
+        .addHandler(
+          "halloween2026TotKnockExpire",
+          async ({ client }, { knockId }: Halloween2026TotKnockData) => {
+            const knock = await expireTotKnock(prisma, knockId, new Date());
+            if (knock) await finishTotKnockMessages(client, knock, { type: "expired" });
           },
         )
         .addHandler(
