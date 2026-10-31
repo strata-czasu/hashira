@@ -4,7 +4,7 @@ import type { Halloween2026TotKnock } from "@hashira/db";
 import { render } from "@hashira/jsx";
 
 import { discordTry } from "../../util/discordTry";
-import { buildTotDoorView, buildTotPorchView } from "./views";
+import { buildTotPorchView } from "./views";
 
 type FinishedState = { type: "answered"; lines: string[] } | { type: "expired" };
 
@@ -34,23 +34,11 @@ export const finishTotKnockMessages = async (
   knock: Halloween2026TotKnock,
   state: FinishedState,
 ) => {
-  const guildName = client.guilds.cache.get(knock.guildId)?.name ?? "serwer";
-  await Promise.all([
-    knock.dmChannelId && knock.dmMessageId
-      ? editMessage(
-          client,
-          knock.dmChannelId,
-          knock.dmMessageId,
-          render(buildTotDoorView({ knock, guildName, state })),
-        )
-      : null,
-    knock.messageId
-      ? editMessage(
-          client,
-          knock.channelId,
-          knock.messageId,
-          render(buildTotPorchView({ knock, state })),
-        )
-      : null,
-  ]);
+  if (!knock.messageId) return;
+  await editMessage(
+    client,
+    knock.channelId,
+    knock.messageId,
+    render(buildTotPorchView({ knock, state })),
+  );
 };

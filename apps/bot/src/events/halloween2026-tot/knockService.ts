@@ -288,7 +288,7 @@ export const cancelUndeliveredTotKnock = (
 export const attachTotKnockMessages = (
   prisma: ExtendedPrismaClient,
   knockId: number,
-  data: { messageId?: string; dmChannelId?: string; dmMessageId?: string },
+  data: { messageId: string },
 ) => prisma.halloween2026TotKnock.update({ where: { id: knockId }, data });
 
 const toState = (
