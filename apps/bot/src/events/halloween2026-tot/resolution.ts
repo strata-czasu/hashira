@@ -3,6 +3,11 @@ import { addMinutes } from "date-fns";
 import type { Halloween2026TotItem } from "@hashira/db";
 
 import {
+  TOT_APPLE_BITE_MINUTES,
+  TOT_APPLE_LONG_HOLD_BONUS,
+  TOT_APPLE_LONG_HOLD_MINUTES,
+  TOT_APPLE_PASS_REWARD,
+  TOT_APPLE_SPARED_CANDY_LOSS,
   TOT_DAILY_MUTE_LIMIT,
   TOT_DOUBLE_MUTE_MINUTES,
   TOT_MUTE_IMMUNITY_MINUTES,
@@ -170,3 +175,27 @@ export const resolveTotAnswer = (input: {
       return done(trick, host.userId);
   }
 };
+
+export type TotAppleBiteResolution = {
+  holder: TotPlayerState;
+  mute: TotMuteResolution;
+  candiesLost: number;
+};
+
+export const resolveTotAppleBite = (input: {
+  holder: TotPlayerState;
+  now: Date;
+}): TotAppleBiteResolution => {
+  const holder = structuredClone(input.holder);
+  const mute = resolveMute(holder, holder, TOT_APPLE_BITE_MINUTES, input.now, false);
+  const candiesLost =
+    mute.kind === "spared" ? Math.min(holder.candies, TOT_APPLE_SPARED_CANDY_LOSS) : 0;
+  holder.candies -= candiesLost;
+  return { holder, mute, candiesLost };
+};
+
+export const getTotApplePassReward = (receivedAt: Date, now: Date) =>
+  TOT_APPLE_PASS_REWARD +
+  (now.getTime() - receivedAt.getTime() >= TOT_APPLE_LONG_HOLD_MINUTES * 60_000
+    ? TOT_APPLE_LONG_HOLD_BONUS
+    : 0);

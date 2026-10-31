@@ -2,6 +2,7 @@ import { addMinutes } from "date-fns";
 
 import {
   type ExtendedPrismaClient,
+  type Halloween2026TotApple,
   type Halloween2026TotKnock,
   type Halloween2026TotPlayer,
   Prisma,
@@ -11,6 +12,7 @@ import { nestedTransaction } from "@hashira/db/transaction";
 
 import { addBalance } from "../../economy/managers/transferManager";
 import { getRequiredGuildDefaultCurrency } from "../../economy/util";
+import { lockTotApple, passTotApple, pickTotKnockApple, seedTotApple } from "./appleService";
 import {
   getTotDay,
   isTotEventOpen,
@@ -23,9 +25,12 @@ import {
 } from "./constants";
 import type { ItemCounts } from "./outcomeTable";
 import {
+  getTotApplePassReward,
   resolveTotAnswer,
+  resolveTotAppleBite,
   type TotAnswerChoice,
   type TotAnswerResolution,
+  type TotAppleBiteResolution,
   type TotPlayerState,
 } from "./resolution";
 
@@ -132,10 +137,12 @@ export type CreateTotKnockResult =
       knock: Halloween2026TotKnock;
       hostHasDice: boolean;
       previousLastKnockAt: Date | null;
+      carriesApple: boolean;
+      seededApple: Halloween2026TotApple | null;
     }
   | {
       ok: false;
-      reason: "event_closed" | "self_knock" | "host_busy";
+      reason: "event_closed" | "self_knock" | "host_busy" | "apple_return";
     }
   | {
       ok: false;
@@ -196,6 +203,9 @@ export const createTotKnock = (
       return { ok: false, reason: "pair_cooldown", until: pairUntil } as const;
     }
 
+    const carried = await pickTotKnockApple(tx, { guildId, knockerId, hostId, now });
+    if (!carried.ok) return { ok: false, reason: "apple_return" } as const;
+
     const knock = await tx.halloween2026TotKnock.create({
       data: {
         guildId,
@@ -205,6 +215,7 @@ export const createTotKnock = (
         anonymous: knocker.maskArmed,
         createdAt: now,
         expiresAt: addMinutes(now, TOT_KNOCK_EXPIRY_MINUTES),
+        appleId: carried.apple?.id ?? null,
       },
     });
     await tx.halloween2026TotPlayer.update({
@@ -214,12 +225,20 @@ export const createTotKnock = (
     await input.scheduleExpiry(tx, knock);
 
     const hostItems = await getTotItemCounts(tx, guildId, hostId);
+    const seededApple = await seedTotApple(tx, {
+      guildId,
+      userId: knockerId,
+      channelId: input.channelId,
+      now,
+    });
 
     return {
       ok: true,
       knock,
       hostHasDice: (hostItems.dice ?? 0) > 0,
       previousLastKnockAt: knocker.lastKnockAt,
+      carriesApple: carried.apple !== null,
+      seededApple,
     } as const;
   });
 
@@ -227,6 +246,7 @@ export const cancelUndeliveredTotKnock = (
   prisma: ExtendedPrismaClient,
   knock: Halloween2026TotKnock,
   previousLastKnockAt: Date | null,
+  seededAppleId: number | null = null,
 ) =>
   prisma.$transaction(async (tx) => {
     const { guildId, knockerId: userId } = knock;
@@ -237,6 +257,12 @@ export const cancelUndeliveredTotKnock = (
       where: { id: knock.id, status: "pending" },
     });
     if (deleted.count === 0) return;
+
+    if (seededAppleId !== null) {
+      await tx.halloween2026TotApple.deleteMany({
+        where: { id: seededAppleId, holderId: userId, passes: 0, bittenAt: null },
+      });
+    }
 
     const cooldownFromThisKnock = player.lastKnockAt?.getTime() === knock.createdAt.getTime();
     const rearmMask = knock.anonymous && !player.maskArmed;
@@ -299,8 +325,15 @@ const saveState = async (
   }
 };
 
+export type TotApplePass = { apple: Halloween2026TotApple; reward: number };
+
 export type AnswerTotKnockResult =
-  | { ok: true; knock: Halloween2026TotKnock; resolution: TotAnswerResolution }
+  | {
+      ok: true;
+      knock: Halloween2026TotKnock;
+      resolution: TotAnswerResolution;
+      applePass: TotApplePass | null;
+    }
   | {
       ok: false;
       reason: "knock_not_found" | "not_host" | "already_answered" | "expired" | "no_dice";
@@ -355,6 +388,12 @@ export const answerTotKnock = (
     if (!result.ok) return result;
     const { resolution } = result;
 
+    const passed = await passTotApple(tx, knock, now);
+    const applePass = passed
+      ? { apple: passed.after, reward: getTotApplePassReward(passed.before.receivedAt, now) }
+      : null;
+    if (applePass) resolution.knocker.candies += applePass.reward;
+
     await saveState(tx, guildId, knocker, resolution.knocker, now);
     await saveState(tx, guildId, host, resolution.host, now);
     if (resolution.kapselUserId) {
@@ -380,7 +419,47 @@ export const answerTotKnock = (
       },
     });
 
-    return { ok: true, knock: answered, resolution } as const;
+    return { ok: true, knock: answered, resolution, applePass } as const;
+  });
+
+export type BiteTotAppleResult = {
+  apple: Halloween2026TotApple;
+  bite: TotAppleBiteResolution | null;
+};
+
+/**
+ * Bites the holder of an apple whose fuse ran out. After the event ends the apple
+ * just rots without a penalty. Returns null when there was nothing to bite.
+ */
+export const biteTotApple = (prisma: ExtendedPrismaClient, appleId: number, now: Date) =>
+  prisma.$transaction(async (tx): Promise<BiteTotAppleResult | null> => {
+    const peek = await tx.halloween2026TotApple.findUnique({ where: { id: appleId } });
+    if (!peek || peek.bittenAt || peek.fuseEndsAt > now) return null;
+
+    const { guildId, holderId } = peek;
+    const holderRow = (await lockTotPlayers(tx, guildId, [holderId])).get(holderId);
+    if (!holderRow) throw new Error("Halloween 2026 player was not created");
+    const apple = await lockTotApple(tx, appleId);
+    if (!apple || apple.bittenAt || apple.holderId !== holderId || apple.fuseEndsAt > now) {
+      return null;
+    }
+
+    let bite: TotAppleBiteResolution | null = null;
+    if (isTotEventOpen(now)) {
+      const holder = toState(
+        holderRow,
+        await getTotItemCounts(tx, guildId, holderId),
+        await getTotDailyMutes(tx, guildId, holderId, now),
+      );
+      bite = resolveTotAppleBite({ holder, now });
+      await saveState(tx, guildId, holder, bite.holder, now);
+    }
+
+    const bitten = await tx.halloween2026TotApple.update({
+      where: { id: apple.id },
+      data: { bittenAt: now },
+    });
+    return { apple: bitten, bite };
   });
 
 export const expireTotKnock = async (prisma: ExtendedPrismaClient, knockId: number, now: Date) => {

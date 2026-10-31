@@ -5,6 +5,7 @@ import { nestedTransaction } from "@hashira/db/transaction";
 
 import { addBalance } from "../../economy/managers/transferManager";
 import { getRequiredGuildDefaultCurrency } from "../../economy/util";
+import { getHeldTotApples } from "./appleService";
 import {
   TOT_CANDIES_PER_KAPSEL,
   TOT_EXCHANGE_START,
@@ -21,9 +22,10 @@ export const getTotPlayerSnapshot = async (
   userId: string,
   now: Date,
 ) => {
-  const [player, items] = await Promise.all([
+  const [player, items, apples] = await Promise.all([
     prisma.halloween2026TotPlayer.findUnique({ where: { guildId_userId: { guildId, userId } } }),
     getTotItemCounts(prisma, guildId, userId),
+    getHeldTotApples(prisma, guildId, userId),
   ]);
   const nextKnockAt = player?.lastKnockAt
     ? addMinutes(player.lastKnockAt, TOT_KNOCK_COOLDOWN_MINUTES)
@@ -35,6 +37,7 @@ export const getTotPlayerSnapshot = async (
     lollipopArmed: player?.lollipopArmed ?? false,
     maskArmed: player?.maskArmed ?? false,
     nextKnockAt: nextKnockAt && nextKnockAt > now ? nextKnockAt : null,
+    appleFuses: apples.map((apple) => apple.fuseEndsAt),
   };
 };
 

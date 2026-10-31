@@ -8,7 +8,9 @@ import {
   TRICK_TABLE,
 } from "../../src/events/halloween2026-tot/outcomeTable";
 import {
+  getTotApplePassReward,
   resolveTotAnswer,
+  resolveTotAppleBite,
   type TotPlayerState,
 } from "../../src/events/halloween2026-tot/resolution";
 
@@ -236,5 +238,49 @@ describe("resolveTotAnswer", () => {
     resolve("trick", () => pickTrick("success"), player("a"), host);
     expect(host.items.mirror).toBe(1);
     expect(host.dailyMutes).toBe(0);
+  });
+});
+
+describe("Halloween 2026 poisoned apple", () => {
+  it("mutes the holder when the apple bites", () => {
+    const bite = resolveTotAppleBite({ holder: player("a", { candies: 5 }), now });
+    expect(bite.mute).toEqual({ kind: "muted", userId: "a", minutes: 5 });
+    expect(bite.holder.dailyMutes).toBe(1);
+    expect(bite.candiesLost).toBe(0);
+  });
+
+  it("takes candies instead of a mute from protected holders", () => {
+    const immune = resolveTotAppleBite({
+      holder: player("a", { candies: 5, muteImmuneUntil: new Date(now.getTime() + 60_000) }),
+      now,
+    });
+    expect(immune.mute.kind).toBe("spared");
+    expect(immune.candiesLost).toBe(3);
+    expect(immune.holder.candies).toBe(2);
+
+    const capped = resolveTotAppleBite({ holder: player("a", { candies: 1, dailyMutes: 3 }), now });
+    expect(capped.candiesLost).toBe(1);
+    expect(capped.holder.candies).toBe(0);
+  });
+
+  it("lets garlic block a bite without losing candies", () => {
+    const bite = resolveTotAppleBite({
+      holder: player("a", { candies: 5, items: { garlic: 1 } }),
+      now,
+    });
+    expect(bite.mute.kind).toBe("blocked");
+    expect(bite.holder.items.garlic).toBe(0);
+    expect(bite.candiesLost).toBe(0);
+  });
+
+  it("does not let a mirror reflect a bite", () => {
+    const bite = resolveTotAppleBite({ holder: player("a", { items: { mirror: 1 } }), now });
+    expect(bite.mute.kind).toBe("muted");
+    expect(bite.holder.items.mirror).toBe(1);
+  });
+
+  it("pays a bonus for holding the apple long", () => {
+    expect(getTotApplePassReward(now, new Date(now.getTime() + 29 * 60_000))).toBe(1);
+    expect(getTotApplePassReward(now, new Date(now.getTime() + 30 * 60_000))).toBe(3);
   });
 });

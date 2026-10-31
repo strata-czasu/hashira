@@ -17,8 +17,12 @@ import { universalAddMute } from "../../moderation/mutes";
 import { discordTry } from "../../util/discordTry";
 import { ensureUsersExist } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
+import { sendDirectMessage } from "../../util/sendDirectMessage";
+import { findDueTotApples } from "./appleService";
 import {
   formatTotItem,
+  TOT_APPLE_MUTE_REASON,
+  TOT_APPLE_SWEEP_SECONDS,
   TOT_CANDIES_PER_KAPSEL,
   TOT_ITEM_KEYS,
   TOT_ITEMS,
@@ -28,6 +32,7 @@ import {
   answerTotKnock,
   type AnswerTotKnockResult,
   attachTotKnockMessages,
+  biteTotApple,
   cancelUndeliveredTotKnock,
   type CreateTotKnockResult,
   createTotKnock,
@@ -47,6 +52,10 @@ import {
   buildTotPorchView,
   buildTotShopView,
   describeTotAnswer,
+  describeTotAppleBite,
+  describeTotApplePassed,
+  describeTotAppleReceived,
+  describeTotAppleSeeded,
   formatCandies,
   TOT_ANSWER_CUSTOM_ID,
 } from "./views";
@@ -62,6 +71,8 @@ const knockErrorMessage = (result: Exclude<CreateTotKnockResult, { ok: true }>, 
       return "Do własnych drzwi się nie puka.";
     case "host_busy":
       return `Pod drzwiami ${who} ktoś już stoi. Spróbuj za kilka minut.`;
+    case "apple_return":
+      return `Zatrute jabłko nie wróci do ${who}, bo to od tej osoby je masz. Zapukaj do kogoś innego.`;
     case "knocker_cooldown":
       return `Odpocznij chwilę. Znowu zapukasz ${time(result.until, TimestampStyles.RelativeTime)}.`;
     case "host_cooldown":
@@ -101,6 +112,7 @@ const applyTotMutes = async (
   guild: Guild,
   moderator: User,
   mutes: TotMuteResolution[],
+  reason = TOT_MUTE_REASON,
 ) => {
   const applied = new Set<string>();
   for (const { userId, minutes } of collectMutes(mutes)) {
@@ -113,7 +125,7 @@ const applyTotMutes = async (
         guild,
         moderator,
         duration: `${minutes}m`,
-        reason: TOT_MUTE_REASON,
+        reason,
         reply: async () => {},
         replyToModerator: async () => {},
       });
@@ -193,7 +205,12 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
           () => null,
         );
         if (!dm) {
-          await cancelUndeliveredTotKnock(prisma, knock, result.previousLastKnockAt);
+          await cancelUndeliveredTotKnock(
+            prisma,
+            knock,
+            result.previousLastKnockAt,
+            result.seededApple?.id ?? null,
+          );
           await messageQueue.cancel("halloween2026TotKnockExpire", knock.id.toString());
           await errorFollowUp(
             itx,
@@ -220,9 +237,15 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
         });
 
         await itx.editReply(
-          knock.anonymous
-            ? `Pukasz do ${userMention(host.id)} w masce. Nikt nie wie, że to Ty.`
-            : `Pukasz do ${userMention(host.id)}. Jak tylko otworzy, wynik pojawi się na kanale.`,
+          [
+            knock.anonymous
+              ? `Pukasz do ${userMention(host.id)} w masce. Nikt nie wie, że to Ty.`
+              : `Pukasz do ${userMention(host.id)}. Jak tylko otworzy, wynik pojawi się na kanale.`,
+            ...(result.carriesApple
+              ? ["Niesiesz zatrute jabłko. Jeśli drzwi się otworzą, zostanie u gospodarza."]
+              : []),
+            ...(result.seededApple ? [describeTotAppleSeeded(result.seededApple.fuseEndsAt)] : []),
+          ].join("\n"),
         );
       }),
   )
@@ -376,7 +399,7 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
       return;
     }
 
-    const { knock, resolution } = result;
+    const { knock, resolution, applePass } = result;
     const guild = itx.client.guilds.cache.get(knock.guildId);
     const applied = guild
       ? await applyTotMutes(ctx, guild, itx.client.user, resolution.mutes)
@@ -386,4 +409,53 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
       type: "answered",
       lines: describeTotAnswer(knock, resolution, applied),
     });
+
+    if (applePass) {
+      const knocker = await itx.client.users.fetch(knock.knockerId).catch(() => null);
+      await Promise.all([
+        sendDirectMessage(
+          itx.user,
+          describeTotAppleReceived(guild?.name ?? "serwer", applePass.apple.fuseEndsAt),
+        ),
+        knocker ? sendDirectMessage(knocker, describeTotApplePassed(applePass.reward)) : null,
+      ]);
+    }
+  })
+  .handle("clientReady", async (ctx, client) => {
+    const sweep = async () => {
+      try {
+        for (const { id } of await findDueTotApples(ctx.prisma, new Date())) {
+          const result = await biteTotApple(ctx.prisma, id, new Date());
+          if (!result?.bite) continue;
+
+          const { apple, bite } = result;
+          const guild = client.guilds.cache.get(apple.guildId);
+          if (!guild) continue;
+          const applied = await applyTotMutes(
+            ctx,
+            guild,
+            client.user,
+            [bite.mute],
+            TOT_APPLE_MUTE_REASON,
+          );
+
+          const channel = await client.channels.fetch(apple.channelId).catch(() => null);
+          if (!channel?.isSendable()) continue;
+          await discordTry(
+            () =>
+              channel.send({
+                content: describeTotAppleBite(apple, bite, applied).join("\n"),
+                allowedMentions: { users: [apple.holderId] },
+              }),
+            [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.MissingPermissions],
+            () => null,
+          );
+        }
+      } catch (error) {
+        console.error("Error biting Halloween 2026 apples:", error);
+      }
+    };
+
+    setInterval(sweep, TOT_APPLE_SWEEP_SECONDS * 1000);
+    await sweep();
   });

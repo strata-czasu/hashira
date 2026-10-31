@@ -105,6 +105,7 @@ model Guild {
   halloween2026TotPlayers     Halloween2026TotPlayer[]
   halloween2026TotKnocks      Halloween2026TotKnock[]
   halloween2026TotDailyLimits Halloween2026TotDailyLimit[]
+  halloween2026TotApples      Halloween2026TotApple[]
 
   @@map("guild")
 }
@@ -214,6 +215,8 @@ model User {
   halloween2026TotKnocksSent         Halloween2026TotKnock[]            @relation("halloween2026TotKnocker")
   halloween2026TotKnocksReceived     Halloween2026TotKnock[]            @relation("halloween2026TotHost")
   halloween2026TotDailyLimits        Halloween2026TotDailyLimit[]
+  halloween2026TotApplesHeld         Halloween2026TotApple[]            @relation("halloween2026TotAppleHolder")
+  halloween2026TotApplesPassed       Halloween2026TotApple[]            @relation("halloween2026TotApplePreviousHolder")
 
   @@map("users")
 }
