@@ -11,12 +11,20 @@ const initLogMessageTypes = {};
 type HandlerProps = { client: Client; timestamp: Date };
 type Handler<T> = (props: HandlerProps, data: T) => Promise<EmbedBuilder>;
 type Message<T> = { type: T; data: LogMessageData; timestamp: Date };
+type FormatLogMessage<T> = (client: Client, message: Message<T>) => Promise<EmbedBuilder>;
 
-export class Logger<const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes> {
-  #messageTypes: Map<string, Handler<unknown>> = new Map();
+/**
+ * Queues log messages and delivers them to the registered log channels.
+ *
+ * Create it with `persistent()`, since it is only started once on clientReady. A hot reload
+ * then keeps queued messages and log channels, while the re-evaluated Logger sets the
+ * formatting.
+ */
+export class LogQueue<const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes> {
   #batcher: Batcher<string, Message<keyof LogMessageTypes>>;
   #logChannels: Map<string, TextBasedChannel> = new Map();
   #client: Client | null = null;
+  #format: FormatLogMessage<keyof LogMessageTypes> | null = null;
 
   constructor() {
     this.#batcher = new Batcher(this.processBatch.bind(this), {
@@ -24,6 +32,59 @@ export class Logger<const LogMessageTypes extends LogMessageType = typeof initLo
       batchSize: 5,
       backend: new InMemoryBackend(),
     });
+  }
+
+  /** Set how queued messages are formatted, replacing any previous formatter */
+  setFormatter(format: FormatLogMessage<keyof LogMessageTypes>) {
+    this.#format = format;
+  }
+
+  isRegistered(guild: Guild) {
+    return this.#logChannels.has(guild.id);
+  }
+
+  updateGuild(guild: Guild, logChannel: TextBasedChannel) {
+    this.#logChannels.set(guild.id, logChannel);
+  }
+
+  push(guild: Guild, message: Message<keyof LogMessageTypes>) {
+    this.#batcher.push(guild.id, message);
+  }
+
+  private async getLogChannel(guild: Guild) {
+    const logChannel = this.#logChannels.get(guild.id);
+    if (!logChannel?.isSendable()) {
+      throw new Error(`Log channel for guild ${guild.id} not initialized`);
+    }
+    return logChannel;
+  }
+
+  private async processBatch(guildId: string, messages: Array<Message<keyof LogMessageTypes>>) {
+    const client = this.#client;
+    if (!client) throw new Error("Client not initialized");
+    const format = this.#format;
+    if (!format) throw new Error("Formatter not set");
+    const guild = await client.guilds.fetch(guildId);
+
+    const channel = await this.getLogChannel(guild);
+    const formatted = await Promise.all(messages.map((m) => format(client, m)));
+
+    await channel.send({ embeds: formatted });
+  }
+
+  public start(client: Client) {
+    this.#client = client;
+    this.#batcher.start();
+  }
+}
+
+export class Logger<const LogMessageTypes extends LogMessageType = typeof initLogMessageTypes> {
+  #messageTypes: Map<string, Handler<unknown>> = new Map();
+  #queue: LogQueue<LogMessageTypes>;
+
+  constructor(queue: LogQueue<LogMessageTypes>) {
+    this.#queue = queue;
+    this.#queue.setFormatter(this.formatLogMessage.bind(this));
   }
 
   /**
@@ -40,11 +101,11 @@ export class Logger<const LogMessageTypes extends LogMessageType = typeof initLo
   }
 
   isRegistered(guild: Guild) {
-    return this.#logChannels.has(guild.id);
+    return this.#queue.isRegistered(guild);
   }
 
   updateGuild(guild: Guild, logChannel: TextBasedChannel) {
-    this.#logChannels.set(guild.id, logChannel);
+    this.#queue.updateGuild(guild, logChannel);
   }
 
   /**
@@ -55,7 +116,7 @@ export class Logger<const LogMessageTypes extends LogMessageType = typeof initLo
    */
   push<T extends keyof LogMessageTypes>(type: T, guild: Guild, data: LogMessageTypes[T]) {
     if (typeof type !== "string") throw new Error("Type must be a string");
-    this.#batcher.push(guild.id, { type, data, timestamp: new Date() });
+    this.#queue.push(guild, { type, data, timestamp: new Date() });
   }
 
   private async formatLogMessage<T>(client: Client, { type, data, timestamp }: Message<T>) {
@@ -65,27 +126,7 @@ export class Logger<const LogMessageTypes extends LogMessageType = typeof initLo
     return await handler({ client, timestamp }, data);
   }
 
-  private async getLogChannel(guild: Guild) {
-    const logChannel = this.#logChannels.get(guild.id);
-    if (!logChannel?.isSendable()) {
-      throw new Error(`Log channel for guild ${guild.id} not initialized`);
-    }
-    return logChannel;
-  }
-
-  private async processBatch(guildId: string, messages: Array<Message<keyof LogMessageTypes>>) {
-    const client = this.#client;
-    if (!client) throw new Error("Client not initialized");
-    const guild = await client.guilds.fetch(guildId);
-
-    const channel = await this.getLogChannel(guild);
-    const formatted = await Promise.all(messages.map((m) => this.formatLogMessage(client, m)));
-
-    await channel.send({ embeds: formatted });
-  }
-
   public start(client: Client) {
-    this.#client = client;
-    this.#batcher.start();
+    this.#queue.start(client);
   }
 }

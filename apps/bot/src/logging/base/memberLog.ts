@@ -1,8 +1,8 @@
 import { type GuildMember, type Role, roleMention } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type GuildMemberAddData = { member: GuildMember };
@@ -12,7 +12,7 @@ const formatRole = (role: Role) => `${roleMention(role.id)} (${role.name})`;
 
 export const memberLog = new Hashira({ name: "memberLog" }).const(
   "memberLog",
-  new Logger()
+  new Logger(persistent("logQueue:memberLog", () => new LogQueue()))
     .addMessageType("guildMemberAdd", async ({ timestamp }, { member }: GuildMemberAddData) => {
       const embed = getLogMessageEmbed(member, timestamp)
         .setDescription("**Dołącza do serwera**")
