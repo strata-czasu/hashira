@@ -33,79 +33,7 @@ const knockerLabel = (knock: Halloween2026TotKnock) =>
   knock.anonymous ? "Ktoś w masce" : userMention(knock.knockerId);
 
 type FinishedState = { type: "answered"; lines: string[] } | { type: "expired" };
-type DoorState = { type: "pending"; hostHasDice: boolean } | FinishedState;
-type PorchState = { type: "pending" } | FinishedState;
-
-export const buildTotDoorView = (input: {
-  knock: Halloween2026TotKnock;
-  guildName: string;
-  state: DoorState;
-}) => {
-  const { knock, state } = input;
-  const intro = `${knockerLabel(knock)} stoi pod Twoimi drzwiami na serwerze ${bold(input.guildName)}.`;
-
-  return (
-    <Container accentColor={TOT_COLOR}>
-      <TextDisplay>
-        {[
-          heading("Puk, puk!", HeadingLevel.Three),
-          intro,
-          ...(state.type === "pending"
-            ? [
-                "Cukierek albo psikus?",
-                ...(state.hostHasDice
-                  ? [
-                      subtext(
-                        "Masz kostkę losu. Przy psikusie z kostką rzucasz dwa razy i liczy się lepszy wynik.",
-                      ),
-                    ]
-                  : []),
-                subtext(
-                  `Drzwi zamkną się same ${time(knock.expiresAt, TimestampStyles.RelativeTime)}.`,
-                ),
-              ]
-            : []),
-        ].join("\n")}
-      </TextDisplay>
-      {state.type === "answered" ? (
-        <>
-          <Separator divider />
-          <TextDisplay>{state.lines.join("\n")}</TextDisplay>
-        </>
-      ) : null}
-      {state.type === "expired" ? (
-        <>
-          <Separator divider />
-          <TextDisplay>Nikt nie otworzył, więc gość poszedł dalej.</TextDisplay>
-        </>
-      ) : null}
-      {state.type === "pending" ? (
-        <ActionRow>
-          <Button
-            customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:treat`}
-            emoji="🍬"
-            label="Daj cukierka"
-            style={ButtonStyle.Success}
-          />
-          <Button
-            customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:trick`}
-            emoji="🎃"
-            label="Psikus"
-            style={ButtonStyle.Danger}
-          />
-          {state.hostHasDice ? (
-            <Button
-              customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:dice`}
-              emoji="🎲"
-              label="Psikus z kostką"
-              style={ButtonStyle.Secondary}
-            />
-          ) : null}
-        </ActionRow>
-      ) : null}
-    </Container>
-  );
-};
+type PorchState = { type: "pending"; hostHasDice: boolean } | FinishedState;
 
 export const buildTotPorchView = (input: { knock: Halloween2026TotKnock; state: PorchState }) => {
   const { knock, state } = input;
@@ -119,8 +47,41 @@ export const buildTotPorchView = (input: { knock: Halloween2026TotKnock; state: 
         <>
           <Separator divider />
           <TextDisplay>
-            {subtext(`${host} ma czas do ${time(knock.expiresAt, TimestampStyles.ShortTime)}.`)}
+            {[
+              ...(state.hostHasDice
+                ? [
+                    subtext(
+                      `${host} ma kostkę losu. Przy psikusie z kostką rzuca dwa razy i liczy się lepszy wynik.`,
+                    ),
+                  ]
+                : []),
+              subtext(
+                `${host} ma czas do ${time(knock.expiresAt, TimestampStyles.ShortTime)}. Tylko gospodarz może otworzyć drzwi.`,
+              ),
+            ].join("\n")}
           </TextDisplay>
+          <ActionRow>
+            <Button
+              customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:treat`}
+              emoji="🍬"
+              label="Daj cukierka"
+              style={ButtonStyle.Success}
+            />
+            <Button
+              customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:trick`}
+              emoji="🎃"
+              label="Psikus"
+              style={ButtonStyle.Danger}
+            />
+            {state.hostHasDice ? (
+              <Button
+                customId={`${TOT_ANSWER_CUSTOM_ID}:${knock.id}:dice`}
+                emoji="🎲"
+                label="Psikus z kostką"
+                style={ButtonStyle.Secondary}
+              />
+            ) : null}
+          </ActionRow>
         </>
       ) : null}
       {state.type === "answered" ? (

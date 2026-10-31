@@ -48,7 +48,6 @@ import {
 import type { TotAnswerChoice, TotMuteResolution } from "./resolution";
 import {
   buildTotBagView,
-  buildTotDoorView,
   buildTotPorchView,
   buildTotShopView,
   describeTotAnswer,
@@ -190,21 +189,23 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
         }
 
         const { knock } = result;
-        const dm = await discordTry(
-          () =>
-            host.send(
-              render(
-                buildTotDoorView({
-                  knock,
-                  guildName: itx.guild.name,
-                  state: { type: "pending", hostHasDice: result.hostHasDice },
+        const porch = itx.channel?.isSendable()
+          ? await discordTry(
+              () =>
+                itx.channel!.send({
+                  ...render(
+                    buildTotPorchView({
+                      knock,
+                      state: { type: "pending", hostHasDice: result.hostHasDice },
+                    }),
+                  ),
+                  allowedMentions: { users: [host.id] },
                 }),
-              ),
-            ),
-          [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
-          () => null,
-        );
-        if (!dm) {
+              [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.MissingPermissions],
+              () => null,
+            )
+          : null;
+        if (!porch) {
           await cancelUndeliveredTotKnock(
             prisma,
             knock,
@@ -214,27 +215,11 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
           await messageQueue.cancel("halloween2026TotKnockExpire", knock.id.toString());
           await errorFollowUp(
             itx,
-            `${userMention(host.id)} ma zablokowane wiadomości prywatne, więc nie usłyszy pukania. Cooldown nie przepadł.`,
+            "Nie mogę pisać na tym kanale, więc nikt nie usłyszy pukania. Cooldown nie przepadł.",
           );
           return;
         }
-
-        const porch = itx.channel?.isSendable()
-          ? await discordTry(
-              () =>
-                itx.channel!.send({
-                  ...render(buildTotPorchView({ knock, state: { type: "pending" } })),
-                  allowedMentions: { parse: [] },
-                }),
-              [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.MissingPermissions],
-              () => null,
-            )
-          : null;
-        await attachTotKnockMessages(prisma, knock.id, {
-          dmChannelId: dm.channelId,
-          dmMessageId: dm.id,
-          ...(porch ? { messageId: porch.id } : {}),
-        });
+        await attachTotKnockMessages(prisma, knock.id, { messageId: porch.id });
 
         await itx.editReply(
           [
