@@ -34,7 +34,6 @@ export const getTotPlayerSnapshot = async (
     items,
     lollipopArmed: player?.lollipopArmed ?? false,
     maskArmed: player?.maskArmed ?? false,
-    doorsClosed: player?.doorsClosed ?? false,
     nextKnockAt: nextKnockAt && nextKnockAt > now ? nextKnockAt : null,
   };
 };
@@ -153,14 +152,4 @@ export const exchangeTotCandies = (
       candies: player.candies - cost,
       currencySymbol: currency.symbol,
     } as const;
-  });
-
-export const setTotDoors = (
-  prisma: ExtendedPrismaClient,
-  input: { guildId: string; userId: string; closed: boolean },
-) =>
-  prisma.halloween2026TotPlayer.upsert({
-    where: { guildId_userId: { guildId: input.guildId, userId: input.userId } },
-    create: { guildId: input.guildId, userId: input.userId, doorsClosed: input.closed },
-    update: { doorsClosed: input.closed },
   });

@@ -26,7 +26,6 @@ const player = (userId: string, overrides: Partial<TotPlayerState> = {}): TotPla
 
 const totalWeight = TRICK_TABLE.reduce((sum, entry) => sum + entry.weight, 0);
 
-/** Zwraca random(), który trafia w podany wynik tabeli psikusów */
 const pickTrick = (outcome: (typeof TRICK_TABLE)[number]["outcome"]) => {
   let before = 0;
   for (const entry of TRICK_TABLE) {

@@ -29,7 +29,6 @@ const editMessage = async (
     (error) => console.warn(`Failed to edit Halloween 2026 knock message ${messageId}`, error),
   );
 
-/** Podmienia DM i wiadomość na kanale na stan końcowy pukania */
 export const finishTotKnockMessages = async (
   client: Client,
   knock: Halloween2026TotKnock,

@@ -1,9 +1,7 @@
 import type { Halloween2026TotItem } from "@hashira/db";
 
-/** 31.10.2026 00:00 – 03.11.2026 00:00 czasu polskiego */
 export const TOT_EVENT_START = new Date("2026-10-30T23:00:00Z");
 export const TOT_EVENT_END = new Date("2026-11-02T23:00:00Z");
-/** Wymiana cukierków na kapsle rusza dzień po starcie eventu: 01.11.2026 00:00 */
 export const TOT_EXCHANGE_START = new Date("2026-10-31T23:00:00Z");
 export const TOT_TIMEZONE = "Europe/Warsaw";
 
@@ -24,7 +22,6 @@ export const TOT_ITEM_LIMIT = 3;
 
 type ItemDefinition = {
   readonly name: string;
-  /** Biernik, do zdań typu "znajduje {accusative}" */
   readonly accusative: string;
   readonly description: string;
   readonly price: number;
@@ -94,7 +91,6 @@ export const TOT_ITEM_KEYS = Object.keys(TOT_ITEMS) as Halloween2026TotItem[];
 
 export const formatTotItem = (item: Halloween2026TotItem) => TOT_ITEMS[item].name;
 
-/** Klucz dnia eventu (kalendarz polski), zapisywany jako kolumna `@db.Date` */
 export const getTotDay = (at: Date) => {
   const key = new Intl.DateTimeFormat("en-CA", {
     timeZone: TOT_TIMEZONE,

@@ -37,7 +37,6 @@ import {
   buyTotItem,
   exchangeTotCandies,
   getTotPlayerSnapshot,
-  setTotDoors,
   type TotUsableItem,
   useTotItem,
 } from "./playerService";
@@ -50,7 +49,6 @@ import {
   describeTotAnswer,
   formatCandies,
   TOT_ANSWER_CUSTOM_ID,
-  TOT_COMMAND,
 } from "./views";
 
 type BaseContext = ExtractContext<typeof base>;
@@ -62,10 +60,6 @@ const knockErrorMessage = (result: Exclude<CreateTotKnockResult, { ok: true }>, 
       return "Cukierek albo psikus trwa od 31 października do 2 listopada.";
     case "self_knock":
       return "Do własnych drzwi się nie puka.";
-    case "knocker_doors_closed":
-      return `Masz zamknięte drzwi, więc nie możesz chodzić po cukierki. Otworzysz je przez ${TOT_COMMAND} drzwi.`;
-    case "host_doors_closed":
-      return `${who} ma zamknięte drzwi.`;
     case "host_busy":
       return `Pod drzwiami ${who} ktoś już stoi. Spróbuj za kilka minut.`;
     case "knocker_cooldown":
@@ -102,10 +96,6 @@ const collectMutes = (mutes: TotMuteResolution[]): { userId: string; minutes: nu
     return [];
   });
 
-/**
- * Wyciszenia idą przez zwykły system wyciszeń, więc zostają w historii użytkownika
- * z powodem TOT_MUTE_REASON. Zwraca osoby, którym wyciszenie faktycznie nałożono.
- */
 const applyTotMutes = async (
   ctx: Pick<BaseContext, "prisma" | "messageQueue" | "moderationLog">,
   guild: Guild,
@@ -143,102 +133,103 @@ const itemChoices = TOT_ITEM_KEYS.map((item) => ({
 
 export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
   .use(base)
+  .command("zapukaj", (command) =>
+    command
+      .setDescription("Zapukaj do kogoś po cukierka")
+      .setDMPermission(false)
+      .addUser("osoba", (option) => option.setDescription("Do kogo pukasz"))
+      .handle(async ({ prisma, messageQueue }, { osoba: host }, itx) => {
+        if (!itx.inCachedGuild()) return;
+        await itx.deferReply({ flags: "Ephemeral" });
+
+        if (host.bot) {
+          await errorFollowUp(itx, "Boty nie otwierają drzwi.");
+          return;
+        }
+        const member = await discordTry(
+          () => itx.guild.members.fetch(host.id),
+          [RESTJSONErrorCodes.UnknownMember],
+          () => null,
+        );
+        if (!member) {
+          await errorFollowUp(itx, "Tej osoby nie ma na serwerze.");
+          return;
+        }
+
+        await ensureUsersExist(prisma, [itx.user, host]);
+        const result = await createTotKnock(prisma, {
+          guildId: itx.guildId,
+          knockerId: itx.user.id,
+          hostId: host.id,
+          channelId: itx.channelId,
+          now: itx.createdAt,
+          scheduleExpiry: (tx, knock) =>
+            messageQueue.push(
+              "halloween2026TotKnockExpire",
+              { knockId: knock.id },
+              knock.expiresAt,
+              knock.id.toString(),
+              tx,
+            ),
+        });
+        if (!result.ok) {
+          await errorFollowUp(itx, knockErrorMessage(result, host));
+          return;
+        }
+
+        const { knock } = result;
+        const dm = await discordTry(
+          () =>
+            host.send(
+              render(
+                buildTotDoorView({
+                  knock,
+                  guildName: itx.guild.name,
+                  state: { type: "pending", hostHasDice: result.hostHasDice },
+                }),
+              ),
+            ),
+          [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
+          () => null,
+        );
+        if (!dm) {
+          await cancelUndeliveredTotKnock(prisma, knock, result.previousLastKnockAt);
+          await messageQueue.cancel("halloween2026TotKnockExpire", knock.id.toString());
+          await errorFollowUp(
+            itx,
+            `${userMention(host.id)} ma zablokowane wiadomości prywatne, więc nie usłyszy pukania. Cooldown nie przepadł.`,
+          );
+          return;
+        }
+
+        const porch = itx.channel?.isSendable()
+          ? await discordTry(
+              () =>
+                itx.channel!.send({
+                  ...render(buildTotPorchView({ knock, state: { type: "pending" } })),
+                  allowedMentions: { parse: [] },
+                }),
+              [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.MissingPermissions],
+              () => null,
+            )
+          : null;
+        await attachTotKnockMessages(prisma, knock.id, {
+          dmChannelId: dm.channelId,
+          dmMessageId: dm.id,
+          ...(porch ? { messageId: porch.id } : {}),
+        });
+
+        await itx.editReply(
+          knock.anonymous
+            ? `Pukasz do ${userMention(host.id)} w masce. Nikt nie wie, że to Ty.`
+            : `Pukasz do ${userMention(host.id)}. Jak tylko otworzy, wynik pojawi się na kanale.`,
+        );
+      }),
+  )
   .group("cukierek-albo-psikus", (group) =>
     group
       .setDescription("Halloweenowe pukanie do drzwi")
       .setDMPermission(false)
-      .addCommand("zapukaj", (command) =>
-        command
-          .setDescription("Zapukaj do kogoś po cukierka")
-          .addUser("osoba", (option) => option.setDescription("Do kogo pukasz"))
-          .handle(async ({ prisma, messageQueue }, { osoba: host }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await itx.deferReply({ flags: "Ephemeral" });
-
-            if (host.bot) {
-              await errorFollowUp(itx, "Boty nie otwierają drzwi.");
-              return;
-            }
-            const member = await discordTry(
-              () => itx.guild.members.fetch(host.id),
-              [RESTJSONErrorCodes.UnknownMember],
-              () => null,
-            );
-            if (!member) {
-              await errorFollowUp(itx, "Tej osoby nie ma na serwerze.");
-              return;
-            }
-
-            await ensureUsersExist(prisma, [itx.user, host]);
-            const result = await createTotKnock(prisma, {
-              guildId: itx.guildId,
-              knockerId: itx.user.id,
-              hostId: host.id,
-              channelId: itx.channelId,
-              now: itx.createdAt,
-              scheduleExpiry: (tx, knock) =>
-                messageQueue.push(
-                  "halloween2026TotKnockExpire",
-                  { knockId: knock.id },
-                  knock.expiresAt,
-                  knock.id.toString(),
-                  tx,
-                ),
-            });
-            if (!result.ok) {
-              await errorFollowUp(itx, knockErrorMessage(result, host));
-              return;
-            }
-
-            const { knock } = result;
-            const dm = await discordTry(
-              () =>
-                host.send(
-                  render(
-                    buildTotDoorView({
-                      knock,
-                      guildName: itx.guild.name,
-                      state: { type: "pending", hostHasDice: result.hostHasDice },
-                    }),
-                  ),
-                ),
-              [RESTJSONErrorCodes.CannotSendMessagesToThisUser],
-              () => null,
-            );
-            if (!dm) {
-              await cancelUndeliveredTotKnock(prisma, knock, result.previousLastKnockAt);
-              await messageQueue.cancel("halloween2026TotKnockExpire", knock.id.toString());
-              await errorFollowUp(
-                itx,
-                `${userMention(host.id)} ma zablokowane wiadomości prywatne, więc nie usłyszy pukania. Cooldown nie przepadł.`,
-              );
-              return;
-            }
-
-            const porch = itx.channel?.isSendable()
-              ? await discordTry(
-                  () =>
-                    itx.channel!.send({
-                      ...render(buildTotPorchView({ knock, state: { type: "pending" } })),
-                      allowedMentions: { parse: [] },
-                    }),
-                  [RESTJSONErrorCodes.MissingAccess, RESTJSONErrorCodes.MissingPermissions],
-                  () => null,
-                )
-              : null;
-            await attachTotKnockMessages(prisma, knock.id, {
-              dmChannelId: dm.channelId,
-              dmMessageId: dm.id,
-              ...(porch ? { messageId: porch.id } : {}),
-            });
-
-            await itx.editReply(
-              knock.anonymous
-                ? `Pukasz do ${userMention(host.id)} w masce. Nikt nie wie, że to Ty.`
-                : `Pukasz do ${userMention(host.id)}. Jak tylko otworzy, wynik pojawi się na kanale.`,
-            );
-          }),
-      )
       .addCommand("worek", (command) =>
         command
           .setDescription("Zobacz swoje cukierki i przedmioty")
@@ -363,28 +354,6 @@ export const halloween2026Tot = new Hashira({ name: "halloween2026-tot" })
             await itx.editReply(
               `Wymieniasz ${formatCandies(result.cost)} na ${formatBalance(kapsle, result.currencySymbol)}.`,
             );
-          }),
-      )
-      .addCommand("drzwi", (command) =>
-        command
-          .setDescription("Otwórz albo zamknij swoje drzwi")
-          .addBoolean("zamknij", (option) =>
-            option.setDescription("Zamknięte drzwi: nikt do Ciebie nie puka, Ty też nie"),
-          )
-          .handle(async ({ prisma }, { zamknij }, itx) => {
-            if (!itx.inCachedGuild()) return;
-            await ensureUsersExist(prisma, [itx.user]);
-            await setTotDoors(prisma, {
-              guildId: itx.guildId,
-              userId: itx.user.id,
-              closed: zamknij,
-            });
-            await itx.reply({
-              content: zamknij
-                ? "Drzwi zamknięte. Nikt nie będzie do Ciebie pukać, ale Ty też nie możesz chodzić po cukierki."
-                : "Drzwi otwarte. Można pukać.",
-              flags: "Ephemeral",
-            });
           }),
       ),
   )
