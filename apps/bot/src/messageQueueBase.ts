@@ -16,9 +16,15 @@ import {
 } from "discord.js";
 import { Effect } from "effect";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
-import { MessageQueue, Persistence, Queue, Runtime } from "@hashira/yotei";
+import {
+  MessageQueue,
+  type MessageQueueHandlerRegistry,
+  Persistence,
+  Queue,
+  Runtime,
+} from "@hashira/yotei";
 
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
@@ -119,10 +125,18 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(loggingBase)
   .const((ctx) => {
     const prisma = ctx.prisma;
-    const messageQueueRuntime = Runtime.make(Queue.layer(Persistence.layer(prisma)));
+    // NOTE: The consumer is started once on clientReady, so the runtime and handler registry
+    // outlive hot reloads while every re-evaluation registers its own handlers.
+    const messageQueueRuntime = persistent("messageQueueRuntime", () =>
+      Runtime.make(Queue.layer(Persistence.layer(prisma))),
+    );
+    const handlers = persistent(
+      "messageQueueHandlers",
+      (): MessageQueueHandlerRegistry => new Map(),
+    );
     return {
       ...ctx,
-      messageQueue: new MessageQueue(messageQueueRuntime)
+      messageQueue: new MessageQueue(messageQueueRuntime, undefined, handlers)
         .addArg<"client", Client>()
         .addHandler("ultimatumEnd", async ({ client }, { userId, guildId }: UltimatumEndData) => {
           const currentUltimatum = await prisma.ultimatum.findFirst({

@@ -1,4 +1,4 @@
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 
 import { StickyMessageCache } from "../stickyMessage/stickyMessageCache";
@@ -34,6 +34,13 @@ export class UserTextActivityQueue {
   }
 }
 
+// NOTE: These are started once on clientReady, so they have to outlive hot reloads
 export const userActivityBase = new Hashira({ name: "user-activity-base" })
-  .const("userTextActivityQueue", new UserTextActivityQueue())
-  .const("stickyMessageCache", new StickyMessageCache());
+  .const(
+    "userTextActivityQueue",
+    persistent("userTextActivityQueue", () => new UserTextActivityQueue()),
+  )
+  .const(
+    "stickyMessageCache",
+    persistent("stickyMessageCache", () => new StickyMessageCache()),
+  );

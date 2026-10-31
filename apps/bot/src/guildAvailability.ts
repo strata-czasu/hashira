@@ -1,4 +1,4 @@
-import { DiscordAPIError, type Guild } from "discord.js";
+import type { Guild } from "discord.js";
 
 import { type ExtractContext, Hashira } from "@hashira/core";
 import { type ExtendedPrismaClient, isUniqueConstraintError } from "@hashira/db";
@@ -6,6 +6,7 @@ import { type ExtendedPrismaClient, isUniqueConstraintError } from "@hashira/db"
 import { base } from "./base";
 import type { Logger, LogMessageType } from "./logging/base/logger";
 import { GUILD_IDS, STRATA_CZASU } from "./specializedConstants";
+import { isDiscordAPIError } from "./util/discordErrors";
 
 type BaseContext = ExtractContext<typeof base>;
 const ALLOWED_GUILDS: string[] = Object.values(GUILD_IDS);
@@ -70,7 +71,7 @@ async function processAllowedGuild(ctx: BaseContext, guild: Guild) {
   try {
     await guild.members.fetch();
   } catch (e) {
-    if (!(e instanceof DiscordAPIError)) throw e;
+    if (!isDiscordAPIError(e)) throw e;
     console.error(`Failed to prefetch members for guild ${guild.id}: ${e.code} - ${e.message}`);
   }
 }
@@ -96,7 +97,7 @@ export const guildAvailability = new Hashira({ name: "guild-availability" })
         await registerGuildLogger(ctx.strataCzasuLog, guild, STRATA_CZASU.MOD_LOG_CHANNEL_ID);
         ctx.strataCzasuLog.start(guild.client);
       } catch (e) {
-        if (!(e instanceof DiscordAPIError)) {
+        if (!isDiscordAPIError(e)) {
           console.error("Failed to register Strata Czasu logger", e);
         } else {
           console.error(`Failed to register Strata Czasu logger: ${e.code} - ${e.message}`);

@@ -25,7 +25,8 @@
     "seed": "bun run --cwd apps/bot seed",
     "start:prod": "bun prisma-migrate-deploy && bun seed --production && bun run --cwd apps/bot start",
     "start": "bun run --cwd apps/bot start",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "dev": "bun run --cwd apps/bot dev"
   },
   "dependencies": {
     "@hashira/utils": "workspace:*",

@@ -11,11 +11,11 @@ import {
   userMention,
 } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import type { ChannelRestriction, Mute, Warn } from "@hashira/db";
 
 import { formatMuteLength } from "../../moderation/util";
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type WarnCreateData = { warn: Warn; moderator: User };
@@ -79,7 +79,7 @@ const getBanLogContent = (
 
 export const moderationLog = new Hashira({ name: "moderationLog" }).const(
   "moderationLog",
-  new Logger()
+  new Logger(persistent("logQueue:moderationLog", () => new LogQueue()))
     .addMessageType("warnCreate", async ({ timestamp }, { warn, moderator }: WarnCreateData) => {
       return getLogMessageEmbed(moderator, timestamp)
         .setDescription(`${getWarnLogHeader("Nadaje", warn)}\nPowód: ${italic(warn.reason)}`)

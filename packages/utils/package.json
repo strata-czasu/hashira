@@ -3,7 +3,8 @@
   "type": "module",
   "exports": {
     "./types": "./types.ts",
-    "./range": "./range.ts"
+    "./range": "./range.ts",
+    "./persistent": "./persistent.ts"
   },
   "scripts": {
     "typecheck": "tsc"
