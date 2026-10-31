@@ -1,7 +1,7 @@
 import { TZDate } from "@date-fns/tz";
 import { startOfDay } from "date-fns";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 
 import { base } from "../base";
 import { STRATA_CZASU, TZ } from "../specializedConstants";
@@ -13,7 +13,10 @@ const resEmoji = "<a:peartotanczy:1410749447608205322>";
 
 export const pearto = new Hashira({ name: "pearto" })
   .use(base)
-  .const("peartoCooldown", new Cooldown({ minutes: 1 }))
+  .const(
+    "peartoCooldown",
+    persistent("peartoCooldown", () => new Cooldown({ minutes: 1 })),
+  )
   .handle("messageCreate", async (ctx, message) => {
     if (!ctx.privilegedIntentsEnabled) return;
     if (

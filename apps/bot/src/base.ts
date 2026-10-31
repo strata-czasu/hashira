@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/bun";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import env from "@hashira/env";
 
 import { database } from "./db";
@@ -19,7 +19,10 @@ export const base = new Hashira({ name: "base" })
   .use(userActivityBase)
   .use(emojiCountingBase)
   .const("privilegedIntentsEnabled", env.BOT_PRIVILEGED_INTENTS_ENABLED)
-  .const("lock", new LockManager())
+  .const(
+    "lock",
+    persistent("lock", () => new LockManager()),
+  )
   .addExceptionHandler("default", (e, itx) => {
     if (env.SENTRY_DSN) {
       Sentry.withScope((scope) => {
