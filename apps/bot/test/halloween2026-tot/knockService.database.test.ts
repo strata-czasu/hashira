@@ -436,13 +436,13 @@ databaseTests("Halloween 2026 trick or treat", () => {
     const activeApples = (guildId: string) =>
       prisma!.halloween2026TotApple.findMany({ where: { guildId, bittenAt: null } });
 
-    it("does not seed apples before the apple phase starts", async () => {
+    it("seeds apples from the first knock onward", async () => {
       const { guildId, users } = await setup(2);
       const [a, b] = users as [string, string];
       const created = await knock(guildId, a, b, now);
       if (!created.ok) throw new Error(created.reason);
-      expect(created.seededApple).toBeNull();
-      expect(await activeApples(guildId)).toHaveLength(0);
+      expect(created.seededApple).toMatchObject({ holderId: a });
+      expect(await activeApples(guildId)).toHaveLength(1);
     });
 
     it("seeds apples to knockers until the server limit is reached", async () => {

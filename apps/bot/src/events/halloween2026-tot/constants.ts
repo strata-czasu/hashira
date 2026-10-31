@@ -18,7 +18,6 @@ export const TOT_MUTE_REASON = "Psikus (Halloween 2026)";
 
 export const TOT_CANDIES_PER_KAPSEL = 5;
 
-export const TOT_APPLE_START = new Date("2026-10-31T23:00:00Z");
 export const TOT_APPLE_COUNT = 2;
 export const TOT_APPLE_FUSE_MINUTES = 60;
 export const TOT_APPLE_BITE_MINUTES = 5;
@@ -115,4 +114,4 @@ export const getTotDay = (at: Date) => {
 
 export const isTotEventOpen = (now: Date) => now >= TOT_EVENT_START && now < TOT_EVENT_END;
 
-export const isTotAppleOpen = (now: Date) => now >= TOT_APPLE_START && now < TOT_EVENT_END;
+export const isTotAppleOpen = (now: Date) => now < TOT_EVENT_END;
