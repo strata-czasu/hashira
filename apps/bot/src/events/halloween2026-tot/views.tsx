@@ -248,6 +248,10 @@ export const buildTotBagView = (snapshot: TotPlayerSnapshot) => {
   const armed = [
     ...(snapshot.lollipopArmed ? ["Zatruty lizak czeka w misce na następnego gościa."] : []),
     ...(snapshot.maskArmed ? ["Masz na sobie maskę. Następne pukanie będzie anonimowe."] : []),
+    ...snapshot.appleFuses.map(
+      (fuseEndsAt) =>
+        `Trzymasz zatrute jabłko, które zgnije ${time(fuseEndsAt, TimestampStyles.RelativeTime)}. Zapukaj do kogoś, a zostanie u gospodarza, gdy otworzy.`,
+    ),
   ];
 
   return (
@@ -294,3 +298,33 @@ export const buildTotShopView = () => (
     </TextDisplay>
   </Container>
 );
+
+const passesAfter = createPluralize({ one: "podaniu", few: "podaniach", many: "podaniach" });
+
+export const describeTotAppleSeeded = (fuseEndsAt: Date) =>
+  `W worku znajdujesz zatrute jabłko. Zgnije ${time(fuseEndsAt, TimestampStyles.RelativeTime)}, więc pozbądź się go wcześniej: przy następnym pukaniu zostanie u osoby, która Ci otworzy.`;
+
+export const describeTotAppleReceived = (guildName: string, fuseEndsAt: Date) =>
+  [
+    heading("Zatrute jabłko", HeadingLevel.Three),
+    `Ktoś podrzucił Ci zatrute jabłko na serwerze ${bold(guildName)}.`,
+    `Zgnije ${time(fuseEndsAt, TimestampStyles.RelativeTime)}. Zapukaj do kogoś przez /zapukaj, a jabłko zostanie u gospodarza, gdy otworzy.`,
+  ].join("\n");
+
+export const describeTotApplePassed = (reward: number) =>
+  `Zatrute jabłko zostało u gospodarza. Za odwagę dostajesz ${formatCandies(reward)}.`;
+
+export const describeTotAppleBite = (
+  apple: { holderId: string; passes: number },
+  bite: { mute: TotMuteResolution; candiesLost: number },
+  applied: ReadonlySet<string>,
+): string[] => {
+  const who = userMention(apple.holderId);
+  return [
+    apple.passes > 0
+      ? `🍎 Zatrute jabłko gnije w rękach ${who} po ${apple.passes} ${passesAfter(apple.passes)}.`
+      : `🍎 Zatrute jabłko gnije w rękach ${who}, zanim ktokolwiek zdążył je podać dalej.`,
+    ...describeMute(bite.mute, applied, () => who),
+    ...(bite.candiesLost > 0 ? [`${who} traci ${formatCandies(bite.candiesLost)}.`] : []),
+  ];
+};

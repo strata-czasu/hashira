@@ -64,13 +64,37 @@ model Halloween2026TotKnock {
   createdAt   DateTime                    @default(now()) @db.Timestamp(6)
   expiresAt   DateTime                    @db.Timestamp(6)
   answeredAt  DateTime?                   @db.Timestamp(6)
+  appleId     Int?
 
-  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  knocker User  @relation("halloween2026TotKnocker", fields: [knockerId], references: [id], onDelete: Cascade)
-  host    User  @relation("halloween2026TotHost", fields: [hostId], references: [id], onDelete: Cascade)
+  guild   Guild                  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  knocker User                   @relation("halloween2026TotKnocker", fields: [knockerId], references: [id], onDelete: Cascade)
+  host    User                   @relation("halloween2026TotHost", fields: [hostId], references: [id], onDelete: Cascade)
+  apple   Halloween2026TotApple? @relation(fields: [appleId], references: [id], onDelete: SetNull)
 
   @@index([guildId, hostId, createdAt])
   @@index([guildId, knockerId, hostId, createdAt])
+  @@index([appleId, status])
+}
+
+model Halloween2026TotApple {
+  id               Int       @id @default(autoincrement())
+  guildId          String
+  holderId         String
+  previousHolderId String?
+  channelId        String
+  passes           Int       @default(0)
+  receivedAt       DateTime  @db.Timestamp(6)
+  fuseEndsAt       DateTime  @db.Timestamp(6)
+  bittenAt         DateTime? @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+
+  guild          Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  holder         User                    @relation("halloween2026TotAppleHolder", fields: [holderId], references: [id], onDelete: Cascade)
+  previousHolder User?                   @relation("halloween2026TotApplePreviousHolder", fields: [previousHolderId], references: [id], onDelete: SetNull)
+  knocks         Halloween2026TotKnock[]
+
+  @@index([guildId, bittenAt, fuseEndsAt])
+  @@index([guildId, holderId, bittenAt])
 }
 
 model Halloween2026TotDailyLimit {

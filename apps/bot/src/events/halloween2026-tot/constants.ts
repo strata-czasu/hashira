@@ -18,6 +18,18 @@ export const TOT_MUTE_REASON = "Psikus (Halloween 2026)";
 
 export const TOT_CANDIES_PER_KAPSEL = 5;
 
+export const TOT_APPLE_START = new Date("2026-10-31T23:00:00Z");
+export const TOT_APPLE_COUNT = 2;
+export const TOT_APPLE_FUSE_MINUTES = 60;
+export const TOT_APPLE_BITE_MINUTES = 5;
+export const TOT_APPLE_SPARED_CANDY_LOSS = 3;
+export const TOT_APPLE_RESEED_IMMUNITY_MINUTES = 60;
+export const TOT_APPLE_PASS_REWARD = 1;
+export const TOT_APPLE_LONG_HOLD_MINUTES = 30;
+export const TOT_APPLE_LONG_HOLD_BONUS = 2;
+export const TOT_APPLE_SWEEP_SECONDS = 30;
+export const TOT_APPLE_MUTE_REASON = "Zatrute jabłko (Halloween 2026)";
+
 export const TOT_ITEM_LIMIT = 3;
 
 type ItemDefinition = {
@@ -102,3 +114,5 @@ export const getTotDay = (at: Date) => {
 };
 
 export const isTotEventOpen = (now: Date) => now >= TOT_EVENT_START && now < TOT_EVENT_END;
+
+export const isTotAppleOpen = (now: Date) => now >= TOT_APPLE_START && now < TOT_EVENT_END;
