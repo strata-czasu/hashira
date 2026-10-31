@@ -8,6 +8,8 @@ import * as Queue from "./queue";
 
 export type MessageQueueConsumer = { stop(): Promise<void>; awaitIdle(): Promise<void> };
 export type MessageQueueConsumerOptions = typeof ConsumerOptions.Type;
+/** Opaque handler storage, see the MessageQueue constructor. */
+export type MessageQueueHandlerRegistry = Map<string, unknown>;
 
 type Handler<T, U extends Record<string, unknown>> = (props: U, data: T) => Promise<void>;
 type Handle = Record<string, unknown>;
@@ -23,11 +25,23 @@ export class MessageQueue<
   const HandleTypes extends Handle = {},
   const Args extends Record<string, unknown> = {},
 > {
-  #handlers = new Map<string, (props: Args) => Queue.QueueHandler>();
+  #handlers: Map<string, (props: Args) => Queue.QueueHandler>;
   #runtime: ManagedRuntime.ManagedRuntime<Queue.Queue, never>;
   #interval: number;
 
-  constructor(runtime: ManagedRuntime.ManagedRuntime<Queue.Queue, never>, interval = 1000) {
+  /**
+   * @param handlers Registry to store handlers in. A consumer started by any queue sharing
+   *   the registry dispatches to the handlers of the queue constructed last, which lets hot
+   *   reload replace handlers without restarting the consumer. The registry is cleared on
+   *   construction.
+   */
+  constructor(
+    runtime: ManagedRuntime.ManagedRuntime<Queue.Queue, never>,
+    interval = 1000,
+    handlers: MessageQueueHandlerRegistry = new Map(),
+  ) {
+    handlers.clear();
+    this.#handlers = handlers as Map<string, (props: Args) => Queue.QueueHandler>;
     this.#runtime = runtime;
     this.#interval = interval;
   }
