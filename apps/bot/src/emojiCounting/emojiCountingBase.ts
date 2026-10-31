@@ -1,4 +1,4 @@
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import type { ExtendedPrismaClient, Prisma, RedisClient } from "@hashira/db";
 
 import { Batcher, RedisBackend } from "../util/batcher";
@@ -35,7 +35,8 @@ export class EmojiCountingQueue {
   }
 }
 
+// NOTE: This is started once on clientReady, so it has to outlive hot reloads
 export const emojiCountingBase = new Hashira({ name: "emoji-counting-base" }).const(
   "emojiCountingQueue",
-  new EmojiCountingQueue(),
+  persistent("emojiCountingQueue", () => new EmojiCountingQueue()),
 );
