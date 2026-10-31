@@ -36,7 +36,6 @@ type FinishedState = { type: "answered"; lines: string[] } | { type: "expired" }
 type DoorState = { type: "pending"; hostHasDice: boolean } | FinishedState;
 type PorchState = { type: "pending" } | FinishedState;
 
-/** Wiadomość prywatna do osoby, do której ktoś puka */
 export const buildTotDoorView = (input: {
   knock: Halloween2026TotKnock;
   guildName: string;
@@ -108,7 +107,6 @@ export const buildTotDoorView = (input: {
   );
 };
 
-/** Publiczna wiadomość na kanale, z którego ktoś zapukał */
 export const buildTotPorchView = (input: { knock: Halloween2026TotKnock; state: PorchState }) => {
   const { knock, state } = input;
   const host = userMention(knock.hostId);
@@ -116,14 +114,15 @@ export const buildTotPorchView = (input: { knock: Halloween2026TotKnock; state: 
 
   return (
     <Container accentColor={TOT_COLOR}>
-      <TextDisplay>
-        {state.type === "pending"
-          ? [
-              header,
-              subtext(`${host} ma czas do ${time(knock.expiresAt, TimestampStyles.ShortTime)}.`),
-            ].join("\n")
-          : header}
-      </TextDisplay>
+      <TextDisplay>{header}</TextDisplay>
+      {state.type === "pending" ? (
+        <>
+          <Separator divider />
+          <TextDisplay>
+            {subtext(`${host} ma czas do ${time(knock.expiresAt, TimestampStyles.ShortTime)}.`)}
+          </TextDisplay>
+        </>
+      ) : null}
       {state.type === "answered" ? (
         <>
           <Separator divider />
@@ -179,10 +178,6 @@ const describeMute = (
   }
 };
 
-/**
- * Opis tego, co się stało po otwarciu drzwi.
- * `applied` to osoby, którym faktycznie udało się nałożyć wyciszenie.
- */
 export const describeTotAnswer = (
   knock: Halloween2026TotKnock,
   resolution: TotAnswerResolution,
@@ -202,11 +197,7 @@ export const describeTotAnswer = (
     lines.push(`${b} daje lizaka. Szkoda tylko, że był zatruty.`);
   } else {
     if (event.rolls) {
-      lines.push(
-        subtext(
-          `Kostka: ${rollLabels[event.rolls[0]]} i ${rollLabels[event.rolls[1]]}. Liczy się lepszy wynik.`,
-        ),
-      );
+      lines.push(subtext(`Kostka: ${rollLabels[event.rolls[0]]} i ${rollLabels[event.rolls[1]]}.`));
     }
     switch (event.outcome) {
       case "success":
@@ -276,14 +267,9 @@ export const buildTotBagView = (snapshot: TotPlayerSnapshot) => {
       ) : null}
       <Separator divider />
       <TextDisplay>
-        {[
-          snapshot.nextKnockAt
-            ? `Następne pukanie ${time(snapshot.nextKnockAt, TimestampStyles.RelativeTime)}.`
-            : "Możesz pukać.",
-          snapshot.doorsClosed ? "Drzwi masz zamknięte, nikt do Ciebie nie zapuka." : null,
-        ]
-          .filter((line) => line !== null)
-          .join("\n")}
+        {snapshot.nextKnockAt
+          ? `Następne pukanie ${time(snapshot.nextKnockAt, TimestampStyles.RelativeTime)}.`
+          : "Możesz pukać."}
       </TextDisplay>
     </Container>
   );

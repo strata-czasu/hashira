@@ -28,10 +28,6 @@ export type TotPlayerState = {
 
 export type TotAnswerChoice = "treat" | "trick" | "dice";
 
-/**
- * Co stało się z wyciszeniem, które miało trafić w `targetId`.
- * `muted` oznacza tylko decyzję gry; samo nałożenie wyciszenia dzieje się po zapisaniu wyniku.
- */
 export type TotMuteResolution =
   | { kind: "muted"; userId: string; minutes: number }
   | { kind: "blocked"; userId: string }
@@ -64,10 +60,6 @@ const isProtected = (player: TotPlayerState, now: Date) =>
   (player.muteImmuneUntil !== null && player.muteImmuneUntil > now) ||
   player.dailyMutes >= TOT_DAILY_MUTE_LIMIT;
 
-/**
- * Kolejność: odporność i dzienny limit, potem Lustro, na końcu Czosnek.
- * Odbite wyciszenie nie może zostać odbite ponownie.
- */
 const resolveMute = (
   target: TotPlayerState,
   source: TotPlayerState,

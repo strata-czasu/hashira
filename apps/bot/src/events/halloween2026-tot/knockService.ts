@@ -29,10 +29,6 @@ import {
   type TotPlayerState,
 } from "./resolution";
 
-/**
- * Tworzy brakujące wiersze graczy i blokuje je w stałej kolejności,
- * żeby równoległe pukania do tych samych osób nie wpadły w deadlock.
- */
 export const lockTotPlayers = async (
   tx: PrismaTransaction,
   guildId: string,
@@ -135,17 +131,11 @@ export type CreateTotKnockResult =
       ok: true;
       knock: Halloween2026TotKnock;
       hostHasDice: boolean;
-      /** Cooldown pukającego sprzed pukania, do przywrócenia gdy DM nie dojdzie */
       previousLastKnockAt: Date | null;
     }
   | {
       ok: false;
-      reason:
-        | "event_closed"
-        | "self_knock"
-        | "knocker_doors_closed"
-        | "host_doors_closed"
-        | "host_busy";
+      reason: "event_closed" | "self_knock" | "host_busy";
     }
   | {
       ok: false;
@@ -173,9 +163,6 @@ export const createTotKnock = (
     const knocker = players.get(knockerId);
     const host = players.get(hostId);
     if (!knocker || !host) throw new Error("Halloween 2026 players were not created");
-
-    if (knocker.doorsClosed) return { ok: false, reason: "knocker_doors_closed" } as const;
-    if (host.doorsClosed) return { ok: false, reason: "host_doors_closed" } as const;
 
     const knockerUntil = minutesLater(knocker.lastKnockAt, TOT_KNOCK_COOLDOWN_MINUTES);
     if (knockerUntil && knockerUntil > now) {
@@ -236,7 +223,6 @@ export const createTotKnock = (
     } as const;
   });
 
-/** Wycofuje pukanie, którego nie dało się dostarczyć, i oddaje pukającemu cooldown oraz maskę */
 export const cancelUndeliveredTotKnock = (
   prisma: ExtendedPrismaClient,
   knock: Halloween2026TotKnock,
@@ -244,8 +230,6 @@ export const cancelUndeliveredTotKnock = (
 ) =>
   prisma.$transaction(async (tx) => {
     const { guildId, knockerId: userId } = knock;
-    // Podczas wysyłania DM gracz mógł już użyć miotły, zapukać gdzie indziej albo założyć
-    // nową maskę, więc cofamy tylko to, co nadal pochodzi z tego pukania.
     const player = (await lockTotPlayers(tx, guildId, [userId])).get(userId);
     if (!player) throw new Error("Halloween 2026 player was not created");
 
@@ -266,7 +250,6 @@ export const cancelUndeliveredTotKnock = (
       });
     }
 
-    // Nowa maska jest już założona, więc zużytą przy tym pukaniu oddajemy do worka
     if (knock.anonymous && player.maskArmed) {
       const before = await getTotItemCounts(tx, guildId, userId);
       const count = before.mask ?? 0;
@@ -400,7 +383,6 @@ export const answerTotKnock = (
     return { ok: true, knock: answered, resolution } as const;
   });
 
-/** Zamyka pukanie bez odpowiedzi. Zwraca pukanie tylko wtedy, gdy faktycznie wygasło. */
 export const expireTotKnock = async (prisma: ExtendedPrismaClient, knockId: number, now: Date) => {
   await prisma.halloween2026TotKnock.updateMany({
     where: { id: knockId, status: "pending", expiresAt: { lte: now } },

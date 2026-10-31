@@ -24,7 +24,6 @@ export const TRICK_TABLE: readonly [TrickEntry, ...TrickEntry[]] = [
   { outcome: "golden", weight: 3 },
 ];
 
-/** Im wyżej, tym lepiej dla gospodarza. Używane przez Kostkę losu. */
 const HOST_PREFERENCE = {
   success: 0,
   double: 1,
@@ -49,7 +48,6 @@ export type ItemCounts = Partial<Record<Halloween2026TotItem, number>>;
 const hasRoom = (counts: ItemCounts, item: Halloween2026TotItem) =>
   (counts[item] ?? 0) < TOT_ITEMS[item].limit;
 
-/** Losuje przedmiot z puli eventu, pomijając te, których gracz ma już maksymalnie dużo */
 export const rollItemDrop = (counts: ItemCounts, random: () => number) =>
   weightedRandom(
     TOT_ITEM_KEYS.filter((item) => hasRoom(counts, item)),
@@ -57,7 +55,6 @@ export const rollItemDrop = (counts: ItemCounts, random: () => number) =>
     random,
   );
 
-/** Losuje przedmiot do kradzieży: tylko taki, który ofiara ma, a złodziej może jeszcze unieść */
 export const rollStolenItem = (
   victimCounts: ItemCounts,
   thiefCounts: ItemCounts,

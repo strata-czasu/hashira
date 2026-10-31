@@ -14,7 +14,6 @@ import {
   buyTotItem,
   exchangeTotCandies,
   getTotPlayerSnapshot,
-  setTotDoors,
   useTotItem,
 } from "../../src/events/halloween2026-tot/playerService";
 
@@ -30,7 +29,6 @@ const userIds: string[] = [];
 const now = new Date("2026-10-31T18:00:00Z");
 const noSchedule = async () => {};
 
-/** Pierwszy wpis tabeli psikusów to udany psikus, ostatni to złoty kapsel */
 const successRoll = () => 0;
 const goldenRoll = () => 0.999;
 
@@ -100,28 +98,17 @@ databaseTests("Halloween 2026 trick or treat", () => {
       until: addMinutes(now, 30),
     });
 
-    // Po wygaśnięciu pukania gospodarz nadal ma 15 minut spokoju
     expect(await knock(guildId, c, b, addMinutes(now, 11))).toMatchObject({
       reason: "host_cooldown",
       until: addMinutes(now, 15),
     });
     expect((await knock(guildId, c, b, addMinutes(now, 16))).ok).toBe(true);
 
-    // Ta sama para dopiero po dwóch godzinach
     expect(await knock(guildId, a, b, addMinutes(now, 45))).toMatchObject({
       reason: "pair_cooldown",
       until: addMinutes(now, 120),
     });
     expect((await knock(guildId, a, d, addMinutes(now, 45))).ok).toBe(true);
-  });
-
-  it("respects closed doors on both sides", async () => {
-    const { guildId, users } = await setup(3);
-    const [a, b, c] = users as [string, string, string];
-    await setTotDoors(prisma!, { guildId, userId: b, closed: true });
-
-    expect(await knock(guildId, a, b)).toEqual({ ok: false, reason: "host_doors_closed" });
-    expect(await knock(guildId, b, c)).toEqual({ ok: false, reason: "knocker_doors_closed" });
   });
 
   it("lets only one of many parallel knocks reach the same host", async () => {
@@ -185,7 +172,6 @@ databaseTests("Halloween 2026 trick or treat", () => {
     const failed = await knock(guildId, a, b);
     if (!failed.ok) throw new Error(failed.reason);
 
-    // Zanim DM do B się nie powiedzie, A używa miotły i puka do C
     const later = addMinutes(now, 1);
     expect(await useTotItem(prisma!, { guildId, userId: a, item: "broom", now: later })).toEqual({
       ok: true,
