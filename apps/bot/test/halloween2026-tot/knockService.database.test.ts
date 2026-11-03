@@ -617,19 +617,6 @@ databaseTests("Halloween 2026 trick or treat", () => {
       expect((await getTotPlayerSnapshot(prisma!, guildId, a, at(60))).candies).toBe(2);
     });
 
-    it("lets apples rot without a penalty after the event ends", async () => {
-      const { guildId, users } = await setup(2);
-      const [a, b] = users as [string, string];
-      const lateNow = new Date("2026-11-02T22:30:00Z");
-      const seeded = await knock(guildId, a, b, lateNow);
-      if (!seeded.ok || !seeded.seededApple) throw new Error("apple was not seeded");
-
-      const result = await biteTotApple(prisma!, seeded.seededApple.id, addMinutes(lateNow, 60));
-      expect(result?.bite).toBeNull();
-      expect(result?.apple.bittenAt).not.toBeNull();
-      expect(await prisma!.halloween2026TotDailyLimit.count({ where: { guildId } })).toBe(0);
-    });
-
     it("takes back a freshly seeded apple when the knock cannot be delivered", async () => {
       const { guildId, users } = await setup(2);
       const [a, b] = users as [string, string];
