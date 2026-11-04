@@ -48,13 +48,13 @@ model GiveawayReward {
   giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
   giveawayId Int
 
-  amount  Int
-  reward  String
-  type    GiveawayRewardType?
-  currencyValue      Int?
+  amount              Int
+  reward              String
+  type                GiveawayRewardType?
+  currencyValue       Int?
   muteDurationSeconds Int?
-  item     Item? @relation(fields: [itemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  itemId   Int?
+  item                Item?               @relation(fields: [itemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  itemId              Int?
 
   distributions GiveawayRewardDistribution[]
 
@@ -64,12 +64,12 @@ model GiveawayReward {
 }
 
 model GiveawayRewardDistribution {
-  id        Int      @id @default(autoincrement())
-    reward    GiveawayReward @relation(fields: [rewardId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id        Int            @id @default(autoincrement())
+  reward    GiveawayReward @relation(fields: [rewardId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   rewardId  Int
-  user      User  @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User           @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId    String
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
 
   @@unique([rewardId, userId])
   @@index([userId])

@@ -1,4 +1,5 @@
 import type { Item, PrismaTransaction } from "@hashira/db";
+
 import { UserInventoryLimitExceededError } from "../economyError";
 
 type GetItemCountInInventoryOptions = {
@@ -66,9 +67,7 @@ export const grantItemToUsers = async ({
     },
     _count: true,
   });
-  const perUserCounts = new Map(
-    usersHoldingItem.map(({ userId, _count }) => [userId, _count]),
-  );
+  const perUserCounts = new Map(usersHoldingItem.map(({ userId, _count }) => [userId, _count]));
   const perUserLimit = item.perUserLimit;
 
   const { grantedUserIds, overLimitUserIds } = uniqueUserIds.reduce<{
