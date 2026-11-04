@@ -11,7 +11,6 @@ import {
   Partials,
   type Permissions,
   REST,
-  Routes,
   type SlashCommandBuilder,
   type SlashCommandSubcommandBuilder,
   type SlashCommandSubcommandsOnlyBuilder,
@@ -21,6 +20,7 @@ import { capitalize } from "es-toolkit";
 
 import type { Prettify } from "@hashira/utils/types";
 
+import { syncGuildCommands } from "./commandRegistration";
 import { handleCustomEvent } from "./customEvents";
 import { allEventsToIntent, type EventMethodName, isCustomEvent } from "./intents";
 import { filterDisabledIntents } from "./intents/util";
@@ -504,36 +504,17 @@ class Hashira<
 
   async registerGuildCommands(token: string, guildId: string, clientId: string) {
     const rest = new REST().setToken(token);
-    const commands = [...this.#commands.values()].map(([builder]) => builder.toJSON());
+    const commands = [...this.#commands.values()].map(([builder]) => ({
+      ...builder.toJSON(),
+      type: ApplicationCommandType.ChatInput,
+    }));
     const contextMenus = [
       ...this.#userContextMenus.values(),
       ...this.#messageContextMenus.values(),
     ].map(([builder]) => builder.toJSON());
 
-    try {
-      const currentCommands = (await rest.get(
-        Routes.applicationGuildCommands(clientId, guildId),
-      )) as { id: string; name: string }[];
-
-      const commandsToDelete = currentCommands
-        .filter(
-          (command) =>
-            !this.#commands.has(command.name) && !this.#userContextMenus.has(command.name),
-        )
-        .map(({ id }) => Routes.applicationGuildCommand(clientId, guildId, id));
-
-      await Promise.all(commandsToDelete.map((route) => rest.delete(route)));
-
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-        body: [...commands, ...contextMenus],
-      });
-
-      // TODO)) Log how much commands and context menus were registered
-      console.log(`Successfully registered application commands for guild ${guildId}.`);
-    } catch (error) {
-      if (error instanceof Error) console.error(error);
-      console.error(error);
-    }
+    await syncGuildCommands(rest, clientId, guildId, [...commands, ...contextMenus]);
+    console.log(`Successfully registered application commands for guild ${guildId}.`);
   }
 }
 
