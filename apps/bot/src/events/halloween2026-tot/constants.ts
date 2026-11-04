@@ -1,7 +1,7 @@
 import type { Halloween2026TotItem } from "@hashira/db";
 
 export const TOT_EVENT_START = new Date("2026-10-30T23:00:00Z");
-export const TOT_EVENT_END = new Date("2026-11-04T23:00:00Z");
+export const TOT_EVENT_END = new Date("2026-11-05T23:00:00Z");
 export const TOT_EXCHANGE_START = new Date("2026-10-31T23:00:00Z");
 export const TOT_TIMEZONE = "Europe/Warsaw";
 
