@@ -1,11 +1,11 @@
 import { bold, inlineCode, italic, type User, userMention } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import type { Item } from "@hashira/db";
 
 import { formatBalance } from "../../economy/util";
 import { pluralizers } from "../../util/pluralize";
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type CurrencyTransferData = {
@@ -38,7 +38,7 @@ type ItemAddToOrRemoveFromInventoryData = {
 
 export const economyLog = new Hashira({ name: "economyLog" }).const(
   "economyLog",
-  new Logger()
+  new Logger(persistent("logQueue:economyLog", () => new LogQueue()))
     .addMessageType(
       "currencyTransfer",
       async (

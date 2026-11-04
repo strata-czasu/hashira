@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test";
 import { Effect, Layer } from "effect";
 
-import { MessageQueue, Queue, Runtime } from "@hashira/yotei";
+import { MessageQueue, type MessageQueueHandlerRegistry, Queue, Runtime } from "@hashira/yotei";
 
 import * as Persistence from "../src/persistence";
 
@@ -60,4 +60,36 @@ it("dispatches failures without killing polling and joins Promise handlers on di
   release.resolve();
   await closing;
   expect(outcomes).toEqual([false, false, true]);
+});
+
+it("dispatches to handlers of the latest queue sharing a handler registry", async () => {
+  const handled = Promise.withResolvers<string>();
+  const envelopes = [{ type: "task", data: {} }];
+  const runtime = Runtime.make(
+    Queue.layer(
+      Layer.succeed(Persistence.QueueStore, {
+        createTask: () => Effect.void,
+        cancelTask: () => Effect.succeed(false),
+        updateTaskDelay: () => Effect.succeed(false),
+        consume: (handle) =>
+          Effect.suspend(() => {
+            const data = envelopes.shift();
+            if (!data) return Effect.succeed(false);
+            return handle({ id: 1, createdAt: new Date(), data });
+          }),
+      }),
+    ),
+  );
+  const handlers: MessageQueueHandlerRegistry = new Map();
+
+  const before = new MessageQueue(runtime, 1, handlers)
+    .addHandler("task", async () => handled.resolve("before"))
+    .addHandler("removed", async () => {});
+  // Simulates the queue module being re-evaluated by a hot reload
+  new MessageQueue(runtime, 1, handlers).addHandler("task", async () => handled.resolve("after"));
+  expect([...handlers.keys()]).toEqual(["task"]);
+
+  await before.startConsumer({}, { maxInFlight: 1 });
+  expect(await handled.promise).toBe("after");
+  await runtime.dispose();
 });

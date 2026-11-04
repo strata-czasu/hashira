@@ -1,10 +1,10 @@
 import { intervalToDuration } from "date-fns";
 import { bold, italic, type Role, TimestampStyles, time, type User } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 
 import { formatDuration } from "../../util/duration";
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type UltimatumStartData = {
@@ -39,7 +39,7 @@ type MassDmEndData = {
 
 export const strataCzasuLog = new Hashira({ name: "strataCzasuLog" }).const(
   "strataCzasuLog",
-  new Logger()
+  new Logger(persistent("logQueue:strataCzasuLog", () => new LogQueue()))
     .addMessageType(
       "ultimatumStart",
       async ({ timestamp }, { user, createdAt, expiresAt, reason }: UltimatumStartData) => {

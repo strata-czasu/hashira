@@ -75,6 +75,20 @@ Using VSCode Dev containers is the easiest way to setup the development environm
 
 8. When you're finished, stop development databases - `stop-database && stop-redis`
 
+### Hot reload
+
+`bun dev` runs the bot with `bun --hot`. Saving a file re-evaluates the code and swaps event,
+command, task, and log formatting handlers on the running client, without reconnecting to
+Discord. Commands are only registered on start, so restart (or run `bun reload-commands`)
+after changing command signatures. Adding an event that needs a new gateway intent also
+requires a restart.
+
+Every module is re-evaluated on reload, including dependencies. Anything that must outlive a
+reload (connections, clients, in-memory locks or caches, anything started on `clientReady`)
+has to be created through `persistent()` from `@hashira/core`. Objects created before a reload
+come from the previous module graph, so prefer name or code checks over `instanceof` for
+library errors (see `apps/bot/src/util/discordErrors.ts`).
+
 ### Updating Bun
 
 Use the helper script in `scripts/bunVersion.ts` anytime you need to bump the Bun runtime. It updates the devcontainer image, production Dockerfile, CI workflow, Nix shell, and the `@types/bun` dev dependency so everything stays in sync.
