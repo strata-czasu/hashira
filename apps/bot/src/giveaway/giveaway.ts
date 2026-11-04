@@ -25,8 +25,11 @@ import { waitForButtonClick } from "../util/singleUseButton";
 import { handleGiveawayJoinButton } from "./handlers/joinHandler";
 import { handleGiveawayRewardButton } from "./handlers/rewardHandler";
 import { analyzeRewards, formatRewardPreview, toPersistedReward } from "./rewardAnalyzer";
-import { distributeGiveawayEconomyRewards, distributeGiveawayMutes } from "./rewardHandout";
-import { createRewardButtonRow } from "./rewardMenu";
+import {
+  distributeGiveawayEconomyRewards,
+  distributeGiveawayMutes,
+  getPendingGiveawayRewards,
+} from "./rewardHandout";
 import {
   autocompleteGiveawayId,
   autocompleteGiveawayIdForStaff,
@@ -280,7 +283,6 @@ export const giveaway = new Hashira({ name: "giveaway" })
               }
 
               messageContainer.addActionRowComponents(createGiveawayButtonRow(false).setId(2));
-              messageContainer.addActionRowComponents(createRewardButtonRow().setId(5));
 
               const response = await itx.followUp({
                 components: [messageContainer],
@@ -647,6 +649,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
           );
         }
 
+        const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+        if (pending.currency.length === 0) {
+          await itx.editReply("Brak punktów do rozdania dla tego giveawaya.");
+          return;
+        }
+
         await distributeGiveawayEconomyRewards({
           prisma,
           economyLog,
@@ -687,6 +695,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
           );
         }
 
+        const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+        if (pending.items.length === 0) {
+          await itx.editReply("Brak przedmiotów do rozdania dla tego giveawaya.");
+          return;
+        }
+
         await distributeGiveawayEconomyRewards({
           prisma,
           economyLog,
@@ -725,6 +739,12 @@ export const giveaway = new Hashira({ name: "giveaway" })
             itx,
             "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyznaczeni.",
           );
+        }
+
+        const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+        if (pending.mutes.length === 0) {
+          await itx.editReply("Brak nagród typu mute do rozdania dla tego giveawaya.");
+          return;
         }
 
         await distributeGiveawayMutes({

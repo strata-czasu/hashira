@@ -16,43 +16,56 @@ export type AnalyzedReward = {
 };
 
 const CURRENCY_RE =
-  /^\s*([+-]?(?:\d+[.,]?\d*|[.,]\d+))\s*(k|m)?\s*(?:pkt[.]?|punkt(?:y|ów|u)?)\s*$/i;
+  /^\s*([+-]?(?:\d+[.,]?\d*|[.,]\d+))\s*(?:pkt[.]?|punkt(?:y|ów|u)?|kapsle|k)\s*$/i;
 
 const MUTE_RE = /(?:^|\s)(?:wycisze(?:nie|nia)|mute|muta)(?:\s|$)/i;
 
 const DURATION_RE = /([+-]?\d+\s*[smhd])/gi;
 
-const SUFFIX_MULTIPLIER: Record<string, number> = { k: 1_000, m: 1_000_000 };
-
-const parseNumberWithSuffix = (input: string): number | null => {
-  const normalized = input.replace(",", ".");
-  const match = normalized.match(/^\s*([+-]?\d+(?:\.\d+)?)\s*(k|m)?\s*$/i);
-  if (!match) return null;
-
-  const number = match[1];
-  const suffix = match[2];
-  if (!number) return null;
-
-  const value = Number(number);
-  if (Number.isNaN(value)) return null;
-
-  const multiplier = suffix ? (SUFFIX_MULTIPLIER[suffix.toLowerCase()] ?? 1) : 1;
-  return value * multiplier;
-};
+const KAPSLE_UNIT = "kapsle";
 
 export const analyzeCurrencyReward = (reward: string): number | null => {
   const match = reward.match(CURRENCY_RE);
   if (!match) return null;
 
   const number = match[1];
-  const suffix = match[2];
   if (!number) return null;
 
-  const value = parseNumberWithSuffix(number);
-  if (value === null) return null;
+  const value = Number(number.replace(",", "."));
+  if (Number.isNaN(value)) return null;
 
-  const multiplier = suffix ? (SUFFIX_MULTIPLIER[suffix.toLowerCase()] ?? 1) : 1;
-  return Math.round(value * multiplier);
+  return value;
+};
+
+const CURRENCY_UNIT_WORDS = ["pkt", "punkty", "punkt", "kapsel", "kapsli"];
+
+const CURRENCY_FUZZY_THRESHOLD = 2;
+
+const extractCurrencyNumberAndUnit = (reward: string): { value: number; unit: string } | null => {
+  const match = reward.match(/^\s*([+-]?(?:\d+[.,]?\d*|[.,]\d+))\s+(\S+)\s*$/i);
+  if (!match) return null;
+
+  const value = Number(match[1]!.replace(",", "."));
+  if (Number.isNaN(value)) return null;
+
+  return { value, unit: match[2]!.toLowerCase() };
+};
+
+export const analyzeCurrencyRewardFuzzy = (reward: string): number | null => {
+  const extracted = extractCurrencyNumberAndUnit(reward);
+  if (!extracted) return null;
+
+  const { value, unit } = extracted;
+
+  let bestDistance = Infinity;
+  for (const word of CURRENCY_UNIT_WORDS) {
+    const distance = levenshtein(unit, word);
+    if (distance < bestDistance) bestDistance = distance;
+  }
+
+  if (bestDistance <= CURRENCY_FUZZY_THRESHOLD) return value;
+
+  return null;
 };
 
 export const isMuteReward = (reward: string): boolean => MUTE_RE.test(reward);
@@ -147,7 +160,10 @@ export const analyzeRewards = async (
   }));
 
   for (const entry of analyzed) {
-    const parsedValue = analyzeCurrencyReward(entry.reward);
+    let parsedValue = analyzeCurrencyReward(entry.reward);
+    if (parsedValue === null) {
+      parsedValue = analyzeCurrencyRewardFuzzy(entry.reward);
+    }
     if (parsedValue !== null) {
       entry.type = "currency";
       entry.parsedValue = parsedValue;
@@ -181,21 +197,6 @@ export const analyzeRewards = async (
   return analyzed;
 };
 
-export const formatCompactValue = (value: number): string => {
-  const sign = value < 0 ? "-" : "";
-  const abs = Math.abs(value);
-
-  if (abs >= 1_000_000) {
-    const m = abs / 1_000_000;
-    return `${sign}${Number.isInteger(m) ? m : m.toFixed(1).replace(/\.0$/, "")}m`;
-  }
-  if (abs >= 1_000) {
-    const k = abs / 1_000;
-    return `${sign}${Number.isInteger(k) ? k : k.toFixed(1).replace(/\.0$/, "")}k`;
-  }
-  return `${value}`;
-};
-
 export const formatRewardPreview = (reward: AnalyzedReward): string => {
   const { amount, reward: rewardText, type, parsedValue, parsedDuration, matchedItem } = reward;
 
@@ -203,7 +204,7 @@ export const formatRewardPreview = (reward: AnalyzedReward): string => {
     type === null
       ? "❌"
       : type === "currency"
-        ? `✅ ${parsedValue !== null ? formatCompactValue(parsedValue) : ""} pkt`.trim()
+        ? `✅ ${parsedValue !== null ? parsedValue : ""} ${KAPSLE_UNIT}`.trim()
         : type === "mute"
           ? `✅ ${parsedDuration ? formatDuration(parsedDuration) : ""} mute`.trim()
           : `✅ ${matchedItem?.name ?? ""} id:${matchedItem?.id ?? ""}`.trim();
@@ -216,7 +217,7 @@ export const formatFixedReward = (
 ): { amount: number; reward: string; type: RewardType | null } => {
   const fixedText =
     reward.type === "currency" && reward.parsedValue !== null
-      ? `${formatCompactValue(reward.parsedValue)} pkt`
+      ? `${reward.parsedValue} ${KAPSLE_UNIT}`
       : reward.type === "mute" && reward.parsedDuration
         ? `${formatDuration(reward.parsedDuration)} mute`
         : reward.type === "item" && reward.matchedItem

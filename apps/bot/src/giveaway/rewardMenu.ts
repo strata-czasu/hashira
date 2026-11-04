@@ -12,9 +12,13 @@ export const GIVEAWAY_REWARD_MUTE_BUTTON_PREFIX = "giveaway-reward-mute";
  * the button opens an ephemeral menu with the still unhanded rewards split by
  * type and the distribution actions the clicking staff member is allowed to run.
  */
-export function createRewardButtonRow(): ActionRowBuilder<ButtonBuilder> {
+export function createRewardButtonRow(giveawayId?: number): ActionRowBuilder<ButtonBuilder> {
   const rewardButton = new ButtonBuilder()
-    .setCustomId(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID)
+    .setCustomId(
+      giveawayId
+        ? `${GIVEAWAY_REWARD_BUTTON_CUSTOM_ID}:${giveawayId}`
+        : GIVEAWAY_REWARD_BUTTON_CUSTOM_ID,
+    )
     .setLabel("Rozdaj nagrody")
     .setStyle(ButtonStyle.Secondary);
 

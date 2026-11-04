@@ -26,6 +26,8 @@ import type {
 } from "@hashira/db";
 
 import type { base } from "../base";
+import { getPendingGiveawayRewards } from "./rewardHandout";
+import { createRewardButtonRow } from "./rewardMenu";
 
 enum GiveawayBannerRatio {
   None = 0, // No Banner
@@ -161,8 +163,9 @@ export async function formatBanner(
   return [formatted, "webp"];
 }
 
-export function giveawayFooter(giveaway: Giveaway) {
-  return `\n-# Id: ${giveaway.id} ${messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}`;
+export function giveawayFooter(giveaway: Giveaway, resultsMessageId?: string) {
+  const linkMessageId = resultsMessageId ?? giveaway.messageId;
+  return `\n-# Id: ${giveaway.id} ${messageLink(giveaway.channelId, linkMessageId, giveaway.guildId)}`;
 }
 
 export function getStaticBanner(title: string) {
@@ -331,29 +334,48 @@ export async function endGiveaway(message: Message<boolean>, prisma: ExtendedPri
     .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
     .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
 
-  await message.reply({
-    components: [resultContainer],
+  const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+  const hasPendingRewards =
+    pending.currency.length > 0 || pending.items.length > 0 || pending.mutes.length > 0;
+
+  const resultComponents = hasPendingRewards
+    ? [resultContainer, createRewardButtonRow(giveaway.id)]
+    : [resultContainer];
+
+  const resultsMessage = await message.reply({
+    components: resultComponents,
     allowedMentions: { users: winningUsers.slice(0, 100).map((p) => p.userId) },
     flags: MessageFlags.IsComponentsV2,
   });
 
-  // Disable giveaway buttons
+  // Disable giveaway buttons and link the footer to the results message
   const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
   const actionRowIndex = container.components.findIndex(
     (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
   );
 
-  if (actionRowIndex === -1) return;
+  if (actionRowIndex !== -1) {
+    const newRow = new ActionRowBuilder<ButtonBuilder>({
+      ...container.components[actionRowIndex]?.data,
+      components: createGiveawayButtonRow(true).components,
+    });
+    container.components[actionRowIndex] = newRow;
+  }
 
-  const newRow = new ActionRowBuilder<ButtonBuilder>({
-    ...container.components[actionRowIndex]?.data,
-    components: createGiveawayButtonRow(true).components,
-  });
+  const footerIndex = container.components.findIndex(
+    (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+  );
 
-  container.components[actionRowIndex] = newRow;
+  if (footerIndex !== -1) {
+    container.components[footerIndex] = new TextDisplayBuilder().setContent(
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id} ${messageLink(
+        giveaway.channelId,
+        resultsMessage.id,
+        giveaway.guildId,
+      )}`,
+    );
+  }
 
-  await message.edit({
-    components: [container],
-  });
+  await message.edit({ components: [container] });
 }

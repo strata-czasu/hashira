@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import {
   analyzeCurrencyReward,
-  formatCompactValue,
+  analyzeCurrencyRewardFuzzy,
   formatFixedReward,
   formatRewardPreview,
   isMuteReward,
@@ -21,19 +21,33 @@ describe("analyzeCurrencyReward", () => {
     expect(analyzeCurrencyReward("3 punktu")).toBe(3);
   });
 
-  it("parses k/m suffixes case-insensitively", () => {
-    expect(analyzeCurrencyReward("1k pkt")).toBe(1000);
-    expect(analyzeCurrencyReward("1K PKT")).toBe(1000);
-    expect(analyzeCurrencyReward("1m pkt")).toBe(1_000_000);
-    expect(analyzeCurrencyReward("1M pkt")).toBe(1_000_000);
-    expect(analyzeCurrencyReward("1.5k pkt")).toBe(1500);
-    expect(analyzeCurrencyReward("1,5k pkt")).toBe(1500);
+  it("parses kapsle and k abbreviation", () => {
+    expect(analyzeCurrencyReward("100 kapsle")).toBe(100);
+    expect(analyzeCurrencyReward("50 k")).toBe(50);
+    expect(analyzeCurrencyReward("1kapsle")).toBe(1);
+    expect(analyzeCurrencyReward("1 KAPSLE")).toBe(1);
+    expect(analyzeCurrencyReward("5K")).toBe(5);
+  });
+
+  it("fuzzy matches currency unit typos", () => {
+    expect(analyzeCurrencyRewardFuzzy("100 kapsel")).toBe(100);
+    expect(analyzeCurrencyRewardFuzzy("100 kapsli")).toBe(100);
+    expect(analyzeCurrencyRewardFuzzy("100 kapse")).toBe(100);
+    expect(analyzeCurrencyRewardFuzzy("100 kasel")).toBe(100);
+    expect(analyzeCurrencyRewardFuzzy("50 pkt")).toBe(50);
+    expect(analyzeCurrencyRewardFuzzy("50 ptk")).toBe(50);
+    expect(analyzeCurrencyRewardFuzzy("10 punkt")).toBe(10);
+  });
+
+  it("returns null for fuzzy matches beyond threshold", () => {
+    expect(analyzeCurrencyRewardFuzzy("100 gruszki")).toBeNull();
+    expect(analyzeCurrencyRewardFuzzy("100 xyz")).toBeNull();
   });
 
   it("handles negatives and flexible spacing", () => {
-    expect(analyzeCurrencyReward("-1k  pkt")).toBe(-1000);
     expect(analyzeCurrencyReward("-50 pkt")).toBe(-50);
     expect(analyzeCurrencyReward("1000  pkt")).toBe(1000);
+    expect(analyzeCurrencyReward("-10 kapsle")).toBe(-10);
   });
 
   it("returns null for non-currency rewards", () => {
@@ -41,6 +55,8 @@ describe("analyzeCurrencyReward", () => {
     expect(analyzeCurrencyReward("wyciszenie 1d")).toBeNull();
     expect(analyzeCurrencyReward("100")).toBeNull();
     expect(analyzeCurrencyReward("100 gruszek")).toBeNull();
+    expect(analyzeCurrencyReward("1k pkt")).toBeNull();
+    expect(analyzeCurrencyReward("1m pkt")).toBeNull();
   });
 });
 
@@ -84,29 +100,18 @@ describe("levenshtein", () => {
   });
 });
 
-describe("formatCompactValue", () => {
-  it("formats values with k/m suffixes", () => {
-    expect(formatCompactValue(1000)).toBe("1k");
-    expect(formatCompactValue(1500)).toBe("1.5k");
-    expect(formatCompactValue(-1000)).toBe("-1k");
-    expect(formatCompactValue(1_000_000)).toBe("1m");
-    expect(formatCompactValue(500_000)).toBe("500k");
-    expect(formatCompactValue(123)).toBe("123");
-  });
-});
-
 describe("formatRewardPreview", () => {
   it("formats currency values", () => {
     expect(
       formatRewardPreview({
-        reward: "1k pkt",
+        reward: "100 pkt",
         amount: 2,
         type: "currency",
-        parsedValue: 1000,
+        parsedValue: 100,
         parsedDuration: null,
         matchedItem: null,
       }),
-    ).toBe("2x 1k pkt (✅ 1k pkt)");
+    ).toBe("2x 100 pkt (✅ 100 kapsle)");
   });
 
   it("formats mute with parsed duration", () => {
@@ -153,14 +158,14 @@ describe("formatFixedReward", () => {
   it("returns fixed currency text", () => {
     expect(
       formatFixedReward({
-        reward: "1k pkt",
+        reward: "100 pkt",
         amount: 2,
         type: "currency",
-        parsedValue: 1000,
+        parsedValue: 100,
         parsedDuration: null,
         matchedItem: null,
       }),
-    ).toEqual({ amount: 2, reward: "1k pkt", type: "currency" });
+    ).toEqual({ amount: 2, reward: "100 kapsle", type: "currency" });
   });
 
   it("returns fixed mute text", () => {
@@ -226,19 +231,19 @@ describe("toPersistedReward", () => {
 
   it("uses corrected reward text when fixed=true", () => {
     const analyzed = {
-      reward: "1k pkt",
+      reward: "100 pkt",
       amount: 2,
       type: "currency" as const,
-      parsedValue: 1000,
+      parsedValue: 100,
       parsedDuration: null,
       matchedItem: null,
     };
 
     expect(toPersistedReward(analyzed, true)).toEqual({
       amount: 2,
-      reward: "1k pkt",
+      reward: "100 kapsle",
       type: "currency",
-      currencyValue: 1000,
+      currencyValue: 100,
       muteDurationSeconds: null,
       itemId: null,
     });
@@ -246,19 +251,19 @@ describe("toPersistedReward", () => {
 
   it("defaults to fixed=true when parameter omitted", () => {
     const analyzed = {
-      reward: "1k pkt",
+      reward: "100 pkt",
       amount: 1,
       type: "currency" as const,
-      parsedValue: 1000,
+      parsedValue: 100,
       parsedDuration: null,
       matchedItem: null,
     };
 
     expect(toPersistedReward(analyzed)).toEqual({
       amount: 1,
-      reward: "1k pkt",
+      reward: "100 kapsle",
       type: "currency",
-      currencyValue: 1000,
+      currencyValue: 100,
       muteDurationSeconds: null,
       itemId: null,
     });

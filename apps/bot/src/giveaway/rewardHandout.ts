@@ -186,7 +186,6 @@ export const distributeGiveawayEconomyRewards = async ({
   }
 
   if (lines.length === 0 && outcomeless.length === 0) {
-    await reply("Wszystkie nagrody dla tego giveawaya zostały już rozdane lub brak nagród.");
     return;
   }
 
@@ -259,7 +258,6 @@ export const distributeGiveawayMutes = async ({
   }
 
   if (lines.length === 0 && notices.length === 0) {
-    await reply("Ten giveaway nie ma nagród typu mute, albo wszystkie już nałożono.");
     return;
   }
 
