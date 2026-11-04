@@ -1,5 +1,6 @@
 import { ComponentType, PermissionFlagsBits } from "discord.js";
 
+import { STRATA_CZASU } from "../../specializedConstants";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import type { EconomyRewardType } from "../rewardHandout";
 import {
@@ -20,6 +21,16 @@ const REWARD_DISTRIBUTION_TYPES: Record<string, readonly EconomyRewardType[]> = 
   items: ["item"],
 };
 
+const canDistributeType = (
+  type: "currency" | "items" | "mutes",
+  isModerator: boolean,
+  hasKadra: boolean,
+  isAuthor: boolean,
+): boolean => {
+  if (isModerator) return true;
+  return hasKadra && isAuthor && type === "currency";
+};
+
 /**
  * Handles clicks on the giveaway reward buttons:
  * - `giveaway-reward` opens an ephemeral menu listing the rewards that still
@@ -35,7 +46,8 @@ export const handleGiveawayRewardButton = async ({
   moderationLog,
   itx,
 }: GiveawayButtonHandlerOptions): Promise<void> => {
-  const hasStaffPermission = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
+  const isModerator = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
+  const hasKadra = itx.member.roles.cache.has(STRATA_CZASU.KADRA_ROLE);
 
   // Distribution buttons from the ephemeral menu carry the giveaway id.
   const distributionMatch = itx.customId.match(/^giveaway-reward-(currency|items|mute):(\d+)$/);
@@ -46,10 +58,6 @@ export const handleGiveawayRewardButton = async ({
 
     await itx.deferReply({ flags: "Ephemeral" });
 
-    if (!hasStaffPermission) {
-      return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z giveawayu.");
-    }
-
     const giveaway = await prisma.giveaway.findFirst({
       where: { id: Number.parseInt(rawGiveawayId, 10), guildId: itx.guildId },
     });
@@ -59,6 +67,18 @@ export const handleGiveawayRewardButton = async ({
         itx,
         "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyznaczeni.",
       );
+    }
+
+    const isAuthor = giveaway.authorId === itx.user.id;
+    const typeKey =
+      distributionType === "currency"
+        ? ("currency" as const)
+        : distributionType === "items"
+          ? ("items" as const)
+          : ("mutes" as const);
+
+    if (!canDistributeType(typeKey, isModerator, hasKadra, isAuthor)) {
+      return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z giveawayu.");
     }
 
     // The menu itself stays ephemeral, but the result is published in the
@@ -151,10 +171,6 @@ export const handleGiveawayRewardButton = async ({
 
   await itx.deferReply({ flags: "Ephemeral" });
 
-  if (!hasStaffPermission) {
-    return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z tego giveawaya.");
-  }
-
   // The button may live on the results message (a reply), whose messageId
   // differs from the giveaway's stored messageId. Prefer the giveaway id
   // embedded in the custom id, falling back to a message-based lookup.
@@ -181,13 +197,22 @@ export const handleGiveawayRewardButton = async ({
     );
   }
 
+  const isAuthor = giveaway.authorId === itx.user.id;
+  const canDistributeCurrency = canDistributeType("currency", isModerator, hasKadra, isAuthor);
+  const canDistributeItems = canDistributeType("items", isModerator, hasKadra, isAuthor);
+  const canDistributeMutes = canDistributeType("mutes", isModerator, hasKadra, isAuthor);
+
+  if (!canDistributeCurrency && !canDistributeItems && !canDistributeMutes) {
+    return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z tego giveawaya.");
+  }
+
   const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
   const menuContent = buildRewardMenuContent(pending);
 
   const menuRow = createRewardMenuRow({
-    canDistributeCurrency: hasStaffPermission,
-    canDistributeItems: hasStaffPermission,
-    canDistributeMutes: hasStaffPermission,
+    canDistributeCurrency,
+    canDistributeItems,
+    canDistributeMutes,
     hasCurrencyRewards: pending.currency.length > 0,
     hasItemRewards: pending.items.length > 0,
     hasMuteRewards: pending.mutes.length > 0,
