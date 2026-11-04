@@ -6,14 +6,10 @@ import type { base } from "../base";
 
 export type BaseContext = ExtractContext<typeof base>;
 
-export type ButtonHandlerContext = Pick<
-  BaseContext,
-  "prisma" | "economyLog" | "messageQueue" | "moderationLog"
->;
-
-export type GiveawayButtonHandlerOptions = ButtonHandlerContext & {
+export type GiveawayButtonHandlerOptions = {
+  prisma: BaseContext["prisma"];
+  economyLog: BaseContext["economyLog"];
+  messageQueue: BaseContext["messageQueue"];
+  moderationLog: BaseContext["moderationLog"];
   itx: ButtonInteraction<"cached">;
 };
-
-export type { GiveawayButtonHandlerOptions as HandleGiveawayRewardButtonOptions };
-export type { GiveawayButtonHandlerOptions as GiveawayJoinButtonContext };

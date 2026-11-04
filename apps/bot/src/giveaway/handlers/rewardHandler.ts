@@ -1,6 +1,5 @@
 import { PermissionFlagsBits } from "discord.js";
 
-import { ensureUserExists } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import type { EconomyRewardType } from "../rewardHandout";
 import {
@@ -14,7 +13,7 @@ import {
   createRewardMenuRow,
   GIVEAWAY_REWARD_BUTTON_CUSTOM_ID,
 } from "../rewardMenu";
-import type { BaseContext, HandleGiveawayRewardButtonOptions } from "../types";
+import type { GiveawayButtonHandlerOptions } from "../types";
 
 const REWARD_DISTRIBUTION_TYPES: Record<string, readonly EconomyRewardType[]> = {
   currency: ["currency"],
@@ -35,7 +34,7 @@ export const handleGiveawayRewardButton = async ({
   messageQueue,
   moderationLog,
   itx,
-}: HandleGiveawayRewardButtonOptions): Promise<void> => {
+}: GiveawayButtonHandlerOptions): Promise<void> => {
   const hasStaffPermission = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
 
   // Distribution buttons from the ephemeral menu carry the giveaway id.

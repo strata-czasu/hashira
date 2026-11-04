@@ -119,6 +119,7 @@ export const distributeEconomyReward = async ({
       toUsers: users,
       amount,
       reason,
+      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
     });
 
     await prisma.giveawayRewardDistribution.createMany({

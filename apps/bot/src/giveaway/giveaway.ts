@@ -3,7 +3,6 @@ import {
   type APIContainerComponent,
   AttachmentBuilder,
   ButtonBuilder,
-  type ButtonInteraction,
   ButtonStyle,
   ComponentType,
   ContainerBuilder,
@@ -15,7 +14,7 @@ import {
 } from "discord.js";
 import { round, shuffle } from "es-toolkit";
 
-import { type ExtractContext, Hashira } from "@hashira/core";
+import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant } from "@hashira/db";
 
 import { base } from "../base";
@@ -23,25 +22,15 @@ import { durationToSeconds, formatDuration, parseDuration } from "../util/durati
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
+import { handleGiveawayJoinButton } from "./handlers/joinHandler";
+import { handleGiveawayRewardButton } from "./handlers/rewardHandler";
 import { analyzeRewards, formatRewardPreview, toPersistedReward } from "./rewardAnalyzer";
-import {
-  distributeGiveawayEconomyRewards,
-  distributeGiveawayMutes,
-  type EconomyRewardType,
-  getPendingGiveawayRewards,
-  type RewardDistributionReply,
-} from "./rewardHandout";
-import {
-  buildRewardMenuContent,
-  createRewardButtonRow,
-  createRewardMenuRow,
-  GIVEAWAY_REWARD_BUTTON_CUSTOM_ID,
-} from "./rewardMenu";
+import { distributeGiveawayEconomyRewards, distributeGiveawayMutes } from "./rewardHandout";
+import { createRewardButtonRow } from "./rewardMenu";
 import {
   autocompleteGiveawayId,
   autocompleteGiveawayIdForStaff,
   createGiveawayButtonRow,
-  createLeaveButtonRow,
   formatBanner,
   getStaticBanner,
   GiveawayBannerRatio,
@@ -51,144 +40,6 @@ import {
   selectAndSaveWinners,
   updateGiveaway,
 } from "./util";
-
-type BaseContext = ExtractContext<typeof base>;
-
-type HandleGiveawayRewardButtonOptions = {
-  prisma: BaseContext["prisma"];
-  economyLog: BaseContext["economyLog"];
-  messageQueue: BaseContext["messageQueue"];
-  moderationLog: BaseContext["moderationLog"];
-  itx: ButtonInteraction<"cached">;
-};
-
-const REWARD_DISTRIBUTION_TYPES: Record<string, readonly EconomyRewardType[]> = {
-  currency: ["currency"],
-  items: ["item"],
-};
-
-/**
- * Handles clicks on the giveaway reward buttons:
- * - `giveaway-reward` opens an ephemeral menu listing the rewards that still
- *   await distribution (split into currency, items and mutes) together with the
- *   matching distribution buttons,
- * - `giveaway-reward-{currency,items,mute}:<id>` run the actual distribution for
- *   the selected reward type.
- */
-const handleGiveawayRewardButton = async ({
-  prisma,
-  economyLog,
-  messageQueue,
-  moderationLog,
-  itx,
-}: HandleGiveawayRewardButtonOptions): Promise<void> => {
-  const hasStaffPermission = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
-
-  // Distribution buttons from the ephemeral menu carry the giveaway id.
-  const distributionMatch = itx.customId.match(/^giveaway-reward-(currency|items|mute):(\d+)$/);
-  if (distributionMatch) {
-    const distributionType = distributionMatch[1];
-    const rawGiveawayId = distributionMatch[2];
-    if (!distributionType || !rawGiveawayId) return;
-
-    await itx.deferReply({ flags: "Ephemeral" });
-
-    if (!hasStaffPermission) {
-      return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z giveawayu.");
-    }
-
-    const giveaway = await prisma.giveaway.findFirst({
-      where: { id: Number.parseInt(rawGiveawayId, 10), guildId: itx.guildId },
-    });
-    if (!giveaway) return await errorFollowUp(itx, "Nie znaleziono giveawaya o takim id.");
-    if (giveaway.endAt > itx.createdAt) {
-      return await errorFollowUp(
-        itx,
-        "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyznaczeni.",
-      );
-    }
-
-    // The menu itself stays ephemeral, but the result is published in the
-    // giveaway channel so everyone can see that the rewards were handed out.
-    const replyPublicly = async (content: RewardDistributionReply) => {
-      await itx.editReply("Nagrody zostały rozdane — szczegóły opublikowano na kanale.");
-      const channel = await itx.guild.channels.fetch(giveaway.channelId);
-      if (!channel?.isSendable()) {
-        throw new Error(`Channel ${giveaway.channelId} is not sendable or not found.`);
-      }
-      await channel.send(content);
-    };
-
-    const rewardTypes = REWARD_DISTRIBUTION_TYPES[distributionType];
-    if (rewardTypes) {
-      await distributeGiveawayEconomyRewards({
-        prisma,
-        economyLog,
-        guild: itx.guild,
-        moderator: itx.user,
-        giveaway,
-        rewardTypes,
-        reply: replyPublicly,
-      });
-    } else {
-      await distributeGiveawayMutes({
-        prisma,
-        messageQueue,
-        log: moderationLog,
-        guild: itx.guild,
-        moderator: itx.user,
-        giveaway,
-        reply: replyPublicly,
-      });
-    }
-    return;
-  }
-
-  if (itx.customId !== GIVEAWAY_REWARD_BUTTON_CUSTOM_ID) return;
-
-  await itx.deferReply({ flags: "Ephemeral" });
-
-  if (!hasStaffPermission) {
-    return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z tego giveawaya.");
-  }
-
-  const giveaway = await prisma.giveaway.findFirst({
-    where: {
-      guildId: itx.message.guildId,
-      channelId: itx.message.channelId,
-      messageId: itx.message.id,
-    },
-  });
-  if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
-  if (giveaway.endAt > itx.createdAt) {
-    return await errorFollowUp(
-      itx,
-      "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyłonieni.",
-    );
-  }
-
-  const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
-  const menuContent = buildRewardMenuContent(pending);
-
-  const menuRow = createRewardMenuRow({
-    canDistributeCurrency: hasStaffPermission,
-    canDistributeItems: hasStaffPermission,
-    canDistributeMutes: hasStaffPermission,
-    hasCurrencyRewards: pending.currency.length > 0,
-    hasItemRewards: pending.items.length > 0,
-    hasMuteRewards: pending.mutes.length > 0,
-    giveawayId: giveaway.id,
-  });
-  if (!menuRow) {
-    await itx.editReply(menuContent);
-    return;
-  }
-
-  await itx.editReply({
-    content: `${menuContent}\n\nWybierz rodzaj nagród do rozdania:`,
-    components: [menuRow],
-  });
-};
 
 export const giveaway = new Hashira({ name: "giveaway" })
   .use(base)
@@ -892,9 +743,8 @@ export const giveaway = new Hashira({ name: "giveaway" })
     async ({ prisma, economyLog, messageQueue, moderationLog }, itx) => {
       if (!itx.inCachedGuild()) return;
 
-      // giveaway-reward -> ephemeral menu, giveaway-reward-{economy,mute}:<id> -> distribution
+      // giveaway-reward -> ephemeral menu / distribution (handlers/rewardHandler.ts)
       if (itx.customId.startsWith("giveaway-reward")) {
-        await ensureUserExists(prisma, itx.user);
         await handleGiveawayRewardButton({
           prisma,
           economyLog,
@@ -905,159 +755,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
         return;
       }
 
-      // giveaway-option:optionId
-      if (!itx.customId.startsWith("giveaway-option:")) return;
-
-      // To ensure user exists before trying to join to giveaway
-      await ensureUserExists(prisma, itx.user);
-
-      await itx.deferReply({ flags: "Ephemeral" });
-
-      const giveaway = await prisma.giveaway.findFirst({
-        where: {
-          guildId: itx.message.guildId,
-          channelId: itx.message.channelId,
-          messageId: itx.message.id,
-        },
-      });
-      if (!giveaway) {
-        await itx.followUp({
-          content: "Ten giveaway nie istnieje!",
-          flags: "Ephemeral",
-        });
+      // giveaway-option:join / giveaway-option:list / leave_giveaway (handlers/joinHandler.ts)
+      if (itx.customId.startsWith("giveaway-option:")) {
+        await handleGiveawayJoinButton({ prisma, itx });
         return;
       }
-
-      const channel = await itx.guild.channels.fetch(giveaway.channelId);
-      if (!channel?.isSendable()) {
-        throw new Error(`Channel ${channel} is not sendable or not found.`);
-      }
-
-      const message = await channel.messages.fetch(giveaway.messageId);
-      if (!message) {
-        throw new Error(`Message ${message} not found.`);
-      }
-
-      if (giveaway.endAt <= itx.createdAt) {
-        await itx.followUp({
-          content: "Ten giveaway już się zakończył!",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (itx.customId.endsWith("list")) {
-        const participants: GiveawayParticipant[] = await prisma.giveawayParticipant.findMany({
-          where: { giveawayId: giveaway.id, isRemoved: false },
-        });
-
-        const fmtParticipants =
-          participants.length > 0
-            ? participants.map((user) => `<@${user.userId}>`).join(", ")
-            : "Brak uczestników";
-
-        await itx.followUp({
-          content: `Uczestnicy: ${fmtParticipants}`,
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (!itx.customId.endsWith("join")) {
-        await itx.followUp({
-          content: `unexpected button ID for giveaway ${giveaway.id}: ${itx.customId}`,
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      let returnMsg = "Już jesteś uczestnikiem do tego giveaway!";
-
-      const existing = await prisma.giveawayParticipant.findFirst({
-        where: { userId: itx.user.id, giveawayId: giveaway.id },
-      });
-
-      if (existing?.forcefullyRemoved) {
-        await itx.followUp({
-          content: "Usunięto cię z giveawayu i nie możesz już do niego dołączyć.",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      if (!existing || existing.isRemoved) {
-        // check if user has required roles and doesn't have banned roles
-        for (const roleId of giveaway.roleWhitelist) {
-          if (!itx.member.roles.cache.has(roleId)) {
-            await itx.followUp({
-              content: `Musisz posiadać rolę <@&${roleId}>, aby wziąć udział w giveawayu.`,
-              flags: "Ephemeral",
-            });
-            return;
-          }
-        }
-
-        for (const roleId of giveaway.roleBlacklist) {
-          if (itx.member.roles.cache.has(roleId)) {
-            await itx.followUp({
-              content: `Nie możesz posiadać roli <@&${roleId}>, aby wziąć udział w giveawayu.`,
-              flags: "Ephemeral",
-            });
-            return;
-          }
-        }
-
-        await prisma.giveawayParticipant.upsert({
-          where: {
-            giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
-          },
-          create: { userId: itx.user.id, giveawayId: giveaway.id },
-          update: { isRemoved: false },
-        });
-
-        returnMsg = `${itx.user} dołączyłxś do giveaway!`;
-        await updateGiveaway(itx.message, giveaway, prisma);
-      }
-
-      const joinResponse = await itx.followUp({
-        content: returnMsg,
-        components: [createLeaveButtonRow()],
-      });
-
-      if (!joinResponse) {
-        throw new Error("Failed to receive response from interaction reply");
-      }
-
-      const leaveButtonClick = await waitForButtonClick(
-        joinResponse,
-        "leave_giveaway",
-        { minutes: 1 },
-        (interaction) => interaction.user.id === itx.user.id,
-      );
-
-      if (!leaveButtonClick.interaction) return;
-
-      if (giveaway.endAt <= itx.createdAt) {
-        await itx.followUp({
-          content: "Ten giveaway już się zakończył!",
-          flags: "Ephemeral",
-        });
-        return;
-      }
-
-      // replying to original giveaway so user can jump to it instead of reply > reply > giveaway
-      await leaveButtonClick.interaction.deferReply({ flags: "Ephemeral" });
-      await leaveButtonClick.interaction.deleteReply();
-
-      await prisma.giveawayParticipant.update({
-        where: {
-          giveawayId_userId: { giveawayId: giveaway.id, userId: itx.user.id },
-        },
-        data: { isRemoved: true },
-      });
-
-      await updateGiveaway(itx.message, giveaway, prisma);
-
-      await itx.followUp({ content: "Opuściłxś giveaway.", flags: "Ephemeral" });
     },
   );
