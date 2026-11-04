@@ -22,6 +22,7 @@ import { base } from "../base";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import {
+  CurrencyRetiredError,
   InsufficientBalanceError,
   InvalidAmountError,
   InvalidStockError,
@@ -43,7 +44,7 @@ import {
 import {
   formatBalance,
   formatItem,
-  getGuildDefaultCurrencySymbol,
+  getGuildDefaultCurrency,
   getItem,
   getTypeNameForList,
 } from "./util";
@@ -200,6 +201,8 @@ async function universalPurchaseShopItem({
       await reply("Przedmiot jest wyprzedany");
     } else if (error instanceof InsufficientBalanceError) {
       await reply("Nie masz wystarczająco środków");
+    } else if (error instanceof CurrencyRetiredError) {
+      await reply("Ta waluta została zarchiwizowana. Spróbuj ponownie.");
     } else if (error instanceof InvalidAmountError) {
       await reply("Nieprawidłowa ilość");
     } else {
@@ -280,7 +283,20 @@ const getEffectiveCurrencySymbol = async (
   prisma: ExtendedPrismaClient,
   guildId: string,
   override?: string | null,
-): Promise<string | null> => (override ? override : getGuildDefaultCurrencySymbol(prisma, guildId));
+): Promise<string | null> => {
+  if (override) {
+    return (
+      (
+        await prisma.currency.findFirst({
+          where: { guildId, symbol: override, retiredAt: null },
+          select: { symbol: true },
+        })
+      )?.symbol ?? null
+    );
+  }
+  const currency = await getGuildDefaultCurrency(prisma, guildId);
+  return currency?.retiredAt ? null : (currency?.symbol ?? null);
+};
 
 async function autocompleteCurrencies({
   prisma,
@@ -294,6 +310,7 @@ async function autocompleteCurrencies({
   const currencies = await prisma.currency.findMany({
     where: {
       guildId: itx.guildId,
+      retiredAt: null,
       OR: [
         { name: { contains: focused, mode: "insensitive" } },
         { symbol: { contains: focused, mode: "insensitive" } },
@@ -329,7 +346,10 @@ async function autocompleteShopItems({
           mode: "insensitive",
         },
       },
-      ...(currencySymbol ? { currency: { symbol: currencySymbol } } : {}),
+      currency: {
+        retiredAt: null,
+        ...(currencySymbol ? { symbol: currencySymbol } : {}),
+      },
     },
     include: { item: true, currency: true },
     take: 25,
@@ -414,7 +434,7 @@ export const shop = new Hashira({ name: "shop" })
                   where: {
                     deletedAt: null,
                     item: { guildId: itx.guildId },
-                    currency: { symbol: currencySymbol },
+                    currency: { symbol: currencySymbol, retiredAt: null },
                   },
                   orderBy: { price },
                   include: { item: true, currency: true },
@@ -424,7 +444,7 @@ export const shop = new Hashira({ name: "shop" })
                   where: {
                     deletedAt: null,
                     item: { guildId: itx.guildId },
-                    currency: { symbol: currencySymbol },
+                    currency: { symbol: currencySymbol, retiredAt: null },
                   },
                 }),
             );

@@ -6,14 +6,14 @@ import {
   userMention,
 } from "discord.js";
 
-import type { User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
+import type { Currency, User as DbUser, ExtendedPrismaClient, Prisma } from "@hashira/db";
 import { nestedTransaction } from "@hashira/db/transaction";
 
+import { getActiveCurrency } from "../economy/managers/currencyManager";
 import { transferBalance } from "../economy/managers/transferManager";
 import { getDefaultWallet } from "../economy/managers/walletManager";
 import { formatBalance } from "../economy/util";
 import { formatVerificationType } from "../moderation/verification";
-import { STRATA_CZASU_CURRENCY } from "../specializedConstants";
 import { discordTry } from "../util/discordTry";
 
 type TransferOperationOptions = {
@@ -24,6 +24,7 @@ type TransferOperationOptions = {
   newDbUser: DbUser;
   guild: Guild;
   moderator: DiscordUser;
+  economyCurrency: Currency;
 };
 type TransferOperation = (options: TransferOperationOptions) => Promise<string | null>;
 
@@ -88,12 +89,18 @@ const transferInventory: TransferOperation = async ({ prisma, oldUser, newUser }
   return `Przeniesiono ${count} przedmioty`;
 };
 
-const transferWallets: TransferOperation = async ({ prisma, oldUser, newUser, guild }) => {
+const transferWallets: TransferOperation = async ({
+  prisma,
+  oldUser,
+  newUser,
+  guild,
+  economyCurrency,
+}) => {
   const oldWallet = await getDefaultWallet({
     prisma,
     userId: oldUser.id,
     guildId: guild.id,
-    currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+    currencyId: economyCurrency.id,
   });
   const oldWalletTransactions = await prisma.transaction.count({
     where: { walletId: oldWallet.id },
@@ -104,10 +111,15 @@ const transferWallets: TransferOperation = async ({ prisma, oldUser, newUser, gu
     prisma,
     userId: newUser.id,
     guildId: guild.id,
-    currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+    currencyId: economyCurrency.id,
   });
 
   await prisma.$transaction(async (tx) => {
+    await getActiveCurrency({
+      prisma: tx,
+      guildId: guild.id,
+      currencyId: economyCurrency.id,
+    });
     // Move transactions between wallets directly
     await tx.transaction.updateMany({
       where: { walletId: oldWallet.id },
@@ -132,14 +144,14 @@ const transferWallets: TransferOperation = async ({ prisma, oldUser, newUser, gu
       fromUserId: oldUser.id,
       toUserId: newUser.id,
       guildId: guild.id,
-      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+      currencyId: economyCurrency.id,
       amount: 0,
       reason: `Przeniesienie z konta ${oldUser.id} na ${newUser.id}`,
     });
   });
 
   // TODO: Wallet transfer for custom currencies
-  const formattedBalance = formatBalance(oldWallet.balance, STRATA_CZASU_CURRENCY.symbol);
+  const formattedBalance = formatBalance(oldWallet.balance, economyCurrency.symbol);
   return `Przeniesiono ${formattedBalance} (${oldWalletTransactions} transakcji)`;
 };
 

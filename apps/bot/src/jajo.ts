@@ -16,7 +16,7 @@ import { Hashira } from "@hashira/core";
 
 import { base } from "./base";
 import { addBalance } from "./economy/managers/transferManager";
-import { formatBalance } from "./economy/util";
+import { formatBalance, getRequiredGuildDefaultCurrency } from "./economy/util";
 import {
   checkIfCanFish,
   FISH_TABLE,
@@ -24,7 +24,6 @@ import {
   getRandomItem,
   type ItemTableEntry,
 } from "./fish";
-import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { discordTry } from "./util/discordTry";
 import { ensureUserExists } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
@@ -113,10 +112,11 @@ export const jajo = new Hashira({ name: "jajo" })
         const { id } = getRandomItem(EGG_TABLE);
         // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
+        const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
         await addBalance({
           prisma,
-          currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+          currencyId: currency.id,
           reason: `Szukanie jajek ${id}`,
           guildId: itx.guildId,
           toUserId: itx.user.id,
@@ -127,7 +127,7 @@ export const jajo = new Hashira({ name: "jajo" })
           data: { userId: itx.user.id, guildId: itx.guildId },
         });
 
-        const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+        const balance = formatBalance(amount, currency.symbol);
         const content = formatEggMessage(id, name, balance);
 
         const reminderButton = new ButtonBuilder()
@@ -204,10 +204,11 @@ export const jajo = new Hashira({ name: "jajo" })
         const { id } = getRandomItem(EGG_TABLE);
         // This is guaranteed to find an egg
         const { name, amount } = getItemById(EGG_TABLE, id)!;
+        const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
         await addBalance({
           prisma,
-          currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+          currencyId: currency.id,
           reason: `Szukanie jajek ${id}`,
           guildId: itx.guildId,
           toUserId: itx.user.id,
@@ -218,7 +219,7 @@ export const jajo = new Hashira({ name: "jajo" })
           data: { userId: itx.user.id, guildId: itx.guildId },
         });
 
-        const balance = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+        const balance = formatBalance(amount, currency.symbol);
         const mockMessage =
           // this is guaranteed to find an egg
           WEDKA_MOCK_MESSAGES[randomInt(0, WEDKA_MOCK_MESSAGES.length)]!;
@@ -310,17 +311,18 @@ export const jajo = new Hashira({ name: "jajo" })
             if (!egg) {
               return errorFollowUp(itx, "Błąd: Nie znaleziono jajka o tym ID");
             }
+            const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
             await addBalance({
               prisma,
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              currencyId: currency.id,
               reason: `Admin force egg ${egg.id}`,
               guildId: itx.guildId,
               toUserId: user.id,
               amount: egg.amount,
             });
 
-            const balance = formatBalance(egg.amount, STRATA_CZASU_CURRENCY.symbol);
+            const balance = formatBalance(egg.amount, currency.symbol);
 
             await itx.reply({
               content: `${user} znalazł ${egg.name} warte ${balance}`,

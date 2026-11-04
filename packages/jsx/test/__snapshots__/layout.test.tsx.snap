@@ -1,0 +1,39 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`raw text children renders plain strings in containers as TextDisplay 1`] = `
+ContainerBuilder {
+  "components": [
+    TextDisplayBuilder {
+      "data": {
+        "content": "- first",
+        "type": 10,
+      },
+    },
+    TextDisplayBuilder {
+      "data": {
+        "content": "- second",
+        "type": 10,
+      },
+    },
+  ],
+  "data": {
+    "type": 17,
+  },
+}
+`;
+
+exports[`raw text children renders numbers in containers as TextDisplay 1`] = `
+ContainerBuilder {
+  "components": [
+    TextDisplayBuilder {
+      "data": {
+        "content": "42",
+        "type": 10,
+      },
+    },
+  ],
+  "data": {
+    "type": 17,
+  },
+}
+`;

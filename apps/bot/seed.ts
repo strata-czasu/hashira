@@ -9,6 +9,7 @@ import {
   DEFAULT_ITEMS,
   DEFAULT_LOG_CHANNELS,
   GUILD_IDS,
+  REP_CURRENCY,
   STRATA_CZASU_CURRENCY,
   USER_IDS,
 } from "./src/specializedConstants";
@@ -27,6 +28,19 @@ const createDefaultStrataCzasuCurrency = async (guildId: string) => {
       guildId,
       name: STRATA_CZASU_CURRENCY.name,
       symbol: STRATA_CZASU_CURRENCY.symbol,
+      createdBy: USER_IDS.Defous,
+    },
+    skipDuplicates: true,
+  });
+};
+
+const createDefaultRepCurrency = async (guildId: string) => {
+  await ensureUserExists(prisma, USER_IDS.Defous);
+  await prisma.currency.createMany({
+    data: {
+      guildId,
+      name: REP_CURRENCY.name,
+      symbol: REP_CURRENCY.symbol,
       createdBy: USER_IDS.Defous,
     },
     skipDuplicates: true,
@@ -94,6 +108,7 @@ const setDefaultLogChannels = async (guildId: string) => {
 if (isProduction) {
   await createGuild(GUILD_IDS.StrataCzasu);
   // await createDefaultStrataCzasuCurrency(GUILD_IDS.StrataCzasu);
+  await createDefaultRepCurrency(GUILD_IDS.StrataCzasu);
   await createDefaultItems(GUILD_IDS.StrataCzasu);
   await seedDefaultPlayerAbilities(prisma);
   await seedMonstersForGuild(prisma, GUILD_IDS.StrataCzasu);
@@ -104,6 +119,7 @@ if (isProduction) {
   for (const guildId of testingServers) {
     await createGuild(guildId);
     await createDefaultStrataCzasuCurrency(guildId);
+    await createDefaultRepCurrency(guildId);
     await createDefaultItems(guildId);
     await setDefaultLogChannels(guildId);
     await seedDefaultPlayerAbilities(prisma);

@@ -4,7 +4,6 @@ import { Hashira } from "@hashira/core";
 import type { Item } from "@hashira/db";
 
 import { formatBalance } from "../../economy/util";
-import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { pluralizers } from "../../util/pluralize";
 import { Logger } from "./logger";
 import { getLogMessageEmbed } from "./util";
@@ -14,12 +13,14 @@ type CurrencyTransferData = {
   toUsers: User[];
   amount: number;
   reason: string | null;
+  currencySymbol: string;
 };
 type CurrencyAddData = {
   moderator: User;
   toUsers: User[];
   amount: number;
   reason: string | null;
+  currencySymbol: string;
 };
 
 type ItemTransferData = {
@@ -40,8 +41,11 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
   new Logger()
     .addMessageType(
       "currencyTransfer",
-      async ({ timestamp }, { fromUser, toUsers, amount, reason }: CurrencyTransferData) => {
-        const formattedAmount = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+      async (
+        { timestamp },
+        { fromUser, toUsers, amount, reason, currencySymbol }: CurrencyTransferData,
+      ) => {
+        const formattedAmount = formatBalance(amount, currencySymbol);
 
         const lines: string[] = [];
         if (toUsers.length === 1) {
@@ -55,7 +59,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
             `Przekazuje ${formattedAmount} ${toUsers.length} ${pluralizers.genitiveUsers(
               toUsers.length,
             )}: ${userMentions}`,
-            `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
+            `**Razem**: ${formatBalance(totalAmount, currencySymbol)}`,
           );
         }
 
@@ -70,9 +74,12 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
     )
     .addMessageType(
       "currencyAdd",
-      async ({ timestamp }, { moderator, toUsers, amount, reason }: CurrencyAddData) => {
+      async (
+        { timestamp },
+        { moderator, toUsers, amount, reason, currencySymbol }: CurrencyAddData,
+      ) => {
         const embed = getLogMessageEmbed(moderator, timestamp).setColor("Green");
-        const formattedAmount = formatBalance(amount, STRATA_CZASU_CURRENCY.symbol);
+        const formattedAmount = formatBalance(amount, currencySymbol);
 
         const lines: string[] = [];
         if (toUsers.length === 1) {
@@ -86,7 +93,7 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
             `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizers.genitiveUsers(
               toUsers.length,
             )}: ${userMentions}`,
-            `**Razem**: ${formatBalance(totalAmount, STRATA_CZASU_CURRENCY.symbol)}`,
+            `**Razem**: ${formatBalance(totalAmount, currencySymbol)}`,
           );
         }
 

@@ -4,6 +4,7 @@ import { Hashira, waitForConfirmation } from "@hashira/core";
 import { nestedTransaction } from "@hashira/db/transaction";
 
 import { base } from "../base";
+import { getRequiredGuildDefaultCurrency } from "../economy/util";
 import { ensureUsersExist } from "../util/ensureUsersExist";
 import { runOperations, TRANSFER_OPERATIONS } from "./transfer";
 
@@ -23,6 +24,7 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
       .handle(async ({ prisma }, { "stary-user": oldUser, "nowy-user": newUser }, itx) => {
         if (!itx.inCachedGuild()) return;
         await itx.deferReply();
+        const economyCurrency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
         const confirmationLines = [
           "Czy na pewno chcesz przenieść dane?",
@@ -31,6 +33,14 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
           "",
           `Dane, które zostaną przeniesione (${TRANSFER_OPERATIONS.length}):`,
           unorderedList(TRANSFER_OPERATIONS.map((op) => op.name)),
+          "",
+          "Portfele zostaną przeniesione w walucie " +
+            economyCurrency.name +
+            " (" +
+            economyCurrency.symbol +
+            "), ID " +
+            economyCurrency.id +
+            ".",
         ];
         const confirmation = await waitForConfirmation(
           { send: itx.editReply.bind(itx) },
@@ -68,6 +78,7 @@ export const userTransfer = new Hashira({ name: "user-transfer" })
               newDbUser,
               guild: itx.guild,
               moderator: itx.user,
+              economyCurrency,
             });
           },
           { timeout: 30_000 }, // 30 second timeout just to be safe

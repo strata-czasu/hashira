@@ -25,6 +25,11 @@ export const STRATA_CZASU_CURRENCY = {
   defaultWalletName: "Portfel",
 } as const;
 
+export const REP_CURRENCY = {
+  name: "reputacja",
+  symbol: " rep",
+} as const;
+
 export const STRATA_CZASU = {
   GUILD_ID: GUILD_IDS.StrataCzasu,
   ULTIMATUM_ROLE: "452888858934378497",

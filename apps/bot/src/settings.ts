@@ -347,6 +347,7 @@ export const settings = new Hashira({ name: "settings" }).use(base).group("setti
           const currencies = await prisma.currency.findMany({
             where: {
               guildId: itx.guildId,
+              retiredAt: null,
               OR: [
                 { name: { contains: focused, mode: "insensitive" } },
                 { symbol: { contains: focused, mode: "insensitive" } },
@@ -367,7 +368,7 @@ export const settings = new Hashira({ name: "settings" }).use(base).group("setti
 
           const defaultCurrency = waluta
             ? await prisma.currency.findFirst({
-                where: { guildId: itx.guildId, symbol: waluta },
+                where: { guildId: itx.guildId, symbol: waluta, retiredAt: null },
               })
             : null;
 

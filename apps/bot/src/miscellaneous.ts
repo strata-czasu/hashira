@@ -1,3 +1,4 @@
+import { parse } from "date-fns";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -14,7 +15,7 @@ import {
   TextInputStyle,
   time,
 } from "discord.js";
-import { isNil, isNotNil } from "es-toolkit";
+import { chunk, groupBy, isNil, isNotNil } from "es-toolkit";
 
 import { Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type ExtendedPrismaClient, type Prisma, type Task } from "@hashira/db";
@@ -22,14 +23,15 @@ import { PaginatorOrder, StaticPaginator } from "@hashira/paginate";
 
 import { base } from "./base";
 import { WalletCreationError } from "./economy/economyError";
-import { getCurrency } from "./economy/managers/currencyManager";
+import { getActiveCurrency } from "./economy/managers/currencyManager";
 import { addBalances } from "./economy/managers/transferManager";
+import { getRequiredGuildDefaultCurrency } from "./economy/util";
 import { createFormatMuteInList } from "./moderation/mutes";
 import { createWarnFormat } from "./moderation/warns";
 import { STRATA_CZASU_CURRENCY } from "./specializedConstants";
 import { AsyncFunction } from "./util/asyncFunction";
 import { discordTry } from "./util/discordTry";
-import { ensureUsersExist } from "./util/ensureUsersExist";
+import { ensureUserExists, ensureUsersExist } from "./util/ensureUsersExist";
 import { errorFollowUp } from "./util/errorFollowUp";
 import { fetchMembers } from "./util/fetchMembers";
 import { isNotOwner } from "./util/isOwner";
@@ -49,11 +51,8 @@ const importWalletBalancesChunk = async (
       rows.map((row) => row.userId),
     );
 
-    const currency = await getCurrency({
-      prisma: tx,
-      guildId,
-      currencySymbol: STRATA_CZASU_CURRENCY.symbol,
-    });
+    const currency = await getRequiredGuildDefaultCurrency(tx, guildId);
+    await getActiveCurrency({ prisma: tx, guildId, currencyId: currency.id });
 
     const uniqueUserIds = [...new Set(rows.map((row) => row.userId))];
 
@@ -119,6 +118,16 @@ type ImportInventoryRow = {
   itemName: string;
   description: string;
   quantity: number;
+};
+
+type ImportAchievementRow = {
+  /** old item name; null for new items */
+  oldName: string | null;
+  /** new item name */
+  newName: string;
+  /** 0..3 (inclusive) */
+  stars: number;
+  description: string;
 };
 
 const parseCsv = (content: string): string[][] => {
@@ -422,9 +431,15 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
         command.setDescription("Clean balances").handle(async ({ prisma }, _, itx) => {
           if (!itx.inCachedGuild()) return;
           await itx.deferReply();
+          const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
+          await getActiveCurrency({
+            prisma,
+            guildId: itx.guildId,
+            currencyId: currency.id,
+          });
 
           await prisma.wallet.updateMany({
-            where: { guildId: itx.guildId },
+            where: { guildId: itx.guildId, currencyId: currency.id },
             data: { balance: 0 },
           });
 
@@ -444,6 +459,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             await itx.deferReply();
 
             const members = [...role.members.keys()];
+            const currency = await getRequiredGuildDefaultCurrency(ctx.prisma, itx.guildId);
 
             await addBalances({
               prisma: ctx.prisma,
@@ -452,7 +468,7 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
               toUserIds: members,
               amount,
               reason: "Added balance to role",
-              currencySymbol: STRATA_CZASU_CURRENCY.symbol,
+              currencyId: currency.id,
             });
 
             await itx.editReply("Added balance to role");
@@ -612,6 +628,231 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             }
 
             await itx.editReply(`Imported inventory for ${processed} users`);
+          }),
+      )
+      .addCommand("migrate-badge-placement", (command) =>
+        command
+          .setDescription("Migrate badge placements to the new achievement system")
+          .addUser("user", (user) => user.setDescription("user").setRequired(false))
+          .handle(async ({ prisma }, { user }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const displayedBadges = await prisma.displayedProfileBadge.findMany({
+              ...(user ? { where: { userId: user.id } } : {}),
+              include: { badge: { include: { item: true } } },
+              orderBy: [{ row: "asc" }, { col: "asc" }],
+            });
+            const displayedBadgesByUser = groupBy(displayedBadges, (badge) => badge.userId);
+
+            const toCreate: Prisma.DisplayedProfileAchievementCreateManyInput[] = [];
+            const userIds: string[] = [];
+            for (const [userId, badges] of Object.entries(displayedBadgesByUser)) {
+              toCreate.push(
+                ...badges.slice(0, 4).map(({ badgeId }, idx) => ({
+                  userId,
+                  achievementId: badgeId,
+                  row: idx + 1,
+                })),
+              );
+              userIds.push(userId);
+            }
+
+            await ensureUsersExist(prisma, userIds);
+
+            if (user) {
+              await prisma.displayedProfileAchievement.createMany({
+                data: toCreate,
+                skipDuplicates: true,
+              });
+              await itx.editReply(
+                `Migrated ${toCreate.length} badge placements for user ${user.id}`,
+              );
+              return;
+            }
+
+            const chunkSize = 10;
+            let processed = 0;
+            let lastProcessedUserId: string | undefined;
+            for (let i = 0; i < toCreate.length; i += chunkSize) {
+              const chunk = toCreate.slice(i, i + chunkSize);
+              await prisma.displayedProfileAchievement.createMany({
+                data: chunk,
+                skipDuplicates: true,
+              });
+              processed += chunk.length;
+              lastProcessedUserId = chunk.at(-1)?.userId;
+              await itx.editReply(
+                `Migrating... ${processed} badge placements for user ${lastProcessedUserId}`,
+              );
+            }
+
+            await itx.editReply(
+              `Finished migrating ${processed} badge placements for ${userIds.length} user(s)`,
+            );
+          }),
+      )
+      .addCommand("import-achievements", (command) =>
+        command
+          .setDescription("Import (create/update) achievements from a CSV")
+          .addAttachment("csv", (csv) =>
+            csv.setDescription("CSV with name_badge,name_achievement,stars,description"),
+          )
+          .handle(async ({ prisma }, { csv }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            if (csv.size > 10_000_000) return;
+            await itx.deferReply();
+
+            const content = await fetch(csv.url).then((res) => res.text());
+
+            const rows: ImportAchievementRow[] = [];
+            for (const columns of parseCsv(content).slice(1)) {
+              const [oldName, newName, starsRaw, description] = columns;
+              if (!newName || !description) continue;
+              const stars = Number(starsRaw);
+              if (!Number.isSafeInteger(stars) || stars < 0 || stars > 3) continue;
+              rows.push({
+                oldName: oldName?.trim() || null,
+                newName: newName.trim(),
+                stars,
+                description: description.trim(),
+              });
+            }
+
+            await itx.editReply(`Processing ${rows.length} items...`);
+
+            await ensureUserExists(prisma, itx.user);
+
+            let created = 0;
+            let updated = 0;
+            for (const row of rows) {
+              if (!row.oldName) {
+                await prisma.item.create({
+                  data: {
+                    name: row.newName,
+                    description: row.description,
+                    guildId: itx.guildId,
+                    createdBy: itx.user.id,
+                    type: "badge",
+                    perUserLimit: 1,
+                    badge: {
+                      create: {
+                        stars: row.stars,
+                      },
+                    },
+                  },
+                });
+                created++;
+                continue;
+              }
+
+              // `update` needs an ID and `updateMany` can't update the `badge` relation,
+              // so fetch the object first, then use regular `update`
+              const item = await prisma.item.findFirst({
+                where: {
+                  name: row.oldName,
+                  guildId: itx.guildId,
+                  type: "badge",
+                  deletedAt: null,
+                },
+              });
+              if (!item) continue;
+              await prisma.item.update({
+                where: {
+                  id: item.id,
+                },
+                data: {
+                  name: row.newName,
+                  description: row.description,
+                  badge: {
+                    update: {
+                      stars: row.stars,
+                    },
+                  },
+                },
+              });
+              updated++;
+            }
+
+            await itx.editReply(`Created ${created} and updated ${updated} items`);
+          }),
+      )
+      .addCommand("import-nickname-history", (command) =>
+        command
+          .setDescription("Import nickname history from the deprecated format")
+          .addAttachment("file", (file) =>
+            file.setDescription("JSON file with per-guild per-user nickname history"),
+          )
+          .handle(async ({ prisma }, { file }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            const content = await fetch(file.url).then((res) => res.text());
+
+            type RawEntry = [string, string];
+            type UserEntries = Record<string, RawEntry[]>;
+            type GuildEntries = Record<string, UserEntries>;
+            const rawData = JSON.parse(content) as GuildEntries;
+
+            const allGuilds = new Set<string>();
+            const allUsers = new Set<string>();
+            const entries: Prisma.NicknameChangeCreateManyInput[] = [];
+
+            // Raw format: "Saturday, 21.12.2019"
+            const parseDate = (dateString: string): Date | null => {
+              const datePart = dateString.split(",")[1]?.trim();
+              if (!datePart) return null;
+              return parse(datePart, "dd.MM.yyyy", new Date());
+            };
+
+            for (const [guildId, guildEntries] of Object.entries(rawData)) {
+              allGuilds.add(guildId);
+              for (const [userId, rawEntries] of Object.entries(guildEntries)) {
+                allUsers.add(userId);
+                entries.push(
+                  ...rawEntries
+                    .map(([dateString, nickname]) => {
+                      const timestamp = parseDate(dateString);
+                      if (!timestamp) return null;
+                      return { guildId, userId, nickname, timestamp };
+                    })
+                    .filter((entry) => entry !== null),
+                );
+              }
+            }
+            await itx.editReply(
+              `Loaded JSON data: ${allGuilds.size} guilds, ${allUsers.size} users, ${entries.length} entries. Starting import...`,
+            );
+
+            await Promise.allSettled(
+              Array.from(allGuilds).map((id) =>
+                // Copied from guildAvailability -> createGuildSettings
+                prisma.guild.create({
+                  data: { id, guildSettings: { create: {} } },
+                }),
+              ),
+            );
+            for (const userIdsChunk of chunk(Array.from(allUsers), 100)) {
+              await ensureUsersExist(prisma, userIdsChunk);
+            }
+
+            const chunkSize = 1000;
+            const totalChunks = Math.ceil(entries.length / chunkSize);
+            let importedCount = 0;
+            for (const [chunkIndex, entryBatch] of chunk(entries, chunkSize).entries()) {
+              await prisma.nicknameChange.createMany({ data: entryBatch });
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              if (chunkIndex === 1 || chunkIndex % 10 === 0) {
+                await itx.editReply(
+                  `Imported chunk ${chunkIndex + 1}/${totalChunks} (${importedCount} total)`,
+                );
+              }
+              importedCount += entryBatch.length;
+            }
+
+            await itx.editReply(
+              `Finished importing ${importedCount} entries for ${allGuilds.size} guilds and ${allUsers.size} users`,
+            );
           }),
       )
       .addCommand("check-remaining-user-permisisons", (command) =>

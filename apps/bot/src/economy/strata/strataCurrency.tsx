@@ -9,12 +9,11 @@ import {
 } from "discord.js";
 
 import { Hashira, PaginatedView, waitForConfirmationV2 } from "@hashira/core";
-import { DatabasePaginator, type Transaction, type Wallet } from "@hashira/db";
+import { DatabasePaginator, type Wallet } from "@hashira/db";
 import { Container, H3, render, Separator, Subtext, TextDisplay } from "@hashira/jsx";
 import { PaginatorOrder } from "@hashira/paginate";
 
 import { base } from "../../base";
-import { STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import { ensureUserExists, ensureUsersExist } from "../../util/ensureUsersExist";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import { fetchMembers } from "../../util/fetchMembers";
@@ -22,10 +21,10 @@ import { parseUserMentions } from "../../util/parseUsers";
 import { pluralizers } from "../../util/pluralize";
 import { EconomyError } from "../economyError";
 import { addBalances, transferBalances } from "../managers/transferManager";
-import { getDefaultWallet } from "../managers/walletManager";
-import { formatBalance } from "../util";
-
-const CURRENCY_SYMBOL = STRATA_CZASU_CURRENCY.symbol;
+import { getDefaultWallet, getDefaultWallets } from "../managers/walletManager";
+import { formatBalance, getRequiredGuildDefaultCurrency } from "../util";
+import { MultiHistoryView } from "./multiHistoryView";
+import { TransactionRow } from "./transactionRow";
 
 type FieldProps = {
   name: string;
@@ -36,13 +35,23 @@ function Field({ name, value }: FieldProps) {
   return <TextDisplay content={`${bold(name)}\n${value}`} />;
 }
 
-function BalanceCard({ title, user, wallet }: { title: string; user: User; wallet: Wallet }) {
+function BalanceCard({
+  title,
+  user,
+  wallet,
+  currencySymbol,
+}: {
+  title: string;
+  user: User;
+  wallet: Wallet;
+  currencySymbol: string;
+}) {
   return (
     <Container>
       <TextDisplay>
         <H3>{title}</H3>
       </TextDisplay>
-      <Field name="Saldo" value={formatBalance(wallet.balance, CURRENCY_SYMBOL)} />
+      <Field name="Saldo" value={formatBalance(wallet.balance, currencySymbol)} />
       <Field
         name="Portfel utworzony"
         value={`${time(wallet.createdAt, TimestampStyles.LongDateShortTime)} (${time(wallet.createdAt, TimestampStyles.RelativeTime)})`}
@@ -55,37 +64,19 @@ function BalanceCard({ title, user, wallet }: { title: string; user: User; walle
   );
 }
 
-const getCounterpartyLabel = (transaction: Transaction): string | null => {
-  if (!transaction.relatedUserId) return null;
-  const mention = userMention(transaction.relatedUserId);
-  if (transaction.transactionType === "add") return `przez ${mention}`;
-  return transaction.entryType === "credit" ? `od ${mention}` : `dla ${mention}`;
-};
-
-function TransactionRow({ transaction }: { transaction: Transaction }) {
-  const sign = transaction.entryType === "credit" ? "+" : "-";
-  const parts = [
-    time(transaction.createdAt, TimestampStyles.LongDateShortTime),
-    `${sign}${formatBalance(transaction.amount, CURRENCY_SYMBOL)}`,
-    getCounterpartyLabel(transaction),
-  ];
-  const line = parts.filter((part) => part !== null).join(" ");
-  const content = transaction.reason ? `${line} - ${italic(transaction.reason)}` : line;
-
-  return <TextDisplay content={content} />;
-}
-
 function BulkOperationReport({
   heading,
   amountPerUser,
   recipientMentions,
   reason,
+  currencySymbol,
   remainingBalance = null,
 }: {
   heading: string;
   amountPerUser: number;
   recipientMentions: string[];
   reason: string | null;
+  currencySymbol: string;
   remainingBalance?: number | null;
 }) {
   const recipientCount = recipientMentions.length;
@@ -95,16 +86,16 @@ function BulkOperationReport({
       <TextDisplay>
         <H3>{heading}</H3>
       </TextDisplay>
-      <Field name="Kwota na użytkownika" value={formatBalance(amountPerUser, CURRENCY_SYMBOL)} />
+      <Field name="Kwota na użytkownika" value={formatBalance(amountPerUser, currencySymbol)} />
       {recipientCount > 1 && (
         <Field
           name={`Łącznie (${recipientCount} ${pluralizers.users(recipientCount)})`}
-          value={formatBalance(amountPerUser * recipientCount, CURRENCY_SYMBOL)}
+          value={formatBalance(amountPerUser * recipientCount, currencySymbol)}
         />
       )}
       {reason && <Field name="Powód" value={italic(reason)} />}
       {remainingBalance !== null && (
-        <Field name="Saldo po operacji" value={formatBalance(remainingBalance, CURRENCY_SYMBOL)} />
+        <Field name="Saldo po operacji" value={formatBalance(remainingBalance, currencySymbol)} />
       )}
       <Field name={`Odbiorcy (${recipientCount})`} value={recipientMentions.join(", ")} />
     </Container>
@@ -130,12 +121,13 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             const targetUser = user ?? itx.user;
 
             await ensureUserExists(prisma, targetUser.id);
+            const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
             const wallet = await getDefaultWallet({
               prisma,
               userId: targetUser.id,
               guildId: itx.guildId,
-              currencySymbol: CURRENCY_SYMBOL,
+              currencyId: currency.id,
             });
 
             const self = itx.user.id === targetUser.id;
@@ -145,6 +137,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   title={self ? "Twoje punkty" : `Punkty ${targetUser.tag}`}
                   user={targetUser}
                   wallet={wallet}
+                  currencySymbol={currency.symbol}
                 />,
               ),
             );
@@ -156,18 +149,75 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           .addUser("użytkownik", (option) =>
             option.setDescription("Użytkownik, którego punkty chcesz sprawdzić").setRequired(false),
           )
-          .handle(async ({ prisma }, { użytkownik: user }, itx) => {
+          .addString("użytkownicy", (option) =>
+            option
+              .setDescription("Wzmianki lub ID użytkowników do przejrzenia (maks. 25)")
+              .setRequired(false),
+          )
+          .handle(async ({ prisma }, { użytkownik: user, użytkownicy: rawUsers }, itx) => {
             if (!itx.inCachedGuild()) return;
+            await itx.deferReply();
+
+            if (rawUsers !== null) {
+              if (user) {
+                await errorFollowUp(itx, "Podaj użytkownik albo użytkownicy, nie oba naraz.");
+                return;
+              }
+              const userIds = [...new Set(parseUserMentions(rawUsers))];
+              if (userIds.length === 0 || userIds.length > 25) {
+                await errorFollowUp(itx, "Podaj od 1 do 25 użytkowników jako wzmianki lub ID.");
+                return;
+              }
+              const members = await fetchMembers(itx.guild, userIds);
+              if (members.size !== userIds.length) {
+                await errorFollowUp(
+                  itx,
+                  "Nie znaleziono wszystkich podanych użytkowników na serwerze.",
+                );
+                return;
+              }
+              await ensureUsersExist(prisma, userIds);
+              const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
+              const wallets = await getDefaultWallets({
+                prisma,
+                userIds,
+                guildId: itx.guildId,
+                currencyId: currency.id,
+              });
+              const walletsByUserId = new Map(wallets.map((wallet) => [wallet.userId, wallet]));
+              const users = userIds.map((id) => {
+                const wallet = walletsByUserId.get(id)!;
+                const where = { walletId: wallet.id };
+                return {
+                  id,
+                  label: members.get(id)!.user.tag,
+                  balance: wallet.balance,
+                  paginator: new DatabasePaginator(
+                    (props, order) =>
+                      prisma.transaction.findMany({
+                        ...props,
+                        where,
+                        orderBy: [{ createdAt: order }, { id: order }],
+                      }),
+                    () => prisma.transaction.count({ where }),
+                    { pageSize: 15, defaultOrder: PaginatorOrder.DESC },
+                  ),
+                };
+              });
+              await new MultiHistoryView(users, currency.symbol).render(itx);
+              return;
+            }
 
             const targetUser = user ?? itx.user;
 
             await ensureUserExists(prisma, targetUser.id);
+            const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
             const wallet = await getDefaultWallet({
               prisma,
               userId: targetUser.id,
               guildId: itx.guildId,
-              currencySymbol: CURRENCY_SYMBOL,
+              currencyId: currency.id,
             });
 
             const where = { walletId: wallet.id };
@@ -185,9 +235,11 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             const view = new PaginatedView(
               paginator,
               `Transakcje ${targetUser.tag}`,
-              (transaction) => <TransactionRow transaction={transaction} />,
+              (transaction) => (
+                <TransactionRow transaction={transaction} currencySymbol={currency.symbol} />
+              ),
               true,
-              `Saldo: ${formatBalance(wallet.balance, CURRENCY_SYMBOL)}`,
+              `Saldo: ${formatBalance(wallet.balance, currency.symbol)}`,
             );
             await view.render(itx);
           }),
@@ -226,12 +278,13 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               }
 
               await ensureUsersExist(prisma, [...recipientIds, itx.user.id]);
+              const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
               const wallet = await getDefaultWallet({
                 prisma,
                 userId: itx.user.id,
                 guildId: itx.guildId,
-                currencySymbol: CURRENCY_SYMBOL,
+                currencyId: currency.id,
               });
 
               const totalAmount = amount * recipientIds.length;
@@ -239,14 +292,14 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               if (projectedBalance < 0) {
                 await errorFollowUp(
                   itx,
-                  `Masz niewystarczające środki. Potrzebujesz ${formatBalance(totalAmount, CURRENCY_SYMBOL)}, a masz na koncie ${formatBalance(wallet.balance, CURRENCY_SYMBOL)}.`,
+                  `Masz niewystarczające środki. Potrzebujesz ${formatBalance(totalAmount, currency.symbol)}, a masz na koncie ${formatBalance(wallet.balance, currency.symbol)}.`,
                 );
                 return;
               }
 
               const confirmationLines = [
-                `Czy na pewno chcesz przekazać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(recipientIds.length.toString())} ${pluralizers.genitiveUsers(recipientIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
-                `Twoje saldo po operacji: ${formatBalance(projectedBalance, CURRENCY_SYMBOL)}`,
+                `Czy na pewno chcesz przekazać ${formatBalance(amount, currency.symbol)} każdemu z ${bold(recipientIds.length.toString())} ${pluralizers.genitiveUsers(recipientIds.length)} (łącznie ${formatBalance(totalAmount, currency.symbol)})?`,
+                `Twoje saldo po operacji: ${formatBalance(projectedBalance, currency.symbol)}`,
               ];
               if (reason) {
                 confirmationLines.push(`Powód: ${italic(reason)}`);
@@ -278,7 +331,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   prisma,
                   fromUserId: itx.user.id,
                   guildId: itx.guildId,
-                  currencySymbol: CURRENCY_SYMBOL,
+                  currencyId: currency.id,
                   toUserIds: recipientIds,
                   amount,
                   reason,
@@ -288,6 +341,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   toUsers: members.map((m) => m.user),
                   amount,
                   reason,
+                  currencySymbol: currency.symbol,
                 });
 
                 const recipientsById = new Map(members.map((m) => [m.id, m]));
@@ -304,6 +358,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                       amountPerUser={amount}
                       recipientMentions={recipientMentions}
                       reason={reason}
+                      currencySymbol={currency.symbol}
                       remainingBalance={sourceWallet.balance}
                     />,
                   ),
@@ -345,10 +400,11 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
 
           const memberIds = [...new Set(members.keys())];
           await ensureUsersExist(prisma, [...memberIds, itx.user.id]);
+          const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
           const totalAmount = Math.abs(amount) * memberIds.length;
           const confirmationLines = [
-            `Czy na pewno chcesz dodać ${formatBalance(amount, CURRENCY_SYMBOL)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.genitiveUsers(memberIds.length)} (łącznie ${formatBalance(totalAmount, CURRENCY_SYMBOL)})?`,
+            `Czy na pewno chcesz dodać ${formatBalance(amount, currency.symbol)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.genitiveUsers(memberIds.length)} (łącznie ${formatBalance(totalAmount, currency.symbol)})?`,
           ];
           if (reason) {
             confirmationLines.push(`Powód: ${italic(reason)}`);
@@ -378,7 +434,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               prisma,
               fromUserId: itx.user.id,
               guildId: itx.guildId,
-              currencySymbol: CURRENCY_SYMBOL,
+              currencyId: currency.id,
               toUserIds: memberIds,
               amount,
               reason,
@@ -388,6 +444,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
               toUsers: members.map((m) => m.user),
               amount,
               reason,
+              currencySymbol: currency.symbol,
             });
 
             const recipientMentions = memberIds.map(
@@ -401,6 +458,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
                   amountPerUser={amount}
                   recipientMentions={recipientMentions}
                   reason={reason}
+                  currencySymbol={currency.symbol}
                 />,
               ),
             );

@@ -19,6 +19,7 @@ enum TintColorType {
   custom
 }
 
+// TODO)) Drop after migrating to DisplayedProfileAchievement
 model DisplayedProfileBadge {
   userId  String
   badgeId Int
@@ -30,4 +31,16 @@ model DisplayedProfileBadge {
 
   @@id([userId, badgeId])
   @@unique([userId, row, col])
+}
+
+model DisplayedProfileAchievement {
+  userId        String
+  achievementId Int
+  row           Int
+
+  user        User  @relation(fields: [userId], references: [id])
+  achievement Badge @relation(fields: [achievementId], references: [id])
+
+  @@id([userId, achievementId])
+  @@unique([userId, row])
 }

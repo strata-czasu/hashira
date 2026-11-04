@@ -2,6 +2,7 @@ import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
 
 import { GUILD_IDS, STRATA_CZASU_CURRENCY } from "../../specializedConstants";
 import {
+  CurrencyRetiredError,
   InsufficientBalanceError,
   WalletCreationError,
   WalletNotFoundError,
@@ -41,6 +42,12 @@ export const debitWallet = async ({
   transaction,
 }: DebitWalletOptions) => {
   validateNonNegativeAmount(amount);
+
+  const wallet = await prisma.wallet.findUnique({
+    where: { id: walletId },
+    select: { currency: { select: { retiredAt: true } } },
+  });
+  if (wallet?.currency.retiredAt) throw new CurrencyRetiredError();
 
   const result = await prisma.wallet.updateMany({
     where: {
@@ -125,6 +132,8 @@ export const getDefaultWallet = async ({
     });
 
     if (wallet) return wallet;
+
+    if (currency.retiredAt) throw new CurrencyRetiredError();
 
     const name = getDefaultWalletName(guildId);
     return await tx.wallet.upsert({
@@ -221,6 +230,7 @@ export const getDefaultWallets = async ({
     const missingUserIds = uniqueUserIds.filter((userId) => !walletsByUserId.has(userId));
 
     if (missingUserIds.length > 0) {
+      if (currency.retiredAt) throw new CurrencyRetiredError();
       const name = getDefaultWalletName(guildId);
 
       await tx.wallet.createMany({

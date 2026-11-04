@@ -10,15 +10,15 @@ import {
   inlineCode,
   RESTJSONErrorCodes,
   TextDisplayBuilder,
-  TimestampStyles,
   time,
+  TimestampStyles,
   userMention,
 } from "discord.js";
 import { Effect } from "effect";
 
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
-import { MessageQueue, PrismaMessageQueuePersistence } from "@hashira/yotei";
+import { MessageQueue, Persistence, Queue, Runtime } from "@hashira/yotei";
 
 import { database } from "./db";
 import { digestBirthday2026FeedBatch } from "./events/birthday2026/economyService";
@@ -35,6 +35,8 @@ import {
   type StatsModifiers,
 } from "./events/halloween2025/combatRepository";
 import { CombatService } from "./events/halloween2025/combatService";
+import { expireTotKnock } from "./events/halloween2026-tot/knockService";
+import { finishTotKnockMessages } from "./events/halloween2026-tot/messages";
 import { endGiveaway } from "./giveaway/util";
 import { loggingBase } from "./logging/base";
 import { composeChannelRestrictionRestoreMessage } from "./moderation/accessUtil";
@@ -114,14 +116,19 @@ type Birthday2026EncounterData = {
   encounterId: number;
 };
 
+type Halloween2026TotKnockData = {
+  knockId: number;
+};
+
 export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(database)
   .use(loggingBase)
   .const((ctx) => {
     const prisma = ctx.prisma;
+    const messageQueueRuntime = Runtime.make(Queue.layer(Persistence.layer(prisma)));
     return {
       ...ctx,
-      messageQueue: new MessageQueue(new PrismaMessageQueuePersistence(ctx.prisma))
+      messageQueue: new MessageQueue(messageQueueRuntime)
         .addArg<"client", Client>()
         .addHandler("ultimatumEnd", async ({ client }, { userId, guildId }: UltimatumEndData) => {
           const currentUltimatum = await prisma.ultimatum.findFirst({
@@ -547,6 +554,13 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
                 `Birthday 2026 voice award skipped for session ${voiceSessionId}: ${result.reason}`,
               );
             }
+          },
+        )
+        .addHandler(
+          "halloween2026TotKnockExpire",
+          async ({ client }, { knockId }: Halloween2026TotKnockData) => {
+            const knock = await expireTotKnock(prisma, knockId, new Date());
+            if (knock) await finishTotKnockMessages(client, knock, { type: "expired" });
           },
         )
         .addHandler(
