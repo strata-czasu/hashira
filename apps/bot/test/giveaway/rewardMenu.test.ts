@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { ButtonBuilder, ButtonStyle } from "discord.js";
 
+import { render } from "@hashira/jsx";
+
 import type { PendingReward, PendingRewards } from "../../src/giveaway/rewardHandout";
 import {
   buildRewardMenuContent,
@@ -14,7 +16,6 @@ import {
 
 type ApiButton = ReturnType<ButtonBuilder["toJSON"]>;
 
-/** `APIButtonComponent` is a union (custom id / url / sku); narrow it by style. */
 const toCustomIdButton = (button: ApiButton) => {
   if (button.style === ButtonStyle.Link || button.style === ButtonStyle.Premium) {
     throw new Error("expected a button with a custom id");
@@ -29,11 +30,14 @@ const pendingReward = (reward: string, pendingWinnerIds: string[]): PendingRewar
 
 const emptyPending = (): PendingRewards => ({ currency: [], items: [], mutes: [] });
 
+const rowComponents = (row: ReturnType<typeof render>["components"]) => row.map((c) => c.toJSON());
+
 describe("createRewardButtonRow", () => {
   it("creates the reward menu button", () => {
-    const [rawButton] = createRewardButtonRow().toJSON().components;
-    if (!rawButton) throw new Error("expected a button");
-    const button = toCustomIdButton(rawButton);
+    const components = rowComponents(render(createRewardButtonRow()).components);
+    const actionRow = components[0] as { components: unknown[] };
+    const [rawButton] = actionRow.components as [unknown];
+    const button = toCustomIdButton(rawButton as ApiButton);
 
     expect(button.custom_id).toBe(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID);
     expect(button.label).toBe("Rozdaj nagrody");
@@ -41,48 +45,67 @@ describe("createRewardButtonRow", () => {
 });
 
 describe("buildRewardMenuContent", () => {
-  it("lists pending rewards split by type", () => {
-    const content = buildRewardMenuContent({
-      currency: [pendingReward("500 pkt", ["user-1"]), pendingReward("3m pkt", ["user-2"])],
-      items: [],
-      mutes: [pendingReward("24h", ["user-3"])],
-    });
+  const displayText = (components: ReturnType<typeof render>["components"]) =>
+    components
+      .map((c) => {
+        const json = c.toJSON() as { content?: string };
+        return json.content ?? "";
+      })
+      .join("\n");
 
-    expect(content).toBe(
+  it("lists pending rewards split by type", () => {
+    const content = render(
+      buildRewardMenuContent({
+        currency: [pendingReward("500 pkt", ["user-1"]), pendingReward("3m pkt", ["user-2"])],
+        items: [],
+        mutes: [pendingReward("24h", ["user-3"])],
+      }),
+    );
+
+    const text = displayText(content.components);
+    expect(text).toBe(
       [
-        "Punkty do rozdania:",
+        "### Punkty do rozdania:",
         "500 pkt -> <@user-1>",
         "3m pkt -> <@user-2>",
         "",
-        "Mute do rozdania:",
+        "### Mute do rozdania:",
         "24h -> <@user-3>",
       ].join("\n"),
     );
   });
 
   it("omits sections with no pending rewards", () => {
-    const content = buildRewardMenuContent({
-      currency: [pendingReward("500 pkt", ["user-1"])],
-      items: [],
-      mutes: [],
-    });
+    const content = render(
+      buildRewardMenuContent({
+        currency: [pendingReward("500 pkt", ["user-1"])],
+        items: [],
+        mutes: [],
+      }),
+    );
 
-    expect(content).toBe("Punkty do rozdania:\n500 pkt -> <@user-1>");
-    expect(content).not.toContain("Itemy");
-    expect(content).not.toContain("Mute");
+    const text = displayText(content.components);
+    expect(text).toBe("### Punkty do rozdania:\n500 pkt -> <@user-1>");
+    expect(text).not.toContain("Itemy");
+    expect(text).not.toContain("Mute");
   });
 
   it("mentions every pending winner of a reward", () => {
-    const content = buildRewardMenuContent({
-      ...emptyPending(),
-      currency: [pendingReward("500 pkt", ["user-1", "user-2"])],
-    });
+    const content = render(
+      buildRewardMenuContent({
+        ...emptyPending(),
+        currency: [pendingReward("500 pkt", ["user-1", "user-2"])],
+      }),
+    );
 
-    expect(content).toBe("Punkty do rozdania:\n500 pkt -> <@user-1> <@user-2>");
+    const text = displayText(content.components);
+    expect(text).toBe("### Punkty do rozdania:\n500 pkt -> <@user-1> <@user-2>");
   });
 
   it("reports when all rewards were already handed out", () => {
-    expect(buildRewardMenuContent(emptyPending())).toBe("Wszystkie nagrody zostały już rozdane.");
+    const content = render(buildRewardMenuContent(emptyPending()));
+    const text = displayText(content.components);
+    expect(text).toBe("Wszystkie nagrody zostały już rozdane.");
   });
 });
 describe("createRewardMenuRow", () => {
@@ -128,9 +151,10 @@ describe("createRewardMenuRow", () => {
     });
     if (!row) throw new Error("expected a menu row");
 
-    const [rawButton] = row.toJSON().components;
-    if (!rawButton) throw new Error("expected a button");
-    const button = toCustomIdButton(rawButton);
+    const components = rowComponents(render(row).components);
+    const actionRow = components[0] as { components: unknown[] };
+    const [rawButton] = actionRow.components as [unknown];
+    const button = toCustomIdButton(rawButton as ApiButton);
     expect(button.custom_id).toBe(`${GIVEAWAY_REWARD_CURRENCY_BUTTON_PREFIX}:7`);
     expect(button.label).toBe("Rozdaj punkty");
     expect(button.style).toBe(ButtonStyle.Primary);
@@ -146,16 +170,11 @@ describe("createRewardMenuRow", () => {
     });
     if (!row) throw new Error("expected a menu row");
 
-    const buttons = row.toJSON().components;
-    expect(toCustomIdButton(buttons[0] ?? buttons[1] ?? buttons[2]!).custom_id).toBe(
-      `${GIVEAWAY_REWARD_CURRENCY_BUTTON_PREFIX}:7`,
-    );
-    expect(buttons.some((button) => toCustomIdButton(button).custom_id.includes("-items:"))).toBe(
-      false,
-    );
-    expect(buttons.some((button) => toCustomIdButton(button).custom_id.includes("-mute:"))).toBe(
-      true,
-    );
+    const components = rowComponents(render(row).components);
+    const actionRow = components[0] as { components: { custom_id?: string }[] };
+    const customIds = actionRow.components.map((b) => b.custom_id).filter(Boolean);
+    expect(customIds.some((id) => id?.includes("-items:"))).toBe(false);
+    expect(customIds.some((id) => id?.includes("-mute:"))).toBe(true);
   });
 
   it("hides actions the user is not allowed to run", () => {
@@ -170,11 +189,11 @@ describe("createRewardMenuRow", () => {
     });
     if (!row) throw new Error("expected a menu row");
 
-    const buttons = row.toJSON().components;
-    expect(buttons).toHaveLength(1);
-    expect(toCustomIdButton(buttons[0] ?? buttons[1] ?? buttons[2]!).custom_id).toBe(
-      `${GIVEAWAY_REWARD_CURRENCY_BUTTON_PREFIX}:7`,
-    );
+    const components = rowComponents(render(row).components);
+    const actionRow = components[0] as { components: unknown[] };
+    expect(actionRow.components).toHaveLength(1);
+    const button = toCustomIdButton(actionRow.components[0] as ApiButton);
+    expect(button.custom_id).toBe(`${GIVEAWAY_REWARD_CURRENCY_BUTTON_PREFIX}:7`);
   });
 
   it("offers all three actions when pending rewards and permissions allow it", () => {
@@ -187,13 +206,17 @@ describe("createRewardMenuRow", () => {
     });
     if (!row) throw new Error("expected a menu row");
 
-    const buttons = row.toJSON().components;
-    expect(buttons.map((button) => toCustomIdButton(button).custom_id)).toEqual([
+    const components = rowComponents(render(row).components);
+    const actionRow = components[0] as {
+      components: { custom_id?: string; style?: ButtonStyle }[];
+    };
+    const buttons = actionRow.components;
+    expect(buttons.map((b) => b.custom_id)).toEqual([
       `${GIVEAWAY_REWARD_CURRENCY_BUTTON_PREFIX}:42`,
       `${GIVEAWAY_REWARD_ITEMS_BUTTON_PREFIX}:42`,
       `${GIVEAWAY_REWARD_MUTE_BUTTON_PREFIX}:42`,
     ]);
-    expect(buttons.map((button) => button.style)).toEqual([
+    expect(buttons.map((b) => b.style)).toEqual([
       ButtonStyle.Primary,
       ButtonStyle.Secondary,
       ButtonStyle.Danger,

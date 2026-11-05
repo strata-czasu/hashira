@@ -1,5 +1,7 @@
 import { ComponentType, PermissionFlagsBits } from "discord.js";
 
+import { Container, render, TextDisplay } from "@hashira/jsx";
+
 import { STRATA_CZASU } from "../../specializedConstants";
 import { errorFollowUp } from "../../util/errorFollowUp";
 import type { EconomyRewardType } from "../rewardHandout";
@@ -233,7 +235,12 @@ export const handleGiveawayRewardButton = async ({
   }
 
   await itx.editReply({
-    content: `${menuContent}\n\nWybierz rodzaj nagród do rozdania:`,
-    components: [menuRow],
+    ...render(
+      <Container>
+        {menuContent}
+        <TextDisplay content="Wybierz rodzaj nagród do rozdania:" />
+        {menuRow}
+      </Container>,
+    ),
   });
 };

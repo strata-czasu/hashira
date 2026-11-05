@@ -16,6 +16,7 @@ import { round, shuffle } from "es-toolkit";
 
 import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant } from "@hashira/db";
+import { Container, render, Separator, TextDisplay } from "@hashira/jsx";
 
 import { base } from "../base";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
@@ -518,16 +519,15 @@ export const giveaway = new Hashira({ name: "giveaway" })
               return `> ${reward} ${mention}`;
             });
 
-            const resultContainer = new ContainerBuilder()
-              .setAccentColor(0x00ff99)
-              .addTextDisplayComponents((td) => td.setContent("# :tada: Nowi zwycięzcy:"))
-              .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
-              .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
-
             await itx.reply({
-              components: [resultContainer],
+              ...render(
+                <Container accentColor={0x00ff99}>
+                  <TextDisplay content="# :tada: Nowi zwycięzcy:" />
+                  <Separator spacing={SeparatorSpacingSize.Large} />
+                  <TextDisplay content={results.join("\n")} />
+                </Container>,
+              ),
               allowedMentions: { users: participants.map((p) => p.userId) },
-              flags: MessageFlags.IsComponentsV2,
             });
           }),
       )

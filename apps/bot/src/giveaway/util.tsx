@@ -1,3 +1,4 @@
+/** @jsxImportSource @hashira/jsx */
 import {
   ActionRowBuilder,
   type APIContainerComponent,
@@ -8,7 +9,6 @@ import {
   ComponentType,
   ContainerBuilder,
   type Message,
-  MessageFlags,
   messageLink,
   SeparatorSpacingSize,
   TextDisplayBuilder,
@@ -24,6 +24,7 @@ import type {
   GiveawayReward,
   GiveawayWinner,
 } from "@hashira/db";
+import { Container, render, Separator, TextDisplay } from "@hashira/jsx";
 
 import type { base } from "../base";
 import { getPendingGiveawayRewards } from "./rewardHandout";
@@ -328,24 +329,24 @@ export async function endGiveaway(message: Message<boolean>, prisma: ExtendedPri
     return `> ${reward} ${mention}`;
   });
 
-  const resultContainer = new ContainerBuilder()
-    .setAccentColor(0x00ff99)
-    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway"))
-    .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
-    .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
-
   const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
   const hasPendingRewards =
     pending.currency.length > 0 || pending.items.length > 0 || pending.mutes.length > 0;
 
-  const resultComponents = hasPendingRewards
-    ? [resultContainer, createRewardButtonRow(giveaway.id)]
-    : [resultContainer];
+  const resultContent = (
+    <>
+      <Container accentColor={0x00ff99}>
+        <TextDisplay content="# :tada: Wyniki giveaway" />
+        <Separator spacing={SeparatorSpacingSize.Large} />
+        <TextDisplay content={results.join("\n")} />
+      </Container>
+      {hasPendingRewards && createRewardButtonRow(giveaway.id)}
+    </>
+  );
 
   const resultsMessage = await message.reply({
-    components: resultComponents,
+    ...render(resultContent),
     allowedMentions: { users: winningUsers.slice(0, 100).map((p) => p.userId) },
-    flags: MessageFlags.IsComponentsV2,
   });
 
   // Disable giveaway buttons and link the footer to the results message

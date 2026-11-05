@@ -1,7 +1,9 @@
-import { EmbedBuilder, messageLink, type Guild, type User } from "discord.js";
+/** @jsxImportSource @hashira/jsx */
+import { messageLink, type Guild, type User } from "discord.js";
 
 import type { ExtractContext } from "@hashira/core";
 import type { Giveaway, GiveawayReward } from "@hashira/db";
+import { Br, Container, H3, render, Subtext, TextDisplay } from "@hashira/jsx";
 
 import type { base } from "../base";
 import { fetchMembers } from "../util/fetchMembers";
@@ -10,7 +12,7 @@ import { distributeEconomyReward, distributeMuteReward } from "./rewardDistribut
 
 type BaseContext = ExtractContext<typeof base>;
 
-export type RewardDistributionReply = string | { embeds: EmbedBuilder[] };
+export type RewardDistributionReply = ReturnType<typeof render>;
 
 export type EconomyRewardType = "currency" | "item";
 
@@ -29,12 +31,6 @@ type RewardWithWinners = GiveawayReward & { winners: { userId: string }[] };
 
 type RewardDistributionRow = { rewardId: number; userId: string };
 
-/**
- * Groups rewards that still have unhanded winners into currency, items and
- * mutes. Rewards that were already fully distributed (all winners have a
- * `GiveawayRewardDistribution` row) are omitted. Rewards with unknown type and
- * winners without a reward type are skipped as well.
- */
 export const groupPendingRewards = (
   rewards: RewardWithWinners[],
   distributions: RewardDistributionRow[],
@@ -77,10 +73,6 @@ export const groupPendingRewards = (
   return result;
 };
 
-/**
- * Fetches all giveaway rewards with their winners and marks which users already
- * received them, so the menu only lists rewards that still await distribution.
- */
 export const getPendingGiveawayRewards = async (
   prisma: BaseContext["prisma"],
   giveawayId: number,
@@ -108,12 +100,6 @@ type DistributeEconomyRewardsOptions = {
   reply: (content: RewardDistributionReply) => Promise<unknown>;
 };
 
-/**
- * Hands out currency and/or item rewards of an ended giveaway to the winners
- * that have not received them yet. Idempotent thanks to
- * `GiveawayRewardDistribution` rows created for each granted user. Every winner
- * gets a DM with the list of granted rewards and a link to the giveaway message.
- */
 export const distributeGiveawayEconomyRewards = async ({
   prisma,
   economyLog,
@@ -189,20 +175,32 @@ export const distributeGiveawayEconomyRewards = async ({
     return;
   }
 
-  await reply({
-    embeds: [
-      new EmbedBuilder()
-        .setTitle("Rozdano nagrody")
-        .setDescription(
-          [
-            ...lines,
-            ...(outcomeless.length > 0 ? ["", ...outcomeless.map((line) => `⚠️ ${line}`)] : []),
-          ].join("\n"),
-        )
-        .setFooter({ text: `Giveaway #${giveaway.id}` })
-        .setURL(messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)),
-    ],
-  });
+  await reply(
+    render(
+      <Container>
+        <TextDisplay>
+          <H3>Rozdano nagrody</H3> <Br />
+          {lines.map((line, i) => (
+            <>
+              {i > 0 && <Br />}
+              {line}
+            </>
+          ))}
+          {outcomeless.length > 0 && <Br />}
+          {outcomeless.map((line, i) => (
+            <>
+              {i > 0 && <Br />}
+              ⚠️ {line}
+            </>
+          ))}
+          <Br />
+          <Subtext>
+            Giveaway #{giveaway.id} {giveawayLink}
+          </Subtext>
+        </TextDisplay>
+      </Container>,
+    ),
+  );
 };
 
 type DistributeMuteRewardsOptions = {
@@ -215,10 +213,6 @@ type DistributeMuteRewardsOptions = {
   reply: (content: RewardDistributionReply) => Promise<unknown>;
 };
 
-/**
- * Applies all mute rewards of an ended giveaway to the winners that are not
- * muted yet. Idempotent per `GiveawayRewardDistribution` row.
- */
 export const distributeGiveawayMutes = async ({
   prisma,
   messageQueue,
@@ -261,13 +255,31 @@ export const distributeGiveawayMutes = async ({
     return;
   }
 
-  await reply({
-    embeds: [
-      new EmbedBuilder()
-        .setTitle("Rozdano nagrody")
-        .setDescription([...lines, ...(notices.length > 0 ? ["", ...notices] : [])].join("\n"))
-        .setFooter({ text: `Giveaway #${giveaway.id}` })
-        .setURL(messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)),
-    ],
-  });
+  await reply(
+    render(
+      <Container>
+        <TextDisplay>
+          <H3>Rozdano nagrody</H3>
+          {lines.map((line, i) => (
+            <>
+              {i > 0 && <Br />}
+              {line}
+            </>
+          ))}
+          {notices.length > 0 && <Br />}
+          {notices.map((line, i) => (
+            <>
+              {i > 0 && <Br />}
+              {line}
+            </>
+          ))}
+          <Br />
+          <Subtext>
+            Giveaway #{giveaway.id}{" "}
+            {messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}
+          </Subtext>
+        </TextDisplay>
+      </Container>,
+    ),
+  );
 };
