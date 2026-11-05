@@ -1,8 +1,8 @@
+/** @jsxImportSource @hashira/jsx */
 import { addSeconds, type Duration } from "date-fns";
 import {
   type APIContainerComponent,
   AttachmentBuilder,
-  ButtonBuilder,
   ButtonStyle,
   ComponentType,
   ContainerBuilder,
@@ -16,15 +16,25 @@ import { round, shuffle } from "es-toolkit";
 
 import { Hashira } from "@hashira/core";
 import type { GiveawayParticipant } from "@hashira/db";
-import { Container, render, Separator, TextDisplay } from "@hashira/jsx";
+import {
+  ActionRow,
+  Button,
+  Container,
+  MediaGallery,
+  MediaGalleryItem,
+  render,
+  Separator,
+  TextDisplay,
+} from "@hashira/jsx";
 
 import { base } from "../base";
+import { STRATA_CZASU } from "../specializedConstants";
 import { durationToSeconds, formatDuration, parseDuration } from "../util/duration";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
 import { waitForButtonClick } from "../util/singleUseButton";
 import { handleGiveawayJoinButton } from "./handlers/joinHandler";
-import { handleGiveawayRewardButton } from "./handlers/rewardHandler";
+import { canDistributeType, handleGiveawayRewardButton } from "./handlers/rewardHandler";
 import { analyzeRewards, formatRewardPreview, toPersistedReward } from "./rewardAnalyzer";
 import {
   distributeGiveawayEconomyRewards,
@@ -34,7 +44,6 @@ import {
 import {
   autocompleteGiveawayId,
   autocompleteGiveawayIdForStaff,
-  createGiveawayButtonRow,
   formatBanner,
   getStaticBanner,
   GiveawayBannerRatio,
@@ -140,95 +149,67 @@ export const giveaway = new Hashira({ name: "giveaway" })
               }
 
               const parsedRewards: ParsedReward[] = parseRewards(rewards);
-
               const analyzedRewards = await analyzeRewards(parsedRewards, prisma, itx.guildId);
 
               const parsedTime: Duration | null = parseDuration(duration);
-
               if (parsedTime === null) {
                 return await errorFollowUp(itx, "Podano nieprawidłowy czas");
               }
 
               const durationSeconds = durationToSeconds(parsedTime);
-
               const endTime = addSeconds(itx.createdAt, durationSeconds);
-
               const totalRewards = parsedRewards.reduce((sum, r) => sum + r.amount, 0);
 
-              const confirmButton = new ButtonBuilder()
-                .setCustomId("confirm")
-                .setLabel("Potwierdź poprawność")
-                .setStyle(ButtonStyle.Secondary);
-
-              const confirmFixedButton = new ButtonBuilder()
-                .setCustomId("confirm-fixed")
-                .setLabel("Potwierdź z poprawkami")
-                .setStyle(ButtonStyle.Secondary);
-
-              const messageContainer = new ContainerBuilder();
-
-              if (ratio !== GiveawayBannerRatio.None) {
-                messageContainer.addMediaGalleryComponents((mg) =>
-                  mg.addItems((mgi) =>
-                    mgi
-                      .setDescription(`Banner for giveaway: ${title || "Giveaway"}`)
-                      .setURL(imageURL),
-                  ),
-                );
-              }
-
               const roleRestriction: string[] = [];
-
               if (whitelist || blacklist) roleRestriction.push("### Restrykcje:");
               if (whitelist) roleRestriction.push(`-# Wymagane role: ${whitelist}`);
               if (blacklist) roleRestriction.push(`-# Zakazane role: ${blacklist}`);
 
-              messageContainer
-                .setAccentColor(0x0099ff)
-                .addTextDisplayComponents((td) => td.setContent(`# ${title || "Giveaway"}`))
-                .addTextDisplayComponents((td) =>
-                  td.setContent(`-# Host: ${itx.user}\n${roleRestriction.join("\n")}`),
-                )
-                .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
-                .addTextDisplayComponents((td) =>
-                  td
-                    .setContent(`${analyzedRewards.map(formatRewardPreview).join("\n")}\n`)
-                    .setId(3),
-                )
-                .addTextDisplayComponents((td) =>
-                  td.setContent(`Koniec ${time(endTime, "R")}`).setId(4),
-                )
-                .addSeparatorComponents((s) => s)
-                .addTextDisplayComponents((td) =>
-                  td
-                    .setContent(`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`)
-                    .setId(1),
-                )
-                .addTextDisplayComponents((td) =>
-                  td.setContent("Potwierdź jeśli wszystko się zgadza w giveawayu.").setId(99),
-                )
-                .addTextDisplayComponents((td) =>
-                  td
-                    .setContent(
-                      "-# ✅ oznacza że nagroda zostanie nadana automatycznie po wpisaniu komendy `/givek-rozdaj-...`,\n-# ❌ oznacza że nagroda nie została rozpoznana i nie zostanie automatycznie rozdana",
-                    )
-                    .setId(98),
-                )
-                .addActionRowComponents((ar) =>
-                  ar.setComponents([confirmButton, confirmFixedButton]),
-                );
-
-              const responseConfirm = await itx.editReply({
-                components: [messageContainer],
-                files: files,
-                flags: [MessageFlags.IsComponentsV2],
-              });
-
-              // Removes confirmation components
-              const confirmIndex = messageContainer.components.findIndex(
-                (c) => c.data?.id === 99 && c.data?.type === ComponentType.TextDisplay,
+              const confirmationContent = (
+                <Container accentColor={0x0099ff}>
+                  {ratio !== GiveawayBannerRatio.None && (
+                    <MediaGallery>
+                      <MediaGalleryItem
+                        url={imageURL}
+                        description={`Banner for giveaway: ${title || "Giveaway"}`}
+                      />
+                    </MediaGallery>
+                  )}
+                  <TextDisplay content={`# ${title || "Giveaway"}`} />
+                  <TextDisplay content={`-# Host: ${itx.user}\n${roleRestriction.join("\n")}`} />
+                  <Separator spacing={SeparatorSpacingSize.Large} />
+                  <TextDisplay
+                    content={`${analyzedRewards.map(formatRewardPreview).join("\n")}\n`}
+                  />
+                  <TextDisplay content={`Koniec ${time(endTime, "R")}`} />
+                  <Separator />
+                  <TextDisplay
+                    content={`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`}
+                  />
+                  <TextDisplay content="Potwierdź jeśli wszystko się zgadza w giveawayu." />
+                  <TextDisplay content="-# ✅ oznacza że nagroda zostanie nadana automatycznie po wpisaniu komendy `/givek-rozdaj-...`" />
+                  <TextDisplay content="-# ❌ oznacza że nagroda nie została rozpoznana i nie zostanie automatycznie rozdana" />
+                  <ActionRow>
+                    <Button
+                      customId="confirm"
+                      label="Potwierdź poprawność"
+                      style={ButtonStyle.Secondary}
+                    />
+                    <Button
+                      customId="confirm-fixed"
+                      label="Potwierdź z poprawkami"
+                      style={ButtonStyle.Secondary}
+                    />
+                  </ActionRow>
+                </Container>
               );
-              messageContainer.spliceComponents(confirmIndex, 2);
+
+              const confirmationRender = render(confirmationContent);
+              const responseConfirm = await itx.editReply({
+                components: confirmationRender.components,
+                files: [...confirmationRender.files, ...files],
+                flags: confirmationRender.flags,
+              });
 
               if (!responseConfirm) {
                 throw new Error("Failed to receive response from interaction reply");
@@ -243,53 +224,55 @@ export const giveaway = new Hashira({ name: "giveaway" })
 
               if (!confirmation.interaction) return;
 
-              // Determine which button was clicked:
-              // - "Potwierdź poprawność" (confirm): the moderator confirms the
-              //   preview is correct — parse/structure the rewards but keep the
-              //   original display text.
-              // - "Potwierdź z poprawkami" (confirm-fixed): the moderator
-              //   accepts the analyzer's corrected text (e.g. "1,5k pkt" →
-              //   "1500 pkt" mute "3d").
               const useFixedText = confirmation.interaction.customId === "confirm-fixed";
-
               const paidRewards = analyzedRewards.map((reward) =>
                 toPersistedReward(reward, useFixedText),
               );
 
               itx.deleteReply();
 
-              // Remove confirmation UI: buttons, "Potwierdź" text, and
-              // the checkmark explanation footer — they must not appear
-              // on the published giveaway message.
-              const removeById = (id: number) => {
-                const idx = messageContainer.components.findIndex((c) => c.data?.id === id);
-                if (idx !== -1) messageContainer.spliceComponents(idx, 1);
-              };
-              removeById(99); // "Potwierdź jeśli wszystko się zgadza"
-              removeById(98); // checkmark explanation
-              const actionRowIdx = messageContainer.components.findIndex(
-                (c) => c.data?.type === ComponentType.ActionRow,
+              const giveawayContent = (
+                <Container accentColor={0x0099ff}>
+                  {ratio !== GiveawayBannerRatio.None && (
+                    <MediaGallery>
+                      <MediaGalleryItem
+                        url={imageURL}
+                        description={`Banner for giveaway: ${title || "Giveaway"}`}
+                      />
+                    </MediaGallery>
+                  )}
+                  <TextDisplay content={`# ${title || "Giveaway"}`} />
+                  <TextDisplay content={`-# Host: ${itx.user}\n${roleRestriction.join("\n")}`} />
+                  <Separator spacing={SeparatorSpacingSize.Large} />
+                  <TextDisplay
+                    content={`${paidRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`}
+                  />
+                  <TextDisplay content={`Koniec ${time(endTime, "R")}`} />
+                  <Separator />
+                  <TextDisplay
+                    content={`-# Uczestnicy: 0 | Łącznie nagród: ${totalRewards} | Id: ?`}
+                  />
+                  <ActionRow>
+                    <Button
+                      customId="giveaway-option:join"
+                      label="Dołącz"
+                      style={ButtonStyle.Primary}
+                    />
+                    <Button
+                      customId="giveaway-option:list"
+                      label="Lista uczestników"
+                      style={ButtonStyle.Secondary}
+                    />
+                  </ActionRow>
+                </Container>
               );
-              if (actionRowIdx !== -1) {
-                messageContainer.spliceComponents(actionRowIdx, 1);
-              }
 
-              const rewardsIndex = messageContainer.components.findIndex(
-                (c) => c.data?.id === 3 && c.data?.type === ComponentType.TextDisplay,
-              );
-              if (rewardsIndex !== -1) {
-                messageContainer.components[rewardsIndex] = new TextDisplayBuilder().setContent(
-                  `${paidRewards.map((r) => `${r.amount}x ${r.reward}`).join("\n")}\n`,
-                );
-              }
-
-              messageContainer.addActionRowComponents(createGiveawayButtonRow(false).setId(2));
-
+              const giveawayRender = render(giveawayContent);
               const response = await itx.followUp({
-                components: [messageContainer],
-                files: files,
+                components: giveawayRender.components,
+                files: [...giveawayRender.files, ...files],
                 withResponse: true,
-                flags: MessageFlags.IsComponentsV2,
+                flags: giveawayRender.flags,
               });
 
               if (!response) {
@@ -372,7 +355,6 @@ export const giveaway = new Hashira({ name: "giveaway" })
             }
 
             const durationSeconds = durationToSeconds(parsedTime);
-
             const newEndTime = addSeconds(giveaway.endAt, durationSeconds);
 
             const container = new ContainerBuilder(
@@ -380,7 +362,10 @@ export const giveaway = new Hashira({ name: "giveaway" })
             );
 
             const timeIndex = container.components.findIndex(
-              (c) => c.data?.id === 4 && c.data?.type === ComponentType.TextDisplay,
+              (c) =>
+                c.data?.type === ComponentType.TextDisplay &&
+                typeof c.data?.content === "string" &&
+                c.data.content.startsWith("Koniec "),
             );
 
             if (timeIndex === -1) return;
@@ -642,6 +627,15 @@ export const giveaway = new Hashira({ name: "giveaway" })
         if (!giveaway) {
           return await errorFollowUp(itx, "Nie znaleziono giveawaya o takim id.");
         }
+
+        const isModerator = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
+        const hasKadra = itx.member.roles.cache.has(STRATA_CZASU.KADRA_ROLE);
+        const isAuthor = giveaway.authorId === itx.user.id;
+
+        if (!canDistributeType("currency", isModerator, hasKadra, isAuthor)) {
+          return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z giveawayu.");
+        }
+
         if (giveaway.endAt > itx.createdAt) {
           return await errorFollowUp(
             itx,
@@ -763,7 +757,6 @@ export const giveaway = new Hashira({ name: "giveaway" })
     async ({ prisma, economyLog, messageQueue, moderationLog }, itx) => {
       if (!itx.inCachedGuild()) return;
 
-      // giveaway-reward -> ephemeral menu / distribution (handlers/rewardHandler.ts)
       if (itx.customId.startsWith("giveaway-reward")) {
         await handleGiveawayRewardButton({
           prisma,
@@ -775,7 +768,6 @@ export const giveaway = new Hashira({ name: "giveaway" })
         return;
       }
 
-      // giveaway-option:join / giveaway-option:list / leave_giveaway (handlers/joinHandler.ts)
       if (itx.customId.startsWith("giveaway-option:")) {
         await handleGiveawayJoinButton({ prisma, itx });
         return;

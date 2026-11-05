@@ -1,5 +1,7 @@
 import { type ButtonInteraction } from "discord.js";
 
+import { render } from "@hashira/jsx";
+
 import { ensureUserExists } from "../../util/ensureUsersExist";
 import { waitForButtonClick } from "../../util/singleUseButton";
 import type { BaseContext } from "../types";
@@ -130,7 +132,7 @@ export const handleGiveawayJoinButton = async ({
 
   const joinResponse = await itx.followUp({
     content: returnMsg,
-    components: [createLeaveButtonRow()],
+    components: render(createLeaveButtonRow()).components,
   });
 
   if (!joinResponse) {

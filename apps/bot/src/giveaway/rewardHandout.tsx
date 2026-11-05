@@ -259,7 +259,7 @@ export const distributeGiveawayMutes = async ({
     render(
       <Container>
         <TextDisplay>
-          <H3>Rozdano nagrody</H3>
+          <H3>Rozdano nagrody</H3> <Br />
           {lines.map((line, i) => (
             <>
               {i > 0 && <Br />}

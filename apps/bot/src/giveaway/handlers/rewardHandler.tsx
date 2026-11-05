@@ -23,7 +23,7 @@ const REWARD_DISTRIBUTION_TYPES: Record<string, readonly EconomyRewardType[]> = 
   items: ["item"],
 };
 
-const canDistributeType = (
+export const canDistributeType = (
   type: "currency" | "items" | "mutes",
   isModerator: boolean,
   hasKadra: boolean,
@@ -86,7 +86,7 @@ export const handleGiveawayRewardButton = async ({
     // The menu itself stays ephemeral, but the result is published in the
     // giveaway channel so everyone can see that the rewards were handed out.
     const replyPublicly = async (content: RewardDistributionReply) => {
-      await itx.editReply("Nagrody zostały rozdane — szczegóły opublikowano na kanale.");
+      await itx.editReply("Nagrody zostały rozdane - szczegóły opublikowano na kanale.");
       const channel = await itx.guild.channels.fetch(giveaway.channelId);
       if (!channel?.isSendable()) {
         throw new Error(`Channel ${giveaway.channelId} is not sendable or not found.`);
@@ -211,6 +211,9 @@ export const handleGiveawayRewardButton = async ({
   const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
   const menuContent = buildRewardMenuContent(pending);
 
+  const allGiven =
+    pending.currency.length === 0 && pending.items.length === 0 && pending.mutes.length === 0;
+
   const menuRow = createRewardMenuRow({
     canDistributeCurrency,
     canDistributeItems,
@@ -221,16 +224,20 @@ export const handleGiveawayRewardButton = async ({
     giveawayId: giveaway.id,
   });
   if (!menuRow) {
-    const remainingComponents = itx.message.components.filter((c) => {
-      if (c.type !== ComponentType.ActionRow) return true;
-      return !c.components.some(
-        (btn) =>
-          btn.type === ComponentType.Button &&
-          btn.customId?.startsWith(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID),
-      );
-    });
-    await itx.message.edit({ components: remainingComponents });
-    await itx.editReply("Wszystkie nagrody zostały już rozdane.");
+    if (allGiven) {
+      const remainingComponents = itx.message.components.filter((c) => {
+        if (c.type !== ComponentType.ActionRow) return true;
+        return !c.components.some(
+          (btn) =>
+            btn.type === ComponentType.Button &&
+            btn.customId?.startsWith(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID),
+        );
+      });
+      await itx.message.edit({ components: remainingComponents });
+      await itx.editReply("Wszystkie nagrody zostały już rozdane.");
+    } else {
+      await itx.editReply("Nie masz permisji do rozdania pozostałych nagród.");
+    }
     return;
   }
 

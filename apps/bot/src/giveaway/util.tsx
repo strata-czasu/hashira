@@ -24,7 +24,7 @@ import type {
   GiveawayReward,
   GiveawayWinner,
 } from "@hashira/db";
-import { Container, render, Separator, TextDisplay } from "@hashira/jsx";
+import { ActionRow, Button, Container, render, Separator, TextDisplay } from "@hashira/jsx";
 
 import type { base } from "../base";
 import { getPendingGiveawayRewards } from "./rewardHandout";
@@ -37,32 +37,34 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-function createGiveawayButtonRow(disabled: boolean) {
-  const joinButton = new ButtonBuilder()
-    .setCustomId("giveaway-option:join")
-    .setLabel("Dołącz")
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(disabled);
-
-  const listButton = new ButtonBuilder()
-    .setCustomId("giveaway-option:list")
-    .setLabel("Lista uczestników")
-    .setStyle(ButtonStyle.Secondary)
-    .setDisabled(disabled);
-
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton, listButton);
+export function createGiveawayButtonRow(disabled: boolean) {
+  return (
+    <ActionRow>
+      <Button
+        customId="giveaway-option:join"
+        label="Dołącz"
+        style={ButtonStyle.Primary}
+        disabled={disabled}
+      />
+      <Button
+        customId="giveaway-option:list"
+        label="Lista uczestników"
+        style={ButtonStyle.Secondary}
+        disabled={disabled}
+      />
+    </ActionRow>
+  );
 }
 
-function createLeaveButtonRow() {
-  const leaveButton = new ButtonBuilder()
-    .setCustomId("leave_giveaway")
-    .setLabel("Wyjdź")
-    .setStyle(ButtonStyle.Danger);
-
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+export function createLeaveButtonRow() {
+  return (
+    <ActionRow>
+      <Button customId="leave_giveaway" label="Wyjdź" style={ButtonStyle.Danger} />
+    </ActionRow>
+  );
 }
 
-export { createGiveawayButtonRow, createLeaveButtonRow, GiveawayBannerRatio };
+export { GiveawayBannerRatio };
 
 export type ParsedReward = {
   amount: number;
@@ -246,7 +248,10 @@ export async function updateGiveaway(
     const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
     const footerIndex = container.components.findIndex(
-      (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+      (c) =>
+        c.data?.type === ComponentType.TextDisplay &&
+        typeof c.data?.content === "string" &&
+        c.data.content.startsWith("-# Uczestnicy:"),
     );
 
     if (footerIndex === -1) return;
@@ -353,19 +358,23 @@ export async function endGiveaway(message: Message<boolean>, prisma: ExtendedPri
   const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
   const actionRowIndex = container.components.findIndex(
-    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
+    (c) => c.data?.type === ComponentType.ActionRow,
   );
 
   if (actionRowIndex !== -1) {
-    const newRow = new ActionRowBuilder<ButtonBuilder>({
-      ...container.components[actionRowIndex]?.data,
-      components: createGiveawayButtonRow(true).components,
-    });
-    container.components[actionRowIndex] = newRow;
+    const disabledRow = render(createGiveawayButtonRow(true)).components[0] as
+      | ActionRowBuilder<ButtonBuilder>
+      | undefined;
+    if (disabledRow) {
+      container.components[actionRowIndex] = disabledRow;
+    }
   }
 
   const footerIndex = container.components.findIndex(
-    (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+    (c) =>
+      c.data?.type === ComponentType.TextDisplay &&
+      typeof c.data?.content === "string" &&
+      c.data.content.startsWith("-# Uczestnicy:"),
   );
 
   if (footerIndex !== -1) {
