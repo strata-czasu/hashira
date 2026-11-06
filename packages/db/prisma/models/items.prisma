@@ -21,6 +21,7 @@ model Item {
   badge           Badge?
   tintColor       TintColor?
   profileSettings ProfileSettings[]
+  giveawayRewards GiveawayReward[]
 
   @@map("item")
 }
