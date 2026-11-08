@@ -78,29 +78,29 @@ export const economyLog = new Hashira({ name: "economyLog" }).const(
         { timestamp },
         { moderator, toUsers, amount, reason, currencySymbol }: CurrencyAddData,
       ) => {
-        const isRemoval = amount < 0;
-        const embed = getLogMessageEmbed(moderator, timestamp).setColor(
-          isRemoval ? "Red" : "Green",
-        );
-        const absAmount = Math.abs(amount);
-        const formattedAmount = formatBalance(absAmount, currencySymbol);
-        const verb = isRemoval ? "Odejmuje" : "Dodaje";
-        const preposition = isRemoval ? "od" : "dla";
+        const embed = getLogMessageEmbed(moderator, timestamp).setColor("Green");
+        const formattedAmount = formatBalance(amount, currencySymbol);
 
         const lines: string[] = [];
         if (toUsers.length === 1) {
           const [user] = toUsers;
           if (!user) throw new Error("Invalid state: user is undefined");
-          lines.push(`${verb} ${formattedAmount} ${preposition} ${userMention(user.id)}`);
+          lines.push(`Dodaje ${formattedAmount} dla ${userMention(user.id)}`);
         } else {
           const userMentions = toUsers.map((user) => user.toString()).join(", ");
-          const totalAmount = absAmount * toUsers.length;
+          const totalAmount = amount * toUsers.length;
           lines.push(
-            `${verb} ${formattedAmount} ${preposition} ${toUsers.length} ${pluralizers.genitiveUsers(
+            `Dodaje ${formattedAmount} ${toUsers.length} ${pluralizers.genitiveUsers(
               toUsers.length,
             )}: ${userMentions}`,
             `**Razem**: ${formatBalance(totalAmount, currencySymbol)}`,
           );
+        }
+
+        if (amount >= 0) {
+          embed.setColor("Green");
+        } else {
+          embed.setColor("Red");
         }
 
         if (reason !== null) {

@@ -402,11 +402,9 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           await ensureUsersExist(prisma, [...memberIds, itx.user.id]);
           const currency = await getRequiredGuildDefaultCurrency(prisma, itx.guildId);
 
-          const isRemoval = amount < 0;
-          const absAmount = Math.abs(amount);
-          const totalAmount = absAmount * memberIds.length;
+          const totalAmount = Math.abs(amount) * memberIds.length;
           const confirmationLines = [
-            `Czy na pewno chcesz ${isRemoval ? "odjąć" : "dodać"} ${formatBalance(absAmount, currency.symbol)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.genitiveUsers(memberIds.length)} (łącznie ${formatBalance(totalAmount, currency.symbol)})?`,
+            `Czy na pewno chcesz dodać ${formatBalance(amount, currency.symbol)} każdemu z ${bold(memberIds.length.toString())} ${pluralizers.genitiveUsers(memberIds.length)} (łącznie ${formatBalance(totalAmount, currency.symbol)})?`,
           ];
           if (reason) {
             confirmationLines.push(`Powód: ${italic(reason)}`);
@@ -416,7 +414,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             { send: itx.editReply.bind(itx) },
             <Container>
               <TextDisplay>
-                <H3>{isRemoval ? "Odjęcie punktów" : "Dodanie punktów"}</H3>
+                <H3>Dodanie punktów</H3>
                 {"\n"}
                 {confirmationLines.join("\n")}
               </TextDisplay>
@@ -427,15 +425,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
           );
 
           if (!confirmed) {
-            await itx.editReply(
-              render(
-                <TextDisplay
-                  content={
-                    isRemoval ? "Anulowano odejmowanie punktów." : "Anulowano dodawanie punktów."
-                  }
-                />,
-              ),
-            );
+            await itx.editReply(render(<TextDisplay content="Anulowano dodawanie punktów." />));
             return;
           }
 
@@ -464,7 +454,7 @@ export const strataCurrency = new Hashira({ name: "strata-currency" })
             await itx.editReply(
               render(
                 <BulkOperationReport
-                  heading={isRemoval ? "Odjęto punkty" : "Dodano punkty"}
+                  heading="Dodano punkty"
                   amountPerUser={amount}
                   recipientMentions={recipientMentions}
                   reason={reason}
