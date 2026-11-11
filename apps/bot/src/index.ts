@@ -14,7 +14,6 @@ import { dmVoting } from "./dmVoting";
 import { economy } from "./economy";
 import { emojiCounting } from "./emojiCounting/emojiCounting";
 import { halloween2025 } from "./events/halloween2025";
-import { halloween2026Tot } from "./events/halloween2026-tot";
 import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
@@ -79,7 +78,6 @@ export const bot = new Hashira({ name: "bot" })
   .use(ranking)
   .use(moderatorLeave)
   .use(halloween2025)
-  .use(halloween2026Tot)
   .handle("clientReady", async () => {
     if (env.NODE_ENV) {
       console.log(`Bot is ready in ${Bun.env.NODE_ENV} mode`);
