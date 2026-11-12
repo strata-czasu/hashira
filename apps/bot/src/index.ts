@@ -2,7 +2,7 @@ import { PrismaInstrumentation } from "@prisma/instrumentation";
 import * as Sentry from "@sentry/bun";
 import { GatewayIntentBits } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 import env from "@hashira/env";
 
 import { ai } from "./ai";
@@ -35,17 +35,20 @@ import { userActivity } from "./userActivity";
 import { userComplaint } from "./userComplaint";
 import { userTransfer } from "./userTransfer";
 
-if (env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: env.SENTRY_DSN,
-    tracesSampleRate: 0.1,
-    integrations: [
-      Sentry.prismaIntegration({
-        // Override the default instrumentation that Sentry uses
-        prismaInstrumentation: new PrismaInstrumentation(),
-      }),
-    ],
-  });
+const sentryDsn = env.SENTRY_DSN;
+if (sentryDsn) {
+  persistent("sentry", () =>
+    Sentry.init({
+      dsn: sentryDsn,
+      tracesSampleRate: 0.1,
+      integrations: [
+        Sentry.prismaIntegration({
+          // Override the default instrumentation that Sentry uses
+          prismaInstrumentation: new PrismaInstrumentation(),
+        }),
+      ],
+    }),
+  );
 }
 
 export const bot = new Hashira({ name: "bot" })
@@ -90,13 +93,22 @@ if (import.meta.main) {
   // TODO: For docker, we need to handle SIGTERM, but because we use 'bun run' we don't
   // get any signals, so we need to figure out how to handle this!
   try {
-    if (env.NODE_ENV === "development") {
-      await bot.registerCommands(env.BOT_TOKEN, env.BOT_DEVELOPER_GUILD_IDS, env.BOT_CLIENT_ID);
-    }
-    await bot.start(env.BOT_TOKEN, {
-      disabledIntents: env.BOT_PRIVILEGED_INTENTS_ENABLED
-        ? []
-        : [GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent],
+    // NOTE: With `bun --hot` this block runs again on every reload. The client and login
+    // happen once, while every reload attaches the re-evaluated handlers to the client.
+    const client = persistent("discordClient", () =>
+      bot.createClient({
+        disabledIntents: env.BOT_PRIVILEGED_INTENTS_ENABLED
+          ? []
+          : [GatewayIntentBits.GuildMembers, GatewayIntentBits.MessageContent],
+      }),
+    );
+    bot.attach(client);
+
+    await persistent("discordLogin", async () => {
+      if (env.NODE_ENV === "development") {
+        await bot.registerCommands(env.BOT_TOKEN, env.BOT_DEVELOPER_GUILD_IDS, env.BOT_CLIENT_ID);
+      }
+      await client.login(env.BOT_TOKEN);
     });
   } catch (e) {
     if (env.SENTRY_DSN) Sentry.captureException(e);

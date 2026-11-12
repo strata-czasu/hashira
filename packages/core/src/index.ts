@@ -3,6 +3,7 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   Client,
+  type ClientEvents,
   ContextMenuCommandBuilder,
   type GatewayIntentBits,
   type Interaction,
@@ -59,6 +60,18 @@ type HashiraSlashCommandOptions =
   | SlashCommandSubcommandBuilder;
 
 type HashiraExceptionHandler = (error: Error, interaction?: Interaction) => void;
+
+type DispatchedListener = (...args: unknown[]) => unknown;
+
+const dispatcherKey = Symbol.for("hashira.dispatcher");
+
+type DispatcherState = {
+  listeners: Map<keyof ClientEvents, DispatchedListener[]>;
+  attached: Set<keyof ClientEvents>;
+  disabledIntents: readonly GatewayIntentBits[];
+};
+
+type DispatchedClient = Client & { [dispatcherKey]?: DispatcherState };
 
 const handleCommandConflict = (
   [a]: [HashiraSlashCommandOptions, unknown],
@@ -440,29 +453,93 @@ class Hashira<
     }
   }
 
-  async loadHandlers(discordClient: Client) {
+  private async handleInteraction(interaction: Interaction) {
+    if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
+    if (interaction.isUserContextMenuCommand()) return this.handleUserContextMenu(interaction);
+    if (interaction.isMessageContextMenuCommand())
+      return this.handleMessageContextMenu(interaction);
+    if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
+  }
+
+  private compileListeners(): Map<keyof ClientEvents, DispatchedListener[]> {
+    const listeners = new Map<keyof ClientEvents, DispatchedListener[]>();
+    const add = (event: keyof ClientEvents, listener: DispatchedListener) =>
+      listeners.set(event, [...(listeners.get(event) ?? []), listener]);
+
     for (const [event, handlers] of this.#methods) {
       for (const rawHandler of handlers) {
         if (isCustomEvent(event)) {
           const [discordEvent, handler] = handleCustomEvent(event, rawHandler);
-          discordClient.on(discordEvent, (...args) =>
+          add(discordEvent, (...args) =>
             (handler as UnknownEventWithContext)(this.context(), ...args),
           );
         } else {
-          discordClient.on(event, (...args) => rawHandler(this.context(), ...args));
+          add(event, (...args) => rawHandler(this.context(), ...args));
         }
       }
     }
 
-    discordClient.on("interactionCreate", async (interaction) => {
-      if (interaction.isChatInputCommand()) return this.handleCommand(interaction);
-      if (interaction.isUserContextMenuCommand()) return this.handleUserContextMenu(interaction);
-      if (interaction.isMessageContextMenuCommand())
-        return this.handleMessageContextMenu(interaction);
-      if (interaction.isAutocomplete()) return this.handleAutocomplete(interaction);
+    add("interactionCreate", (interaction) => this.handleInteraction(interaction as Interaction));
+    add("error", (error) => this.handleException(error as Error));
+
+    return listeners;
+  }
+
+  private requiredIntents(disabledIntents: readonly GatewayIntentBits[]) {
+    return filterDisabledIntents(
+      [...new Set([...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]))],
+      disabledIntents,
+    );
+  }
+
+  createClient(options: HashiraStartOptions = {}) {
+    const disabledIntents = options.disabledIntents ?? [];
+    const discordClient = new Client({
+      intents: this.requiredIntents(disabledIntents),
+      allowedMentions: { repliedUser: true },
+      // NOTE: This is required to receive DMs
+      partials: [Partials.Channel],
+    }) as DispatchedClient;
+
+    discordClient[dispatcherKey] = { listeners: new Map(), attached: new Set(), disabledIntents };
+
+    return discordClient;
+  }
+
+  /**
+   * Route the client's events to this instance.
+   *
+   * Calling it again with another instance replaces the previous handlers without adding
+   * more Discord listeners, which is what hot reload relies on. Each Discord event gets a
+   * single listener that looks up the handlers on every emit, and the dispatcher state is
+   * stored on the client so it survives module re-evaluation.
+   */
+  attach(discordClient: Client) {
+    const client = discordClient as DispatchedClient;
+    const dispatcher = (client[dispatcherKey] ??= {
+      listeners: new Map(),
+      attached: new Set(),
+      disabledIntents: [],
     });
 
-    discordClient.on("error", (error) => this.handleException(error));
+    const missingIntents = this.requiredIntents(dispatcher.disabledIntents).filter(
+      (intent) => !client.options.intents.has(intent),
+    );
+    if (missingIntents.length > 0) {
+      console.warn(
+        `[${this.#name}] Client is missing intents ${missingIntents.join(", ")}, restart to receive these events.`,
+      );
+    }
+
+    dispatcher.listeners = this.compileListeners();
+
+    for (const event of dispatcher.listeners.keys()) {
+      if (dispatcher.attached.has(event)) continue;
+      dispatcher.attached.add(event);
+      client.on(event, (...args) => {
+        for (const listener of dispatcher.listeners.get(event) ?? []) listener(...args);
+      });
+    }
   }
 
   addExceptionHandler(name: string, handler: HashiraExceptionHandler) {
@@ -478,21 +555,13 @@ class Hashira<
   }
 
   async start(token: string, options: HashiraStartOptions = {}) {
-    const intents = filterDisabledIntents(
-      [...new Set([...this.#methods.keys()].flatMap((event) => allEventsToIntent[event]))],
-      options.disabledIntents ?? [],
-    );
+    const discordClient = this.createClient(options);
 
-    const discordClient = new Client({
-      intents,
-      allowedMentions: { repliedUser: true },
-      // NOTE: This is required to receive DMs
-      partials: [Partials.Channel],
-    });
-
-    this.loadHandlers(discordClient);
+    this.attach(discordClient);
 
     await discordClient.login(token);
+
+    return discordClient;
   }
 
   async registerCommands(token: string, guildIds: string[], clientId: string) {
@@ -541,4 +610,5 @@ export { ConfirmationDialog, waitForConfirmation } from "./confirmationDialog";
 export { waitForConfirmationV2 } from "./confirmationDialogV2";
 export { PaginatedView } from "./paginatedView";
 export { Hashira, decoratorInitBase };
+export { persistent } from "@hashira/utils/persistent";
 export type { BaseDecorator, ExtractContext, HashiraContext, HashiraDecorators };

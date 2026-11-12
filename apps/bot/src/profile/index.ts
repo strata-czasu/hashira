@@ -2,7 +2,6 @@ import * as cheerio from "cheerio";
 import { differenceInDays, secondsToHours, sub } from "date-fns";
 import {
   bold,
-  DiscordAPIError,
   EmbedBuilder,
   inlineCode,
   italic,
@@ -21,6 +20,7 @@ import { getDefaultWallet, getWallet } from "../economy/managers/walletManager";
 import { formatBalance, getRequiredGuildDefaultCurrency } from "../economy/util";
 import { REP_CURRENCY } from "../specializedConstants";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
+import { isDiscordAPIError } from "../util/discordErrors";
 import { discordTry } from "../util/discordTry";
 import { ensureUserExists } from "../util/ensureUsersExist";
 import { errorFollowUp } from "../util/errorFollowUp";
@@ -232,7 +232,7 @@ export const profile = new Hashira({ name: "profile" })
                 files: [{ name: `profil-${user.tag}.png`, attachment }],
               });
             } catch (e) {
-              if (!(e instanceof DiscordAPIError)) {
+              if (!isDiscordAPIError(e)) {
                 console.error(`Failed to generate user profile image for user ${user.tag}`, e);
               } else {
                 console.error(

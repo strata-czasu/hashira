@@ -1,8 +1,8 @@
 import { channelMention, type GuildBasedChannel, type Message } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type GuildMessage = Message<true>;
@@ -31,7 +31,7 @@ const getMessageUpdateLogContent = (message: GuildMessage, content: string) => {
 
 export const messageLog = new Hashira({ name: "messageLog" }).const(
   "messageLog",
-  new Logger()
+  new Logger(persistent("logQueue:messageLog", () => new LogQueue()))
     .addMessageType("messageDelete", async ({ timestamp }, { message }: MessageDeleteData) => {
       const embed = getLogMessageEmbed(message.author, timestamp)
         .setDescription(

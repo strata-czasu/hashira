@@ -1,9 +1,11 @@
-import {
+import type {
   DiscordAPIError,
   DiscordjsError,
-  type DiscordjsErrorCodes,
-  type RESTJSONErrorCodes,
+  DiscordjsErrorCodes,
+  RESTJSONErrorCodes,
 } from "discord.js";
+
+import { isDiscordAPIError, isDiscordjsError } from "./discordErrors";
 
 type ErrorCodes = (DiscordjsErrorCodes | RESTJSONErrorCodes)[];
 type DiscordError = DiscordjsError | DiscordAPIError;
@@ -20,10 +22,7 @@ export async function discordTry<T, U>(
   try {
     return await fn();
   } catch (e) {
-    if (
-      (e instanceof DiscordjsError || e instanceof DiscordAPIError) &&
-      codes.some((code) => code === e.code)
-    ) {
+    if ((isDiscordjsError(e) || isDiscordAPIError(e)) && codes.some((code) => code === e.code)) {
       const result = await catchFn(e);
       if (!rethrowAfterCatch) return result;
     }

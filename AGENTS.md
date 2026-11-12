@@ -15,6 +15,7 @@ commands, and views belong in `apps/bot/src/events/birthday2026/`.
 
 - `bun install`: install workspace dependencies.
 - `bun start` / `bun debug`: run the bot normally or with the inspector.
+- `bun dev`: run the bot with hot reload of handlers (see `README.md`).
 - `bun run typecheck`: type-check every workspace.
 - `bun test`: run all Bun tests; database tests require `DATABASE_TEST_URL`.
 - `bun run fix`: lint-fix with oxlint, then format (and sort imports) with oxfmt.
@@ -34,7 +35,8 @@ lint rules (see `.oxlintrc.json`). Use TypeScript, `camelCase` for values/functi
 `PascalCase` for types/classes/components, and descriptive domain filenames such as
 `inventoryService.ts`. Prefer existing managers and transaction helpers over
 feature-local copies. Do not add new Prisma `map:` attributes; existing mappings are
-legacy compatibility.
+legacy compatibility. Create long-lived state (clients, caches, locks, anything started on
+`clientReady`) with `persistent()` from `@hashira/core` so it survives hot reloads.
 
 ## Testing Guidelines
 

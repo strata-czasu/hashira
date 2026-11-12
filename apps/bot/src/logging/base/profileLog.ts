@@ -1,8 +1,8 @@
 import { type GuildMember, inlineCode } from "discord.js";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, persistent } from "@hashira/core";
 
-import { Logger } from "./logger";
+import { Logger, LogQueue } from "./logger";
 import { getLogMessageEmbed } from "./util";
 
 type GuildMemberNicknameUpdateData = {
@@ -13,7 +13,7 @@ type GuildMemberNicknameUpdateData = {
 
 export const profileLog = new Hashira({ name: "profileLog" }).const(
   "profileLog",
-  new Logger().addMessageType(
+  new Logger(persistent("logQueue:profileLog", () => new LogQueue())).addMessageType(
     "guildMemberNicknameUpdate",
     async ({ timestamp }, { member, oldNickname, newNickname }: GuildMemberNicknameUpdateData) => {
       const embed = getLogMessageEmbed(member, timestamp).setColor("Yellow");
