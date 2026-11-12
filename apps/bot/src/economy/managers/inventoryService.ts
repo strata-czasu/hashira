@@ -1,4 +1,4 @@
-import type { PrismaTransaction } from "@hashira/db";
+import type { Item, PrismaTransaction } from "@hashira/db";
 
 import { UserInventoryLimitExceededError } from "../economyError";
 
@@ -23,6 +23,72 @@ export const getItemCountInInventory = async ({
       deletedAt: null,
     },
   });
+};
+
+type GrantItemToUsersOptions = {
+  prisma: PrismaTransaction;
+  item: Item;
+  userIds: string[];
+};
+
+export type GrantItemToUsersResult = {
+  /** Users that received the item. */
+  grantedUserIds: string[];
+  /** Users that were skipped because they already hold the per-user limit. */
+  overLimitUserIds: string[];
+};
+
+/**
+ * Grant an item to multiple users, skipping users that already reached the
+ * item's `perUserLimit`. Mirrors the admin "give item" flow so giveaway payouts
+ * respect the same limit rules as manual grants.
+ */
+export const grantItemToUsers = async ({
+  prisma,
+  item,
+  userIds,
+}: GrantItemToUsersOptions): Promise<GrantItemToUsersResult> => {
+  const uniqueUserIds = [...new Set(userIds)];
+
+  if (item.perUserLimit === null) {
+    await prisma.inventoryItem.createMany({
+      data: uniqueUserIds.map((userId) => ({ itemId: item.id, userId })),
+      skipDuplicates: true,
+    });
+    return { grantedUserIds: uniqueUserIds, overLimitUserIds: [] };
+  }
+
+  const usersHoldingItem = await prisma.inventoryItem.groupBy({
+    by: ["userId"],
+    where: {
+      deletedAt: null,
+      itemId: item.id,
+      userId: { in: uniqueUserIds },
+    },
+    _count: true,
+  });
+  const perUserCounts = new Map(usersHoldingItem.map(({ userId, _count }) => [userId, _count]));
+  const perUserLimit = item.perUserLimit;
+
+  const { grantedUserIds, overLimitUserIds } = uniqueUserIds.reduce<{
+    grantedUserIds: string[];
+    overLimitUserIds: string[];
+  }>(
+    (acc, userId) => {
+      const count = perUserCounts.get(userId) ?? 0;
+      if (count >= perUserLimit) acc.overLimitUserIds.push(userId);
+      else acc.grantedUserIds.push(userId);
+      return acc;
+    },
+    { grantedUserIds: [], overLimitUserIds: [] },
+  );
+
+  await prisma.inventoryItem.createMany({
+    data: grantedUserIds.map((userId) => ({ itemId: item.id, userId })),
+    skipDuplicates: true,
+  });
+
+  return { grantedUserIds, overLimitUserIds };
 };
 
 type ReserveInventoryTotalOptions = {
