@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@hashira/db": "workspace:*",
-    "effect": "4.0.5"
+    "effect": "4.1.7"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.8.0"
