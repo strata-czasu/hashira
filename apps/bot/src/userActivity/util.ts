@@ -1,4 +1,4 @@
-import type { ExtendedPrismaClient, PrismaTransaction } from "@hashira/db";
+import { type ExtendedPrismaClient, Prisma, type PrismaTransaction } from "@hashira/db";
 
 /**
  * Get an user's guild text activity count in messages
@@ -34,12 +34,14 @@ export const getUsersTextActivity = async ({
   userIds,
   since,
   to,
+  excludeChannelIds = [],
 }: {
   prisma: ExtendedPrismaClient | PrismaTransaction;
   guildId: string;
   userIds: string[];
   since?: Date;
   to?: Date;
+  excludeChannelIds?: string[];
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) {
     return new Map();
@@ -55,6 +57,7 @@ export const getUsersTextActivity = async ({
         ...(since ? { gte: since } : {}),
         ...(to ? { lte: to } : {}),
       },
+      ...(excludeChannelIds.length > 0 ? { channelId: { notIn: excludeChannelIds } } : {}),
     },
     _count: { id: true },
   });
@@ -113,12 +116,14 @@ export const getUsersVoiceActivity = async ({
   userIds,
   since,
   to,
+  excludeChannelIds = [],
 }: {
   prisma: ExtendedPrismaClient | PrismaTransaction;
   guildId: string;
   userIds: string[];
   since?: Date;
   to?: Date;
+  excludeChannelIds?: string[];
 }): Promise<Map<string, number>> => {
   if (userIds.length === 0) return new Map();
 
@@ -133,8 +138,9 @@ export const getUsersVoiceActivity = async ({
       AND vst."isAlone" = false
     WHERE vs."userId" = ANY(${userIds})
       AND vs."guildId" = ${guildId}
-      ${since ? `AND vs."joinedAt" >= ${since}` : ""}
-      ${to ? `AND vs."joinedAt" <= ${to}` : ""}
+      ${since ? Prisma.sql`AND vs."joinedAt" >= ${since}` : Prisma.empty}
+      ${to ? Prisma.sql`AND vs."joinedAt" <= ${to}` : Prisma.empty}
+      ${excludeChannelIds.length > 0 ? Prisma.sql`AND vs."channelId" <> ALL(${excludeChannelIds})` : Prisma.empty}
     GROUP BY vs."userId"
   `;
 
