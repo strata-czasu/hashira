@@ -17,6 +17,7 @@ import { fish } from "./fish";
 import { giveaway } from "./giveaway/giveaway";
 import { guildAvailability } from "./guildAvailability";
 import { inviteManagement } from "./inviteManagement";
+import { legacyLevel } from "./legacyLevel";
 import { discordEventLogging } from "./logging/discordEventLogging";
 import { massDM } from "./massDM";
 import { miscellaneous } from "./miscellaneous";
@@ -66,6 +67,7 @@ export const bot = new Hashira({ name: "bot" })
   .use(ai)
   .use(stickyMessage)
   .use(userActivity)
+  .use(legacyLevel)
   .use(userComplaint)
   .use(userTransfer)
   .use(inviteManagement)

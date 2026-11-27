@@ -38,6 +38,26 @@ import { isNotOwner } from "./util/isOwner";
 import { parseUserMentions } from "./util/parseUsers";
 import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "./util/privilegedIntents";
 
+const importLegacyExperienceChunk = (
+  prisma: ExtendedPrismaClient,
+  guildId: string,
+  rows: { userId: string; exp: number }[],
+) =>
+  prisma.$transaction(async (tx) => {
+    await ensureUsersExist(
+      tx,
+      rows.map((row) => row.userId),
+    );
+    // Replace rather than add, so importing the same file again changes nothing
+    await tx.$executeRaw`
+      INSERT INTO "LegacyExperience" ("guildId", "userId", "importedExp")
+      SELECT ${guildId}, "userId", "importedExp"
+      FROM unnest(${rows.map((row) => row.userId)}::text[], ${rows.map((row) => row.exp)}::int[])
+        AS rows("userId", "importedExp")
+      ON CONFLICT ("guildId", "userId") DO UPDATE SET "importedExp" = EXCLUDED."importedExp"
+    `;
+  });
+
 type ImportWalletBalanceRow = { userId: string; amount: number };
 
 const importWalletBalancesChunk = async (
@@ -547,6 +567,37 @@ export const miscellaneous = new Hashira({ name: "miscellaneous" })
             }
 
             await itx.editReply(`Imported balances for ${processed} users`);
+          }),
+      )
+      .addCommand("import-legacy-levels", (command) =>
+        command
+          .setDescription("Import experience from the old bot from a CSV")
+          .addAttachment("csv", (option) => option.setDescription("CSV with user_id,guild_id,exp"))
+          .handle(async ({ prisma }, { csv }, itx) => {
+            if (!itx.inCachedGuild()) return;
+            if (csv.size > 10_000_000) return;
+            await itx.deferReply();
+
+            const content = await fetch(csv.url).then((res) => res.text());
+            const rows: { userId: string; exp: number }[] = [];
+            for (const line of content.split(/\r?\n/).slice(1)) {
+              const [userId, guildId, exp] = line.split(",");
+              if (!userId || guildId !== itx.guildId) continue;
+              const amount = Number(exp);
+              if (!Number.isSafeInteger(amount) || amount <= 0) continue;
+              rows.push({ userId, exp: amount });
+            }
+
+            let imported = 0;
+            for (const rowChunk of chunk(rows, 1_000)) {
+              await importLegacyExperienceChunk(prisma, itx.guildId, rowChunk);
+              imported += rowChunk.length;
+              await itx
+                .editReply(`Importing legacy levels... ${imported}/${rows.length}`)
+                .catch(() => {});
+            }
+
+            await itx.editReply(`Imported legacy experience for ${imported} users`);
           }),
       )
       .addCommand("import-inventory", (command) =>

@@ -1,0 +1,34 @@
+/// Experience earned with the old bot, frozen when it stopped tracking.
+/// Activity after that point is counted from UserTextActivity and VoiceSession.
+model LegacyExperience {
+  guildId     String
+  userId      String
+  importedExp Int
+
+  guild Guild @relation(fields: [guildId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@id([guildId, userId])
+}
+
+/// A member holds only the role of the highest tier they reached
+model LegacyLevelRole {
+  guildId  String
+  minLevel Int
+  roleId   String
+
+  guild Guild @relation(fields: [guildId], references: [id])
+
+  @@id([guildId, minLevel])
+  @@unique([guildId, roleId])
+}
+
+/// Text and voice channels that do not give legacy experience
+model LegacyLevelIgnoredChannel {
+  guildId   String
+  channelId String
+
+  guild Guild @relation(fields: [guildId], references: [id])
+
+  @@id([guildId, channelId])
+}

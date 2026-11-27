@@ -106,6 +106,9 @@ model Guild {
   halloween2026TotKnocks      Halloween2026TotKnock[]
   halloween2026TotDailyLimits Halloween2026TotDailyLimit[]
   halloween2026TotApples      Halloween2026TotApple[]
+  legacyExperiences           LegacyExperience[]
+  legacyLevelRoles            LegacyLevelRole[]
+  legacyLevelIgnoredChannels  LegacyLevelIgnoredChannel[]
 
   @@map("guild")
 }
@@ -176,6 +179,7 @@ model User {
   participatingInDmPolls             DmPollParticipant[]
   dmPollExclusion                    DmPollExclusion?
   voiceSessions                      VoiceSession[]
+  legacyExperiences                  LegacyExperience[]
   profileSettings                    ProfileSettings?
   displayedProfileBadges             DisplayedProfileBadge[]
   displayedProfileAchievements       DisplayedProfileAchievement[]
