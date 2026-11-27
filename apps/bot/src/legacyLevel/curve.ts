@@ -14,15 +14,17 @@ export type LegacyTier = { minLevel: number; roleId: string };
 
 export const expForLevel = (level: number) => EXP_PER_LEVEL_SQUARED * level * level;
 
-export const levelFromExp = (exp: number) => Math.floor(Math.sqrt(exp / EXP_PER_LEVEL_SQUARED));
+export const levelFromExp = (exp: number) =>
+  Math.floor(Math.sqrt(Math.max(0, exp) / EXP_PER_LEVEL_SQUARED));
 
 export const legacyProgress = (exp: number): LegacyProgress => {
-  const level = levelFromExp(exp);
+  const safeExp = Math.max(0, exp);
+  const level = levelFromExp(safeExp);
   const levelStart = expForLevel(level);
   return {
-    exp,
+    exp: safeExp,
     level,
-    current: exp - levelStart,
+    current: safeExp - levelStart,
     target: expForLevel(level + 1) - levelStart,
   };
 };

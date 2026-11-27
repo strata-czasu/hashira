@@ -12,7 +12,6 @@ import {
   time,
   userMention,
 } from "discord.js";
-import { Effect } from "effect";
 
 import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
@@ -21,7 +20,6 @@ import { base } from "../base";
 import { getDefaultWallet, getWallet } from "../economy/managers/walletManager";
 import { formatBalance, getRequiredGuildDefaultCurrency } from "../economy/util";
 import { legacyLevelBase } from "../legacyLevel/base";
-import { legacyProgress } from "../legacyLevel/curve";
 import { LegacyLevel } from "../legacyLevel/legacyLevel";
 import { REP_CURRENCY } from "../specializedConstants";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
@@ -132,10 +130,9 @@ export const profile = new Hashira({ name: "profile" })
               userId: user.id,
               since: activitySince,
             });
-            const levelProgress = await legacyLevel.runPromise(
-              Effect.flatMap(LegacyLevel, (service) => service.progress(itx.guildId, [user.id])),
+            const { level, current, target } = await legacyLevel.runPromise(
+              LegacyLevel.use((service) => service.userProgress(itx.guildId, user.id)),
             );
-            const { level, current, target } = levelProgress.get(user.id) ?? legacyProgress(0);
 
             const embed = new EmbedBuilder()
               .setTitle(`Profil ${user.tag}`)
