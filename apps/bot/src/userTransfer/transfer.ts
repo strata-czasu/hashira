@@ -293,7 +293,24 @@ const transferChannelRestrictions: TransferOperation = async ({
   return messageParts.join(", ");
 };
 
-// TODO: Experience and level
+// Activity since the old bot stopped moves with the text and voice activity steps
+const transferLegacyExperience: TransferOperation = async ({ prisma, oldUser, newUser, guild }) =>
+  prisma.$transaction(async (tx) => {
+    const old = await tx.legacyExperience.findUnique({
+      where: { guildId_userId: { guildId: guild.id, userId: oldUser.id } },
+    });
+    if (!old) return null;
+
+    await tx.legacyExperience.upsert({
+      where: { guildId_userId: { guildId: guild.id, userId: newUser.id } },
+      create: { guildId: guild.id, userId: newUser.id, importedExp: old.importedExp },
+      update: { importedExp: { increment: old.importedExp } },
+    });
+    await tx.legacyExperience.delete({
+      where: { guildId_userId: { guildId: guild.id, userId: oldUser.id } },
+    });
+    return `Przeniesiono doświadczenie ze starego bota (${old.importedExp})`;
+  });
 
 type OperationDescriptor = {
   name: string;
@@ -304,6 +321,7 @@ export const TRANSFER_OPERATIONS: OperationDescriptor[] = [
   { name: "weryfikacja", fn: transferVerification },
   { name: "aktywność tekstowa", fn: transferTextActivity },
   { name: "aktywność głosowa", fn: transferVoiceActivity },
+  { name: "doświadczenie ze starego bota", fn: transferLegacyExperience },
   { name: "ekwipunek", fn: transferInventory },
   { name: "portfele", fn: transferWallets },
   { name: "ultimatum", fn: transferUltimatum },

@@ -12,6 +12,7 @@ import {
   time,
   userMention,
 } from "discord.js";
+import { Effect } from "effect";
 
 import { type ExtractContext, Hashira, PaginatedView } from "@hashira/core";
 import { DatabasePaginator, type Prisma } from "@hashira/db";
@@ -19,6 +20,9 @@ import { DatabasePaginator, type Prisma } from "@hashira/db";
 import { base } from "../base";
 import { getDefaultWallet, getWallet } from "../economy/managers/walletManager";
 import { formatBalance, getRequiredGuildDefaultCurrency } from "../economy/util";
+import { legacyLevelBase } from "../legacyLevel/base";
+import { legacyProgress } from "../legacyLevel/curve";
+import { LegacyLevel } from "../legacyLevel/legacyLevel";
 import { REP_CURRENCY } from "../specializedConstants";
 import { getUserTextActivity, getUserVoiceActivity } from "../userActivity/util";
 import { discordTry } from "../util/discordTry";
@@ -66,6 +70,7 @@ async function getUserAccesses(prisma: BaseContext["prisma"], guildId: string, u
 
 export const profile = new Hashira({ name: "profile" })
   .use(base)
+  .use(legacyLevelBase)
   .use(marriage)
   .group("profil", (group) =>
     group
@@ -75,7 +80,7 @@ export const profile = new Hashira({ name: "profile" })
         command
           .setDescription("Wyświetl profil użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik").setRequired(false))
-          .handle(async ({ prisma }, { user: rawUser }, itx) => {
+          .handle(async ({ prisma, legacyLevel }, { user: rawUser }, itx) => {
             if (!itx.inCachedGuild()) return;
 
             const user = rawUser ?? itx.user;
@@ -127,6 +132,10 @@ export const profile = new Hashira({ name: "profile" })
               userId: user.id,
               since: activitySince,
             });
+            const levelProgress = await legacyLevel.runPromise(
+              Effect.flatMap(LegacyLevel, (service) => service.progress(itx.guildId, [user.id])),
+            );
+            const { level, current, target } = levelProgress.get(user.id) ?? legacyProgress(0);
 
             const embed = new EmbedBuilder()
               .setTitle(`Profil ${user.tag}`)
@@ -154,8 +163,8 @@ export const profile = new Hashira({ name: "profile" })
               .rep(rep.balance)
               .items(dbUser.inventoryItems.length)
               .textActivity(textActivity)
-              .exp(0, 0) // TODO)) Exp value
-              .level(0); // TODO)) Level value
+              .exp(current, target)
+              .level(level);
 
             const voiceActivityHours = secondsToHours(voiceActivitySeconds);
             image.voiceActivity(voiceActivityHours);
