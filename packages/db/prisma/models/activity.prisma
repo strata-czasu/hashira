@@ -8,6 +8,7 @@ model UserTextActivity {
   guild     Guild    @relation(fields: [guildId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_guildId_guild_id_fk")
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "userTextActivity_userId_users_id_fk")
 
+  @@index([guildId, userId, timestamp, channelId])
   @@map("userTextActivity")
 }
 
@@ -23,6 +24,8 @@ model VoiceSession {
   user      User                @relation(fields: [userId], references: [id])
   guild     Guild               @relation(fields: [guildId], references: [id])
   totals    VoiceSessionTotal[]
+
+  @@index([guildId, userId, joinedAt])
 }
 
 model VoiceSessionTotal {
@@ -36,4 +39,6 @@ model VoiceSessionTotal {
   voiceSessionId Int
 
   voiceSession VoiceSession @relation(fields: [voiceSessionId], references: [id])
+
+  @@index([voiceSessionId])
 }
