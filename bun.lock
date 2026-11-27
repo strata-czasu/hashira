@@ -7,7 +7,7 @@
       "dependencies": {
         "@hashira/utils": "workspace:*",
         "discord.js": "^14.23.2",
-        "effect": "4.0.5",
+        "effect": "4.1.7",
         "es-toolkit": "^1.40.0",
         "valibot": "^1.0.0",
       },
@@ -105,7 +105,7 @@
       "name": "@hashira/yotei",
       "dependencies": {
         "@hashira/db": "workspace:*",
-        "effect": "4.0.5",
+        "effect": "4.1.7",
       },
       "devDependencies": {
         "@prisma/adapter-pg": "^7.8.0",
@@ -694,7 +694,7 @@
 
     "dotenv": ["dotenv@17.4.2", "", {}, "sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw=="],
 
-    "effect": ["effect@4.0.5", "", {}, "sha512-BY4/28NlpOd99yzmV741xbVGmp+1U7tks4oB7F/Png64bTa5tm5eCA6W0RiXsnuLDDoJpjfVSo4Dnq4BZb/89Q=="],
+    "effect": ["effect@4.1.7", "", {}, "sha512-8QUe2XO3auHF5r7+bfIDWxyXlLA0sso4Sia1QYP+vrYA7qb3sq1u2eJmhyXGmKc8yZ+TY2SNxPozeMdyKmWing=="],
 
     "elkjs": ["elkjs@0.11.1", "", {}, "sha512-zxxR9k+rx5ktMwT/FwyLdPCrq7xN6e4VGGHH8hA01vVYKjTFik7nHOxBnAYtrgYUB1RpAiLvA1/U2YraWxyKKg=="],
 
