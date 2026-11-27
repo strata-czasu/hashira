@@ -1,35 +1,49 @@
 import { channelMention, PermissionFlagsBits, roleMention, userMention } from "discord.js";
 import { Effect } from "effect";
+import { uniq } from "es-toolkit";
 
-import { Hashira } from "@hashira/core";
+import { Hashira, PaginatedView } from "@hashira/core";
+import { StaticPaginator } from "@hashira/paginate";
 
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
+import { parseChannelMentions } from "../util/parseChannels";
+import { createPluralize } from "../util/pluralize";
 import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "../util/privilegedIntents";
 import { legacyLevelBase } from "./base";
 import { tierFor } from "./curve";
 import { LegacyLevel } from "./legacyLevel";
 import { TierSync } from "./tierSync";
 
-const parseChannelIds = (input: string) => [...new Set(input.match(/\d{17,20}/g) ?? [])];
+const pluralizeIgnoredChannels = createPluralize({
+  one: "ignorowany kanał",
+  few: "ignorowane kanały",
+  many: "ignorowanych kanałów",
+});
 
 export const legacyLevel = new Hashira({ name: "legacyLevel" })
   .use(base)
   .use(legacyLevelBase)
   .handle("clientReady", async ({ legacyLevel }, client) => {
-    legacyLevel.runFork(Effect.flatMap(TierSync, (tierSync) => tierSync.run(client)));
+    await legacyLevel.runPromise(TierSync.use((tierSync) => tierSync.start(client)));
   })
   .handle("guildMessageCreate", async ({ legacyLevel }, message) => {
     if (message.author.bot) return;
     legacyLevel.runFork(
-      Effect.flatMap(TierSync, (tierSync) => tierSync.mark(message.guildId, [message.author.id])),
+      TierSync.use((tierSync) => tierSync.mark(message.guildId, [message.author.id])),
     );
   })
-  .handle("voiceStateUpdate", async ({ legacyLevel }, oldState) => {
+  .handle("voiceStateUpdate", async ({ legacyLevel }, oldState, newState) => {
     // A voice session is stored when the member leaves or moves away from a channel
-    if (!oldState.channelId || oldState.member?.user.bot) return;
+    if (
+      !oldState.channelId ||
+      oldState.channelId === newState.channelId ||
+      oldState.member?.user.bot
+    ) {
+      return;
+    }
     legacyLevel.runFork(
-      Effect.flatMap(TierSync, (tierSync) => tierSync.mark(oldState.guild.id, [oldState.id])),
+      TierSync.use((tierSync) => tierSync.mark(oldState.guild.id, [oldState.id])),
     );
   })
   .group("legacy-level", (group) =>
@@ -49,21 +63,29 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
               .addRole("role", (role) => role.setDescription("Rola"))
               .handle(async ({ prisma }, { level, role }, itx) => {
                 if (!itx.inCachedGuild()) return;
-                await prisma.legacyLevelRole.deleteMany({
-                  where: { guildId: itx.guildId, roleId: role.id },
+                if (role.id === itx.guildId || role.managed || !role.editable) {
+                  return errorFollowUp(itx, "Nie można użyć tej roli jako roli za poziom");
+                }
+                await prisma.$transaction([
+                  prisma.legacyLevelRole.deleteMany({
+                    where: { guildId: itx.guildId, roleId: role.id },
+                  }),
+                  prisma.legacyLevelRole.upsert({
+                    where: { guildId_minLevel: { guildId: itx.guildId, minLevel: level } },
+                    create: { guildId: itx.guildId, minLevel: level, roleId: role.id },
+                    update: { roleId: role.id },
+                  }),
+                ]);
+                await itx.reply({
+                  content: `Od poziomu ${level}: ${roleMention(role.id)}`,
+                  allowedMentions: { roles: [] },
                 });
-                await prisma.legacyLevelRole.upsert({
-                  where: { guildId_minLevel: { guildId: itx.guildId, minLevel: level } },
-                  create: { guildId: itx.guildId, minLevel: level, roleId: role.id },
-                  update: { roleId: role.id },
-                });
-                await itx.reply(`Od poziomu ${level}: ${roleMention(role.id)}`);
               }),
           )
           .addCommand("remove", (command) =>
             command
               .setDescription("Usuń rolę od danego poziomu")
-              .addInteger("level", (level) => level.setDescription("Poziom"))
+              .addInteger("level", (level) => level.setDescription("Poziom").setMinValue(1))
               .handle(async ({ prisma }, { level }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 const { count } = await prisma.legacyLevelRole.deleteMany({
@@ -101,12 +123,15 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
               )
               .handle(async ({ prisma }, { channels }, itx) => {
                 if (!itx.inCachedGuild()) return;
-                const channelIds = parseChannelIds(channels);
+                const channelIds = uniq(parseChannelMentions(channels));
+                if (channelIds.length === 0) {
+                  return errorFollowUp(itx, "Nie podano poprawnych kanałów");
+                }
                 const { count } = await prisma.legacyLevelIgnoredChannel.createMany({
                   data: channelIds.map((channelId) => ({ guildId: itx.guildId, channelId })),
                   skipDuplicates: true,
                 });
-                await itx.reply(`Dodano ${count} ignorowanych kanałów`);
+                await itx.reply(`Dodano ${count} ${pluralizeIgnoredChannels(count)}`);
               }),
           )
           .addCommand("remove", (command) =>
@@ -117,10 +142,14 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
               )
               .handle(async ({ prisma }, { channels }, itx) => {
                 if (!itx.inCachedGuild()) return;
+                const channelIds = uniq(parseChannelMentions(channels));
+                if (channelIds.length === 0) {
+                  return errorFollowUp(itx, "Nie podano poprawnych kanałów");
+                }
                 const { count } = await prisma.legacyLevelIgnoredChannel.deleteMany({
-                  where: { guildId: itx.guildId, channelId: { in: parseChannelIds(channels) } },
+                  where: { guildId: itx.guildId, channelId: { in: channelIds } },
                 });
-                await itx.reply(`Usunięto ${count} ignorowanych kanałów`);
+                await itx.reply(`Usunięto ${count} ${pluralizeIgnoredChannels(count)}`);
               }),
           )
           .addCommand("list", (command) =>
@@ -131,11 +160,17 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
                 const channels = await prisma.legacyLevelIgnoredChannel.findMany({
                   where: { guildId: itx.guildId },
                 });
-                await itx.reply(
-                  channels
-                    .map((c) => `${channelMention(c.channelId)} (${c.channelId})`)
-                    .join("\n") || "Brak ignorowanych kanałów",
-                );
+                if (channels.length === 0) {
+                  await itx.reply("Brak ignorowanych kanałów");
+                  return;
+                }
+                const paginator = new StaticPaginator({ items: channels, pageSize: 20 });
+                await new PaginatedView(
+                  paginator,
+                  "Ignorowane kanały",
+                  (c) => `${channelMention(c.channelId)} (${c.channelId})`,
+                  false,
+                ).render(itx);
               }),
           ),
       )
@@ -143,29 +178,23 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
         command
           .setDescription("Pokaż, skąd bierze się poziom użytkownika")
           .addUser("user", (user) => user.setDescription("Użytkownik"))
-          .handle(async ({ legacyLevel, prisma }, { user }, itx) => {
+          .handle(async ({ legacyLevel }, { user }, itx) => {
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
-            const [progress, tiers] = await legacyLevel.runPromise(
-              Effect.gen(function* () {
-                const service = yield* LegacyLevel;
-                return yield* Effect.all([
-                  service.progress(itx.guildId, [user.id]),
-                  service.tiers(itx.guildId),
-                ]);
-              }),
+            const [userProgress, tiers] = await legacyLevel.runPromise(
+              LegacyLevel.use((service) =>
+                Effect.all(
+                  [service.userProgress(itx.guildId, user.id), service.tiers(itx.guildId)],
+                  { concurrency: "unbounded" },
+                ),
+              ),
             );
-            const imported = await prisma.legacyExperience.findUnique({
-              where: { guildId_userId: { guildId: itx.guildId, userId: user.id } },
-            });
-            const userProgress = progress.get(user.id);
-            if (!userProgress) return;
             const tier = tierFor(userProgress.level, tiers);
             await itx.editReply({
               content: [
                 `${userMention(user.id)}: poziom ${userProgress.level} (${userProgress.exp} exp)`,
-                `Ze starego bota: ${imported?.importedExp ?? 0} exp`,
-                `Od tego czasu: ${userProgress.exp - (imported?.importedExp ?? 0)} exp`,
+                `Ze starego bota: ${userProgress.importedExp} exp`,
+                `Od tego czasu: ${userProgress.exp - userProgress.importedExp} exp`,
                 `Postęp: ${userProgress.current}/${userProgress.target}`,
                 `Rola: ${tier ? roleMention(tier.roleId) : "brak"}`,
               ].join("\n"),
@@ -183,15 +212,11 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
             if (!itx.inCachedGuild()) return;
             await itx.deferReply();
             const members = await itx.guild.members.fetch();
+            const userIds = members.filter((member) => !member.user.bot).map((member) => member.id);
             const changed = await legacyLevel.runPromise(
-              Effect.flatMap(TierSync, (tierSync) =>
-                tierSync.syncMembers(
-                  itx.guild,
-                  members.filter((member) => !member.user.bot).map((member) => member.id),
-                ),
-              ),
+              TierSync.use((tierSync) => tierSync.syncMembers(itx.guild, userIds)),
             );
-            await itx.editReply(`Zmieniono role ${changed} z ${members.size} członków`);
+            await itx.editReply(`Zmieniono role ${changed} z ${userIds.length} członków`);
           }),
       ),
   );
