@@ -80,6 +80,12 @@ databaseTests("legacy level progress", () => {
     );
 
     // 270 imported + 2 messages + 3 voice minutes is exactly level 5 (11 * 5^2)
-    expect(progress.get(userId)).toEqual({ exp: 275, level: 5, current: 0, target: 121 });
+    expect(progress.get(userId)).toEqual({
+      exp: 275,
+      level: 5,
+      current: 0,
+      target: 121,
+      importedExp: 270,
+    });
   });
 });
