@@ -1,13 +1,12 @@
 import { channelMention, PermissionFlagsBits, roleMention, userMention } from "discord.js";
 import { Effect } from "effect";
-import { uniq } from "es-toolkit";
 
 import { Hashira, PaginatedView } from "@hashira/core";
 import { StaticPaginator } from "@hashira/paginate";
 
 import { base } from "../base";
 import { errorFollowUp } from "../util/errorFollowUp";
-import { parseChannelMentions } from "../util/parseChannels";
+import { expandCategoryChannelIds, parseChannelMentions } from "../util/parseChannels";
 import { createPluralize } from "../util/pluralize";
 import { PRIVILEGED_FEATURES_DISABLED_MESSAGE } from "../util/privilegedIntents";
 import { legacyLevelBase } from "./base";
@@ -119,11 +118,16 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
             command
               .setDescription("Wyłącz zdobywanie doświadczenia na kanałach")
               .addString("channels", (channels) =>
-                channels.setDescription("ID lub wzmianki kanałów oddzielone spacjami"),
+                channels.setDescription(
+                  "ID lub wzmianki kanałów albo kategorii oddzielone spacjami",
+                ),
               )
               .handle(async ({ prisma }, { channels }, itx) => {
                 if (!itx.inCachedGuild()) return;
-                const channelIds = uniq(parseChannelMentions(channels));
+                const channelIds = expandCategoryChannelIds(
+                  itx.guild,
+                  parseChannelMentions(channels),
+                );
                 if (channelIds.length === 0) {
                   return errorFollowUp(itx, "Nie podano poprawnych kanałów");
                 }
@@ -138,11 +142,17 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
             command
               .setDescription("Włącz zdobywanie doświadczenia na kanałach")
               .addString("channels", (channels) =>
-                channels.setDescription("ID lub wzmianki kanałów oddzielone spacjami"),
+                channels.setDescription(
+                  "ID lub wzmianki kanałów albo kategorii oddzielone spacjami",
+                ),
               )
               .handle(async ({ prisma }, { channels }, itx) => {
                 if (!itx.inCachedGuild()) return;
-                const channelIds = uniq(parseChannelMentions(channels));
+                const channelIds = expandCategoryChannelIds(
+                  itx.guild,
+                  parseChannelMentions(channels),
+                  { includeCategoryId: true },
+                );
                 if (channelIds.length === 0) {
                   return errorFollowUp(itx, "Nie podano poprawnych kanałów");
                 }
