@@ -1,4 +1,4 @@
-import { Effect, ManagedRuntime } from "effect";
+import { Data, Effect, type ManagedRuntime } from "effect";
 
 import type { Prettify } from "@hashira/utils/types";
 
@@ -9,14 +9,26 @@ import * as Queue from "./queue";
 export type MessageQueueConsumer = { stop(): Promise<void>; awaitIdle(): Promise<void> };
 export type MessageQueueConsumerOptions = typeof ConsumerOptions.Type;
 
+export class QueueHandlerError extends Data.TaggedError("QueueHandlerError")<{
+  readonly type: string;
+  readonly cause: unknown;
+}> {
+  override get message() {
+    return `Task handler "${this.type}" failed`;
+  }
+}
+
 type Handler<T, U extends Record<string, unknown>> = (props: U, data: T) => Promise<void>;
 type Handle = Record<string, unknown>;
 
 const liftHandler =
-  <T, Args extends Record<string, unknown>>(handler: Handler<T, Args>) =>
+  <T, Args extends Record<string, unknown>>(type: string, handler: Handler<T, Args>) =>
   (props: Args): Queue.QueueHandler =>
   (data) =>
-    Effect.tryPromise(() => handler(props, data as T));
+    Effect.tryPromise({
+      try: () => handler(props, data as T),
+      catch: (cause) => new QueueHandlerError({ type, cause }),
+    });
 
 /** Promise/fluent API adapter for the Hashira bot. Scheduling and dispatch live in the Effect core. */
 export class MessageQueue<
@@ -36,7 +48,7 @@ export class MessageQueue<
     type: U,
     handler: Handler<T, Args>,
   ): MessageQueue<Prettify<HandleTypes & Record<U, T>>, Args> {
-    this.#handlers.set(type, liftHandler(handler));
+    this.#handlers.set(type, liftHandler(type, handler));
     return this;
   }
 
@@ -53,7 +65,7 @@ export class MessageQueue<
   ) {
     if (typeof type !== "string") throw new Error("Type must be a string");
     await this.#runtime.runPromise(
-      Effect.flatMap(Queue.Queue, (queue) => queue.push({ type, data }, delay, identifier, tx)),
+      Queue.Queue.use((queue) => queue.push({ type, data }, delay, identifier, tx)),
     );
   }
 
@@ -64,7 +76,7 @@ export class MessageQueue<
   ) {
     if (typeof type !== "string") throw new Error("Type must be a string");
     await this.#runtime.runPromise(
-      Effect.flatMap(Queue.Queue, (queue) => queue.cancel(type, identifier, options)),
+      Queue.Queue.use((queue) => queue.cancel(type, identifier, options)),
     );
   }
 
@@ -76,7 +88,7 @@ export class MessageQueue<
   ) {
     if (typeof type !== "string") throw new Error("Type must be a string");
     await this.#runtime.runPromise(
-      Effect.flatMap(Queue.Queue, (queue) => queue.updateDelay(type, identifier, delay, options)),
+      Queue.Queue.use((queue) => queue.updateDelay(type, identifier, delay, options)),
     );
   }
 
@@ -86,7 +98,7 @@ export class MessageQueue<
   ): Promise<MessageQueueConsumer> {
     const resolved = { ...options, pollIntervalMs: options.pollIntervalMs ?? this.#interval };
     const consumer = await this.#runtime.runPromise(
-      Effect.flatMap(Queue.Queue, (queue) =>
+      Queue.Queue.use((queue) =>
         queue.startConsumer((type) => this.#handlers.get(type)?.(props), resolved),
       ),
     );
@@ -95,10 +107,13 @@ export class MessageQueue<
       awaitIdle: () => this.#runtime.runPromise(consumer.awaitIdle),
     };
   }
+
+  dispose(): Promise<void> {
+    return this.#runtime.dispose();
+  }
 }
 
-export * as Runtime from "effect/ManagedRuntime";
+export { ManagedRuntime as Runtime } from "effect";
 export { ConsumerOptions, makeConsumer } from "./consumer";
 export * as Persistence from "./persistence";
-
 export * as Queue from "./queue";
