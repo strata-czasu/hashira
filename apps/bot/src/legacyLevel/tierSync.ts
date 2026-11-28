@@ -19,11 +19,17 @@ export class TierSyncError extends Data.TaggedError("TierSyncError")<{
   readonly cause: unknown;
 }> {}
 
+export type SyncProgress = { processed: number; total: number; changed: number };
+
 export interface Service {
   /** Remember users whose activity changed; they are synced once their writes settle */
   mark(guildId: string, userIds: readonly string[]): Effect.Effect<void>;
   /** Give each member the role of their tier; returns how many members changed */
-  syncMembers(guild: Guild, userIds: readonly string[]): Effect.Effect<number, LegacyLevelError>;
+  syncMembers(
+    guild: Guild,
+    userIds: readonly string[],
+    onProgress?: (progress: SyncProgress) => Effect.Effect<void>,
+  ): Effect.Effect<number, LegacyLevelError>;
   /** Start the periodic background sync loop once, scoped to the TierSync layer */
   start(client: Client): Effect.Effect<void>;
 }
@@ -62,59 +68,71 @@ export const make = Effect.gen(function* () {
   const starting = yield* Semaphore.make(1);
 
   const syncMembers: Service["syncMembers"] = Effect.fn("TierSync.syncMembers")(
-    function* (guild, userIds) {
+    function* (guild, userIds, onProgress) {
       const uniqueIds = uniq(userIds);
       if (uniqueIds.length === 0) return 0;
 
       const tiers = yield* legacyLevel.tiers(guild.id);
       if (tiers.length === 0) return 0;
 
-      const counts = yield* Effect.forEach(chunk(uniqueIds, PROGRESS_BATCH_SIZE), (batch) =>
-        Effect.gen(function* () {
-          const missing = batch.filter((id) => !guild.members.cache.has(id));
-          const [progress, fetched] = yield* Effect.all(
-            [
-              legacyLevel.progress(guild.id, batch),
-              missing.length > 0
-                ? attempt(() => fetchMembers(guild, missing)).pipe(
-                    Effect.catch((error) =>
-                      Effect.logError(
-                        `Legacy tier member fetch failed in guild ${guild.id}`,
-                        error,
-                      ).pipe(Effect.as(new Map<string, GuildMember>())),
-                    ),
-                  )
-                : Effect.succeed(new Map<string, GuildMember>()),
-            ],
-            { concurrency: "unbounded" },
-          );
+      let processed = 0;
+      let changed = 0;
+      let lastReport = yield* Clock.currentTimeMillis;
 
-          const results = yield* Effect.forEach(batch, (userId) => {
-            const member = guild.members.cache.get(userId) ?? fetched.get(userId);
-            if (!member) return Effect.succeed(false);
+      for (const batch of chunk(uniqueIds, PROGRESS_BATCH_SIZE)) {
+        const missing = batch.filter((id) => !guild.members.cache.has(id));
+        const [progress, fetched] = yield* Effect.all(
+          [
+            legacyLevel.progress(guild.id, batch),
+            missing.length > 0
+              ? attempt(() => fetchMembers(guild, missing)).pipe(
+                  Effect.catch((error) =>
+                    Effect.logError(
+                      `Legacy tier member fetch failed in guild ${guild.id}`,
+                      error,
+                    ).pipe(Effect.as(new Map<string, GuildMember>())),
+                  ),
+                )
+              : Effect.succeed(new Map<string, GuildMember>()),
+          ],
+          { concurrency: "unbounded" },
+        );
 
+        for (const userId of batch) {
+          const member = guild.members.cache.get(userId) ?? fetched.get(userId);
+          if (member) {
             const { add, remove } = tierRoleChanges(
               new Set(member.roles.cache.keys()),
               tiers,
               progress.get(userId)?.level ?? 0,
             );
             const validAdd = add.filter((roleId) => guild.roles.cache.has(roleId));
-            if (validAdd.length === 0 && remove.length === 0) return Effect.succeed(false);
-
-            return applyRoleChanges(member, validAdd, remove).pipe(
-              Effect.catch((error) =>
-                Effect.logError(`Legacy tier sync failed for ${userId}`, error).pipe(
-                  Effect.as(false),
+            if (validAdd.length > 0 || remove.length > 0) {
+              const updated = yield* applyRoleChanges(member, validAdd, remove).pipe(
+                Effect.catch((error) =>
+                  Effect.logError(`Legacy tier sync failed for ${userId}`, error).pipe(
+                    Effect.as(false),
+                  ),
                 ),
-              ),
-            );
-          });
+              );
+              if (updated) changed++;
+            }
+          }
 
-          return results.filter(Boolean).length;
-        }),
-      );
+          processed++;
+          if (onProgress) {
+            const now = yield* Clock.currentTimeMillis;
+            if (now - lastReport >= 5_000) {
+              lastReport = now;
+              yield* onProgress({ processed, total: uniqueIds.length, changed }).pipe(
+                Effect.ignore,
+              );
+            }
+          }
+        }
+      }
 
-      return counts.reduce((sum, count) => sum + count, 0);
+      return changed;
     },
   );
 

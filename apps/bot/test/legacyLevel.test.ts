@@ -84,6 +84,10 @@ describe("legacyLevel curve", () => {
     expect(legacyProgress(-10)).toEqual({ exp: 0, level: 0, current: 0, target: 11 });
     expect(tierFor(25, tiers)).toEqual({ minLevel: 20, roleId: "tier-20" });
     expect(tierFor(4, tiers)).toBeUndefined();
+    expect(tierFor(0, [{ minLevel: 0, roleId: "tier-0" }, ...tiers])).toEqual({
+      minLevel: 0,
+      roleId: "tier-0",
+    });
     expect(tierRoleChanges(new Set(["custom", "tier-5"]), tiers, 20)).toEqual({
       add: ["tier-20"],
       remove: ["tier-5"],

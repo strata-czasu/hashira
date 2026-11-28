@@ -57,7 +57,7 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
             command
               .setDescription("Ustaw rolę od danego poziomu")
               .addInteger("level", (level) =>
-                level.setDescription("Najniższy poziom z tą rolą").setMinValue(1),
+                level.setDescription("Najniższy poziom z tą rolą").setMinValue(0),
               )
               .addRole("role", (role) => role.setDescription("Rola"))
               .handle(async ({ prisma }, { level, role }, itx) => {
@@ -84,7 +84,7 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
           .addCommand("remove", (command) =>
             command
               .setDescription("Usuń rolę od danego poziomu")
-              .addInteger("level", (level) => level.setDescription("Poziom").setMinValue(1))
+              .addInteger("level", (level) => level.setDescription("Poziom").setMinValue(0))
               .handle(async ({ prisma }, { level }, itx) => {
                 if (!itx.inCachedGuild()) return;
                 const { count } = await prisma.legacyLevelRole.deleteMany({
@@ -223,10 +223,24 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
             await itx.deferReply();
             const members = await itx.guild.members.fetch();
             const userIds = members.filter((member) => !member.user.bot).map((member) => member.id);
+            await itx.editReply(`Synchronizuję role 0/${userIds.length} członków...`);
             const changed = await legacyLevel.runPromise(
-              TierSync.use((tierSync) => tierSync.syncMembers(itx.guild, userIds)),
+              TierSync.use((tierSync) =>
+                tierSync.syncMembers(itx.guild, userIds, ({ processed, total, changed }) =>
+                  Effect.promise(() =>
+                    itx
+                      .editReply(
+                        `Synchronizuję role ${processed}/${total} członków (zmieniono: ${changed})...`,
+                      )
+                      .catch(() => {}),
+                  ),
+                ),
+              ),
             );
-            await itx.editReply(`Zmieniono role ${changed} z ${userIds.length} członków`);
+            const summary = `Zmieniono role ${changed} z ${userIds.length} członków`;
+            await itx.editReply(summary).catch(async () => {
+              if (itx.channel?.isSendable()) await itx.channel.send(summary);
+            });
           }),
       ),
   );
