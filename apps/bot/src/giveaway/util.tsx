@@ -1,3 +1,4 @@
+/** @jsxImportSource @hashira/jsx */
 import {
   ActionRowBuilder,
   type APIContainerComponent,
@@ -8,7 +9,6 @@ import {
   ComponentType,
   ContainerBuilder,
   type Message,
-  MessageFlags,
   messageLink,
   SeparatorSpacingSize,
   TextDisplayBuilder,
@@ -24,8 +24,11 @@ import type {
   GiveawayReward,
   GiveawayWinner,
 } from "@hashira/db";
+import { ActionRow, Button, Container, render, Separator, TextDisplay } from "@hashira/jsx";
 
 import type { base } from "../base";
+import { getPendingGiveawayRewards } from "./rewardHandout";
+import { createRewardButtonRow } from "./rewardMenu";
 
 enum GiveawayBannerRatio {
   None = 0, // No Banner
@@ -34,34 +37,41 @@ enum GiveawayBannerRatio {
   Portrait = 3, // 2:3
 }
 
-function createGiveawayButtonRow(disabled: boolean) {
-  const joinButton = new ButtonBuilder()
-    .setCustomId("giveaway-option:join")
-    .setLabel("Dołącz")
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(disabled);
-
-  const listButton = new ButtonBuilder()
-    .setCustomId("giveaway-option:list")
-    .setLabel("Lista uczestników")
-    .setStyle(ButtonStyle.Secondary)
-    .setDisabled(disabled);
-
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(joinButton, listButton);
+export function createGiveawayButtonRow(disabled: boolean) {
+  return (
+    <ActionRow>
+      <Button
+        customId="giveaway-option:join"
+        label="Dołącz"
+        style={ButtonStyle.Primary}
+        disabled={disabled}
+      />
+      <Button
+        customId="giveaway-option:list"
+        label="Lista uczestników"
+        style={ButtonStyle.Secondary}
+        disabled={disabled}
+      />
+    </ActionRow>
+  );
 }
 
-function createLeaveButtonRow() {
-  const leaveButton = new ButtonBuilder()
-    .setCustomId("leave_giveaway")
-    .setLabel("Wyjdź")
-    .setStyle(ButtonStyle.Danger);
-
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(leaveButton);
+export function createLeaveButtonRow() {
+  return (
+    <ActionRow>
+      <Button customId="leave_giveaway" label="Wyjdź" style={ButtonStyle.Danger} />
+    </ActionRow>
+  );
 }
 
-export { GiveawayBannerRatio, createGiveawayButtonRow, createLeaveButtonRow };
+export { GiveawayBannerRatio };
 
-export function parseRewards(input: string): GiveawayReward[] {
+export type ParsedReward = {
+  amount: number;
+  reward: string;
+};
+
+export function parseRewards(input: string): ParsedReward[] {
   return input
     .split(",")
     .map((item) => item.trim())
@@ -70,9 +80,9 @@ export function parseRewards(input: string): GiveawayReward[] {
       const match = item.match(/^(\d+)x\s*(.+)$/i);
       if (match) {
         const [, num, reward] = match;
-        if (reward) return { id: 0, giveawayId: 0, amount: Number(num), reward: reward.trim() };
+        if (reward) return { amount: Number(num), reward: reward.trim() };
       }
-      return { id: 0, giveawayId: 0, amount: 1, reward: item };
+      return { amount: 1, reward: item };
     });
 }
 
@@ -156,8 +166,9 @@ export async function formatBanner(
   return [formatted, "webp"];
 }
 
-export function giveawayFooter(giveaway: Giveaway) {
-  return `\n-# Id: ${giveaway.id} ${messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}`;
+export function giveawayFooter(giveaway: Giveaway, resultsMessageId?: string) {
+  const linkMessageId = resultsMessageId ?? giveaway.messageId;
+  return `\n-# Id: ${giveaway.id} ${messageLink(giveaway.channelId, linkMessageId, giveaway.guildId)}`;
 }
 
 export function getStaticBanner(title: string) {
@@ -194,6 +205,36 @@ export const autocompleteGiveawayId = async ({
   );
 };
 
+/**
+ * Autocomplete for staff giveaway commands. Lists giveaways of the current
+ * guild ordered by id descending so the latest (highest id) giveaway is
+ * always the first option, e.g. for `/givek-rozdaj-nagrody`.
+ */
+export const autocompleteGiveawayIdForStaff = async ({
+  prisma,
+  itx,
+}: {
+  prisma: ExtractContext<typeof base>["prisma"];
+  itx: AutocompleteInteraction<"cached">;
+}) => {
+  const focused = Number(itx.options.getFocused());
+  const results = await prisma.giveaway.findMany({
+    where: {
+      guildId: itx.guildId,
+      ...(Number.isNaN(focused) ? {} : { id: { gte: focused } }),
+    },
+    orderBy: { id: "desc" },
+    take: 25,
+  });
+
+  return itx.respond(
+    results.map(({ id }) => ({
+      value: id,
+      name: `${id}`,
+    })),
+  );
+};
+
 export async function updateGiveaway(
   message: Message<boolean>,
   giveaway: Giveaway,
@@ -207,13 +248,16 @@ export async function updateGiveaway(
     const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
     const footerIndex = container.components.findIndex(
-      (c) => c.data?.id === 1 && c.data?.type === ComponentType.TextDisplay,
+      (c) =>
+        c.data?.type === ComponentType.TextDisplay &&
+        typeof c.data?.content === "string" &&
+        c.data.content.startsWith("-# Uczestnicy:"),
     );
 
     if (footerIndex === -1) return;
 
     container.components[footerIndex] = new TextDisplayBuilder().setContent(
-      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id}`,
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id} ${messageLink(giveaway.channelId, giveaway.messageId, giveaway.guildId)}`,
     );
 
     await message.edit({ components: [container] });
@@ -239,7 +283,8 @@ export async function selectAndSaveWinners(
 
   for (const { amount, id: rewardId } of rewards) {
     // this is intended as a compact way to slice
-    const slice = shuffledIds.slice(idx, (idx += amount));
+    const slice = shuffledIds.slice(idx, idx + amount);
+    idx += amount;
     if (slice.length > 0) {
       winningUsers.push(
         ...slice.map((userId) => ({
@@ -289,35 +334,58 @@ export async function endGiveaway(message: Message<boolean>, prisma: ExtendedPri
     return `> ${reward} ${mention}`;
   });
 
-  const resultContainer = new ContainerBuilder()
-    .setAccentColor(0x00ff99)
-    .addTextDisplayComponents((td) => td.setContent("# :tada: Wyniki giveaway"))
-    .addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Large))
-    .addTextDisplayComponents((td) => td.setContent(results.join("\n")));
+  const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+  const hasPendingRewards =
+    pending.currency.length > 0 || pending.items.length > 0 || pending.mutes.length > 0;
 
-  await message.reply({
-    components: [resultContainer],
+  const resultContent = (
+    <>
+      <Container accentColor={0x00ff99}>
+        <TextDisplay content="# :tada: Wyniki giveaway" />
+        <Separator spacing={SeparatorSpacingSize.Large} />
+        <TextDisplay content={results.join("\n")} />
+      </Container>
+      {hasPendingRewards && createRewardButtonRow(giveaway.id)}
+    </>
+  );
+
+  const resultsMessage = await message.reply({
+    ...render(resultContent),
     allowedMentions: { users: winningUsers.slice(0, 100).map((p) => p.userId) },
-    flags: MessageFlags.IsComponentsV2,
   });
 
-  // Disable giveaway buttons
+  // Disable giveaway buttons and link the footer to the results message
   const container = new ContainerBuilder(message.components[0].toJSON() as APIContainerComponent);
 
   const actionRowIndex = container.components.findIndex(
-    (c) => c.data?.id === 2 && c.data?.type === ComponentType.ActionRow,
+    (c) => c.data?.type === ComponentType.ActionRow,
   );
 
-  if (actionRowIndex === -1) return;
+  if (actionRowIndex !== -1) {
+    const disabledRow = render(createGiveawayButtonRow(true)).components[0] as
+      | ActionRowBuilder<ButtonBuilder>
+      | undefined;
+    if (disabledRow) {
+      container.components[actionRowIndex] = disabledRow;
+    }
+  }
 
-  const newRow = new ActionRowBuilder<ButtonBuilder>({
-    ...container.components[actionRowIndex]?.data,
-    components: createGiveawayButtonRow(true).components,
-  });
+  const footerIndex = container.components.findIndex(
+    (c) =>
+      c.data?.type === ComponentType.TextDisplay &&
+      typeof c.data?.content === "string" &&
+      c.data.content.startsWith("-# Uczestnicy:"),
+  );
 
-  container.components[actionRowIndex] = newRow;
+  if (footerIndex !== -1) {
+    container.components[footerIndex] = new TextDisplayBuilder().setContent(
+      `-# Uczestnicy: ${participants.length} | Łącznie nagród: ${giveaway.totalRewards} | Id: ${giveaway.id} ${messageLink(
+        giveaway.channelId,
+        resultsMessage.id,
+        giveaway.guildId,
+      )}`,
+    );
+  }
 
-  await message.edit({
-    components: [container],
-  });
+  await message.edit({ components: [container] });
 }

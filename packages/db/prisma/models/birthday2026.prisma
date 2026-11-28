@@ -1,13 +1,13 @@
 model Birthday2026Config {
-  id                  Int      @id @default(autoincrement())
-  guildId             String   @unique
-  eventStartAt        DateTime @db.Timestamp(6)
-  eventEndAt          DateTime @db.Timestamp(6)
-  timezone            String
-  visible             Boolean
-  enabled             Boolean
-  createdAt           DateTime @default(now()) @db.Timestamp(6)
-  updatedAt           DateTime @updatedAt @db.Timestamp(6)
+  id           Int      @id @default(autoincrement())
+  guildId      String   @unique
+  eventStartAt DateTime @db.Timestamp(6)
+  eventEndAt   DateTime @db.Timestamp(6)
+  timezone     String
+  visible      Boolean
+  enabled      Boolean
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
 
   guild                Guild                             @relation(fields: [guildId], references: [id], onDelete: Cascade)
   economy              Birthday2026EconomyConfig?
@@ -25,9 +25,9 @@ model Birthday2026Config {
 }
 
 model Birthday2026EconomyConfig {
-  configId               Int @id
-  currencyId             Int @unique
-  digestionDelaySeconds  Int
+  configId              Int @id
+  currencyId            Int @unique
+  digestionDelaySeconds Int
 
   config   Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
   currency Currency           @relation(fields: [currencyId], references: [id], onDelete: Restrict)
@@ -48,7 +48,7 @@ model Birthday2026VoiceEarningConfig {
   unitSeconds Int
   dailyCap    Int
 
-  config      Birthday2026Config             @relation(fields: [configId], references: [id], onDelete: Cascade)
+  config      Birthday2026Config              @relation(fields: [configId], references: [id], onDelete: Cascade)
   dailyStates Birthday2026DailyVoiceEarning[]
 }
 
@@ -59,19 +59,19 @@ model Birthday2026TeamConfig {
   roleId   String @unique
   color    Int
 
-  config       Birthday2026Config        @relation(fields: [configId], references: [id], onDelete: Cascade)
-  team         Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  identity     Birthday2026TeamIdentity?
-  persona      Birthday2026TeamPersona?
-  artworks     Birthday2026TeamArtwork[]
-  milestones   Birthday2026TeamMilestone[]
-  statusMessage Birthday2026StatusMessage?
-  tucznikChanges Birthday2026TucznikChange[]
-  settlementResults Birthday2026SettlementTeam[]
-  encounterEntries Birthday2026EncounterEntry[]
+  config               Birthday2026Config                    @relation(fields: [configId], references: [id], onDelete: Cascade)
+  team                 Team                                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  identity             Birthday2026TeamIdentity?
+  persona              Birthday2026TeamPersona?
+  artworks             Birthday2026TeamArtwork[]
+  milestones           Birthday2026TeamMilestone[]
+  statusMessage        Birthday2026StatusMessage?
+  tucznikChanges       Birthday2026TucznikChange[]
+  settlementResults    Birthday2026SettlementTeam[]
+  encounterEntries     Birthday2026EncounterEntry[]
   encounterCompletions Birthday2026TeamEncounterCompletion[]
-  memberStates Birthday2026MemberState[]
-  wallet       Birthday2026TeamWallet?
+  memberStates         Birthday2026MemberState[]
+  wallet               Birthday2026TeamWallet?
 
   @@unique([id, configId])
   @@index([configId])
@@ -83,7 +83,7 @@ model Birthday2026TeamIdentity {
   tucznikUserId String
   captainUserId String
 
-  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  teamConfig  Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
   tucznikUser User                   @relation("birthday2026Tucznik", fields: [tucznikUserId], references: [id], onDelete: Restrict)
   captainUser User                   @relation("birthday2026Captain", fields: [captainUserId], references: [id], onDelete: Restrict)
 
@@ -93,18 +93,18 @@ model Birthday2026TeamIdentity {
 }
 
 model Birthday2026TeamPersona {
-  teamConfigId      Int      @id
-  configId          Int
-  tucznikUserId     String
-  title             String
-  fallbackEmoji     String
-  consentedAt       DateTime @db.Timestamp(6)
+  teamConfigId       Int      @id
+  configId           Int
+  tucznikUserId      String
+  title              String
+  fallbackEmoji      String
+  consentedAt        DateTime @db.Timestamp(6)
   configuredByUserId String
-  updatedAt         DateTime @updatedAt @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @db.Timestamp(6)
 
-  teamConfig  Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
-  tucznikUser User                   @relation("birthday2026PersonaSubject", fields: [tucznikUserId], references: [id], onDelete: Restrict)
-  configuredBy User                  @relation("birthday2026PersonaConfiguredBy", fields: [configuredByUserId], references: [id], onDelete: Restrict)
+  teamConfig   Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  tucznikUser  User                   @relation("birthday2026PersonaSubject", fields: [tucznikUserId], references: [id], onDelete: Restrict)
+  configuredBy User                   @relation("birthday2026PersonaConfiguredBy", fields: [configuredByUserId], references: [id], onDelete: Restrict)
 
   @@unique([teamConfigId, configId])
 }
@@ -165,13 +165,13 @@ model Birthday2026StatusMessage {
 }
 
 model Birthday2026TucznikChange {
-  id               Int      @id @default(autoincrement())
-  teamConfigId     Int
-  configId         Int
-  previousUserId   String?
-  nextUserId       String?
-  changedByUserId  String
-  changedAt        DateTime @default(now()) @db.Timestamp(6)
+  id              Int      @id @default(autoincrement())
+  teamConfigId    Int
+  configId        Int
+  previousUserId  String?
+  nextUserId      String?
+  changedByUserId String
+  changedAt       DateTime @default(now()) @db.Timestamp(6)
 
   teamConfig   Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
   previousUser User?                  @relation("birthday2026PreviousTucznik", fields: [previousUserId], references: [id], onDelete: Restrict)
@@ -185,12 +185,12 @@ model Birthday2026TucznikChange {
 }
 
 model Birthday2026Settlement {
-  configId                Int      @id
-  cutoffAt                DateTime @db.Timestamp(6)
-  settledAt               DateTime @db.Timestamp(6)
-  settledByUserId         String
-  digestedPendingPasza    Int
-  discardedPersonalPasza  Int
+  configId               Int      @id
+  cutoffAt               DateTime @db.Timestamp(6)
+  settledAt              DateTime @db.Timestamp(6)
+  settledByUserId        String
+  digestedPendingPasza   Int
+  discardedPersonalPasza Int
 
   config            Birthday2026Config             @relation(fields: [configId], references: [id], onDelete: Cascade)
   settledBy         User                           @relation(fields: [settledByUserId], references: [id], onDelete: Restrict)
@@ -209,7 +209,7 @@ model Birthday2026SettlementTeam {
   contributorCount Int
 
   settlement Birthday2026Settlement @relation(fields: [configId], references: [configId], onDelete: Cascade)
-  teamConfig Birthday2026TeamConfig  @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
+  teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
 
   @@id([configId, teamConfigId])
   @@unique([configId, rank])
@@ -230,14 +230,14 @@ model Birthday2026IndividualResult {
 }
 
 model Birthday2026EncounterConfig {
-  configId             Int    @id
-  channelId            String
+  configId              Int    @id
+  channelId             String
   responseWindowSeconds Int
-  spawnIntervalSeconds Int
-  individualReward     Int
-  winCap               Int
-  teamThreshold        Int
-  teamReward           Int
+  spawnIntervalSeconds  Int
+  individualReward      Int
+  winCap                Int
+  teamThreshold         Int
+  teamReward            Int
 
   config Birthday2026Config @relation(fields: [configId], references: [id], onDelete: Cascade)
 }
@@ -273,13 +273,13 @@ model Birthday2026EncounterMessage {
 }
 
 model Birthday2026EncounterEntry {
-  encounterId Int
+  encounterId  Int
   teamConfigId Int
   configId     Int
   userId       String
   enteredAt    DateTime @db.Timestamp(6)
 
-  encounter Birthday2026Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  encounter  Birthday2026Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   teamConfig Birthday2026TeamConfig @relation(fields: [teamConfigId, configId], references: [id, configId], onDelete: Cascade)
   user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -289,12 +289,12 @@ model Birthday2026EncounterEntry {
 }
 
 model Birthday2026EncounterWinner {
-  encounterId  Int      @id
-  configId     Int
-  userId       String
-  transactionId Int     @unique
-  reward       Int
-  wonAt        DateTime @db.Timestamp(6)
+  encounterId   Int      @id
+  configId      Int
+  userId        String
+  transactionId Int      @unique
+  reward        Int
+  wonAt         DateTime @db.Timestamp(6)
 
   encounter   Birthday2026Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   user        User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -407,16 +407,16 @@ model Birthday2026TeamWallet {
 }
 
 model Birthday2026TeamWalletTransaction {
-  id                    Int       @id @default(autoincrement())
+  id                    Int                                     @id @default(autoincrement())
   walletId              Int
   feedBatchId           Int
-  personalTransactionId Int?      @unique
+  personalTransactionId Int?                                    @unique
   source                Birthday2026TeamWalletTransactionSource
   entryType             EntryType
   amount                Int
   reason                String
   sourceKey             String
-  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  createdAt             DateTime                                @default(now()) @db.Timestamp(6)
 
   wallet              Birthday2026TeamWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
   feedBatch           Birthday2026FeedBatch  @relation(fields: [feedBatchId], references: [id], onDelete: Restrict)

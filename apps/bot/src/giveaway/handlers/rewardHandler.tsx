@@ -1,0 +1,253 @@
+import { ComponentType, PermissionFlagsBits } from "discord.js";
+
+import { Container, render, TextDisplay } from "@hashira/jsx";
+
+import { STRATA_CZASU } from "../../specializedConstants";
+import { errorFollowUp } from "../../util/errorFollowUp";
+import type { EconomyRewardType } from "../rewardHandout";
+import {
+  distributeGiveawayEconomyRewards,
+  distributeGiveawayMutes,
+  getPendingGiveawayRewards,
+  type RewardDistributionReply,
+} from "../rewardHandout";
+import {
+  buildRewardMenuContent,
+  createRewardMenuRow,
+  GIVEAWAY_REWARD_BUTTON_CUSTOM_ID,
+} from "../rewardMenu";
+import type { GiveawayButtonHandlerOptions } from "../types";
+
+const REWARD_DISTRIBUTION_TYPES: Record<string, readonly EconomyRewardType[]> = {
+  currency: ["currency"],
+  items: ["item"],
+};
+
+export const canDistributeType = (
+  type: "currency" | "items" | "mutes",
+  isModerator: boolean,
+  hasKadra: boolean,
+  isAuthor: boolean,
+): boolean => {
+  if (isModerator) return true;
+  return hasKadra && isAuthor && type === "currency";
+};
+
+/**
+ * Handles clicks on the giveaway reward buttons:
+ * - `giveaway-reward` opens an ephemeral menu listing the rewards that still
+ *   await distribution (split into currency, items and mutes) together with the
+ *   matching distribution buttons,
+ * - `giveaway-reward-{currency,items,mute}:<id>` run the actual distribution for
+ *   the selected reward type.
+ */
+export const handleGiveawayRewardButton = async ({
+  prisma,
+  economyLog,
+  messageQueue,
+  moderationLog,
+  itx,
+}: GiveawayButtonHandlerOptions): Promise<void> => {
+  const isModerator = itx.memberPermissions.has(PermissionFlagsBits.ModerateMembers);
+  const hasKadra = itx.member.roles.cache.has(STRATA_CZASU.KADRA_ROLE);
+
+  // Distribution buttons from the ephemeral menu carry the giveaway id.
+  const distributionMatch = itx.customId.match(/^giveaway-reward-(currency|items|mute):(\d+)$/);
+  if (distributionMatch) {
+    const distributionType = distributionMatch[1];
+    const rawGiveawayId = distributionMatch[2];
+    if (!distributionType || !rawGiveawayId) return;
+
+    await itx.deferReply({ flags: "Ephemeral" });
+
+    const giveaway = await prisma.giveaway.findFirst({
+      where: { id: Number.parseInt(rawGiveawayId, 10), guildId: itx.guildId },
+    });
+    if (!giveaway) return await errorFollowUp(itx, "Nie znaleziono giveawaya o takim id.");
+    if (giveaway.endAt > itx.createdAt) {
+      return await errorFollowUp(
+        itx,
+        "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyznaczeni.",
+      );
+    }
+
+    const isAuthor = giveaway.authorId === itx.user.id;
+    const typeKey =
+      distributionType === "currency"
+        ? ("currency" as const)
+        : distributionType === "items"
+          ? ("items" as const)
+          : ("mutes" as const);
+
+    if (!canDistributeType(typeKey, isModerator, hasKadra, isAuthor)) {
+      return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z giveawayu.");
+    }
+
+    // The menu itself stays ephemeral, but the result is published in the
+    // giveaway channel so everyone can see that the rewards were handed out.
+    const replyPublicly = async (content: RewardDistributionReply) => {
+      await itx.editReply("Nagrody zostały rozdane - szczegóły opublikowano na kanale.");
+      const channel = await itx.guild.channels.fetch(giveaway.channelId);
+      if (!channel?.isSendable()) {
+        throw new Error(`Channel ${giveaway.channelId} is not sendable or not found.`);
+      }
+      await channel.send(content);
+    };
+
+    const rewardTypes = REWARD_DISTRIBUTION_TYPES[distributionType];
+
+    const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+    const hasPendingRewards =
+      distributionType === "currency"
+        ? pending.currency.length > 0
+        : distributionType === "items"
+          ? pending.items.length > 0
+          : pending.mutes.length > 0;
+
+    if (!hasPendingRewards) {
+      await itx.editReply("Brak nagród tego typu do rozdania.");
+      return;
+    }
+
+    if (rewardTypes) {
+      await distributeGiveawayEconomyRewards({
+        prisma,
+        economyLog,
+        guild: itx.guild,
+        moderator: itx.user,
+        giveaway,
+        rewardTypes,
+        reply: replyPublicly,
+      });
+    } else {
+      await distributeGiveawayMutes({
+        prisma,
+        messageQueue,
+        log: moderationLog,
+        guild: itx.guild,
+        moderator: itx.user,
+        giveaway,
+        reply: replyPublicly,
+      });
+    }
+
+    // When the last rewards of any type were given out, remove the
+    // "Rozdaj nagrody" button from the results message in the channel.
+    const remaining = await getPendingGiveawayRewards(prisma, giveaway.id);
+    const allGiven =
+      remaining.currency.length === 0 &&
+      remaining.items.length === 0 &&
+      remaining.mutes.length === 0;
+
+    if (allGiven) {
+      const channel = await itx.guild.channels.fetch(giveaway.channelId);
+      if (channel?.isTextBased()) {
+        const messages = await channel.messages.fetch({ limit: 50 });
+        const resultsMessage = messages.find(
+          (m) =>
+            m.author.id === itx.client.user?.id && m.reference?.messageId === giveaway.messageId,
+        );
+        if (resultsMessage) {
+          const newComponents = resultsMessage.components.filter((c) => {
+            if (c.type !== ComponentType.ActionRow) return true;
+            return !c.components.some(
+              (btn) =>
+                btn.type === ComponentType.Button &&
+                btn.customId?.startsWith(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID),
+            );
+          });
+          if (newComponents.length !== resultsMessage.components.length) {
+            await resultsMessage.edit({ components: newComponents });
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  if (
+    itx.customId !== GIVEAWAY_REWARD_BUTTON_CUSTOM_ID &&
+    !itx.customId.startsWith(`${GIVEAWAY_REWARD_BUTTON_CUSTOM_ID}:`)
+  )
+    return;
+
+  await itx.deferReply({ flags: "Ephemeral" });
+
+  // The button may live on the results message (a reply), whose messageId
+  // differs from the giveaway's stored messageId. Prefer the giveaway id
+  // embedded in the custom id, falling back to a message-based lookup.
+  const idMatch = itx.customId.match(/^giveaway-reward:(\d+)$/);
+  let giveaway;
+  if (idMatch?.[1]) {
+    giveaway = await prisma.giveaway.findFirst({
+      where: { id: Number.parseInt(idMatch[1], 10), guildId: itx.guildId },
+    });
+  } else {
+    giveaway = await prisma.giveaway.findFirst({
+      where: {
+        guildId: itx.message.guildId,
+        channelId: itx.message.channelId,
+        messageId: itx.message.id,
+      },
+    });
+  }
+  if (!giveaway) return await errorFollowUp(itx, "Ten giveaway nie istnieje!");
+  if (giveaway.endAt > itx.createdAt) {
+    return await errorFollowUp(
+      itx,
+      "Ten giveaway jeszcze się nie zakończył, zwycięzcy nie są jeszcze wyłonieni.",
+    );
+  }
+
+  const isAuthor = giveaway.authorId === itx.user.id;
+  const canDistributeCurrency = canDistributeType("currency", isModerator, hasKadra, isAuthor);
+  const canDistributeItems = canDistributeType("items", isModerator, hasKadra, isAuthor);
+  const canDistributeMutes = canDistributeType("mutes", isModerator, hasKadra, isAuthor);
+
+  if (!canDistributeCurrency && !canDistributeItems && !canDistributeMutes) {
+    return await errorFollowUp(itx, "Nie masz uprawnień do rozdawania nagród z tego giveawaya.");
+  }
+
+  const pending = await getPendingGiveawayRewards(prisma, giveaway.id);
+  const menuContent = buildRewardMenuContent(pending);
+
+  const allGiven =
+    pending.currency.length === 0 && pending.items.length === 0 && pending.mutes.length === 0;
+
+  const menuRow = createRewardMenuRow({
+    canDistributeCurrency,
+    canDistributeItems,
+    canDistributeMutes,
+    hasCurrencyRewards: pending.currency.length > 0,
+    hasItemRewards: pending.items.length > 0,
+    hasMuteRewards: pending.mutes.length > 0,
+    giveawayId: giveaway.id,
+  });
+  if (!menuRow) {
+    if (allGiven) {
+      const remainingComponents = itx.message.components.filter((c) => {
+        if (c.type !== ComponentType.ActionRow) return true;
+        return !c.components.some(
+          (btn) =>
+            btn.type === ComponentType.Button &&
+            btn.customId?.startsWith(GIVEAWAY_REWARD_BUTTON_CUSTOM_ID),
+        );
+      });
+      await itx.message.edit({ components: remainingComponents });
+      await itx.editReply("Wszystkie nagrody zostały już rozdane.");
+    } else {
+      await itx.editReply("Nie masz permisji do rozdania pozostałych nagród.");
+    }
+    return;
+  }
+
+  await itx.editReply({
+    ...render(
+      <Container>
+        {menuContent}
+        <TextDisplay content="Wybierz rodzaj nagród do rozdania:" />
+        {menuRow}
+      </Container>,
+    ),
+  });
+};

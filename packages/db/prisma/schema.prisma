@@ -74,34 +74,34 @@ model EmojiUsage {
 }
 
 model Guild {
-  id                     String                      @id(map: "core_guild_pkey")
-  autoRole               AutoRole[]
-  colorRole              ColorRole[]
-  currency               Currency[]
-  dailyPointsRedeems     DailyPointsRedeems[]
-  dailyRepRedeems        DailyRepRedeem[]
-  emojiUsage             EmojiUsage[]
-  nicknameChanges        NicknameChange[]
-  guildSettings          GuildSettings?
-  mute                   Mute[]
-  userTextActivity       UserTextActivity[]
-  verification           Verification[]
-  wallet                 Wallet[]
-  warn                   Warn[]
-  protectedInvites       ProtectedInvite[]
-  ultimatums             Ultimatum[]
-  stickyMessages         StickyMessage[]
-  channelRestrictions    ChannelRestriction[]
-  voiceSessions          VoiceSession[]
-  lastFishings           LastFishing[]
-  giveaways              Giveaway[]
-  items                  Item[]
-  moderatorLeaves        ModeratorLeave[]
-  halloweenMonsters      Halloween2025Monster[]
-  halloweenMonsterSpawns Halloween2025MonsterSpawn[]
-  teams                  Team[]
-  easter2026Config       Easter2026Config?
-  birthday2026Config     Birthday2026Config?
+  id                          String                       @id(map: "core_guild_pkey")
+  autoRole                    AutoRole[]
+  colorRole                   ColorRole[]
+  currency                    Currency[]
+  dailyPointsRedeems          DailyPointsRedeems[]
+  dailyRepRedeems             DailyRepRedeem[]
+  emojiUsage                  EmojiUsage[]
+  nicknameChanges             NicknameChange[]
+  guildSettings               GuildSettings?
+  mute                        Mute[]
+  userTextActivity            UserTextActivity[]
+  verification                Verification[]
+  wallet                      Wallet[]
+  warn                        Warn[]
+  protectedInvites            ProtectedInvite[]
+  ultimatums                  Ultimatum[]
+  stickyMessages              StickyMessage[]
+  channelRestrictions         ChannelRestriction[]
+  voiceSessions               VoiceSession[]
+  lastFishings                LastFishing[]
+  giveaways                   Giveaway[]
+  items                       Item[]
+  moderatorLeaves             ModeratorLeave[]
+  halloweenMonsters           Halloween2025Monster[]
+  halloweenMonsterSpawns      Halloween2025MonsterSpawn[]
+  teams                       Team[]
+  easter2026Config            Easter2026Config?
+  birthday2026Config          Birthday2026Config?
   halloween2026TotPlayers     Halloween2026TotPlayer[]
   halloween2026TotKnocks      Halloween2026TotKnock[]
   halloween2026TotDailyLimits Halloween2026TotDailyLimit[]
@@ -217,6 +217,7 @@ model User {
   halloween2026TotDailyLimits        Halloween2026TotDailyLimit[]
   halloween2026TotApplesHeld         Halloween2026TotApple[]            @relation("halloween2026TotAppleHolder")
   halloween2026TotApplesPassed       Halloween2026TotApple[]            @relation("halloween2026TotApplePreviousHolder")
+  giveawayRewardDistributions        GiveawayRewardDistribution[]
 
   @@map("users")
 }
