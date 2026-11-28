@@ -26,6 +26,18 @@ export const legacyLevel = new Hashira({ name: "legacyLevel" })
   .handle("clientReady", async ({ legacyLevel }, client) => {
     await legacyLevel.runPromise(TierSync.use((tierSync) => tierSync.start(client)));
   })
+  .handle("guildMemberAdd", async ({ legacyLevel }, member) => {
+    if (member.user.bot) return;
+    legacyLevel.runFork(
+      TierSync.use((tierSync) =>
+        tierSync
+          .syncMembers(member.guild, [member.id])
+          .pipe(
+            Effect.catchCause((cause) => Effect.logError("Legacy tier join sync failed", cause)),
+          ),
+      ),
+    );
+  })
   .handle("guildMessageCreate", async ({ legacyLevel }, message) => {
     if (message.author.bot) return;
     legacyLevel.runFork(
