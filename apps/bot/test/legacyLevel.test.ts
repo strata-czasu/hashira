@@ -21,17 +21,20 @@ const tiers: LegacyTier[] = [
 ];
 
 const mockMember = (id: string, roles: string[], fail = false) => {
-  const calls: string[][] = [];
+  const calls: (string | string[])[] = [];
+  const record = async (value: string | string[]) => {
+    calls.push(value);
+    if (fail) throw new Error("boom");
+    return member;
+  };
   const member = {
     id,
     guild: { id: GUILD_ID },
     roles: {
       cache: new Collection(roles.map((r) => [r, { id: r }])),
-      set: async (next: string[]) => {
-        calls.push(next);
-        if (fail) throw new Error("boom");
-        return member;
-      },
+      add: (roleId: string) => record(roleId),
+      remove: (roleId: string) => record(`-${roleId}`),
+      set: (next: string[]) => record(next),
     },
   } as unknown as GuildMember;
   return { member, calls };
@@ -145,7 +148,7 @@ describe("TierSync", () => {
 
         yield* sync.mark(GUILD_ID, ["u1"]);
         yield* TestClock.adjust("30 seconds");
-        expect(u1.calls).toEqual([["tier-5"]]);
+        expect(u1.calls).toEqual(["tier-5"]);
 
         // Marked 5s before the next tick -> deferred until the following tick
         yield* TestClock.adjust("25 seconds");
@@ -154,7 +157,7 @@ describe("TierSync", () => {
         expect(u2.calls).toEqual([]);
 
         yield* TestClock.adjust("30 seconds");
-        expect(u2.calls).toEqual([["tier-5"]]);
+        expect(u2.calls).toEqual(["tier-5"]);
 
         yield* Scope.close(scope, Exit.void);
         yield* sync.mark(GUILD_ID, ["u1"]);

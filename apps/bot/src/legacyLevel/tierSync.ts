@@ -39,27 +39,34 @@ export class TierSync extends Context.Service<TierSync, Service>()("@hashira/bot
 const attempt = <A>(body: () => PromiseLike<A>) =>
   Effect.tryPromise({ try: body, catch: (cause) => new TierSyncError({ cause }) });
 
-const applyRoleChanges = (
-  member: GuildMember,
-  add: readonly string[],
-  remove: readonly string[],
-) => {
-  const removeSet = new Set(remove);
-  const nextRoles = [
-    ...[...member.roles.cache.keys()].filter((id) => id !== member.guild.id && !removeSet.has(id)),
-    ...add,
-  ];
-  return attempt(() =>
+const applyRoleChanges = (member: GuildMember, add: readonly string[], remove: readonly string[]) =>
+  attempt(() =>
     discordTry(
       async () => {
-        await member.roles.set(nextRoles, ROLE_CHANGE_REASON);
+        if (add.length === 1 && remove.length === 0 && add[0]) {
+          await member.roles.add(add[0], ROLE_CHANGE_REASON);
+        } else if (add.length === 0 && remove.length === 1 && remove[0]) {
+          await member.roles.remove(remove[0], ROLE_CHANGE_REASON);
+        } else {
+          const removeSet = new Set(remove);
+          const nextRoles = [
+            ...[...member.roles.cache.keys()].filter(
+              (id) => id !== member.guild.id && !removeSet.has(id),
+            ),
+            ...add,
+          ];
+          await member.roles.set(nextRoles, ROLE_CHANGE_REASON);
+        }
         return true;
       },
-      [RESTJSONErrorCodes.MissingPermissions, RESTJSONErrorCodes.UnknownRole],
+      [
+        RESTJSONErrorCodes.MissingPermissions,
+        RESTJSONErrorCodes.UnknownRole,
+        RESTJSONErrorCodes.UnknownMember,
+      ],
       () => false,
     ),
   );
-};
 
 export const make = Effect.gen(function* () {
   const legacyLevel = yield* LegacyLevel;
