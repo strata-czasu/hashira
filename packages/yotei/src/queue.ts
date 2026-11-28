@@ -1,12 +1,9 @@
-import { Context, Effect, Layer, Predicate, Schema, Scope, Semaphore } from "effect";
+import { Context, Data, Effect, Layer, Predicate, Ref, Schema, Scope } from "effect";
 
 import { type ConsumerOptions, makeConsumer } from "./consumer";
 import { QueueStore } from "./persistence";
 
-export class QueueAlreadyRunningError extends Schema.TaggedError<QueueAlreadyRunningError>()(
-  "QueueAlreadyRunningError",
-  {},
-) {
+export class QueueAlreadyRunningError extends Data.TaggedError("QueueAlreadyRunningError")<{}> {
   override readonly message = "MessageQueue is already running";
 }
 
@@ -19,11 +16,14 @@ const Envelope = Schema.Struct({
 });
 
 const dispatch = (resolveHandler: ResolveHandler) =>
-  Effect.fnUntraced(
+  Effect.fn("yotei.dispatch")(
     function* (task: { data: unknown }) {
       const { type, data } = yield* Schema.decodeUnknownEffect(Envelope)(task.data);
       const handler = resolveHandler(type);
-      if (!handler) return false;
+      if (!handler) {
+        yield* Effect.logWarning(`No handler registered for task type "${type}"`);
+        return false;
+      }
       yield* handler(data);
       return true;
     },
@@ -33,23 +33,23 @@ const dispatch = (resolveHandler: ResolveHandler) =>
 export const make = Effect.gen(function* () {
   const store = yield* QueueStore;
   const scope = yield* Effect.scope;
-  const starting = yield* Semaphore.make(1);
+  const started = yield* Ref.make(false);
 
   return {
     push: store.createTask.bind(store),
     cancel: store.cancelTask.bind(store),
     updateDelay: store.updateTaskDelay.bind(store),
-    startConsumer: Effect.fnUntraced(function* (
+    startConsumer: Effect.fn("yotei.startConsumer")(function* (
       resolveHandler: ResolveHandler,
       options: typeof ConsumerOptions.Type,
     ) {
-      if (!(yield* Semaphore.takeIfAvailable(starting, 1))) {
+      if (yield* Ref.getAndSet(started, true)) {
         return yield* new QueueAlreadyRunningError();
       }
 
       return yield* makeConsumer(store, dispatch(resolveHandler), options).pipe(
         Scope.provide(scope),
-        Effect.onError(() => Semaphore.release(starting, 1)),
+        Effect.onError(() => Ref.set(started, false)),
       );
     }, Effect.uninterruptible),
   };
@@ -57,5 +57,4 @@ export const make = Effect.gen(function* () {
 
 export type Service = Effect.Success<typeof make>;
 export class Queue extends Context.Service<Queue, Service>()("@hashira/yotei/Queue") {}
-export const layer = (persistence: Layer.Layer<QueueStore>) =>
-  Layer.effect(Queue, make).pipe(Layer.provide(persistence));
+export const layer: Layer.Layer<Queue, never, QueueStore> = Layer.effect(Queue, make);

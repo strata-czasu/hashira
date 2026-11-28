@@ -14,7 +14,7 @@ import {
   TimestampStyles,
   userMention,
 } from "discord.js";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 
 import { Hashira } from "@hashira/core";
 import { VerificationStatus } from "@hashira/db";
@@ -125,7 +125,9 @@ export const messageQueueBase = new Hashira({ name: "messageQueueBase" })
   .use(loggingBase)
   .const((ctx) => {
     const prisma = ctx.prisma;
-    const messageQueueRuntime = Runtime.make(Queue.layer(Persistence.layer(prisma)));
+    const messageQueueRuntime = Runtime.make(
+      Queue.layer.pipe(Layer.provide(Persistence.layer(prisma))),
+    );
     return {
       ...ctx,
       messageQueue: new MessageQueue(messageQueueRuntime)

@@ -15,24 +15,26 @@ it("dispatches failures without killing polling and joins Promise handlers on di
     { type: "good", data: 42 },
   ];
   const runtime = Runtime.make(
-    Queue.layer(
-      Layer.succeed(Persistence.QueueStore, {
-        createTask: () => Effect.void,
-        cancelTask: () => Effect.succeed(false),
-        updateTaskDelay: () => Effect.succeed(false),
-        consume: (handle) =>
-          Effect.suspend(() => {
-            const data = envelopes.shift();
-            if (!data) return Effect.succeed(false);
-            return handle({ id: 1, createdAt: new Date(), data }).pipe(
-              Effect.tap((result) =>
-                Effect.sync(() => {
-                  outcomes.push(result);
-                }),
-              ),
-            );
-          }),
-      }),
+    Queue.layer.pipe(
+      Layer.provide(
+        Layer.succeed(Persistence.QueueStore, {
+          createTask: () => Effect.void,
+          cancelTask: () => Effect.succeed(false),
+          updateTaskDelay: () => Effect.succeed(false),
+          consume: (handle) =>
+            Effect.suspend(() => {
+              const data = envelopes.shift();
+              if (!data) return Effect.succeed(false);
+              return handle({ id: 1, createdAt: new Date(), data }).pipe(
+                Effect.tap((result) =>
+                  Effect.sync(() => {
+                    outcomes.push(result);
+                  }),
+                ),
+              );
+            }),
+        }),
+      ),
     ),
   );
   const queue = new MessageQueue(runtime, 1)
